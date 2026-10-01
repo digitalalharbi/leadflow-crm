@@ -32,8 +32,8 @@ its own; the repository, database and artisan identifiers are unchanged.
 - [x] Roles: admin, manager, sales + platform super admin
 - [x] Tenant suspension and subscription expiry enforced mid-session
 - [x] 18 isolation tests, run as their own CI step
-- [x] Two adversarial security reviews; 24 defects found and fixed, each with a
-      regression test written before the fix (see `docs/SECURITY.md`)
+- [x] Three adversarial security reviews; 34 defects found and fixed, each with
+      a regression test written before the fix (see `docs/SECURITY.md`)
 
 ### White label
 - [x] Per-tenant branding served from a public endpoint
@@ -54,6 +54,27 @@ its own; the repository, database and artisan identifiers are unchanged.
 - [x] Projects, custom fields, lead scoring and temperature
 - [x] Manual, round-robin and explicit assignment
 - [x] In-app notifications with hourly reminder dispatch
+
+### WhatsApp and qualification
+- [x] WhatsApp Business Platform (Cloud API), multi-tenant: each workspace's
+      phone number id, access token, verify token and app secret, encrypted at
+      rest and never returned by the API
+- [x] A mock provider that takes the real code path, so the product can be sold
+      and demonstrated before a Meta account exists — never selected outside
+      local and test
+- [x] One signed public webhook for the platform, routed by phone number id,
+      idempotent against Meta's retries, and refusing a message from a number
+      nobody holds rather than inventing a customer
+- [x] Delivery, read and failure receipts that only ever move a message forward
+- [x] Conversation on the lead — not an inbox — with saved messages, and no
+      unfilled placeholder ever sent to a customer
+- [x] Opt-out, recorded and enforced on every send
+- [x] Qualification: eight answers, its own status apart from the pipeline
+      stage, and a rules engine whose every point is attributable to a labelled
+      rule. Nothing about who the person is may move a score
+- [x] Follow-up outcomes that feed the score and can schedule the next call
+- [x] First-contact and first-response times, and the leads nobody has answered
+- [x] Campaign quality: which spend brings buyers rather than clicks
 
 ### Integrations
 - [x] Generic webhook: per-tenant URL + hashed secret, rate limited, size capped,
@@ -88,7 +109,7 @@ its own; the repository, database and artisan identifiers are unchanged.
       (`leadflow:measure`)
 
 ### Documentation
-- [x] README, 11 documents in `docs/`, `EXTERNAL_SETUP.md`, `README-DEMO.md`,
+- [x] README, 12 documents in `docs/`, `EXTERNAL_SETUP.md`, `README-DEMO.md`,
       `docs/STAGING_CHECKLIST.md`, example payloads in `docs/examples/`
 
 ---
@@ -103,6 +124,7 @@ None of these block the product; each is isolated behind configuration.
 | Domain + DNS | Runs on localhost / IP | Public URLs, per-tenant subdomains |
 | TLS certificates | HTTP only | HTTPS |
 | Meta / TikTok / Google / LinkedIn / Snapchat keys | Those providers report "configuration required"; the generic webhook and CSV import work | Direct API pulls |
+| **WhatsApp Business**: phone number id, access token, app secret, per tenant | The mock provider records messages and drives the whole conversation, but nothing reaches a customer. The integration reads "configuration required" | Real sending and receiving. Entered by each client in Integrations → WhatsApp; no deploy |
 
 Details and commands: [`EXTERNAL_SETUP.md`](EXTERNAL_SETUP.md).
 
@@ -112,7 +134,7 @@ Details and commands: [`EXTERNAL_SETUP.md`](EXTERNAL_SETUP.md).
 
 Out of MVP scope, and the architecture does not block any of them:
 
-WhatsApp inbox · AI qualification and summaries · marketing automation builder ·
+WhatsApp shared team inbox · AI qualification and summaries · marketing automation builder ·
 call centre · property inventory · accounting and invoicing · payment gateway ·
 native mobile app · Elasticsearch · Kubernetes · microservices · full DDD ·
 WebSockets · custom domains
@@ -137,10 +159,11 @@ Honest list:
 
 ## Next five, commercially
 
-1. WhatsApp Cloud API — a real inbox is the most-requested feature in this market
-2. Campaign spend ingestion → CPL, CPQL, cost per appointment, cost per sale
-3. Billing: Stripe or a local gateway against the plan fields that already exist
-4. Conversion APIs (Meta CAPI, Google offline conversions, TikTok Events) to send
-   won deals back to the ad platforms
-5. A live staging URL, which needs only a server, a domain and certificates —
+1. A live staging URL, which needs only a server, a domain and certificates —
    see `docs/STAGING_CHECKLIST.md`
+2. Real WhatsApp credentials on one tenant, which turns the mock provider into
+   the live one with no code change
+3. Campaign spend ingestion → CPL, CPQL, cost per appointment, cost per sale
+4. Billing: Stripe or a local gateway against the plan fields that already exist
+5. Conversion APIs (Meta CAPI, Google offline conversions, TikTok Events) to send
+   won deals back to the ad platforms

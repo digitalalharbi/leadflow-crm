@@ -100,6 +100,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);
 
+            // Whether messaging is available at all, for anyone who works leads.
+            Route::get('/whatsapp/capability', [WhatsappSettingsController::class, 'capability']);
+
             // Conversation
             Route::get('/leads/{uuid}/messages', [LeadMessageController::class, 'index']);
             Route::post('/leads/{uuid}/messages', [LeadMessageController::class, 'store']);

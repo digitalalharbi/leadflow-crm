@@ -30,19 +30,23 @@ export function StatCard({
 }) {
   const tones = {
     neutral: 'text-[var(--color-ink)]',
-    success: 'text-emerald-600',
-    warning: 'text-amber-600',
-    danger: 'text-red-600',
+    success: 'text-[var(--color-status-won)]',
+    warning: 'text-[var(--color-status-appointment)]',
+    danger: 'text-[var(--color-status-lost)]',
     brand: 'text-[var(--brand)]',
   }
 
   const interactive = Boolean(to || onClick)
 
   const className = cn(
-    'block rounded-[var(--radius-card)] border border-[var(--color-border)]',
+    'block rounded-[var(--radius-card)] border border-[var(--color-line)]',
     'bg-[var(--color-surface)] p-4 text-start shadow-[var(--shadow-card)]',
-    interactive &&
-      'transition-colors hover:border-[var(--brand)] hover:bg-[var(--brand-soft)] focus-visible:border-[var(--brand)]',
+    // A tile that leads somewhere lifts toward the pointer. One pixel of travel
+    // reads as "this is a door", which is the whole claim the tile is making.
+    interactive && [
+      'pressable hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--brand)_35%,transparent)]',
+      'hover:shadow-[var(--shadow-raised)] active:translate-y-0',
+    ].join(' '),
   )
 
   const body = (
@@ -53,7 +57,9 @@ export function StatCard({
         </p>
         {icon && <span className="mt-0.5 shrink-0 text-[var(--color-ink-subtle)]">{icon}</span>}
       </div>
-      <p className={cn('tabular mt-2 text-2xl font-semibold', tones[tone])}>{value}</p>
+      {/* Tight tracking on a large numeral: the default spacing makes a
+          four-digit figure look like a phone number. */}
+      <p className={cn('tabular mt-2 text-2xl font-semibold tracking-[-0.02em]', tones[tone])}>{value}</p>
       {hint && <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">{hint}</p>}
     </>
   )

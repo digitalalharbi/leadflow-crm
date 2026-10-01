@@ -227,7 +227,7 @@ export function LeadsPage() {
                               target="_blank"
                               rel="noreferrer"
                               aria-label={t('leads.whatsapp')}
-                              className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-emerald-50 hover:text-emerald-600"
+                              className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] hover:text-[var(--color-status-won)]"
                             >
                               <MessageCircle className="size-4" aria-hidden />
                             </a>

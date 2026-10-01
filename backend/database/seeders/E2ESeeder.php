@@ -3,12 +3,18 @@
 namespace Database\Seeders;
 
 use App\Enums\ActivityType;
+use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
+use App\Enums\MessageChannel;
+use App\Enums\MessageDirection;
+use App\Enums\MessageStatus;
 use App\Enums\Role;
 use App\Models\FollowUp;
+use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadMessage;
 use App\Models\LostReason;
 use App\Models\Project;
 use App\Models\Tenant;
@@ -56,6 +62,18 @@ class E2ESeeder extends Seeder
     public const LEAD_ASSIGN = 'بشاير الإسناد';
 
     public const BETA_SECRET_LEAD = 'سر بيتا المحجوب';
+
+    /** A lead with a conversation already on it, and one with none. */
+    public const LEAD_CHAT = 'غادة المحادثة';
+
+    public const LEAD_QUALIFY = 'ماجد التأهيل';
+
+    /** Alpha's WhatsApp number, so webhook fixtures can target it. */
+    public const ALPHA_PHONE_NUMBER_ID = '100000000000001';
+
+    public const ALPHA_APP_SECRET = 'e2e-alpha-app-secret-value';
+
+    public const BETA_PHONE_NUMBER_ID = '100000000000002';
 
     /** Generic filler, enough to force a second page at 25 per page. */
     public const FILLER_COUNT = 30;
@@ -121,7 +139,58 @@ class E2ESeeder extends Seeder
 
             $firstProject = $projects->first();
 
+            /*
+             * WhatsApp connected in demo mode: a phone number id so webhook
+             * deliveries route here, an app secret so signatures are real, and
+             * no access token — which keeps the mock provider in play.
+             */
+            Integration::create([
+                'tenant_id' => $tenant->id,
+                'provider' => IntegrationProvider::Whatsapp,
+                'name' => 'WhatsApp Business',
+                'status' => Integration::CONFIGURATION_REQUIRED,
+                'config' => ['phone_number_id' => self::ALPHA_PHONE_NUMBER_ID, 'business_account_id' => '900900900'],
+                'credentials' => ['verify_token' => 'e2e-alpha-verify-token', 'app_secret' => self::ALPHA_APP_SECRET],
+                'is_active' => true,
+            ]);
+
             // --- Named leads the tests drive directly -----------------------
+            $chat = $this->lead($tenant, self::LEAD_CHAT, '+966500000011', [
+                'assigned_to' => $admin->id, 'project_id' => $firstProject->id,
+                'status' => LeadStatus::Contacted->value, 'platform' => 'meta',
+                'campaign_name' => 'حملة الاختبار',
+            ]);
+
+            // One outbound, one reply: enough for the conversation to render
+            // both bubble shapes and a delivery state.
+            LeadMessage::create([
+                'tenant_id' => $tenant->id, 'lead_id' => $chat->id, 'user_id' => $admin->id,
+                'direction' => MessageDirection::Outbound, 'channel' => MessageChannel::Whatsapp,
+                'provider' => 'mock', 'provider_message_id' => 'wamid.e2e.seed.out.1',
+                'message_type' => 'text', 'body' => 'مرحبًا غادة، معك فريق ألفا بخصوص اهتمامك بالمشروع.',
+                'status' => MessageStatus::Delivered,
+                'sent_at' => now()->subHours(3), 'delivered_at' => now()->subHours(3),
+            ]);
+
+            LeadMessage::create([
+                'tenant_id' => $tenant->id, 'lead_id' => $chat->id,
+                'direction' => MessageDirection::Inbound, 'channel' => MessageChannel::Whatsapp,
+                'provider' => 'whatsapp_cloud', 'provider_message_id' => 'wamid.e2e.seed.in.1',
+                'message_type' => 'text', 'body' => 'نعم مهتم، أرسل لي التفاصيل.',
+                'status' => MessageStatus::Received,
+            ]);
+
+            // Deliberately unqualified, with no answers filled in, so the
+            // qualification test starts from a known empty state.
+            $this->lead($tenant, self::LEAD_QUALIFY, '+966500000012', [
+                'assigned_to' => $admin->id, 'project_id' => $firstProject->id,
+                'status' => LeadStatus::New->value, 'platform' => 'meta',
+                'campaign_name' => 'حملة الاختبار',
+                'budget_min' => null, 'budget_max' => null,
+                'preferred_property_type' => null, 'purchase_timeline' => null,
+                'payment_method' => null,
+            ]);
+
             $this->lead($tenant, self::LEAD_SEARCH, '+966500000001', [
                 'assigned_to' => $admin->id, 'project_id' => $firstProject->id,
                 'status' => LeadStatus::New->value, 'temperature' => LeadTemperature::Hot->value,

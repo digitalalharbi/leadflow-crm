@@ -110,6 +110,28 @@ class ResponseTimeTest extends TestCase
             ->assertJsonPath('data.today.awaiting_first_contact', 0);
     }
 
+    public function test_the_dashboard_number_and_the_list_behind_it_agree(): void
+    {
+        // The panel links to the leads list with this filter; if the two
+        // disagreed, the number would send people to the wrong work.
+        $this->lead('متأخر أول', createdMinutesAgo: 60);
+        $this->lead('متأخر ثانٍ', createdMinutesAgo: 90);
+        $this->lead('حديث', createdMinutesAgo: 2);
+
+        $count = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/dashboard')
+            ->json('data.today.awaiting_first_contact');
+
+        $listed = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/leads?awaiting_contact=1')
+            ->assertSuccessful()
+            ->json('data');
+
+        $this->assertSame(2, $count);
+        $this->assertCount(2, $listed);
+        $this->assertNotContains('حديث', array_column($listed, 'full_name'));
+    }
+
     private function lead(string $name, int $createdMinutesAgo): Lead
     {
         return $this->asTenant($this->t['tenant'], function () use ($name, $createdMinutesAgo) {

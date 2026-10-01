@@ -35,6 +35,21 @@ export const LEADS = {
   drag: 'راكان السحب',
   activity: 'هيفاء الأنشطة',
   assign: 'بشاير الإسناد',
+  chat: 'غادة المحادثة',
+  qualify: 'ماجد التأهيل',
+} as const
+
+/**
+ * Alpha's WhatsApp connection. The app secret is real, so webhook fixtures sign
+ * the way Meta does; there is no access token, which keeps the mock provider in
+ * play and the integration reading "configuration required".
+ */
+export const WHATSAPP = {
+  phoneNumberId: '100000000000001',
+  appSecret: 'e2e-alpha-app-secret-value',
+  verifyToken: 'e2e-alpha-verify-token',
+  betaPhoneNumberId: '100000000000002',
+  chatLeadPhone: '966500000011',
 } as const
 
 /** Exactly how many leads each rep owns, so "sees only their own" is provable. */

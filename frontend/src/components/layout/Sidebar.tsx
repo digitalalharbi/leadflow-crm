@@ -64,7 +64,7 @@ export function Sidebar() {
         <button
           type="button"
           aria-label={t('common.close')}
-          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-[var(--color-neutral-900)]/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -73,10 +73,10 @@ export function Sidebar() {
         data-open={sidebarOpen}
         className={cn(
           'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[17rem] flex-col',
-          'border-e border-[var(--color-border)] bg-[var(--color-surface)]',
+          'border-e border-[var(--color-line)] bg-[var(--color-surface)]',
         )}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--color-border)] px-4">
+        <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--color-line)] px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             {branding?.logo_url ? (
               <img src={branding.logo_url} alt="" className="size-8 shrink-0 rounded-lg object-contain" />
@@ -112,9 +112,17 @@ export function Sidebar() {
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-[0.875rem] font-medium transition-colors',
+                    'relative flex items-center gap-3 px-3 py-2 text-[0.875rem] font-medium',
+                    'rounded-[var(--radius-control)] transition-colors duration-[var(--duration-fast)]',
+                    // The active item gets a filled pill and a marker on the
+                    // inline-start edge, so which page you are on survives a
+                    // tenant whose brand colour is almost the text colour.
                     isActive
-                      ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
+                      ? [
+                          'bg-[var(--brand-soft)] font-semibold text-[var(--brand)]',
+                          'before:absolute before:inset-y-1.5 before:start-0 before:w-0.5',
+                          'before:rounded-full before:bg-[var(--brand)]',
+                        ].join(' ')
                       : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]',
                   )
                 }
@@ -131,7 +139,7 @@ export function Sidebar() {
         </nav>
 
         {branding?.support_email && (
-          <div className="border-t border-[var(--color-border)] p-3 text-[0.75rem] text-[var(--color-ink-subtle)]">
+          <div className="border-t border-[var(--color-line)] p-3 text-[0.75rem] text-[var(--color-ink-subtle)]">
             <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--color-ink)]">
               {branding.support_email}
             </a>

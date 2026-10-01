@@ -62,7 +62,10 @@ test.describe('Follow-ups', () => {
     await page.locator('ul > li').first().getByRole('button', { name: 'إتمام' }).click()
 
     const dialog = page.getByRole('dialog')
-    await dialog.getByLabel('نتيجة المتابعة').fill('تم الاتصال والعميل سيزور المعرض')
+    // What happened is now a choice the reports can count; the sentence beside
+    // it is the detail a rep wants to read back later.
+    await dialog.getByTestId('followup-outcome').selectOption('appointment')
+    await dialog.getByTestId('followup-note').fill('تم الاتصال والعميل سيزور المعرض')
     await dialog.getByRole('button', { name: 'تأكيد' }).click()
 
     await expect(page.getByText('تم إتمام المتابعة.')).toBeVisible()

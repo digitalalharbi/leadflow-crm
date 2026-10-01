@@ -39,6 +39,23 @@ class WhatsappSettingsController extends Controller
         return ApiResponse::success($this->present($this->manager->integration()));
     }
 
+    /**
+     * What the lead screen needs to know, for anyone who can work a lead.
+     *
+     * Deliberately not the settings payload: a rep has no business reading
+     * which credentials are stored, but they do need to know whether the send
+     * button sends or hands off to the WhatsApp app.
+     */
+    public function capability(Request $request)
+    {
+        $integration = $this->manager->integration();
+
+        return ApiResponse::success([
+            'can_send' => $this->manager->canSend($integration),
+            'mode' => $this->manager->isLive($integration) ? 'live' : 'mock',
+        ]);
+    }
+
     public function update(Request $request)
     {
         $this->authorize('create', Integration::class);

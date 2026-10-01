@@ -5,7 +5,7 @@ import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import {
-  AlertTriangle, CalendarCheck, CalendarClock, Flame, TrendingUp, UserPlus,
+  AlertTriangle, CalendarCheck, CalendarClock, Flame, PhoneOff, TrendingUp, UserPlus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
@@ -123,7 +123,17 @@ export function DashboardPage() {
             <h2 className="mb-2.5 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
               {t('dashboard.todayTitle')}
             </h2>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              {/* The one tile that creates work rather than reporting it: leads
+                  that arrived and that nobody has answered yet. */}
+              <StatCard
+                label={t('dashboard.awaitingContact')}
+                value={formatNumber(data.today.awaiting_first_contact, i18n.language)}
+                icon={<PhoneOff className="size-4" />}
+                tone={data.today.awaiting_first_contact > 0 ? 'danger' : 'neutral'}
+                to="/leads?status[]=new&awaiting_contact=1"
+                testId="stat-awaiting-contact"
+              />
               <StatCard
                 label={t('dashboard.newToday')}
                 value={formatNumber(data.today.new_leads, i18n.language)}
@@ -286,6 +296,19 @@ export function DashboardPage() {
               showDue
             />
           </section>
+
+          {data.awaiting_contact_leads.length > 0 && (
+            <section>
+              <LeadMiniList
+                title={t('dashboard.awaitingContactList', {
+                  minutes: data.today.first_contact_target_minutes,
+                })}
+                leads={data.awaiting_contact_leads}
+                emptyText={t('dashboard.noAwaitingContact')}
+                to="/leads?status[]=new&awaiting_contact=1"
+              />
+            </section>
+          )}
 
           <section className="grid gap-4 lg:grid-cols-2">
             <BreakdownCard title={t('dashboard.byPlatform')} points={data.charts.by_platform} translateKey="platforms" />

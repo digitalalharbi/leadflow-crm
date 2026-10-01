@@ -271,14 +271,14 @@ export function PlatformPage() {
             {/* A colour picker alone hides the value; the operator usually has a
                 brand hex to paste, so show both and keep them in step. */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--color-ink)] dark:text-[var(--color-ink-inverted)]">
                 {t('superAdmin.primaryColor')}
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   aria-label={t('superAdmin.primaryColor')}
-                  className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-slate-800"
+                  className="h-10 w-12 shrink-0 cursor-pointer rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] p-1"
                   value={form.primary_color}
                   onChange={(e) => setForm((prev) => ({ ...prev, primary_color: e.target.value }))}
                 />
@@ -398,7 +398,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
           }}
           className="grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
         >
-          {copied ? <Check className="size-4 text-emerald-600" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+          {copied ? <Check className="size-4 text-[var(--color-status-won)]" aria-hidden /> : <Copy className="size-4" aria-hidden />}
         </button>
       </div>
     </div>

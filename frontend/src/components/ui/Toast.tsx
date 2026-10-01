@@ -3,8 +3,8 @@ import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
 
 const tone = {
-  success: { cls: 'border-emerald-200 bg-emerald-50 text-emerald-900', Icon: CheckCircle2 },
-  error: { cls: 'border-red-200 bg-red-50 text-red-900', Icon: XCircle },
+  success: { cls: 'border-[color-mix(in_srgb,var(--color-status-won)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]', Icon: CheckCircle2 },
+  error: { cls: 'border-[color-mix(in_srgb,var(--color-status-lost)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] text-[var(--color-status-lost)]', Icon: XCircle },
   info: { cls: 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink)]', Icon: Info },
 }
 

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui'
 import type { ReportRow } from '@/types/api'
 import { cn } from '@/lib/cn'
+import { CampaignQuality } from '@/components/reports/CampaignQuality'
 
 const TYPES = [
   { key: 'platform', labelKey: 'reports.byPlatform' },
@@ -20,6 +21,9 @@ const TYPES = [
   { key: 'status', labelKey: 'reports.byStatus' },
   { key: 'lost_reason', labelKey: 'reports.byLostReason' },
   { key: 'source', labelKey: 'reports.bySource' },
+  // Its own shape: contacted, replied and the rates, which the shared row
+  // cannot express.
+  { key: 'campaign_quality', labelKey: 'campaignQuality.title' },
 ] as const
 
 export function ReportsPage() {
@@ -36,8 +40,11 @@ export function ReportsPage() {
     date_to: dateTo || undefined,
   }
 
+  const isCampaignQuality = type === 'campaign_quality'
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['reports', params],
+    enabled: !isCampaignQuality,
     queryFn: () =>
       apiGet<{ type: string; rows: ReportRow[]; totals: Omit<ReportRow, 'key' | 'label'> }>('/reports', params),
     placeholderData: (previous) => previous,
@@ -55,7 +62,7 @@ export function ReportsPage() {
           <Button
             variant="outline"
             icon={<Download className="size-4" />}
-            disabled={rows.length === 0}
+            disabled={rows.length === 0 || isCampaignQuality}
             onClick={() => void apiDownload('/reports/export', params, `report-${type}.csv`)}
           >
             {t('reports.exportCsv')}
@@ -113,7 +120,7 @@ export function ReportsPage() {
           )}
         </div>
 
-        {isError ? (
+        {isCampaignQuality ? null : isError ? (
           <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
         ) : isLoading ? (
           <SkeletonTable rows={6} cols={6} />
@@ -159,7 +166,7 @@ export function ReportsPage() {
                     </Td>
                     <Td className="tabular hidden sm:table-cell">{formatNumber(row.qualified, i18n.language)}</Td>
                     <Td className="tabular hidden md:table-cell">{formatNumber(row.appointments, i18n.language)}</Td>
-                    <Td className="tabular font-medium text-emerald-700">{formatNumber(row.won, i18n.language)}</Td>
+                    <Td className="tabular font-medium text-[var(--color-status-won)]">{formatNumber(row.won, i18n.language)}</Td>
                     <Td className="tabular hidden sm:table-cell">{formatNumber(row.lost, i18n.language)}</Td>
                     <Td className="tabular font-medium">{row.conversion_rate}%</Td>
                   </Tr>
@@ -172,7 +179,7 @@ export function ReportsPage() {
                     <Td className="tabular">{formatNumber(data.totals.total, i18n.language)}</Td>
                     <Td className="tabular hidden sm:table-cell">{formatNumber(data.totals.qualified, i18n.language)}</Td>
                     <Td className="tabular hidden md:table-cell">{formatNumber(data.totals.appointments, i18n.language)}</Td>
-                    <Td className="tabular text-emerald-700">{formatNumber(data.totals.won, i18n.language)}</Td>
+                    <Td className="tabular text-[var(--color-status-won)]">{formatNumber(data.totals.won, i18n.language)}</Td>
                     <Td className="tabular hidden sm:table-cell">{formatNumber(data.totals.lost, i18n.language)}</Td>
                     <Td className="tabular">{data.totals.conversion_rate}%</Td>
                   </tr>
@@ -182,6 +189,12 @@ export function ReportsPage() {
           </TableWrap>
         )}
       </Card>
+
+      {isCampaignQuality && (
+        <div className="mt-4">
+          <CampaignQuality filters={{ date_from: dateFrom || undefined, date_to: dateTo || undefined }} />
+        </div>
+      )}
     </>
   )
 }

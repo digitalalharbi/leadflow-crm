@@ -24,12 +24,12 @@ interface Column {
 }
 
 const COLUMN_ACCENT: Record<LeadStatus, string> = {
-  new: 'bg-blue-500',
-  contacted: 'bg-violet-500',
-  qualified: 'bg-cyan-500',
-  appointment: 'bg-amber-500',
-  won: 'bg-emerald-500',
-  lost: 'bg-red-500',
+  new: 'bg-[var(--color-status-new)]',
+  contacted: 'bg-[var(--color-status-contacted)]',
+  qualified: 'bg-[var(--color-status-qualified)]',
+  appointment: 'bg-[var(--color-status-appointment)]',
+  won: 'bg-[var(--color-status-won)]',
+  lost: 'bg-[var(--color-status-lost)]',
 }
 
 export function PipelinePage() {
@@ -294,7 +294,7 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <TemperatureBadge temperature={lead.temperature} />
         {lead.is_overdue && (
-          <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[0.6875rem] font-medium text-red-700">
+          <span className="rounded-md bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-1.5 py-0.5 text-[0.6875rem] font-medium text-[var(--color-status-lost)]">
             {t('leads.overdue')}
           </span>
         )}

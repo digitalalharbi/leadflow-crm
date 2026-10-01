@@ -24,6 +24,27 @@ interface SettingsResponse {
 
 type Tab = 'branding' | 'general' | 'lostReasons' | 'customFields' | 'subscription'
 
+/**
+ * The zones this product's customers actually operate in. A full IANA list would
+ * be 400+ options to scroll past; anything missing can still be set through the
+ * API, which validates against the complete list.
+ */
+const TIMEZONES = [
+  'Asia/Riyadh',
+  'Asia/Dubai',
+  'Asia/Kuwait',
+  'Asia/Qatar',
+  'Asia/Bahrain',
+  'Asia/Muscat',
+  'Asia/Baghdad',
+  'Asia/Amman',
+  'Asia/Beirut',
+  'Africa/Cairo',
+  'Europe/Istanbul',
+  'Europe/London',
+  'UTC',
+]
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
@@ -337,6 +358,23 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               onChange={(e) => setForm((prev) => ({ ...prev, default_country_code: e.target.value }))}
             />
           </div>
+
+          {/*
+            The timezone drives how every date in the app is read. It was
+            settable through the API but had no control here, so a tenant outside
+            Riyadh could not correct it without a support request.
+          */}
+          <Select
+            label={t('settings.timezone')}
+            value={form.timezone}
+            onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
+          >
+            {TIMEZONES.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </Select>
 
           <Select
             label={t('settings.assignmentMode')}

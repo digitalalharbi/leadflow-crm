@@ -6,6 +6,8 @@
 .env
 .env.*
 !.env.example
+# Per-environment templates are safe to track; the filled-in files are not.
+!.env.*.example
 *.pem
 *.key
 *.ppk

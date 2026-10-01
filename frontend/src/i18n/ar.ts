@@ -1,6 +1,6 @@
 export default {
   common: {
-    appName: 'LeadFlow CRM',
+    appName: 'مهتم',
     save: 'حفظ',
     saving: 'جارٍ الحفظ…',
     cancel: 'إلغاء',

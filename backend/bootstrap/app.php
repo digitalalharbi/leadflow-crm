@@ -16,7 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        /*
+         * Deliberately NOT $middleware->statefulApi().
+         *
+         * The SPA authenticates with a Bearer token and is served from a
+         * different origin to the API in every deployed environment. Enabling
+         * Sanctum's cookie mode makes any request whose Origin matches a
+         * "stateful domain" go through session + CSRF instead — which answers
+         * 419 to every write unless the client first fetches a CSRF cookie.
+         * Nothing here uses cookie auth, so the safest configuration is to not
+         * offer it at all.
+         */
 
         // Without this the `api` rate limiter defined in AppServiceProvider is
         // never attached, and every authenticated endpoint is unthrottled.

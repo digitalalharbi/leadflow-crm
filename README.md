@@ -1,9 +1,14 @@
-# LeadFlow CRM
+# مهتم — Leads CRM
 
-A multi-tenant, white-label CRM for teams that buy leads and have to call them
-back fast. Built for real-estate developers first, but nothing in the data model
-is specific to property — the same codebase serves clinics, dealerships or any
-business whose leads arrive from ad platforms and landing pages.
+**مهتم** ("interested") is a multi-tenant, white-label CRM for teams that buy
+leads and have to call them back fast.
+
+The name is only a default: every customer sees their own company name, logo and
+colours, so what a tenant's staff read on screen is their product, not this one.
+
+Built for real-estate developers first, but nothing in the data model is specific
+to property — the same codebase serves clinics, dealerships or any business whose
+leads arrive from ad platforms and landing pages.
 
 One codebase. One database. Every customer isolated, branded as their own product.
 

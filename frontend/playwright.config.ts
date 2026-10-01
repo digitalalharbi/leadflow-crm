@@ -45,6 +45,9 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      // The mobile spec asserts drawer behaviour and stacked layouts that only
+      // exist below the `lg` breakpoint, so it belongs to the mobile project.
+      testIgnore: /mobile\.spec\.ts/,
     },
     {
       // A sales rep works the phone far more than a desktop, so the layouts that

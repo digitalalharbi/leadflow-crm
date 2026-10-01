@@ -1,6 +1,6 @@
 export default {
   common: {
-    appName: 'LeadFlow CRM',
+    appName: 'Muhtam',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
     delete: 'Delete', edit: 'Edit', add: 'Add', create: 'Create', search: 'Search',
     filter: 'Filter', clearFilters: 'Clear filters', export: 'Export', retry: 'Try again',

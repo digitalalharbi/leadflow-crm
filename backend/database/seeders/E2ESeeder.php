@@ -35,6 +35,13 @@ class E2ESeeder extends Seeder
 
     public const BETA_SLUG = 'e2e-beta';
 
+    /**
+     * Created by the onboarding spec rather than here, but removed here so that
+     * run starts from nothing. A fixed slug beats a timestamped one: the spec
+     * stays deterministic and leaves no debris behind.
+     */
+    public const ONBOARDING_SLUG = 'e2e-onboarding';
+
     /** Leads addressed by name in the tests. Keep these unique and searchable. */
     public const LEAD_SEARCH = 'بدرية الفريدة';
 
@@ -63,7 +70,7 @@ class E2ESeeder extends Seeder
 
         $context = app(TenantContext::class);
 
-        foreach ([self::ALPHA_SLUG, self::BETA_SLUG] as $slug) {
+        foreach ([self::ALPHA_SLUG, self::BETA_SLUG, self::ONBOARDING_SLUG] as $slug) {
             $existing = $context->withoutScope(fn () => Tenant::where('slug', $slug)->first());
             $existing && $context->withoutScope(fn () => $existing->forceDelete());
         }

@@ -38,7 +38,11 @@ export async function authenticateAs(page: Page, email: string, password: string
 export async function signInAs(page: Page, email: string, password: string = PASSWORD) {
   await authenticateAs(page, email, password)
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'نظرة عامة', level: 1 })).toBeVisible()
+  await expect(
+    page
+      .getByRole('heading', { name: 'نظرة عامة', level: 1 })
+      .or(page.getByRole('heading', { name: 'إدارة المنصة', level: 1 })),
+  ).toBeVisible()
 }
 
 /** Drives the real login form. Used by the authentication spec itself. */
@@ -49,8 +53,13 @@ export async function signIn(page: Page, email: string, password: string = PASSW
   await page.getByLabel('كلمة المرور', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
 
-  // The dashboard heading is the first thing that proves the session took.
-  await expect(page.getByRole('heading', { name: 'نظرة عامة', level: 1 })).toBeVisible()
+  // Where a session lands depends on who it belongs to: a tenant user gets the
+  // dashboard, the platform owner gets the console. Accept either.
+  await expect(
+    page
+      .getByRole('heading', { name: 'نظرة عامة', level: 1 })
+      .or(page.getByRole('heading', { name: 'إدارة المنصة', level: 1 })),
+  ).toBeVisible()
 }
 
 export async function signOut(page: Page) {

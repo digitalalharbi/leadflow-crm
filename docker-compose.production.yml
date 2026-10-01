@@ -26,6 +26,13 @@ x-backend-env: &backend-env
   SESSION_DRIVER: database
   LOG_CHANNEL: stderr
   LOG_LEVEL: info
+  # The host Nginx terminates TLS and proxies in over the docker bridge, so the
+  # client IP arrives in X-Forwarded-For. Trusting '*' would let a caller forge
+  # it past the login limiter, so name the proxy explicitly.
+  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+  API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}
+  LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-5}
+  LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE:-20}
 
 services:
   postgres:

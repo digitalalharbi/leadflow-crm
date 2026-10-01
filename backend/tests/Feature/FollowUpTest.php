@@ -62,7 +62,7 @@ class FollowUpTest extends TestCase
     public function test_buckets_separate_overdue_today_and_upcoming(): void
     {
         $this->makeFollowUp(now()->subDays(2));
-        $this->makeFollowUp(now()->setTime(14, 0));
+        $this->makeFollowUp(now()->addHours(2));   // later today, whatever hour it is
         $this->makeFollowUp(now()->addDays(3));
 
         $counts = $this->actingAs($this->t['admin'])->getJson('/api/v1/follow-ups/counts')->json('data');

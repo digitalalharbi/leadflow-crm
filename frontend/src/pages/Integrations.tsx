@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check, Copy, FileUp, Plug, Upload, Webhook,
+  Check, Copy, FileUp, Plug, Sparkles, Upload, Webhook,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost, http } from '@/lib/api'
+import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime } from '@/lib/format'
@@ -37,6 +38,27 @@ export function IntegrationsPage() {
 
   const [secret, setSecret] = useState<{ url: string; secret: string } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const demoMode = useAuth((s) => s.demoMode)
+
+  /*
+   * Sales-demo helper. Pushes a lead through the real ingestion pipeline so a
+   * prospect watches it appear in the CRM, rather than being told it would.
+   * The button only exists outside production; the route does too.
+   */
+  const simulate = useMutation({
+    mutationFn: () =>
+      apiPost<{ leads: Array<{ campaign_name: string }> }>('/demo/simulate-lead', {}),
+    onSuccess: (result) => {
+      const campaign = result.leads[0]?.campaign_name ?? ''
+      toast(t('integrations.simulated', { campaign }), 'success')
+
+      void queryClient.invalidateQueries({ queryKey: ['leads'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['webhook-logs'] })
+      void queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['integrations'],
@@ -78,9 +100,23 @@ export function IntegrationsPage() {
         title={t('integrations.title')}
         subtitle={t('integrations.subtitle')}
         actions={
-          <Button variant="outline" icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
-            {t('integrations.importCsv')}
-          </Button>
+          <>
+            {demoMode && (
+              <Button
+                variant="outline"
+                icon={<Sparkles className="size-4" />}
+                loading={simulate.isPending}
+                onClick={() => simulate.mutate()}
+                title={t('integrations.simulateHint')}
+                data-testid="simulate-lead"
+              >
+                {simulate.isPending ? t('integrations.simulating') : t('integrations.simulate')}
+              </Button>
+            )}
+            <Button variant="outline" icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
+              {t('integrations.importCsv')}
+            </Button>
+          </>
         }
       />
 

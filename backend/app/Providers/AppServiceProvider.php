@@ -51,13 +51,16 @@ class AppServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)
-            ->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(
+            config('integrations.api.per_minute')
+        )->by($request->user()?->id ?: $request->ip()));
 
         // Credential stuffing guard: slow, and keyed on email + IP.
         RateLimiter::for('login', fn (Request $request) => [
-            Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
-            Limit::perMinute(20)->by($request->ip()),
+            Limit::perMinute(config('integrations.login.per_email_per_minute'))
+                ->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute(config('integrations.login.per_ip_per_minute'))
+                ->by($request->ip()),
         ]);
 
         RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(

@@ -49,9 +49,16 @@ class FollowUp extends Model
         return $query->pending()->where('due_at', '<', now());
     }
 
+    /**
+     * Still to do today.
+     *
+     * Deliberately excludes anything already past: the three buckets must be
+     * disjoint, or a rep sees the same follow-up counted twice and the numbers
+     * stop adding up to the work in front of them.
+     */
     public function scopeDueToday(Builder $query): Builder
     {
-        return $query->pending()->whereBetween('due_at', [now()->startOfDay(), now()->endOfDay()]);
+        return $query->pending()->whereBetween('due_at', [now(), now()->endOfDay()]);
     }
 
     public function scopeUpcoming(Builder $query): Builder

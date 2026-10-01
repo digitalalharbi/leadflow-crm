@@ -222,9 +222,13 @@ class LeadFabricator
         // look negligent: roughly today > upcoming > overdue.
         $bucket = $index % 12;
 
+        // "Today" means later today, measured from now, so the demo's three
+        // figures do not shift depending on the hour the seeder ran.
+        $remainingToday = max(2, (int) now()->diffInMinutes(now()->endOfDay()));
+
         $dueAt = match (true) {
             $bucket < 2 => now()->subDays(random_int(1, 5))->setTime(random_int(9, 17), 0),       // overdue
-            $bucket < 7 => now()->setTime(random_int(9, 18), [0, 30][random_int(0, 1)]),          // today
+            $bucket < 7 => now()->addMinutes(random_int(1, $remainingToday)),                     // today
             $bucket < 11 => now()->addDays(random_int(1, 10))->setTime(random_int(9, 17), 0),     // upcoming
             default => null,
         };

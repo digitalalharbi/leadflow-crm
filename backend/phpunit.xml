@@ -32,5 +32,10 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="REDIS_CLIENT" value="predis"/>
+        <!-- Throttles the suite relies on, pinned so a local .env cannot change
+             what the tests actually assert. -->
+        <env name="LOGIN_RATE_LIMIT_PER_MINUTE" value="5"/>
+        <env name="LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE" value="20"/>
+        <env name="API_RATE_LIMIT_PER_MINUTE" value="120"/>
     </php>
 </phpunit>

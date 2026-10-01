@@ -163,7 +163,7 @@ export function DashboardPage() {
           {/* Funnel totals */}
           <section>
             <h2 className="mb-2.5 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
-              {t('dashboard.title')}
+              {t('dashboard.funnelTitle')}
             </h2>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
               <StatCard

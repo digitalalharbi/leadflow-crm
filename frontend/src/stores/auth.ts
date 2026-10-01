@@ -14,6 +14,8 @@ interface AuthState {
   branding: Branding | null
   onboarding: OnboardingState | null
   isSuperAdmin: boolean
+  /** True outside production: enables the sales-demo helpers. */
+  demoMode: boolean
   /** null until the first /me call settles, so the router can hold the redirect. */
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
   login: (credentials: { email: string; password: string; tenant?: string }) => Promise<void>
@@ -29,6 +31,7 @@ export const useAuth = create<AuthState>((set) => ({
   branding: null,
   onboarding: null,
   isSuperAdmin: false,
+  demoMode: false,
   status: 'idle',
 
   login: async (credentials) => {
@@ -52,7 +55,10 @@ export const useAuth = create<AuthState>((set) => ({
     }
 
     tokenStorage.clear()
-    set({ user: null, branding: null, onboarding: null, isSuperAdmin: false, status: 'anonymous' })
+    set({
+      user: null, branding: null, onboarding: null,
+      isSuperAdmin: false, demoMode: false, status: 'anonymous',
+    })
   },
 
   /** Re-establishes the session on a page refresh. */
@@ -70,6 +76,7 @@ export const useAuth = create<AuthState>((set) => ({
         branding: Branding | null
         is_super_admin: boolean
         onboarding: OnboardingState | null
+        demo_mode: boolean
       }>('/auth/me')
 
       set({
@@ -77,6 +84,7 @@ export const useAuth = create<AuthState>((set) => ({
         branding: data.branding,
         onboarding: data.onboarding,
         isSuperAdmin: data.is_super_admin,
+        demoMode: data.demo_mode,
         status: 'authenticated',
       })
     } catch {
@@ -89,7 +97,10 @@ export const useAuth = create<AuthState>((set) => ({
   setOnboarding: (onboarding) => set({ onboarding }),
   reset: () => {
     tokenStorage.clear()
-    set({ user: null, branding: null, onboarding: null, isSuperAdmin: false, status: 'anonymous' })
+    set({
+      user: null, branding: null, onboarding: null,
+      isSuperAdmin: false, demoMode: false, status: 'anonymous',
+    })
   },
 }))
 

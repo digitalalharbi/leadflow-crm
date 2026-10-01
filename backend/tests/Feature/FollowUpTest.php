@@ -75,6 +75,28 @@ class FollowUpTest extends TestCase
             ->getJson('/api/v1/follow-ups?bucket=overdue')->json('meta.total'));
     }
 
+    public function test_the_three_buckets_are_disjoint_and_cover_everything(): void
+    {
+        // A follow-up due earlier today is overdue, not "today" — otherwise it is
+        // counted twice and the figures stop matching the work.
+        $this->makeFollowUp(now()->subHours(2));          // earlier today
+        $this->makeFollowUp(now()->subDays(2));           // earlier this week
+        $this->makeFollowUp(now()->addHours(2));          // later today
+        $this->makeFollowUp(now()->addDays(3));           // upcoming
+
+        $counts = $this->actingAs($this->t['admin'])->getJson('/api/v1/follow-ups/counts')->json('data');
+
+        $this->assertSame(2, $counts['overdue']);
+        $this->assertSame(1, $counts['today']);
+        $this->assertSame(1, $counts['upcoming']);
+
+        // Disjoint and exhaustive: every pending follow-up sits in exactly one.
+        $this->assertSame(
+            4,
+            $counts['overdue'] + $counts['today'] + $counts['upcoming'],
+        );
+    }
+
     public function test_completing_a_follow_up_clears_the_lead_marker_and_records_contact(): void
     {
         $followUp = $this->makeFollowUp(now()->addDay());

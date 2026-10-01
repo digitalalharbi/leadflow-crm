@@ -176,7 +176,7 @@ class E2ESeeder extends Seeder
                 $status = $statuses[$i % count($statuses)];
 
                 $this->lead($tenant, 'عميل تجريبي '.str_pad((string) $i, 2, '0', STR_PAD_LEFT), '+9665003'.str_pad((string) $i, 5, '0', STR_PAD_LEFT), [
-                    'assigned_to' => [$admin->id, $manager->id, $rep1->id][$i % 3],
+                    'assigned_to' => [$admin->id, $manager->id][$i % 2],
                     'project_id' => $projects[$i % 3]->id,
                     'status' => $status,
                     'temperature' => [LeadTemperature::Hot->value, LeadTemperature::Warm->value, LeadTemperature::Cold->value][$i % 3],
@@ -277,11 +277,15 @@ class E2ESeeder extends Seeder
             'عميل تجريبي 04', 'عميل تجريبي 05', 'عميل تجريبي 06',
         ])->orderBy('full_name')->get();
 
+        // Slots are relative to the moment of seeding so the buckets hold at any
+        // hour: two already missed, two still ahead today, two on later days.
+        $remainingToday = (int) now()->diffInMinutes(now()->endOfDay());
+
         $schedule = [
-            now()->subDays(3)->setTime(10, 0),
-            now()->subDays(1)->setTime(11, 0),
-            now()->setTime(9, 0),
-            now()->setTime(16, 0),
+            now()->subDays(3),
+            now()->subHours(2),
+            now()->addMinutes(max(1, intdiv($remainingToday, 3))),
+            now()->addMinutes(max(2, intdiv($remainingToday * 2, 3))),
             now()->addDays(2)->setTime(10, 0),
             now()->addDays(5)->setTime(14, 0),
         ];

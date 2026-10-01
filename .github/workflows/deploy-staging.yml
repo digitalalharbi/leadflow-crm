@@ -17,9 +17,12 @@ jobs:
   frontend-tests:
     uses: ./.github/workflows/frontend-tests.yml
 
+  e2e-tests:
+    uses: ./.github/workflows/e2e-tests.yml
+
   deploy:
     name: Deploy to staging VPS
-    needs: [backend-tests, frontend-tests]
+    needs: [backend-tests, frontend-tests, e2e-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:

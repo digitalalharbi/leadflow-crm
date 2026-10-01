@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
@@ -115,6 +116,15 @@ Route::prefix('v1')->group(function () {
             Route::post('/imports', [ImportController::class, 'upload']);
             Route::get('/imports/{uuid}', [ImportController::class, 'show']);
             Route::post('/imports/{uuid}/process', [ImportController::class, 'process']);
+
+            /*
+             * Sales demo helper. Registered only outside production: it creates a
+             * believable inbound lead on demand so the pipeline can be shown
+             * working live. The controller refuses production as well.
+             */
+            if (! app()->environment('production')) {
+                Route::post('/demo/simulate-lead', [DemoController::class, 'simulateLead']);
+            }
 
             // Settings & white label
             Route::get('/settings', [SettingsController::class, 'show']);

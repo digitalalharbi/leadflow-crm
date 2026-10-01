@@ -31,6 +31,20 @@ function PageFallback() {
   )
 }
 
+/**
+ * The platform console belongs to the SaaS owner. A tenant user has no business
+ * seeing even its shell, so the route sends them home rather than rendering a
+ * page whose every request will 404.
+ */
+function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
+  const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const status = useAuth((s) => s.status)
+
+  if (status === 'idle' || status === 'loading') return <PageFallback />
+
+  return isSuperAdmin ? <>{children}</> : <Navigate to="/" replace />
+}
+
 /** Blocks a route until the session is known, so no flash of the login screen. */
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const status = useAuth((s) => s.status)
@@ -101,7 +115,14 @@ export function App() {
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/settings/profile" element={<ProfilePage />} />
-                  <Route path="/platform" element={<PlatformPage />} />
+                  <Route
+                    path="/platform"
+                    element={
+                      <RequireSuperAdmin>
+                        <PlatformPage />
+                      </RequireSuperAdmin>
+                    }
+                  />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

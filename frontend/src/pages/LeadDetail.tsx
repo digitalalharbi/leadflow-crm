@@ -190,8 +190,8 @@ export function LeadDetailPage() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">{lead.full_name}</h1>
-              <StatusBadge status={lead.status} />
-              <TemperatureBadge temperature={lead.temperature} />
+              <StatusBadge status={lead.status} testId="lead-status-badge" />
+              <TemperatureBadge temperature={lead.temperature} testId="lead-temperature-badge" />
               {lead.re_engaged_count > 0 && (
                 <Badge tone="info">{t('leads.reEngagedCount', { count: lead.re_engaged_count })}</Badge>
               )}

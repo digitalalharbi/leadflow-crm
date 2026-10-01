@@ -125,6 +125,14 @@ class AuthenticationTest extends TestCase
 
     public function test_login_is_rate_limited(): void
     {
+        // Pin the limit the test is asserting rather than inheriting whatever the
+        // environment is configured with — a developer raising it locally for an
+        // E2E run must not silently disable this guard.
+        config([
+            'integrations.login.per_email_per_minute' => 5,
+            'integrations.login.per_ip_per_minute' => 20,
+        ]);
+
         RateLimiter::clear('');
         $t = $this->provisionTenant();
 

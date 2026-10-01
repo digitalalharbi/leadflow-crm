@@ -21,6 +21,9 @@ jobs:
   frontend-tests:
     uses: ./.github/workflows/frontend-tests.yml
 
+  e2e-tests:
+    uses: ./.github/workflows/e2e-tests.yml
+
   # Production gets one more gate than staging: the app must boot and the
   # schema must apply cleanly against an empty database before we touch the VPS.
   verify:
@@ -89,7 +92,7 @@ jobs:
 
   deploy:
     name: Deploy to production VPS
-    needs: [backend-tests, frontend-tests, verify]
+    needs: [backend-tests, frontend-tests, e2e-tests, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:

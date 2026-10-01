@@ -85,13 +85,7 @@ jobs:
         run: php artisan migrate --force
 
       - name: Refuse destructive commands in the deploy path
-        run: |
-          # migrate:fresh / db:wipe must never appear in a deploy script.
-          if grep -rnE 'migrate:fresh|db:wipe|DROP DATABASE' scripts/ .github/workflows/ ; then
-            echo "::error title=Unsafe command::A destructive database command is present in the deploy path."
-            exit 1
-          fi
-          echo "No destructive database commands found."
+        run: ./scripts/check-deploy-safety.sh
 
   deploy:
     name: Deploy to production VPS

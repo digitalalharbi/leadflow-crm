@@ -4,7 +4,6 @@ namespace Database\Seeders\Support;
 
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
-use App\Enums\LeadTemperature;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
@@ -17,6 +16,7 @@ use App\Models\LeadNote;
 use App\Models\LeadSourceEvent;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Leads\LeadScoringService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -31,6 +31,8 @@ class LeadFabricator
 {
     private int $phoneCounter;
 
+    private LeadScoringService $scoring;
+
     public function __construct(
         private Tenant $tenant,
         private Collection $assignees,
@@ -39,6 +41,7 @@ class LeadFabricator
         int $phoneSeed = 1000,
     ) {
         $this->phoneCounter = $phoneSeed;
+        $this->scoring = app(LeadScoringService::class);
     }
 
     /**
@@ -74,7 +77,6 @@ class LeadFabricator
 
         $createdAt = now()->subDays(random_int(0, $daysBack))->subHours(random_int(0, 23));
         $phone = '+96655'.str_pad((string) (++$this->phoneCounter), 7, '0', STR_PAD_LEFT);
-        $score = $this->scoreFor($status);
         $budgetMin = [500_000, 800_000, 1_000_000, 1_500_000, 2_000_000, 2_800_000][random_int(0, 5)];
 
         $lead = Lead::create([
@@ -97,8 +99,6 @@ class LeadFabricator
             'ad_name' => $campaign[3],
             'form_name' => 'نموذج التسجيل - '.$project->name,
             'status' => $status,
-            'temperature' => LeadTemperature::fromScore($score)->value,
-            'score' => $score,
             'budget_min' => $budgetMin,
             'budget_max' => (int) ($budgetMin * 1.4),
             'purchase_purpose' => random_int(0, 1) ? 'residence' : 'investment',
@@ -165,6 +165,17 @@ class LeadFabricator
             'ad_name' => $campaign[3],
             'received_at' => $createdAt,
         ]);
+
+        /*
+         * Score through the same engine the product uses, never a made-up
+         * number. The seeder used to write a random score per stage, so the
+         * ring in the lead header said 89 while the breakdown beneath it
+         * totalled 77 — the first thing a prospect would notice, and a reason
+         * to distrust every other number on the screen.
+         */
+        $lead->load('project', 'lostReason');
+        $this->scoring->apply($lead);
+        $lead->saveQuietly();
 
         $this->buildTimeline($lead, $assignee, $status, $createdAt);
         $this->scheduleFollowUp($lead, $assignee, $status, $createdAt, $index);
@@ -306,19 +317,6 @@ class LeadFabricator
         }
 
         return DemoContent::CAMPAIGNS[0];
-    }
-
-    /** Score bands that make each stage's temperature mix believable. */
-    private function scoreFor(string $status): int
-    {
-        return match ($status) {
-            LeadStatus::Won->value => random_int(78, 100),
-            LeadStatus::Appointment->value => random_int(70, 95),
-            LeadStatus::Qualified->value => random_int(55, 85),
-            LeadStatus::Contacted->value => random_int(35, 70),
-            LeadStatus::Lost->value => random_int(10, 55),
-            default => random_int(20, 68),
-        };
     }
 
     private function buildTimeline(Lead $lead, ?User $assignee, string $status, $createdAt): void

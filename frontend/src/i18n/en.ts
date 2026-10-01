@@ -75,6 +75,7 @@ export default {
     leadSource: 'Connect a lead source', firstLead: 'Receive your first lead', dismiss: 'Dismiss',
   },
   leads: {
+    searchPlaceholder: 'Search by name, phone or email…',
     title: 'Leads', subtitle: 'Every lead in one place', addLead: 'Add lead',
     name: 'Name', phone: 'Phone', email: 'Email', city: 'City', project: 'Project',
     platform: 'Platform', source: 'Source', campaign: 'Campaign', adset: 'Ad set',

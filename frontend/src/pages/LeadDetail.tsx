@@ -21,6 +21,8 @@ import {
 } from '@/components/ui'
 import type { LeadStatus, LeadTemperature } from '@/types/api'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
+import { ScoreRing } from '@/components/leads/ScoreRing'
+import { platformColor } from '@/components/charts'
 import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
 import { Conversation } from '@/components/whatsapp/Conversation'
 import { cn } from '@/lib/cn'
@@ -189,25 +191,62 @@ export function LeadDetailPage() {
       {/* Header: identity + the actions a rep reaches for first. */}
       <Card className="mb-4">
         <CardBody className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight">{lead.full_name}</h1>
-              <StatusBadge status={lead.status} testId="lead-status-badge" />
-              <TemperatureBadge temperature={lead.temperature} testId="lead-temperature-badge" />
-              {lead.re_engaged_count > 0 && (
-                <Badge tone="info">{t('leads.reEngagedCount', { count: lead.re_engaged_count })}</Badge>
-              )}
-              {lead.is_overdue && <Badge tone="danger">{t('leads.overdue')}</Badge>}
+          <div className="flex min-w-0 items-start gap-4">
+            {/*
+              The score leads, because the first question a rep has is whether
+              this person is worth the next twenty minutes. Clicking it opens
+              the breakdown rather than making them hunt for the card below.
+            */}
+            <ScoreRing
+              score={lead.score}
+              temperature={lead.temperature}
+              onClick={() => setQualifyOpen(true)}
+              testId="lead-score-ring"
+            />
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="t-page-title">{lead.full_name}</h1>
+                <StatusBadge status={lead.status} testId="lead-status-badge" />
+                <TemperatureBadge temperature={lead.temperature} testId="lead-temperature-badge" />
+                {lead.re_engaged_count > 0 && (
+                  <Badge tone="info">{t('leads.reEngagedCount', { count: lead.re_engaged_count })}</Badge>
+                )}
+                {lead.is_overdue && <Badge tone="danger">{t('leads.overdue')}</Badge>}
+              </div>
+
+              {/*
+                The five facts that decide what happens next, on one line:
+                who to call, who owns them, which project, where they came
+                from, and when they were last touched.
+              */}
+              <dl className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                {lead.phone && (
+                  <div className="flex items-center gap-1.5">
+                    <dt className="sr-only">{t('leads.phone')}</dt>
+                    <dd className="tabular text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
+                      {lead.phone}
+                    </dd>
+                  </div>
+                )}
+
+                <Fact label={t('leads.assignedTo')} value={lead.assignee?.name ?? t('common.unassigned')} />
+                {lead.project?.name && <Fact label={t('leads.project')} value={lead.project.name} />}
+                {lead.platform && (
+                  <Fact
+                    label={t('leads.platform')}
+                    value={t(`platforms.${lead.platform}`, { defaultValue: lead.platform })}
+                    dot={platformColor(lead.platform)}
+                  />
+                )}
+                {lead.last_contact_at && (
+                  <Fact
+                    label={t('leads.lastContact')}
+                    value={formatRelative(lead.last_contact_at, i18n.language)}
+                  />
+                )}
+              </dl>
             </div>
-
-            <p className="tabular mt-2 text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
-              {lead.phone ?? '—'}
-            </p>
-
-            <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">
-              {lead.assignee?.name ?? t('common.unassigned')}
-              {lead.project?.name ? ` · ${lead.project.name}` : ''}
-            </p>
           </div>
 
           {/*
@@ -666,6 +705,17 @@ function Row({
       >
         {value || '—'}
       </span>
+    </div>
+  )
+}
+
+/** One labelled fact in the lead header, with an optional source dot. */
+function Fact({ label, value, dot }: { label: string; value: string; dot?: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {dot && <span className="size-2 shrink-0 rounded-full" style={{ background: dot }} aria-hidden />}
+      <dt className="sr-only">{label}</dt>
+      <dd className="t-caption truncate text-[0.8125rem]">{value}</dd>
     </div>
   )
 }

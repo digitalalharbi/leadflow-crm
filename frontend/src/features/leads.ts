@@ -14,6 +14,9 @@ export interface LeadFilters {
   date_from?: string
   date_to?: string
   overdue?: boolean
+  awaiting_contact?: boolean
+  replied?: boolean
+  campaign_name?: string
   follow_up?: string
   sort?: string
   direction?: 'asc' | 'desc'

@@ -148,6 +148,7 @@ export default {
     dismiss: 'إخفاء',
   },
   leads: {
+    searchPlaceholder: 'ابحث بالاسم أو الجوال أو البريد…',
     title: 'العملاء المحتملون',
     subtitle: 'كل عملائك المحتملين في مكان واحد',
     addLead: 'إضافة عميل',

@@ -7,6 +7,17 @@ import { platformColor } from './palette'
 import type { CampaignQualityRow } from '@/types/api'
 
 /**
+ * The middle value, used for the quadrant lines — so "good" is relative to this
+ * account's own performance rather than an industry benchmark nobody agreed to.
+ */
+function median(values: number[]): number {
+  const sorted = values.toSorted((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
+/**
  * Volume against quality, one bubble per campaign.
  *
  * This is the chart the product is really for. A table of campaigns makes a
@@ -36,15 +47,6 @@ export function CampaignMatrix({ rows }: { rows: CampaignQualityRow[] }) {
   const maxLeads = Math.max(...points.map((row) => row.leads))
   const maxRate = Math.max(...points.map((row) => row.qualification_rate), 10)
   const maxWon = Math.max(...points.map((row) => row.won), 1)
-
-  // Medians, so the quadrants describe this account rather than an industry
-  // benchmark nobody agreed to.
-  const median = (values: number[]) => {
-    const sorted = values.toSorted((a, b) => a - b)
-    const mid = Math.floor(sorted.length / 2)
-
-    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
-  }
 
   const midLeads = median(points.map((row) => row.leads))
   const midRate = median(points.map((row) => row.qualification_rate))

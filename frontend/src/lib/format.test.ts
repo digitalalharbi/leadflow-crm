@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBudgetRange, formatCurrency, initials, telLink, whatsappLink } from './format'
+import { formatBudgetRange, formatCurrency, formatDue, formatRelative, initials, telLink, whatsappLink } from './format'
 
 describe('whatsappLink', () => {
   it('builds a wa.me link from digits', () => {
@@ -67,5 +67,26 @@ describe('initials', () => {
   it('takes the first two words', () => {
     expect(initials('عبدالله الحربي')).toBe('عا')
     expect(initials('Fahad Al Otaibi')).toBe('FA')
+  })
+})
+
+describe('formatDue', () => {
+  it('says how late an overdue follow-up is rather than printing a clock time', () => {
+    // formatRelative renders anything due today as "23:53", which on a work
+    // queue reads as a number with no hint that it has already passed.
+    const anHourAgo = new Date(Date.now() - 3600_000).toISOString()
+
+    expect(formatDue(anHourAgo, 'ar', true)).not.toMatch(/^\d{2}:\d{2}$/)
+    expect(formatDue(anHourAgo, 'ar', true).length).toBeGreaterThan(0)
+  })
+
+  it('leaves an upcoming follow-up to the usual relative format', () => {
+    const inAnHour = new Date(Date.now() + 3600_000).toISOString()
+
+    expect(formatDue(inAnHour, 'ar', false)).toBe(formatRelative(inAnHour, 'ar'))
+  })
+
+  it('handles a missing date', () => {
+    expect(formatDue(null, 'ar', true)).toBe('—')
   })
 })

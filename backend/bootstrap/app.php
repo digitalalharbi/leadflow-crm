@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        // Without this the `api` rate limiter defined in AppServiceProvider is
+        // never attached, and every authenticated endpoint is unthrottled.
+        $middleware->throttleApi();
+
         $middleware->api(prepend: [
             ForceJsonResponse::class,
         ]);
@@ -27,7 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.active' => EnsureTenantIsActive::class,
         ]);
 
-        $middleware->trustProxies(at: '*');
+        // Trusting every proxy would make X-Forwarded-For caller-controlled, which
+        // lets the login limiter be bypassed and forges the IP in the audit trail.
+        // Set TRUSTED_PROXIES to the load balancer's address or CIDR in production.
+        $middleware->trustProxies(at: array_values(array_filter(
+            explode(',', (string) env('TRUSTED_PROXIES', ''))
+        )));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {

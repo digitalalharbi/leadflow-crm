@@ -3,7 +3,7 @@
 Last updated: 2026-10-01
 
 ```
-Backend tests   126 passed
+Backend tests   150 passed
 Frontend tests   32 passed
 Lint / types     clean (Pint, oxlint, tsc strict)
 Production build succeeds
@@ -28,6 +28,8 @@ Production build succeeds
 - [x] Roles: admin, manager, sales + platform super admin
 - [x] Tenant suspension and subscription expiry enforced mid-session
 - [x] 18 isolation tests, run as their own CI step
+- [x] Adversarial security review completed; 15 defects found and fixed, each
+      with a regression test (see `docs/SECURITY.md`)
 
 ### White label
 - [x] Per-tenant branding served from a public endpoint

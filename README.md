@@ -166,6 +166,9 @@ npm run test
 npm run build
 ```
 
+Before release the backend was audited adversarially for isolation leaks; the
+findings and their fixes are recorded in [`docs/SECURITY.md`](docs/SECURITY.md).
+
 The suite that matters most is `TenantIsolationTest`: it asserts that a user of
 tenant A cannot read, change, or even confirm the existence of tenant B's data —
 including by guessing a UUID. See [`docs/TESTING.md`](docs/TESTING.md).

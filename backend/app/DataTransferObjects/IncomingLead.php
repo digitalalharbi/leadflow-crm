@@ -102,4 +102,26 @@ class IncomingLead
     {
         return filled($this->phone) || filled($this->email);
     }
+
+    /**
+     * The raw payload is kept for traceability, so anything credential-shaped a
+     * landing page happened to include is masked before it is persisted.
+     */
+    public function redactedPayload(): array
+    {
+        return self::redact($this->rawPayload);
+    }
+
+    private static function redact(array $payload): array
+    {
+        foreach ($payload as $key => $value) {
+            if (is_string($key) && preg_match('/secret|token|password|authorization|api[_-]?key/i', $key)) {
+                $payload[$key] = '[redacted]';
+            } elseif (is_array($value)) {
+                $payload[$key] = self::redact($value);
+            }
+        }
+
+        return $payload;
+    }
 }

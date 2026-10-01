@@ -68,6 +68,10 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
         }
 
         foreach ($integration?->defaults ?? [] as $key => $value) {
+            if (! in_array($key, $this->defaultableKeys(), true)) {
+                continue;
+            }
+
             if (blank($mapped[$key] ?? null) && filled($value)) {
                 $mapped[$key] = $value;
             }
@@ -129,23 +133,48 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
             'creative_name' => 'ad_name',
             'form' => 'form_name',
             'budget' => 'budget_max',
-            'project' => 'project_id',
             'utm_source' => 'source',
             'utm_campaign' => 'campaign_name',
             'utm_medium' => 'source',
         ];
     }
 
+    /**
+     * Fields an untrusted payload is allowed to set.
+     *
+     * Internal foreign keys (project_id, assigned_to) are deliberately absent:
+     * they address global, sequential ids, so accepting them from a webhook body
+     * would let one tenant point a lead at another tenant's row. Those are set
+     * from tenant configuration instead, and re-resolved under the tenant scope
+     * by LeadIngestionService.
+     */
     protected function canonicalKeys(): array
     {
         return [
             'full_name', 'first_name', 'last_name', 'phone', 'email', 'city',
             'platform', 'source', 'campaign_name', 'campaign_id', 'adset_name',
             'adset_id', 'ad_name', 'ad_id', 'form_name', 'form_id',
-            'provider_lead_id', 'project_id', 'assigned_to',
+            'provider_lead_id',
             'purchase_purpose', 'payment_method', 'preferred_property_type',
             'preferred_location', 'purchase_timeline', 'budget_min', 'budget_max',
         ];
+    }
+
+    /** Fields an incoming payload may be mapped onto. */
+    public function mappableKeys(): array
+    {
+        return $this->canonicalKeys();
+    }
+
+    /**
+     * Keys a tenant may set through integration defaults. `project_id` and
+     * `assigned_to` are allowed here — unlike in a payload mapping — because an
+     * authenticated admin sets them, they are supplied as UUIDs, and they are
+     * resolved under the tenant scope before being stored.
+     */
+    public function defaultableKeys(): array
+    {
+        return array_merge($this->canonicalKeys(), ['project_id', 'assigned_to']);
     }
 
     public function toIncomingLead(array $payload, ?Integration $integration = null): IncomingLead

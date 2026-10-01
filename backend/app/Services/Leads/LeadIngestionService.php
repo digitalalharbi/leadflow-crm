@@ -11,6 +11,7 @@ use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
 use App\Models\LeadSourceEvent;
+use App\Models\Project;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -114,7 +115,9 @@ class LeadIngestionService
                 $settings?->score_hot_threshold ?? 70,
             ),
             'score' => $score,
-            'project_id' => $incoming->projectId,
+            // Resolved under the tenant scope: an id belonging to another tenant
+            // simply is not there, so it lands as null instead of leaking.
+            'project_id' => $this->resolveProjectId($incoming->projectId),
             'budget_min' => $incoming->budgetMin,
             'budget_max' => $incoming->budgetMax,
             'purchase_purpose' => $incoming->purchasePurpose,
@@ -124,7 +127,7 @@ class LeadIngestionService
             'purchase_timeline' => $incoming->purchaseTimeline,
             'provider' => $incoming->provider->value,
             'provider_lead_id' => $incoming->providerLeadId,
-            'provider_payload' => $incoming->rawPayload ?: null,
+            'provider_payload' => $incoming->redactedPayload() ?: null,
         ]);
 
         $this->recordSourceEvent($lead, $incoming, false);
@@ -159,7 +162,7 @@ class LeadIngestionService
             'email' => $lead->email ?: $incoming->email,
             'city' => $lead->city ?: $incoming->city,
             'full_name' => $lead->full_name ?: $incoming->fullName,
-            'project_id' => $lead->project_id ?: $incoming->projectId,
+            'project_id' => $lead->project_id ?: $this->resolveProjectId($incoming->projectId),
         ], fn ($v) => $v !== null);
 
         $lead->fill($backfill);
@@ -183,6 +186,16 @@ class LeadIngestionService
         return IngestionResult::reEngaged($lead->refresh());
     }
 
+    /** Scoped lookup — a foreign or unknown project id resolves to null. */
+    private function resolveProjectId(?int $projectId): ?int
+    {
+        if ($projectId === null) {
+            return null;
+        }
+
+        return Project::whereKey($projectId)->value('id');
+    }
+
     private function recordSourceEvent(Lead $lead, IncomingLead $incoming, bool $duplicate): void
     {
         LeadSourceEvent::create([
@@ -197,7 +210,7 @@ class LeadIngestionService
             'form_name' => $incoming->formName,
             'provider_lead_id' => $incoming->providerLeadId,
             'was_duplicate' => $duplicate,
-            'payload' => $incoming->rawPayload ?: null,
+            'payload' => $incoming->redactedPayload() ?: null,
             'received_at' => now(),
         ]);
     }

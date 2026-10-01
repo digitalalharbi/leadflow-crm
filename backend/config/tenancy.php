@@ -13,6 +13,16 @@ return [
         'mail', 'cdn', 'assets', 'status', 'docs', 'support', 'help',
     ],
 
+    /*
+     * Platform owner. Read through config so `config:cache` cannot turn these
+     * into null at runtime, which is how a default password slips into production.
+     */
+    'super_admin' => [
+        'email' => env('SUPER_ADMIN_EMAIL', 'owner@example.com'),
+        'name' => env('SUPER_ADMIN_NAME', 'Platform Owner'),
+        'password' => env('SUPER_ADMIN_PASSWORD'),
+    ],
+
     'defaults' => [
         'plan' => 'trial',
         'trial_days' => 14,

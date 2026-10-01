@@ -45,6 +45,13 @@ class User extends Authenticatable
         // A tenant-less user is, by definition, the platform super admin.
         // Anything else without a tenant would be an orphan account that can
         // neither sign in nor be governed by a policy, so refuse to create it.
+        // Match the guard BelongsToTenant gives every other tenant-keyed model.
+        static::updating(function (self $user) {
+            if ($user->isDirty('tenant_id')) {
+                throw new RuntimeException('tenant_id is immutable.');
+            }
+        });
+
         static::saving(function (self $user) {
             if ($user->tenant_id === null && $user->role !== Role::SuperAdmin) {
                 throw new RuntimeException(

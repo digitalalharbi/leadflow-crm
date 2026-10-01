@@ -1,7 +1,7 @@
 # Testing
 
 ```bash
-# Backend — 126 tests
+# Backend — 150 tests
 cd backend
 createdb leadflow_testing
 php artisan test
@@ -24,7 +24,7 @@ production broke — the opposite of what a test is for.
 | --- | --- | --- |
 | `TenantIsolationTest` | 18 | A tenant cannot reach another tenant's data by any route |
 | `LeadIngestionTest` | 19 | The public webhook accepts real leads and refuses everything else |
-| `LeadManagementTest` | 22 | Lead lifecycle, role visibility, duplicate handling, export |
+| `LeadManagementTest` | 23 | Lead lifecycle, role visibility, duplicate handling, export |
 | `AuthenticationTest` | 12 | Login, lockout, token revocation, suspension, expiry |
 | `CsvImportTest` | 8 | Upload, mapping, duplicates, failures, file cleanup |
 | `SuperAdminTest` | 8 | Tenant provisioning, suspension, platform stats |
@@ -32,6 +32,8 @@ production broke — the opposite of what a test is for.
 | `FollowUpTest` | 7 | Buckets, completion, visibility |
 | `PhoneNormalizerTest` | 20 | Every Saudi format collapses to one key |
 | `LeadScorerTest` | 4 | Scoring and temperature thresholds |
+| `CrossTenantInjectionTest` | 8 | A foreign key from an untrusted payload can never reach another tenant's row |
+| `SecurityHardeningTest` | 15 | Regressions for every finding in the pre-release security review |
 
 ### The test that matters most
 
@@ -80,6 +82,13 @@ Worth recording, because they are the argument for writing them:
 6. **Round-robin stealing manual leads** — a rep's hand-entered lead was being
    reassigned to someone else. Caught during the browser walkthrough; now covered
    by a test.
+7. **Dashboard filters returned `0`** — `uuid as id` collided with Eloquent's
+   integer cast on the primary key, so filtering silently did nothing.
+8. **Cross-tenant project leak (critical)** — found in the pre-release security
+   review; see the table in `SECURITY.md`. Eight tests now cover every entry
+   point an internal foreign key could arrive through.
+9. **Nine further security defects** from the same review, each with a
+   regression test in `SecurityHardeningTest`.
 
 ## CI
 

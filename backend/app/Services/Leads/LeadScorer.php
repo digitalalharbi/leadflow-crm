@@ -47,18 +47,62 @@ class LeadScorer
         return min(100, $score);
     }
 
-    /** Re-score after a sales rep has worked the lead; progress through the pipeline counts. */
+    /**
+     * Re-score after a rep has worked the lead.
+     *
+     * Recomputed from the lead's own attributes plus a stage bonus — never
+     * accumulated onto the stored value, or moving a lead back and forth between
+     * stages would ratchet it to 100 and poison the "hot leads" figures.
+     */
     public function rescore(Lead $lead): int
     {
-        $score = $lead->score;
+        $base = $this->scoreAttributes($lead);
 
-        $score += match ($lead->status->value) {
+        $stageBonus = match ($lead->status->value) {
             'contacted' => 5,
             'qualified' => 20,
             'appointment' => 30,
+            'won' => 30,
             default => 0,
         };
 
-        return max(0, min(100, $score));
+        return max(0, min(100, $base + $stageBonus));
+    }
+
+    /** The same signals as scoreIncoming, read off a persisted lead. */
+    private function scoreAttributes(Lead $lead): int
+    {
+        $score = 20;
+
+        if (filled($lead->phone_normalized)) {
+            $score += 20;
+        }
+        if (filled($lead->email)) {
+            $score += 5;
+        }
+        if (filled($lead->city)) {
+            $score += 5;
+        }
+        if ($lead->project_id !== null) {
+            $score += 10;
+        }
+        if ($lead->budget_min !== null || $lead->budget_max !== null) {
+            $score += 15;
+        }
+        if ($lead->payment_method === 'cash') {
+            $score += 15;
+        } elseif (filled($lead->payment_method)) {
+            $score += 5;
+        }
+        if (in_array($lead->purchase_timeline, ['immediate', 'within_month'], true)) {
+            $score += 15;
+        } elseif ($lead->purchase_timeline === 'within_3_months') {
+            $score += 8;
+        }
+        if (filled($lead->preferred_property_type)) {
+            $score += 5;
+        }
+
+        return min(100, $score);
     }
 }

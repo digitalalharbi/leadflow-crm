@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,10 @@ class ReportController extends Controller
         'platform', 'campaign', 'project', 'sales_rep', 'status', 'lost_reason', 'source',
     ];
 
-    public function __construct(private LeadQueryBuilder $queries) {}
+    public function __construct(
+        private LeadQueryBuilder $queries,
+        private TenantContext $context,
+    ) {}
 
     public function index(Request $request)
     {
@@ -78,14 +82,31 @@ class ReportController extends Controller
     {
         $base = $this->queries->build($request, $request->user())->reorder();
 
+        $tenantId = $this->context->id();
+
+        // Every join carries its own tenant predicate. The base query only scopes
+        // `leads`; without this, a lead row pointing at a foreign id would render
+        // the other tenant's label. Soft-deleted rows are excluded too, so a
+        // removed project or user stops appearing in reports.
         [$select, $groupBy, $joins] = match ($type) {
             'platform' => ['leads.platform', 'leads.platform', null],
             'source' => ['leads.source', 'leads.source', null],
             'campaign' => ['leads.campaign_name', 'leads.campaign_name', null],
             'status' => ['leads.status', 'leads.status', null],
-            'project' => ['projects.name', 'projects.name', fn (Builder $q) => $q->leftJoin('projects', 'projects.id', '=', 'leads.project_id')],
-            'sales_rep' => ['users.name', 'users.name', fn (Builder $q) => $q->leftJoin('users', 'users.id', '=', 'leads.assigned_to')],
-            'lost_reason' => ['lost_reasons.label', 'lost_reasons.label', fn (Builder $q) => $q->leftJoin('lost_reasons', 'lost_reasons.id', '=', 'leads.lost_reason_id')],
+            'project' => ['projects.name', 'projects.name', fn (Builder $q) => $q->leftJoin('projects', function ($join) use ($tenantId) {
+                $join->on('projects.id', '=', 'leads.project_id')
+                    ->where('projects.tenant_id', '=', $tenantId)
+                    ->whereNull('projects.deleted_at');
+            })],
+            'sales_rep' => ['users.name', 'users.name', fn (Builder $q) => $q->leftJoin('users', function ($join) use ($tenantId) {
+                $join->on('users.id', '=', 'leads.assigned_to')
+                    ->where('users.tenant_id', '=', $tenantId)
+                    ->whereNull('users.deleted_at');
+            })],
+            'lost_reason' => ['lost_reasons.label', 'lost_reasons.label', fn (Builder $q) => $q->leftJoin('lost_reasons', function ($join) use ($tenantId) {
+                $join->on('lost_reasons.id', '=', 'leads.lost_reason_id')
+                    ->where('lost_reasons.tenant_id', '=', $tenantId);
+            })],
         };
 
         if ($joins) {

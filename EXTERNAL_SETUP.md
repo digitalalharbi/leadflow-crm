@@ -185,8 +185,11 @@ The `GET` on that path answers Meta's subscription handshake using `META_VERIFY_
 
 ## 6. Production hardening
 
-- [ ] Set `SUPER_ADMIN_PASSWORD` to something real, then run
-      `php artisan leadflow:create-super-admin`
+- [ ] Set `SUPER_ADMIN_PASSWORD` — seeding now **refuses to run** outside local
+      development without it, so this cannot be forgotten
+- [ ] Set `TRUSTED_PROXIES` to your load balancer's address or CIDR (leave empty
+      if the app is reached directly); trusting every proxy would let a caller
+      forge their IP past the login rate limiter
 - [ ] Generate a distinct `APP_KEY` per environment
       (it encrypts stored integration credentials — losing it loses them)
 - [ ] Set `APP_DEBUG=false` (the compose files already do)
@@ -210,7 +213,7 @@ The `GET` on that path answers Meta's subscription handshake using `META_VERIFY_
 | Blocking the product? | Item |
 | --- | --- |
 | No | Everything on this page |
-| — | The app, its 158 tests and its pipeline are complete and run today |
+| — | The app, its 182 tests and its pipeline are complete and run today |
 
 The only genuinely external dependencies are a server, a domain and ad-platform
 API access. Each is isolated behind configuration, so filling one in never

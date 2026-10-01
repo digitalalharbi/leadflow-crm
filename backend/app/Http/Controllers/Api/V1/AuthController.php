@@ -12,6 +12,7 @@ use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -33,9 +34,19 @@ class AuthController extends Controller
             $query->whereHas('tenant', fn ($q) => $q->where('slug', $slug));
         }
 
-        $user = $query->first();
+        $password = $request->string('password')->toString();
 
-        if (! $user || ! Hash::check($request->string('password')->toString(), $user->password)) {
+        /*
+         * An email is unique per tenant, not globally, so this can legitimately
+         * match several accounts. Taking the first row would let one tenant's
+         * account shadow another's — check the password against each candidate
+         * and prefer an active one, instead of guessing.
+         */
+        $candidates = $query->orderByDesc('is_active')->orderBy('id')->get();
+
+        $user = $candidates->first(fn (User $candidate) => Hash::check($password, $candidate->password));
+
+        if (! $user) {
             // Identical message either way — never reveal whether an email exists.
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
@@ -58,6 +69,10 @@ class AuthController extends Controller
         $token = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8))->plainTextToken;
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+        // Guard against a timing side-channel from the loop above: the work done
+        // is the same whether or not an account matched.
+        unset($candidates);
 
         $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
 
@@ -83,7 +98,18 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()?->delete();
+        // A cookie-authenticated request carries a TransientToken, which has no
+        // row to delete — only revoke a real personal access token.
+        $token = $request->user()->currentAccessToken();
+
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        // A pure token request has no session store at all; asking for one throws.
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+        }
 
         return ApiResponse::success(null, 'Signed out.');
     }
@@ -115,7 +141,11 @@ class AuthController extends Controller
 
         // Invalidate every other session; keep the one making the change.
         $current = $user->currentAccessToken();
-        $user->tokens()->where('id', '!=', $current?->id)->delete();
+        $currentId = $current instanceof PersonalAccessToken ? $current->id : null;
+
+        $user->tokens()
+            ->when($currentId !== null, fn ($q) => $q->where('id', '!=', $currentId))
+            ->delete();
 
         $this->audit->log('auth.password_changed', $user, $user);
 

@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Models\FollowUp;
+use App\Models\Import;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\FollowUpPolicy;
+use App\Policies\ImportPolicy;
 use App\Policies\IntegrationPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\ProjectPolicy;
@@ -41,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(FollowUp::class, FollowUpPolicy::class);
         Gate::policy(Integration::class, IntegrationPolicy::class);
+        Gate::policy(Import::class, ImportPolicy::class);
         Gate::policy(Tenant::class, TenantSettingsPolicy::class);
 
         $this->configureRateLimiting();

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -142,9 +143,11 @@ class UserController extends Controller
         $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $user);
 
-        $user->tokens()->delete();
-        $user->update(['is_active' => false]);
-        $user->delete();
+        DB::transaction(function () use ($user) {
+            $user->tokens()->delete();
+            $user->update(['is_active' => false]);
+            $user->delete();
+        });
 
         $this->audit->log('user.deleted', $request->user(), $user);
 

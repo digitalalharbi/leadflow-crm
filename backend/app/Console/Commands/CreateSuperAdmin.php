@@ -18,8 +18,8 @@ class CreateSuperAdmin extends Command
 
     public function handle(): int
     {
-        $email = Str::lower($this->option('email') ?: config('app.super_admin_email', env('SUPER_ADMIN_EMAIL')));
-        $name = $this->option('name') ?: env('SUPER_ADMIN_NAME', 'Platform Owner');
+        $email = Str::lower($this->option('email') ?: (string) config('tenancy.super_admin.email'));
+        $name = $this->option('name') ?: (string) config('tenancy.super_admin.name');
 
         if (! $email) {
             $this->error('Provide --email or set SUPER_ADMIN_EMAIL.');

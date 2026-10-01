@@ -6,15 +6,19 @@ use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IntegrationResource;
 use App\Models\Integration;
+use App\Models\Project;
+use App\Models\User;
 use App\Models\WebhookEndpoint;
 use App\Models\WebhookLog;
 use App\Services\AuditLogger;
 use App\Services\Integrations\ProviderRegistry;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class IntegrationController extends Controller
 {
@@ -22,6 +26,70 @@ class IntegrationController extends Controller
         private ProviderRegistry $registry,
         private AuditLogger $audit,
     ) {}
+
+    /** A field mapping may only target a field an inbound payload may set. */
+    private function mappingRules(string $provider): array
+    {
+        return [
+            'field_mapping' => ['nullable', 'array', 'max:100'],
+            'field_mapping.*' => ['required', 'string', Rule::in($this->registry->get($provider)->mappableKeys())],
+            'defaults' => ['nullable', 'array', 'max:50'],
+        ];
+    }
+
+    /**
+     * Defaults are a map, so the keys carry the risk. `project_id` and
+     * `assigned_to` arrive as UUIDs and are translated to internal ids here,
+     * under the tenant scope — a UUID from another tenant simply is not found.
+     */
+    private function normaliseDefaults(?array $defaults, string $provider): ?array
+    {
+        if (blank($defaults)) {
+            return $defaults;
+        }
+
+        $allowed = $this->registry->get($provider)->defaultableKeys();
+        $unknown = array_diff(array_keys($defaults), $allowed);
+
+        if ($unknown !== []) {
+            throw ValidationException::withMessages([
+                'defaults' => ['Unknown default field: '.implode(', ', $unknown).'.'],
+            ]);
+        }
+
+        if (filled($defaults['project_id'] ?? null)) {
+            $id = Str::isUuid((string) $defaults['project_id'])
+                ? Project::where('uuid', $defaults['project_id'])->value('id')
+                : null;
+
+            if ($id === null) {
+                throw ValidationException::withMessages([
+                    'defaults.project_id' => ['This project does not exist in your organisation.'],
+                ]);
+            }
+
+            $defaults['project_id'] = $id;
+        }
+
+        if (filled($defaults['assigned_to'] ?? null)) {
+            $id = Str::isUuid((string) $defaults['assigned_to'])
+                ? User::where('tenant_id', app(TenantContext::class)->id())
+                    ->where('uuid', $defaults['assigned_to'])
+                    ->where('is_active', true)
+                    ->value('id')
+                : null;
+
+            if ($id === null) {
+                throw ValidationException::withMessages([
+                    'defaults.assigned_to' => ['This user is not available in your organisation.'],
+                ]);
+            }
+
+            $defaults['assigned_to'] = $id;
+        }
+
+        return $defaults;
+    }
 
     /** Catalogue + this tenant's configured instances, for the Integrations page cards. */
     public function index(Request $request)
@@ -49,14 +117,18 @@ class IntegrationController extends Controller
     {
         $this->authorize('create', Integration::class);
 
-        $data = $request->validate([
+        $provider = $request->input('provider');
+
+        $data = $request->validate(array_merge([
             'provider' => ['required', Rule::in(array_map(fn ($p) => $p->value, $this->registry->connectable()))],
             'name' => ['nullable', 'string', 'max:120'],
-            'credentials' => ['nullable', 'array'],
-            'config' => ['nullable', 'array'],
-            'field_mapping' => ['nullable', 'array'],
-            'defaults' => ['nullable', 'array'],
-        ]);
+            'credentials' => ['nullable', 'array', 'max:20'],
+            'config' => ['nullable', 'array', 'max:50'],
+        ], is_string($provider) && in_array($provider, $this->registry->keys(), true)
+            ? $this->mappingRules($provider)
+            : ['field_mapping' => ['nullable', 'array'], 'defaults' => ['nullable', 'array']]));
+
+        $data['defaults'] = $this->normaliseDefaults($data['defaults'] ?? null, $data['provider']);
 
         $integration = Integration::updateOrCreate(
             ['provider' => $data['provider'], 'name' => $data['name'] ?? null],
@@ -84,14 +156,16 @@ class IntegrationController extends Controller
         $integration = Integration::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $integration);
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'name' => ['nullable', 'string', 'max:120'],
-            'credentials' => ['nullable', 'array'],
-            'config' => ['nullable', 'array'],
-            'field_mapping' => ['nullable', 'array'],
-            'defaults' => ['nullable', 'array'],
+            'credentials' => ['nullable', 'array', 'max:20'],
+            'config' => ['nullable', 'array', 'max:50'],
             'is_active' => ['sometimes', 'boolean'],
-        ]);
+        ], $this->mappingRules($integration->provider->value)));
+
+        if (array_key_exists('defaults', $data)) {
+            $data['defaults'] = $this->normaliseDefaults($data['defaults'], $integration->provider->value);
+        }
 
         // Merge credentials so an untouched secret is not wiped by a partial save.
         if (isset($data['credentials'])) {
@@ -167,7 +241,9 @@ class IntegrationController extends Controller
     public function deleteWebhook(Request $request, string $uuid)
     {
         $endpoint = WebhookEndpoint::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('update', $endpoint->integration ?? Integration::class);
+
+        abort_if($endpoint->integration === null, 404, 'Resource not found.');
+        $this->authorize('update', $endpoint->integration);
 
         $endpoint->update(['is_active' => false]);
         $this->audit->log('integration.webhook_disabled', $request->user(), $endpoint);

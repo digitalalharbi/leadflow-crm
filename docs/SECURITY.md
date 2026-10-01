@@ -88,6 +88,31 @@ appears anywhere in `scripts/` or `.github/workflows/`. Production takes a
 gzip-verified backup before migrations, and a failed health check rolls the code
 back automatically.
 
+## Pre-release security review
+
+Before tagging, the backend was audited adversarially — reading it as an engineer
+who had not written it, specifically hunting for isolation leaks. It found real
+defects. All are fixed and covered by regression tests
+(`CrossTenantInjectionTest`, `SecurityHardeningTest`).
+
+| Severity | Defect | Fix |
+| --- | --- | --- |
+| **Critical** | A webhook payload could set `leads.project_id` to another tenant's internal id, and the project report joined `projects` with no tenant predicate — so tenant A could enumerate every other customer's project names | Internal foreign keys removed from the fields a payload may set; ingestion re-resolves them under the tenant scope; every report join carries its own `tenant_id` predicate |
+| High | `DatabaseSeeder` would create the platform owner with the password `password` in production | Seeding aborts outside local development unless `SUPER_ADMIN_PASSWORD` is set; read via config, not `env()` |
+| High | `trustProxies(at: '*')` made `X-Forwarded-For` caller-controlled, bypassing the login limiter and forging audit-log IPs | Trust only `TRUSTED_PROXIES` |
+| High | The `api` rate limiter was defined but never attached, leaving every authenticated endpoint unthrottled | `throttleApi()` added to the middleware stack |
+| High | CSV import and integration config accepted arbitrary write targets | Both allow-listed; integration defaults take UUIDs resolved under the tenant scope |
+| Medium | `unique(tenant_id, email)` ignored soft deletes, so a removed user could never be re-added (500) | Partial unique index on active rows only |
+| Medium | Login took the first row when one email existed in several tenants, locking the other account out | Check the password against each candidate, preferring active accounts |
+| Medium | Any rep could read another user's import, exposing raw CSV rows for leads they are not assigned to | `ImportPolicy` scopes imports to their uploader |
+| Medium | Notification routes sat outside `tenant.active`, so a suspended tenant kept reading lead names and phone numbers | Moved inside the gate; only `/auth/me` and logout stay outside |
+| Medium | `rescore()` added to the stored score, so toggling a status could drive any lead to "hot" | Recomputed from the lead's attributes plus a stage bonus |
+| Medium | `APP_DEBUG=true` was the committed default, and the debug branch echoed raw SQL | Default is now `false`, and detail requires a local environment as well as the flag |
+| Medium | Several multi-step writes had no transaction | Wrapped |
+| Low | Credentials in a webhook body were redacted for the delivery log but stored in clear on the lead | Redacted everywhere the payload is persisted |
+| Low | `logout()` crashed on a session-authenticated request | Guarded against `TransientToken` |
+| Low | Pipeline issued ~24 queries; mark-all-read issued one UPDATE per row | One windowed query; one bulk UPDATE |
+
 ## Known gaps
 
 Honest list of what is **not** done, and why:

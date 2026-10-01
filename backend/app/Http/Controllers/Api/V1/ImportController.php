@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessLeadImport;
 use App\Models\Import;
-use App\Models\Lead;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * CSV import wizard: upload -> preview -> map columns -> validate -> import.
@@ -17,9 +18,15 @@ class ImportController extends Controller
 {
     public function index(Request $request)
     {
-        $this->authorize('create', Lead::class);
+        $this->authorize('viewAny', Import::class);
 
-        $imports = Import::with('user:id,uuid,name')->latest()->limit(25)->get();
+        // A rep sees only their own imports; managers and admins see them all.
+        $imports = Import::with('user:id,uuid,name')
+            ->when(
+                ! $request->user()->seesAllLeads(),
+                fn ($q) => $q->where('user_id', $request->user()->id),
+            )
+            ->latest()->limit(25)->get();
 
         return ApiResponse::success([
             'imports' => $imports->map(fn ($i) => $this->present($i)),
@@ -29,7 +36,7 @@ class ImportController extends Controller
     /** Step 1 + 2: store the file and return headers with a few sample rows. */
     public function upload(Request $request)
     {
-        $this->authorize('create', Lead::class);
+        $this->authorize('create', Import::class);
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'], // 10 MB
@@ -83,16 +90,27 @@ class ImportController extends Controller
     public function process(Request $request, string $uuid)
     {
         $import = Import::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('create', Lead::class);
+        $this->authorize('process', $import);
 
         if ($import->status === Import::PROCESSING || $import->status === Import::COMPLETED) {
             return ApiResponse::error('This import has already been processed.', null, 409);
         }
 
+        // Mapping values and default keys both become write targets, so each is
+        // checked against the same allow-list the UI offers.
         $data = $request->validate([
-            'mapping' => ['required', 'array', 'min:1'],
-            'defaults' => ['nullable', 'array'],
+            'mapping' => ['required', 'array', 'min:1', 'max:200'],
+            'mapping.*' => ['required', 'string', Rule::in($this->targetFields())],
+            'defaults' => ['nullable', 'array', 'max:50'],
         ]);
+
+        $unknownDefaults = array_diff(array_keys($data['defaults'] ?? []), $this->targetFields());
+
+        if ($unknownDefaults !== []) {
+            throw ValidationException::withMessages([
+                'defaults' => ['Unknown default field: '.implode(', ', $unknownDefaults).'.'],
+            ]);
+        }
 
         $import->update([
             'mapping' => $data['mapping'],
@@ -108,7 +126,7 @@ class ImportController extends Controller
     public function show(string $uuid)
     {
         $import = Import::with('user:id,uuid,name')->where('uuid', $uuid)->firstOrFail();
-        $this->authorize('create', Lead::class);
+        $this->authorize('view', $import);
 
         return ApiResponse::success([
             'import' => $this->present($import),

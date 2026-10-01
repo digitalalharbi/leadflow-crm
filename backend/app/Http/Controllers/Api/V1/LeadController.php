@@ -33,6 +33,7 @@ use App\Services\Leads\PhoneNormalizer;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -264,22 +265,26 @@ class LeadController extends Controller
             $lead->tenant->settings?->score_hot_threshold ?? 70,
         );
 
-        $lead->save();
+        // The lead row and its activity rows have to land together: the reports
+        // read the activities, so a half-applied change would misreport a win.
+        DB::transaction(function () use ($lead, $new, $previous, $request) {
+            $lead->save();
 
-        $this->activities->log($lead, ActivityType::StatusChanged, $request->user(), null, [
-            'from' => $previous?->value,
-            'to' => $new->value,
-        ]);
-
-        if ($new === LeadStatus::Won) {
-            $this->activities->log($lead, ActivityType::Won, $request->user());
-        } elseif ($new === LeadStatus::Lost) {
-            $this->activities->log($lead, ActivityType::Lost, $request->user(), null, [
-                'reason' => $lead->lostReason?->label,
+            $this->activities->log($lead, ActivityType::StatusChanged, $request->user(), null, [
+                'from' => $previous?->value,
+                'to' => $new->value,
             ]);
-        } elseif ($new === LeadStatus::Appointment) {
-            $this->activities->log($lead, ActivityType::AppointmentCreated, $request->user());
-        }
+
+            if ($new === LeadStatus::Won) {
+                $this->activities->log($lead, ActivityType::Won, $request->user());
+            } elseif ($new === LeadStatus::Lost) {
+                $this->activities->log($lead, ActivityType::Lost, $request->user(), null, [
+                    'reason' => $lead->lostReason?->label,
+                ]);
+            } elseif ($new === LeadStatus::Appointment) {
+                $this->activities->log($lead, ActivityType::AppointmentCreated, $request->user());
+            }
+        });
 
         return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project', 'lostReason']))]);
     }
@@ -415,9 +420,21 @@ class LeadController extends Controller
         return Lead::where('uuid', $uuid)->firstOrFail();
     }
 
+    /**
+     * Scoped lookup. A uuid belonging to another tenant is not found here, and
+     * the caller gets the same 404 they would get for one that never existed.
+     */
     private function resolveProjectId(?string $uuid): ?int
     {
-        return $uuid ? Project::where('uuid', $uuid)->value('id') : null;
+        if (blank($uuid)) {
+            return null;
+        }
+
+        $id = Project::where('uuid', $uuid)->value('id');
+
+        abort_if($id === null, 404, 'Resource not found.');
+
+        return $id;
     }
 
     private function resolveUserId(?string $uuid): ?int

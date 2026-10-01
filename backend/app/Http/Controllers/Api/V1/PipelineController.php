@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Kanban board data. Each column is capped and reports its true total so the
@@ -23,28 +24,39 @@ class PipelineController extends Controller
         $this->authorize('viewAny', Lead::class);
 
         $limit = min((int) $request->input('per_column', 50), 100);
-        $columns = [];
 
-        foreach (LeadStatus::cases() as $status) {
-            $base = $this->queries->build($request, $request->user())
-                ->where('status', $status->value);
+        // One grouped count for every column, rather than a count per column.
+        $totals = $this->queries->build($request, $request->user())
+            ->reorder()
+            ->select('status', DB::raw('count(*) as aggregate'))
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
 
-            $total = (clone $base)->count();
+        // One windowed query for the cards, rather than a query per column.
+        $ranked = $this->queries->build($request, $request->user())
+            ->reorder()
+            ->select('leads.id', DB::raw(
+                'row_number() over (partition by leads.status order by leads.score desc, leads.created_at desc) as column_rank'
+            ));
 
-            $leads = $base->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
-                ->reorder()
-                ->orderByDesc('score')
-                ->orderByDesc('created_at')
-                ->limit($limit)
-                ->get();
+        $ids = DB::query()
+            ->fromSub($ranked, 'ranked')
+            ->where('column_rank', '<=', $limit)
+            ->pluck('id');
 
-            $columns[] = [
-                'status' => $status->value,
-                'position' => $status->position(),
-                'total' => $total,
-                'leads' => LeadListResource::collection($leads),
-            ];
-        }
+        $leads = Lead::whereIn('id', $ids)
+            ->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
+            ->orderByDesc('score')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy(fn (Lead $lead) => $lead->status->value);
+
+        $columns = collect(LeadStatus::cases())->map(fn (LeadStatus $status) => [
+            'status' => $status->value,
+            'position' => $status->position(),
+            'total' => (int) ($totals[$status->value] ?? 0),
+            'leads' => LeadListResource::collection($leads->get($status->value, collect())),
+        ])->all();
 
         return ApiResponse::success(['columns' => $columns]);
     }

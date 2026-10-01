@@ -18,6 +18,15 @@ use Throwable;
  */
 class ApiExceptionRenderer
 {
+    /**
+     * Internal detail requires both the debug flag and a development
+     * environment — APP_DEBUG left on in staging must not leak SQL or paths.
+     */
+    private static function showsDetail(): bool
+    {
+        return config('app.debug') && app()->environment('local', 'testing');
+    }
+
     public static function render(Throwable $e, Request $request)
     {
         return match (true) {
@@ -61,8 +70,8 @@ class ApiExceptionRenderer
             ),
 
             default => ApiResponse::error(
-                config('app.debug') ? $e->getMessage() : 'An unexpected error occurred.',
-                config('app.debug') ? ['exception' => [class_basename($e)]] : null,
+                self::showsDetail() ? $e->getMessage() : 'An unexpected error occurred.',
+                self::showsDetail() ? ['exception' => [class_basename($e)]] : null,
                 500,
             ),
         };

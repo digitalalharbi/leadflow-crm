@@ -35,7 +35,8 @@ class NotificationController extends Controller
 
     public function markAllRead(Request $request)
     {
-        $request->user()->unreadNotifications->markAsRead();
+        // One UPDATE, not one per notification.
+        $request->user()->unreadNotifications()->update(['read_at' => now()]);
 
         return ApiResponse::success(null);
     }

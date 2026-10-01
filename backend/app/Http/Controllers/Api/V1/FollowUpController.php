@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Leads\ActivityLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class FollowUpController extends Controller
@@ -77,20 +78,24 @@ class FollowUpController extends Controller
             throw ValidationException::withMessages(['assigned_to' => ['This user is not available.']]);
         }
 
-        $followUp = FollowUp::create([
-            'lead_id' => $lead->id,
-            'assigned_to' => $assignee?->id,
-            'created_by' => $request->user()->id,
-            'due_at' => $data['due_at'],
-            'note' => $data['note'] ?? null,
-        ]);
+        $followUp = DB::transaction(function () use ($lead, $assignee, $request, $data) {
+            $followUp = FollowUp::create([
+                'lead_id' => $lead->id,
+                'assigned_to' => $assignee?->id,
+                'created_by' => $request->user()->id,
+                'due_at' => $data['due_at'],
+                'note' => $data['note'] ?? null,
+            ]);
 
-        // The lead carries the nearest pending follow-up for the table/overdue filters.
-        $this->refreshLeadNextFollowUp($lead);
+            // The lead carries the nearest pending follow-up for the table/overdue filters.
+            $this->refreshLeadNextFollowUp($lead);
 
-        $this->activities->log($lead, ActivityType::FollowUpCreated, $request->user(), $data['note'] ?? null, [
-            'due_at' => $followUp->due_at->toIso8601String(),
-        ]);
+            $this->activities->log($lead, ActivityType::FollowUpCreated, $request->user(), $data['note'] ?? null, [
+                'due_at' => $followUp->due_at->toIso8601String(),
+            ]);
+
+            return $followUp;
+        });
 
         return ApiResponse::created([
             'follow_up' => new FollowUpResource($followUp->load('lead', 'assignee')),
@@ -104,19 +109,23 @@ class FollowUpController extends Controller
 
         $data = $request->validate(['outcome' => ['nullable', 'string', 'max:1000']]);
 
-        $followUp->update([
-            'status' => FollowUp::COMPLETED,
-            'completed_at' => now(),
-            'outcome' => $data['outcome'] ?? null,
-        ]);
+        // Three writes that must agree: a crash between them would leave the lead
+        // pointing at an already-completed follow-up and skew "overdue" forever.
+        DB::transaction(function () use ($followUp, $data, $request) {
+            $followUp->update([
+                'status' => FollowUp::COMPLETED,
+                'completed_at' => now(),
+                'outcome' => $data['outcome'] ?? null,
+            ]);
 
-        $lead = $followUp->lead;
-        $lead->last_contact_at = now();
-        $lead->save();
+            $lead = $followUp->lead;
+            $lead->last_contact_at = now();
+            $lead->save();
 
-        $this->refreshLeadNextFollowUp($lead);
+            $this->refreshLeadNextFollowUp($lead);
 
-        $this->activities->log($lead, ActivityType::FollowUpCompleted, $request->user(), $data['outcome'] ?? null);
+            $this->activities->log($lead, ActivityType::FollowUpCompleted, $request->user(), $data['outcome'] ?? null);
+        });
 
         return ApiResponse::success(['follow_up' => new FollowUpResource($followUp->fresh(['lead', 'assignee']))]);
     }

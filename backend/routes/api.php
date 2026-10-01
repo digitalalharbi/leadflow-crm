@@ -47,14 +47,19 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
 
-        Route::get('/notifications', [NotificationController::class, 'index']);
-        Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
-        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
-
         /*
         | Tenant workspace. `tenant.active` blocks suspended / expired accounts.
+        | Notifications live inside it: their payloads carry lead names and phone
+        | numbers, so a suspended tenant must not be able to keep reading them.
+        | Only /auth/me and the logout routes stay outside, so the SPA can still
+        | sign a user out of a suspended account.
         */
         Route::middleware('tenant.active')->group(function () {
+            Route::get('/notifications', [NotificationController::class, 'index']);
+            Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
+                ->whereUuid('id');
+            Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
             Route::get('/dashboard', [DashboardController::class, 'index']);
 
             // Leads

@@ -63,7 +63,7 @@ class LeadFabricator
     {
         $first = DemoContent::FIRST_NAMES[array_rand(DemoContent::FIRST_NAMES)];
         $last = DemoContent::LAST_NAMES[array_rand(DemoContent::LAST_NAMES)];
-        $campaign = DemoContent::CAMPAIGNS[array_rand(DemoContent::CAMPAIGNS)];
+        $campaign = $this->campaignFor($status);
         $project = $this->projects->random();
 
         // A few fresh leads stay unassigned so the "awaiting assignment" card and
@@ -262,6 +262,50 @@ class LeadFabricator
             LeadStatus::Lost->value => QualificationStatus::PartiallyQualified->value,
             default => QualificationStatus::Unqualified->value,
         };
+    }
+
+    /**
+     * Pick a campaign whose quality matches how far this lead actually got.
+     *
+     * Assigning campaigns at random would give every one of them the same
+     * conversion rate, and the campaign-quality report — the reason a
+     * developer buys this — would show fourteen identical bars. Weighting the
+     * choice by the lead's own outcome reproduces what really happens: search
+     * traffic converts, broad video campaigns fill the list and go nowhere.
+     */
+    private function campaignFor(string $status): array
+    {
+        // How "good" this lead turned out, on the same 0–1 scale as a campaign.
+        $outcome = match ($status) {
+            LeadStatus::Won->value => 0.95,
+            LeadStatus::Appointment->value => 0.8,
+            LeadStatus::Qualified->value => 0.65,
+            LeadStatus::Contacted->value => 0.35,
+            LeadStatus::Lost->value => 0.2,
+            default => 0.25,
+        };
+
+        // Weight each campaign by how close its quality is to this outcome,
+        // then pick from that distribution — so a won deal usually comes from
+        // a search campaign and a dead lead usually comes from a video feed,
+        // without either becoming a rule.
+        $weights = [];
+        foreach (DemoContent::CAMPAIGNS as $index => $campaign) {
+            $distance = abs($campaign[5] - $outcome);
+            $weights[$index] = (int) round((1 - $distance) ** 3 * 100) + 1;
+        }
+
+        $roll = random_int(1, array_sum($weights));
+
+        foreach ($weights as $index => $weight) {
+            $roll -= $weight;
+
+            if ($roll <= 0) {
+                return DemoContent::CAMPAIGNS[$index];
+            }
+        }
+
+        return DemoContent::CAMPAIGNS[0];
     }
 
     /** Score bands that make each stage's temperature mix believable. */

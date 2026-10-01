@@ -41,6 +41,7 @@ class DashboardAnalyticsTest extends TestCase
 
         $this->assertSame(5, $funnel['total']['count']);
         $this->assertSame(4, $funnel['contacted']['count']);
+        $this->assertArrayHasKey('replied', $funnel->all());
         $this->assertSame(3, $funnel['qualified']['count']);
         $this->assertSame(2, $funnel['appointment']['count']);
         $this->assertSame(1, $funnel['won']['count']);
@@ -200,5 +201,27 @@ class DashboardAnalyticsTest extends TestCase
     private function leadCreatedAt(string $name, $at): void
     {
         $this->lead($name, LeadStatus::New)->forceFill(['created_at' => $at])->saveQuietly();
+    }
+
+    public function test_replied_sits_between_contacted_and_qualified(): void
+    {
+        // The first stage the customer controls: everything above it is the
+        // team's effort, everything below it is the lead's interest. A funnel
+        // without it cannot say whether the problem is the team or the leads.
+        $reached = $this->lead('رد', LeadStatus::Contacted, contacted: true);
+        $reached->forceFill(['first_response_at' => now()])->saveQuietly();
+
+        $this->lead('لم يرد', LeadStatus::Contacted, contacted: true);
+
+        $funnel = collect($this->dashboard()['funnel']);
+        $keys = $funnel->pluck('key')->all();
+
+        $this->assertSame(
+            ['total', 'contacted', 'replied', 'qualified', 'appointment', 'won'],
+            $keys,
+        );
+
+        $this->assertSame(1, $funnel->firstWhere('key', 'replied')['count']);
+        $this->assertSame(2, $funnel->firstWhere('key', 'contacted')['count']);
     }
 }

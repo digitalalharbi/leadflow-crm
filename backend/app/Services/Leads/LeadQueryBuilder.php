@@ -112,6 +112,8 @@ class LeadQueryBuilder
             // Arrived and still untouched past the workspace's own target. The
             // dashboard panel links here, so the list has to mean the same thing
             // the number did.
+            // Leads who answered us — the first stage the customer controls.
+            ->when($request->boolean('replied'), fn ($q) => $q->whereNotNull('first_response_at'))
             ->when($request->boolean('awaiting_contact'), function (Builder $q) use ($request) {
                 $minutes = (int) ($request->user()?->tenant?->settings?->first_contact_target_minutes ?? 30);
 

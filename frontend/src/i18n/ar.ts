@@ -412,6 +412,12 @@ export default {
   },
 
   campaignQuality: {
+    needMoreCampaigns: 'تحتاج حملتين على الأقل للمقارنة.',
+    matrixTitle: 'الحجم مقابل الجودة',
+    matrixHint: 'كل دائرة حملة — حجمها عدد المبيعات. أعلى يمين: حجم كبير وجودة عالية.',
+    axisVolume: 'عدد العملاء ←',
+    axisQuality: '↑ نسبة التأهيل',
+
     title: 'جودة الحملات',
     subtitle: 'أي حملة تجلب مشترين، لا مجرد أرقام',
     platform: 'المنصة',
@@ -439,7 +445,7 @@ export default {
 
   brand: { tagline: 'حوّل الاهتمام إلى فرصة', subtext: 'إدارة العملاء المحتملين، التأهيل والمتابعة في مكان واحد.' },
 
-  funnel: { total: 'كل العملاء', contacted: 'تم التواصل', qualified: 'مؤهلون', appointment: 'مواعيد', won: 'تم البيع' },
+  funnel: { replied: 'ردّوا', total: 'كل العملاء', contacted: 'تم التواصل', qualified: 'مؤهلون', appointment: 'مواعيد', won: 'تم البيع' },
 
   response: {
     median: 'وسيط زمن أول تواصل',

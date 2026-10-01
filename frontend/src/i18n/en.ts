@@ -219,6 +219,12 @@ export default {
   },
 
   campaignQuality: {
+    needMoreCampaigns: 'At least two campaigns are needed to compare.',
+    matrixTitle: 'Volume against quality',
+    matrixHint: 'One circle per campaign, sized by sales. Top right: high volume, high quality.',
+    axisVolume: 'Lead volume →',
+    axisQuality: '↑ Qualification rate',
+
     title: 'Campaign quality', subtitle: 'Which campaigns bring buyers, not just numbers',
     platform: 'Platform', campaign: 'Campaign', leads: 'Leads', contacted: 'Contacted',
     replied: 'Replied', qualified: 'Qualified', hot: 'Hot', appointments: 'Viewings', won: 'Sold',
@@ -234,7 +240,7 @@ export default {
 
   brand: { tagline: 'Turn interest into opportunity', subtext: 'Leads, qualification and follow-up in one place.' },
 
-  funnel: { total: 'All leads', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewings', won: 'Sold' },
+  funnel: { replied: 'Replied', total: 'All leads', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewings', won: 'Sold' },
 
   response: {
     median: 'Median time to first contact',

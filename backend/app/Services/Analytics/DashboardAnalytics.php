@@ -31,6 +31,7 @@ class DashboardAnalytics
         $row = (clone $query)->selectRaw(
             'count(*) as total,
              count(*) filter (where first_contact_at is not null or status <> ?) as contacted,
+             count(*) filter (where first_response_at is not null) as replied,
              count(*) filter (where qualification_status = ? or status in (?, ?, ?)) as qualified,
              count(*) filter (where status in (?, ?)) as appointment,
              count(*) filter (where status = ?) as won',
@@ -45,9 +46,16 @@ class DashboardAnalytics
 
         $total = (int) $row->total;
 
+        /*
+         * "Replied" sits between contacted and qualified because it is the
+         * first stage the customer controls — everything above it is effort,
+         * everything below it is interest. A funnel without it cannot tell a
+         * manager whether the problem is the team or the leads.
+         */
         $stages = [
             ['key' => 'total', 'count' => $total],
             ['key' => 'contacted', 'count' => (int) $row->contacted],
+            ['key' => 'replied', 'count' => (int) $row->replied],
             ['key' => 'qualified', 'count' => (int) $row->qualified],
             ['key' => 'appointment', 'count' => (int) $row->appointment],
             ['key' => 'won', 'count' => (int) $row->won],

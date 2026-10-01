@@ -33,6 +33,7 @@ export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
   const target: Record<string, string> = {
     total: '/leads',
     contacted: '/leads?status[]=contacted&status[]=qualified&status[]=appointment&status[]=won',
+    replied: '/leads?replied=1',
     qualified: '/leads?qualification_status=qualified',
     appointment: '/leads?status[]=appointment&status[]=won',
     won: '/leads?status[]=won',

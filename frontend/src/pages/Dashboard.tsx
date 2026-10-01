@@ -14,7 +14,7 @@ import {
   Card, ErrorState, PageHeader, Select, Skeleton, SkeletonCards, StatusBadge, TemperatureBadge,
 } from '@/components/ui'
 import {
-  CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar, MetricCard,
+  CampaignMatrix, CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar, MetricCard,
   PlatformPerformanceChart, ResponseTimeChart, TEMPERATURE_COLOR,
 } from '@/components/charts'
 import type { DashboardData, LeadListItem } from '@/types/api'
@@ -218,6 +218,18 @@ export function DashboardPage() {
               <CampaignQualityChart rows={campaigns?.rows ?? []} />
             </ChartCard>
           </section>
+
+          <ChartCard
+            title={t('campaignQuality.matrixTitle')}
+            description={t('campaignQuality.matrixHint')}
+            height={270}
+            loading={campaignsLoading}
+            empty={(campaigns?.rows.length ?? 0) < 2}
+            emptyMessage={t('campaignQuality.needMoreCampaigns')}
+            testId="matrix-card"
+          >
+            <CampaignMatrix rows={campaigns?.rows ?? []} />
+          </ChartCard>
 
           <section className="grid gap-4 lg:grid-cols-2">
             <ChartCard

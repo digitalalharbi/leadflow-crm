@@ -157,6 +157,38 @@ sudo certbot certonly --manual --preferred-challenges=dns \
 
 ---
 
+## WhatsApp Business Platform
+
+Unlike every other integration here, this one is entered by **each client**, in
+their own Integrations → WhatsApp screen — not by you in an environment file.
+Two developers using the system message their buyers from their own numbers, so
+the credentials belong to the workspace, not to the platform.
+
+| Field | Where it comes from |
+| --- | --- |
+| Phone number id | Meta Business → WhatsApp → API Setup |
+| WhatsApp Business account id | the same screen |
+| Access token | a System User token with `whatsapp_business_messaging` and `whatsapp_business_management` |
+| App secret | the Meta app's Basic Settings — this is what proves an inbound delivery really came from Meta |
+| Verify token | generated for you in the screen; copy it into Meta's webhook settings |
+
+Point Meta's webhook at:
+
+```
+POST https://<api-domain>/api/v1/integrations/whatsapp/webhook
+```
+
+One URL serves every client, because Meta allows one callback per app. The
+tenant is decided by the phone number id inside each delivery and the signature
+is verified against that tenant's own app secret.
+
+**Until a workspace has these**, it runs on the mock provider: messages are
+recorded, appear in the conversation, and carry real statuses, but nothing
+reaches a customer and the integration says *configuration required*. The mock
+is refused outside local development, so a staging or production workspace
+without credentials cannot send at all — a message a rep believes was delivered
+but never left the building is worse than a visible failure.
+
 ## 5. Ad-platform credentials
 
 **Until these exist:** each provider is fully built, tested with mocks, and
@@ -166,7 +198,7 @@ leads through Zapier, Make or a landing page anyway.
 
 | Platform | Variables | Where to get them |
 | --- | --- | --- |
-| Meta (Facebook + Instagram) | `META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN` | developers.facebook.com → app with `leads_retrieval` + `pages_manage_ads` |
+|Meta (Facebook + Instagram) | `META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN` | developers.facebook.com → app with `leads_retrieval` + `pages_manage_ads` |
 | TikTok | `TIKTOK_APP_ID`, `TIKTOK_APP_SECRET` | business-api.tiktok.com |
 | Google Ads | `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_DEVELOPER_TOKEN` | Google Cloud Console + Google Ads API Center |
 | Google Sheets | `GOOGLE_SHEETS_CLIENT_ID`, `GOOGLE_SHEETS_CLIENT_SECRET` | Google Cloud Console → enable Sheets API |

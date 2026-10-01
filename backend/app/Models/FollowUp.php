@@ -21,7 +21,7 @@ class FollowUp extends Model
 
     protected $fillable = [
         'lead_id', 'assigned_to', 'created_by', 'due_at',
-        'note', 'status', 'completed_at', 'outcome',
+        'note', 'status', 'completed_at', 'outcome', 'outcome_note',
     ];
 
     protected function casts(): array

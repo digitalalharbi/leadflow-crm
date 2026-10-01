@@ -15,6 +15,7 @@ import {
 } from '@/components/ui'
 import type { IntegrationCard } from '@/types/api'
 import { cn } from '@/lib/cn'
+import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
 
 const STATUS_TONE = {
   connected: 'success',
@@ -119,6 +120,12 @@ export function IntegrationsPage() {
           </>
         }
       />
+
+      {/* WhatsApp is the only integration a customer configures themselves end
+          to end, so it gets a full card rather than a tile in the grid. */}
+      <div className="mb-4">
+        <WhatsappSettingsCard />
+      </div>
 
       {isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
@@ -246,7 +253,7 @@ export function IntegrationsPage() {
           <Field label={t('integrations.webhookSecret')} value={secret?.secret ?? ''} />
           <pre
             dir="ltr"
-            className="overflow-x-auto rounded-lg bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-slate-100"
+            className="overflow-x-auto rounded-lg bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-[var(--color-ink-inverted)]"
           >
 {`curl -X POST '${secret?.url ?? ''}' \\
   -H 'Content-Type: application/json' \\
@@ -293,7 +300,7 @@ function CopyButton({ value }: { value: string }) {
       }}
       className={cn(
         'grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)]',
-        copied ? 'text-emerald-600' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
+        copied ? 'text-[var(--color-status-won)]' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
       )}
     >
       {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
@@ -452,21 +459,21 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
       {step === 'done' && result && (
         <div className="py-6 text-center">
-          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]">
             <Check className="size-6" aria-hidden />
           </div>
           <h3 className="text-[0.9375rem] font-semibold">{t('imports.done')}</h3>
           <div className="mt-4 flex justify-center gap-6 text-[0.8125rem]">
             <div>
-              <p className="tabular text-xl font-semibold text-emerald-600">{result.imported}</p>
+              <p className="tabular text-xl font-semibold text-[var(--color-status-won)]">{result.imported}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.imported')}</p>
             </div>
             <div>
-              <p className="tabular text-xl font-semibold text-blue-600">{result.duplicates}</p>
+              <p className="tabular text-xl font-semibold text-[var(--color-status-new)]">{result.duplicates}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.duplicates')}</p>
             </div>
             <div>
-              <p className="tabular text-xl font-semibold text-red-600">{result.failed}</p>
+              <p className="tabular text-xl font-semibold text-[var(--color-status-lost)]">{result.failed}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.failed')}</p>
             </div>
           </div>

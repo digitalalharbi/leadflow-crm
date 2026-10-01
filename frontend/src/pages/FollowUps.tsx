@@ -8,15 +8,22 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
 import {
-  Button, Card, EmptyState, ErrorState, PageHeader, Pagination, SkeletonTable,
-  StatusBadge, Textarea, Modal, TemperatureBadge,
+  Button, Card, EmptyState, ErrorState, Input, PageHeader, Pagination, Select,
+  SkeletonTable, StatusBadge, Textarea, Modal, TemperatureBadge,
 } from '@/components/ui'
-import type { FollowUp, PaginationMeta } from '@/types/api'
+import type { FollowUp, FollowUpOutcome, PaginationMeta } from '@/types/api'
 import { cn } from '@/lib/cn'
 
 type Bucket = 'overdue' | 'today' | 'upcoming' | 'completed'
 
 const BUCKETS: Bucket[] = ['overdue', 'today', 'upcoming', 'completed']
+
+const OUTCOMES: FollowUpOutcome[] = [
+  'replied', 'no_answer', 'interested', 'not_interested', 'callback', 'appointment',
+]
+
+/** Days from now, or a date the rep picks. */
+type NextIn = '' | '1' | '3' | '7' | 'custom'
 
 /**
  * How late a follow-up is. For one that slipped earlier the same day the
@@ -46,6 +53,23 @@ export function FollowUpsPage() {
   }
   const [completing, setCompleting] = useState<FollowUp | null>(null)
   const [outcome, setOutcome] = useState('')
+  const [result, setResult] = useState<FollowUpOutcome | ''>('')
+  const [nextIn, setNextIn] = useState<NextIn>('')
+  const [customDate, setCustomDate] = useState('')
+
+  /** The next follow-up as an ISO instant, or nothing if none was chosen. */
+  const nextDueAt = () => {
+    if (nextIn === '') return null
+    if (nextIn === 'custom') return customDate ? new Date(customDate).toISOString() : null
+
+    const date = new Date()
+    date.setDate(date.getDate() + Number(nextIn))
+    // Mid-morning: a follow-up due at the exact minute it was created is a
+    // reminder nobody can act on.
+    date.setHours(10, 0, 0, 0)
+
+    return date.toISOString()
+  }
 
   const { data: counts } = useQuery({
     queryKey: ['follow-up-counts'],
@@ -64,11 +88,19 @@ export function FollowUpsPage() {
 
   const completeMutation = useMutation({
     mutationFn: (followUp: FollowUp) =>
-      apiPost(`/follow-ups/${followUp.id}/complete`, { outcome: outcome || undefined }),
+      apiPost(`/follow-ups/${followUp.id}/complete`, {
+        outcome: result || undefined,
+        outcome_note: outcome || undefined,
+        next_due_at: nextDueAt() || undefined,
+      }),
     onSuccess: () => {
       toast(t('followUps.completedMsg'), 'success')
       setCompleting(null)
       setOutcome('')
+      setResult('')
+      setNextIn('')
+      setCustomDate('')
+      void queryClient.invalidateQueries({ queryKey: ['lead'] })
       void queryClient.invalidateQueries({ queryKey: ['follow-ups'] })
       void queryClient.invalidateQueries({ queryKey: ['follow-up-counts'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -169,7 +201,7 @@ export function FollowUpsPage() {
                     >
                       <span>{formatDateTime(followUp.due_at, i18n.language)}</span>
                       {followUp.is_overdue && (
-                        <span className="rounded bg-red-50 px-1.5 py-0.5">
+                        <span className="rounded bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-1.5 py-0.5">
                           {overdueLabel(followUp.due_at, i18n.language, t('followUps.overdue'))}
                         </span>
                       )}
@@ -192,7 +224,7 @@ export function FollowUpsPage() {
                         target="_blank"
                         rel="noreferrer"
                         aria-label={t('leads.whatsapp')}
-                        className="grid size-9 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-emerald-600"
+                        className="grid size-9 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-status-won)]"
                       >
                         <MessageCircle className="size-4" aria-hidden />
                       </a>
@@ -231,10 +263,54 @@ export function FollowUpsPage() {
       >
         <div className="space-y-3">
           <p className="text-[0.875rem] font-medium">{completing?.lead?.full_name}</p>
+
+          {/*
+            What happened is a choice, not a sentence: a free-text box cannot be
+            counted, and "what did the call produce?" is the question the
+            reports need answered.
+          */}
+          <Select
+            label={t('outcomes.label')}
+            value={result}
+            data-testid="followup-outcome"
+            onChange={(e) => setResult(e.target.value as FollowUpOutcome | '')}
+          >
+            <option value="">{t('common.none')}</option>
+            {OUTCOMES.map((option) => (
+              <option key={option} value={option}>{t(`outcomes.${option}`)}</option>
+            ))}
+          </Select>
+
+          {/* "Call them again in three days" is the most common next step, so
+              it is one click rather than a date picker. */}
+          <Select
+            label={t('outcomes.nextFollowUp')}
+            value={nextIn}
+            data-testid="followup-next"
+            onChange={(e) => setNextIn(e.target.value as NextIn)}
+          >
+            <option value="">{t('outcomes.noNext')}</option>
+            <option value="1">{t('outcomes.tomorrow')}</option>
+            <option value="3">{t('outcomes.inThreeDays')}</option>
+            <option value="7">{t('outcomes.inAWeek')}</option>
+            <option value="custom">{t('outcomes.customDate')}</option>
+          </Select>
+
+          {nextIn === 'custom' && (
+            <Input
+              type="datetime-local"
+              label={t('outcomes.customDate')}
+              value={customDate}
+              data-testid="followup-next-date"
+              onChange={(e) => setCustomDate(e.target.value)}
+            />
+          )}
+
           <Textarea
-            label={t('followUps.outcome')}
+            label={t('followUps.outcomeNote')}
             hint={t('common.optional')}
             value={outcome}
+            data-testid="followup-note"
             onChange={(e) => setOutcome(e.target.value)}
           />
         </div>

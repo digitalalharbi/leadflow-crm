@@ -36,7 +36,10 @@ class StoreLeadRequest extends FormRequest
             'campaign_name' => ['nullable', 'string', 'max:255'],
 
             'budget_min' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
-            'budget_max' => ['nullable', 'numeric', 'min:0', 'max:999999999999', 'gte:budget_min'],
+            // `gte:budget_min` on its own rejects a maximum stated without a
+            // minimum, which is how most people answer "what is your budget?".
+            'budget_max' => ['nullable', 'numeric', 'min:0', 'max:999999999999',
+                Rule::when(fn () => filled($this->input('budget_min')), ['gte:budget_min'])],
             'purchase_purpose' => ['nullable', 'string', 'max:60'],
             'payment_method' => ['nullable', 'string', 'max:60'],
             'financing_status' => ['nullable', 'string', 'max:60'],

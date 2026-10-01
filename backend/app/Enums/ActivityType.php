@@ -20,6 +20,12 @@ enum ActivityType: string
     case Won = 'won';
     case Lost = 'lost';
     case ReEngaged = 're_engaged';
+    case WhatsappSent = 'whatsapp_sent';
+    case WhatsappReceived = 'whatsapp_received';
+    case QualificationUpdated = 'qualification_updated';
+    case ScoreChanged = 'score_changed';
+    case FollowUpOutcomeRecorded = 'follow_up_outcome';
+    case WhatsappOptedOut = 'whatsapp_opted_out';
     case Updated = 'updated';
 
     public static function values(): array

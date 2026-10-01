@@ -101,6 +101,133 @@ export interface Lead extends LeadListItem {
   re_engaged_count: number
   custom_fields: CustomFieldValue[]
   updated_at: string
+
+  qualification_status: QualificationStatus
+  qualified_at: string | null
+  appointment_interest: boolean | null
+  first_contact_at: string | null
+  first_response_at: string | null
+  whatsapp_opt_out_at: string | null
+}
+
+export type QualificationStatus = 'unqualified' | 'partially_qualified' | 'qualified'
+
+export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'received'
+
+export interface LeadMessage {
+  id: string
+  direction: 'outbound' | 'inbound'
+  channel: 'whatsapp' | 'sms' | 'email'
+  message_type: string
+  template_name: string | null
+  body: string | null
+  status: MessageStatus
+  sent_at: string | null
+  delivered_at: string | null
+  read_at: string | null
+  failed_at: string | null
+  failure_code: string | null
+  failure_reason: string | null
+  sent_by?: { id: string; name: string } | null
+  created_at: string
+}
+
+export interface MessageTemplate {
+  id: string
+  name: string
+  body: string
+  channel: string
+  is_active: boolean
+  sort_order: number
+}
+
+/** Why a lead scores what it scores — one entry per rule that fired. */
+export interface ScoreReason {
+  key: string
+  label: string
+  points: number
+}
+
+export interface ScoreBreakdown {
+  score: number
+  temperature: LeadTemperature
+  reasons: ScoreReason[]
+}
+
+export interface QualificationOption {
+  value: string
+  label: string
+}
+
+export interface QualificationOptions {
+  purchase_purpose: QualificationOption[]
+  payment_method: QualificationOption[]
+  financing_status: QualificationOption[]
+  purchase_timeline: QualificationOption[]
+}
+
+export interface QualificationInput {
+  purchase_purpose?: string | null
+  budget_min?: number | null
+  budget_max?: number | null
+  payment_method?: string | null
+  financing_status?: string | null
+  preferred_property_type?: string | null
+  preferred_location?: string | null
+  purchase_timeline?: string | null
+  appointment_interest?: boolean | null
+}
+
+/** Status is derived from what is filled in, so the UI never guesses. */
+export interface WhatsappSettings {
+  status: 'connected' | 'not_connected' | 'configuration_required' | 'error'
+  mode: 'live' | 'mock'
+  can_send: boolean
+  is_active: boolean
+  phone_number_id: string | null
+  business_account_id: string | null
+  has_access_token: boolean
+  has_app_secret: boolean
+  has_verify_token: boolean
+  webhook_url: string
+  last_error: string | null
+  last_synced_at: string | null
+}
+
+export type FollowUpOutcome =
+  | 'replied' | 'no_answer' | 'interested' | 'not_interested' | 'callback' | 'appointment'
+
+export interface CampaignQualityRow {
+  platform: string
+  campaign: string
+  leads: number
+  contacted: number
+  replied: number
+  qualified: number
+  hot: number
+  appointments: number
+  won: number
+  lost: number
+  contact_rate: number
+  reply_rate: number
+  qualification_rate: number
+  appointment_rate: number
+  win_rate: number
+}
+
+export interface SalesPerformance {
+  counts: {
+    leads: number; contacted: number; replied: number; qualified: number
+    hot: number; appointments: number; won: number; lost: number
+  }
+  rates: {
+    contact_rate: number; reply_rate: number; qualification_rate: number
+    appointment_rate: number; win_rate: number
+  }
+  timing: {
+    avg_first_contact_seconds: number | null
+    avg_first_reply_seconds: number | null
+  }
 }
 
 export interface CustomFieldValue {
@@ -131,7 +258,8 @@ export interface FollowUp {
   due_at: string
   note: string | null
   status: 'pending' | 'completed' | 'cancelled'
-  outcome: string | null
+  outcome: FollowUpOutcome | null
+  outcome_note: string | null
   completed_at: string | null
   is_overdue: boolean
   lead: {
@@ -181,6 +309,8 @@ export interface DashboardData {
     follow_ups_today: number
     follow_ups_overdue: number
     appointments: number
+    awaiting_first_contact: number
+    first_contact_target_minutes: number
   }
   charts: {
     by_platform: ChartPoint[]
@@ -190,6 +320,7 @@ export interface DashboardData {
   }
   hot_leads: LeadListItem[]
   overdue_leads: LeadListItem[]
+  awaiting_contact_leads: LeadListItem[]
   filters: { projects: Ref[]; users: Ref[] }
 }
 

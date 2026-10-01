@@ -137,6 +137,45 @@ previous review had shipped one assertion that could never fail.
 | Low | `rotateWebhookSecret` authorized against `Integration::class` when the endpoint had no integration (`integration_id` is nullable), reaching a TypeError — a 500 and an unauthorized rotation path | Guarded with `abort_if`, as `deleteWebhook` already was | `WebhookReadinessTest` |
 | Low | The payload flattener took a "leaf" from keys with no dot, stripping their first character — so an advertiser's `xcity` field could pass itself off as `city` | A key with no dot has no leaf | `WebhookReadinessTest` |
 
+## Third security review (WhatsApp and qualification)
+
+The WhatsApp release added two things the product did not have before: a public
+endpoint anyone on the internet can POST to, and long-lived credentials
+belonging to each customer. It was reviewed on that basis, adversarially, by
+someone who had not written it.
+
+Ten findings, each with a failing regression test written before the fix.
+
+| Severity | Defect | Fix |
+| --- | --- | --- |
+| **High** | `TemplateRenderer` called a `firstWord()` method that was never written. Any lead without a first name — the normal shape of a lead that arrived as a bare phone number through the public webhook — produced a hard 500 on the composer and on template preview. `\Error` is not a `RuntimeException`, so the controller's catch did not see it | Implemented as `givenName()`, which also refuses a "name" that is a phone number or an email and drops the placeholder instead |
+| **Medium/High** | Unsigned webhooks were accepted wherever `APP_ENV` was not the literal string `production`. `prod`, `staging`, `uat` or a typo all failed open, and a phone number id is a public Meta identifier rather than a secret — so anyone could write messages, opt-ins and score changes into a workspace that had a number but no app secret | Inverted to an allow-list (`local`, `testing`) in both the signature check and the send gate. A deny-list on one spelling of one environment name is not a security control |
+| Medium | The public webhook's throttle keyed on `route('key')`, a parameter these routes do not have. Every tenant collapsed into one bucket per source IP — and Meta delivers from a narrow range, so one busy workspace would starve the rest until Meta disabled the callback | Its own limiter, keyed on the phone number the delivery arrived on, with a looser per-IP limit outside it |
+| Medium | Both webhook rejection paths wrote a row keyed on a fresh UUID, before any authentication, so the unique index could never collapse a repeat — unauthenticated unbounded table growth. `tenant_id` is nullable there, and a NULL never collides in a Postgres unique index, so no fixed key would have helped either | Rejections are a tally: a partial unique index over `COALESCE(tenant_id, 0)` and an upsert that increments `occurrences`. "4,812 probes against this number" is also more useful than 4,812 identical rows |
+| Medium | Two workspaces could claim the same WhatsApp number — the check was a bare `exists()` with nothing behind it in the schema — and the routing query had no `ORDER BY`, so Postgres decided whose customer messages landed where | A partial unique index on `config->>'phone_number_id'`, which is also the index that unauthenticated lookup needed; the query is ordered and active-only |
+| Low/Medium | `PATCH /integrations/{uuid}` threw on the WhatsApp integration and answered 500, and `DELETE` succeeded — bypassing the proper disconnect, leaving the credentials on the row and writing the wrong action to the audit trail | Providers with a screen of their own are not found through the generic endpoints |
+| Low | The integration row was created before the phone number was validated, so a rejected first save left an orphan that reported itself connectable — and outside production told reps "Message sent." for messages nothing had sent | The whole save is one transaction |
+| Low | A `statuses` callback wrote attacker-supplied failure text before the terminality check, with a lookup that did not filter on direction — so arbitrary text could be stamped onto a message the customer had sent, and shown back to the tenant | Outbound only, written after the status is allowed to move, and truncated |
+| Low | `per_page=-1` on the conversation: the query builder silently ignores a negative limit, so no `LIMIT` was emitted and the entire history came back | Floored as well as capped |
+| Low | Saved messages borrowed `IntegrationPolicy`, which is admin-only — excluding sales managers by accident, and tying "who may rewrite what we say to buyers?" to "who may hold an API key?". `index()` had no authorization at all and `?all=1` exposed deactivated messages to everyone | A `MessageTemplatePolicy` of its own |
+
+Also closed from the same review: the claim on an inbound message now happens
+inside the transaction that writes it, so a failure between them no longer
+answers Meta's retry with "already seen" and loses the customer's message; and
+outbound sending is rate-limited per conversation, because a stuck client or a
+stolen token pointed at one buyer is how a tenant's WhatsApp number gets
+reported — which ends the channel for them.
+
+### What the review found nothing in
+
+Worth recording, because these were the categories most likely to be wrong:
+credential leakage through responses, logs, the audit trail or serialisation;
+the signature comparison itself (computed over the captured raw body, compared
+with `hash_equals`, per tenant); replay (`ON CONFLICT DO NOTHING` lets the index
+decide rather than a check-then-insert); cross-tenant routing; IDOR on the new
+lead, qualification and template routes; mass assignment; and SQL injection in
+the reports, where every raw fragment is built from enum constants.
+
 ## Known gaps
 
 Honest list of what is **not** done, and why:

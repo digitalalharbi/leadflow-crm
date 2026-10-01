@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Models\FollowUp;
 use App\Models\Import;
 use App\Models\Integration;
 use App\Models\Lead;
+use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\Tenant;
 use App\Models\User;
@@ -13,6 +15,7 @@ use App\Policies\FollowUpPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\IntegrationPolicy;
 use App\Policies\LeadPolicy;
+use App\Policies\MessageTemplatePolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\TenantSettingsPolicy;
 use App\Policies\UserPolicy;
@@ -44,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(FollowUp::class, FollowUpPolicy::class);
         Gate::policy(Integration::class, IntegrationPolicy::class);
         Gate::policy(Import::class, ImportPolicy::class);
+        Gate::policy(MessageTemplate::class, MessageTemplatePolicy::class);
         Gate::policy(Tenant::class, TenantSettingsPolicy::class);
 
         $this->configureRateLimiting();
@@ -66,5 +70,23 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(
             config('integrations.webhooks.rate_limit_per_minute')
         )->by($request->route('key').'|'.$request->ip()));
+
+        /*
+         * WhatsApp callbacks need their own limiter, keyed on the phone number
+         * the delivery arrived on rather than on a route parameter this route
+         * does not have — `route('key')` was null here, which collapsed every
+         * tenant into one bucket per source IP. Meta delivers from a narrow
+         * address range, so one busy workspace would have starved all the
+         * others and Meta would eventually disable the callback.
+         *
+         * The outer per-IP limit is far looser, and exists only to bound an
+         * unauthenticated flood from a single source.
+         */
+        RateLimiter::for('whatsapp-webhook', fn (Request $request) => [
+            Limit::perMinute(config('integrations.whatsapp.per_number_per_minute'))
+                ->by('wa:'.WhatsappWebhookController::phoneNumberIdOf($request)),
+            Limit::perMinute(config('integrations.whatsapp.per_ip_per_minute'))
+                ->by('wa-ip:'.$request->ip()),
+        ]);
     }
 }

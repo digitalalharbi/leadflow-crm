@@ -1,52 +1,172 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. Everything in the UI reads from these — no raw hex values in
- * components. `--color-brand-*` is overwritten at runtime from the tenant's
- * branding payload, which is what makes white labelling work without a rebuild.
- */
+|------------------------------------------------------------------------------
+| Design system
+|------------------------------------------------------------------------------
+|
+| The product is sold to people who look at it for eight hours a day, so the
+| surface has to be quiet. Three rules hold the whole thing together:
+|
+|  1. Contrast is spent on content, never on chrome. Borders are hairlines,
+|     shadows are barely there, and the page background sits a half-step below
+|     the cards rather than a full one.
+|  2. One accent colour, supplied by the tenant. Everything else is neutral or
+|     semantic, so a customer's brand is the only colour that shouts.
+|  3. Nothing moves without a reason, and when it moves it uses one curve.
+|
+| Every component reads from these tokens; no component carries a raw hex.
+*/
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: 'IBM Plex Sans Arabic', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /*
+   * Arabic first. IBM Plex Sans Arabic carries both scripts with the same
+   * rhythm, which matters when a screen mixes a customer's name with a Latin
+   * campaign id. The system stack behind it keeps first paint readable.
+   */
+  --font-sans: 'IBM Plex Sans Arabic', 'Inter var', 'Inter', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
+  /*
+   * Neutrals, warmed very slightly off pure grey. A pure-grey interface reads
+   * as cold and a little cheap next to the warm whites screens actually show.
+   */
+  --color-neutral-0: #ffffff;
+  --color-neutral-25: #fcfcfd;
+  --color-neutral-50: #f8f9fb;
+  --color-neutral-100: #f1f3f7;
+  --color-neutral-200: #e6e8ee;
+  --color-neutral-300: #d4d7e0;
+  --color-neutral-400: #a0a5b4;
+  --color-neutral-500: #6f7585;
+  --color-neutral-600: #545a69;
+  --color-neutral-700: #3c414e;
+  --color-neutral-800: #252932;
+  --color-neutral-900: #16181f;
+  --color-neutral-950: #0d0f14;
 
-  /* Surfaces & text — a near-neutral palette so status colours carry the meaning */
-  --color-surface: #ffffff;
-  --color-surface-muted: #f8fafc;
-  --color-surface-sunken: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-ink: #0f172a;
-  --color-ink-muted: #64748b;
-  --color-ink-subtle: #94a3b8;
+  /* Semantic surfaces, swapped wholesale in dark mode. */
+  --color-surface: var(--color-neutral-0);
+  --color-surface-raised: var(--color-neutral-0);
+  --color-surface-muted: var(--color-neutral-50);
+  --color-surface-sunken: var(--color-neutral-100);
+  --color-border: var(--color-neutral-200);
+  --color-border-strong: var(--color-neutral-300);
+  /* A line that reads as a hairline at any density, unlike a solid grey. */
+  --color-line: color-mix(in srgb, var(--color-neutral-900) 8%, transparent);
 
-  /* Lead status — one hue per pipeline stage, used in badges and the board */
-  --color-status-new: #3b82f6;
-  --color-status-contacted: #8b5cf6;
-  --color-status-qualified: #0891b2;
-  --color-status-appointment: #d97706;
-  --color-status-won: #059669;
-  --color-status-lost: #dc2626;
+  --color-ink: var(--color-neutral-900);
+  --color-ink-muted: var(--color-neutral-500);
+  --color-ink-subtle: var(--color-neutral-400);
+  --color-ink-inverted: var(--color-neutral-0);
 
-  /* Temperature */
-  --color-temp-hot: #dc2626;
-  --color-temp-warm: #d97706;
-  --color-temp-cold: #0284c7;
+  /*
+   * Pipeline stages. Deliberately desaturated from the Tailwind defaults: six
+   * fully saturated hues on one board is a fruit salad, and the eye stops
+   * being able to tell which one means trouble.
+   */
+  --color-status-new: #4f7cf7;
+  --color-status-contacted: #7c6bf0;
+  --color-status-qualified: #0e9aa7;
+  --color-status-appointment: #c77a1c;
+  --color-status-won: #0f9d6f;
+  --color-status-lost: #d6455a;
 
-  /* Runtime brand tokens. Defaults live here; useBrandingTheme overwrites them
-     with the tenant's colours once branding resolves. */
-  --brand: #2563eb;
-  --brand-secondary: #0f172a;
-  --brand-soft: #eff6ff;
-  --brand-ring: rgb(37 99 235 / 0.35);
+  --color-temp-hot: #d6455a;
+  --color-temp-warm: #c77a1c;
+  --color-temp-cold: #2f8ed6;
 
-  --radius-card: 0.75rem;
-  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
-  --shadow-pop: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 10px 20px -6px rgb(15 23 42 / 0.12);
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dbe6ff;
+  --color-brand-500: #3b74f0;
+  --color-brand-600: #2b5fd9;
+  --color-brand-700: #2049ac;
+
+  /*
+   * The tenant's colour, written at runtime by useBrandingTheme. Defaults are
+   * here so the login screen has an identity before branding resolves.
+   */
+  --brand: #2b5fd9;
+  --brand-secondary: #16181f;
+  --brand-soft: #eef4ff;
+  --brand-softer: #f6f9ff;
+  --brand-ring: color-mix(in srgb, #2b5fd9 28%, transparent);
+  --brand-contrast: #ffffff;
+
+  /*
+   * Elevation as light falling on a surface, not a drop shadow: a tight
+   * contact shadow plus a wide, very faint ambient one. One hard shadow reads
+   * as a sticker; two soft ones read as a card.
+   */
+  --shadow-card:
+    0 0 0 0.5px color-mix(in srgb, var(--color-neutral-900) 5%, transparent),
+    0 1px 2px -1px color-mix(in srgb, var(--color-neutral-900) 8%, transparent),
+    0 2px 8px -2px color-mix(in srgb, var(--color-neutral-900) 5%, transparent);
+  --shadow-raised:
+    0 0 0 0.5px color-mix(in srgb, var(--color-neutral-900) 6%, transparent),
+    0 2px 4px -2px color-mix(in srgb, var(--color-neutral-900) 10%, transparent),
+    0 8px 20px -6px color-mix(in srgb, var(--color-neutral-900) 10%, transparent);
+  --shadow-pop:
+    0 0 0 0.5px color-mix(in srgb, var(--color-neutral-900) 6%, transparent),
+    0 8px 16px -8px color-mix(in srgb, var(--color-neutral-900) 14%, transparent),
+    0 24px 48px -16px color-mix(in srgb, var(--color-neutral-900) 18%, transparent);
+
+  /* Radii step with the size of the thing, so nothing looks over-rounded. */
+  --radius-control: 0.625rem;
+  --radius-card: 0.875rem;
+  --radius-panel: 1.125rem;
+
+  /*
+   * One curve for everything. It starts fast and settles, which is what makes
+   * an interface feel answered rather than animated.
+   */
+  --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+}
+
+/*
+ * Dark mode is a different set of surfaces, not an inversion. Cards lift by
+ * getting *lighter* than the page, borders become light at low opacity, and
+ * the brand colour is softened so it does not glow.
+ */
+.dark {
+  --color-surface: #1a1d24;
+  --color-surface-raised: #21252e;
+  --color-surface-muted: #131519;
+  --color-surface-sunken: #272b35;
+  --color-border: #2f343f;
+  --color-border-strong: #3d4350;
+  --color-line: color-mix(in srgb, #ffffff 10%, transparent);
+
+  --color-ink: #eceef2;
+  --color-ink-muted: #9aa0ae;
+  --color-ink-subtle: #6f7685;
+  --color-ink-inverted: #16181f;
+
+  --color-status-new: #7fa3ff;
+  --color-status-contacted: #a396ff;
+  --color-status-qualified: #3cc3ce;
+  --color-status-appointment: #e5a44e;
+  --color-status-won: #38c79a;
+  --color-status-lost: #ff7389;
+
+  --color-temp-hot: #ff7389;
+  --color-temp-warm: #e5a44e;
+  --color-temp-cold: #63b4f0;
+
+  --shadow-card:
+    0 0 0 0.5px color-mix(in srgb, #ffffff 7%, transparent),
+    0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-raised:
+    0 0 0 0.5px color-mix(in srgb, #ffffff 8%, transparent),
+    0 4px 12px -4px rgb(0 0 0 / 0.5);
+  --shadow-pop:
+    0 0 0 0.5px color-mix(in srgb, #ffffff 9%, transparent),
+    0 16px 40px -12px rgb(0 0 0 / 0.65);
 }
 
 @layer base {
@@ -58,6 +178,11 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 
   body {
@@ -68,18 +193,42 @@
     font-size: 0.9375rem;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Kerning and contextual alternates: Arabic needs both to join correctly
+       at small sizes, and they tighten Latin numerals at the same time. */
+    font-feature-settings: 'kern', 'calt';
   }
 
-  /* Arabic needs slightly more line height to stay comfortable. */
+  /* Arabic sits lower in its em box and needs the extra leading to breathe. */
   [dir='rtl'] body {
-    line-height: 1.75;
+    line-height: 1.8;
   }
 
+  /*
+   * Headings tighten as they grow. Loose tracking on a 28px heading is the
+   * single clearest tell of an interface nobody typeset.
+   */
   h1, h2, h3, h4 {
     margin: 0;
     font-weight: 600;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  h1 { letter-spacing: -0.025em; }
+
+  /* Arabic has no case and no tracking convention; tightening it hurts. */
+  [dir='rtl'] h1,
+  [dir='rtl'] h2,
+  [dir='rtl'] h3,
+  [dir='rtl'] h4 {
+    letter-spacing: 0;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   button, input, select, textarea {
@@ -87,15 +236,47 @@
     color: inherit;
   }
 
-  :focus-visible {
-    outline: 2px solid var(--color-brand-600);
-    outline-offset: 2px;
+  button {
+    cursor: pointer;
   }
 
-  /* Numerals stay Latin in both locales so phone numbers and money read the same. */
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  /* Pointer users get the ring only where it carries information. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--color-ink);
+  }
+
+  /* Numerals stay Latin and monospaced in both locales, so a column of money
+     or phone numbers lines up and a changing value does not jitter. */
   .tabular {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum';
+    font-feature-settings: 'tnum', 'kern';
+    letter-spacing: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -105,7 +286,7 @@
    * (right in RTL, left in LTR); from `lg` up it is always docked.
    */
   .app-sidebar {
-    transition: transform 200ms ease;
+    transition: transform var(--duration-base) var(--ease-out-soft);
     transform: translateX(-100%);
   }
 
@@ -123,6 +304,76 @@
       transform: translateX(0);
     }
   }
+
+  /*
+   * Frosted chrome for anything that floats over content. The fallback matters:
+   * without backdrop-filter a translucent bar becomes unreadable text on top of
+   * whatever is scrolling underneath.
+   */
+  .material {
+    background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .material {
+      background-color: var(--color-surface);
+    }
+  }
+
+  /* A hairline that stays one device pixel on any display. */
+  .hairline {
+    border-color: var(--color-line);
+  }
+
+  /*
+   * Inline notices. Built from the status tokens rather than a palette, so one
+   * variable swap carries them into dark mode — a hard-coded `bg-red-50` stays
+   * bright white-pink on a dark surface and shouts.
+   */
+  .notice {
+    border-radius: var(--radius-control);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+
+  .notice-info {
+    background: color-mix(in srgb, var(--color-status-new) 10%, transparent);
+    color: color-mix(in srgb, var(--color-status-new) 75%, var(--color-ink));
+  }
+
+  .notice-warning {
+    background: color-mix(in srgb, var(--color-status-appointment) 12%, transparent);
+    color: color-mix(in srgb, var(--color-status-appointment) 75%, var(--color-ink));
+  }
+
+  .notice-danger {
+    background: color-mix(in srgb, var(--color-status-lost) 12%, transparent);
+    color: color-mix(in srgb, var(--color-status-lost) 75%, var(--color-ink));
+  }
+
+  /*
+   * Column headers: small, open and quiet in Latin.
+   *
+   * Arabic gets neither the uppercasing — it has no case — nor the tracking,
+   * because letter-spacing pulls apart the cursive joins and turns a word into
+   * disconnected shapes. This is the single most common way an interface
+   * announces that nobody typeset its Arabic.
+   */
+  .label-caps {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+  }
+
+  [dir='rtl'] .label-caps {
+    font-size: 0.75rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
 }
 
 @layer utilities {
@@ -131,6 +382,7 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
   }
 
   .scroll-x::-webkit-scrollbar {
@@ -139,7 +391,25 @@
 
   .scroll-x::-webkit-scrollbar-thumb {
     background: var(--color-border-strong);
-    border-radius: 3px;
+    border-radius: 999px;
+  }
+
+  .scroll-x::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Press feedback. Two pixels of travel is the difference between a button
+     that responds and one that merely changes colour. */
+  .pressable {
+    transition:
+      transform var(--duration-fast) var(--ease-out-soft),
+      background-color var(--duration-fast) var(--ease-out-soft),
+      border-color var(--duration-fast) var(--ease-out-soft),
+      box-shadow var(--duration-fast) var(--ease-out-soft);
+  }
+
+  .pressable:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   @keyframes shimmer {
@@ -156,12 +426,35 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background-image: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.6), transparent);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--color-surface) 70%, transparent),
+      transparent
+    );
     animation: shimmer 1.6s infinite;
     content: '';
   }
 
   [dir='rtl'] .skeleton::after {
     animation-direction: reverse;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .animate-rise {
+    animation: rise var(--duration-base) var(--ease-out-soft);
+  }
+
+  .animate-fade {
+    animation: fade var(--duration-base) var(--ease-out-soft);
   }
 }

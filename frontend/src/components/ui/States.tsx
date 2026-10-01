@@ -86,7 +86,7 @@ export function ErrorState({
 
   return (
     <div className={cn('flex flex-col items-center px-6 py-14 text-center', className)}>
-      <div className="mb-4 grid size-12 place-items-center rounded-full bg-red-50 text-[var(--color-status-lost)]">
+      <div className="mb-4 grid size-12 place-items-center rounded-full bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] text-[var(--color-status-lost)]">
         <AlertCircle className="size-6" aria-hidden />
       </div>
       <h3 className="text-[0.9375rem] font-semibold">{t('errors.title')}</h3>

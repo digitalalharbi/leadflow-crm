@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Enums\LeadStatus;
 use App\Models\Lead;
 use App\Models\User;
 use App\Support\Uuid;
@@ -108,6 +109,16 @@ class LeadQueryBuilder
             ->when($request->filled('date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->date('date_to')))
             ->when($request->boolean('overdue'), fn ($q) => $q->overdueFollowUp())
             ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('assigned_to'))
+            // Arrived and still untouched past the workspace's own target. The
+            // dashboard panel links here, so the list has to mean the same thing
+            // the number did.
+            ->when($request->boolean('awaiting_contact'), function (Builder $q) use ($request) {
+                $minutes = (int) ($request->user()?->tenant?->settings?->first_contact_target_minutes ?? 30);
+
+                $q->whereNull('first_contact_at')
+                    ->where('status', LeadStatus::New->value)
+                    ->where('leads.created_at', '<=', now()->subMinutes($minutes));
+            })
             ->when($request->filled('follow_up'), function ($q) use ($request) {
                 return match ($request->input('follow_up')) {
                     'today' => $q->whereBetween('next_follow_up_at', [now()->startOfDay(), now()->endOfDay()]),

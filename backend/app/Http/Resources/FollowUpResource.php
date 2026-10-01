@@ -15,6 +15,7 @@ class FollowUpResource extends JsonResource
             'note' => $this->note,
             'status' => $this->status,
             'outcome' => $this->outcome,
+            'outcome_note' => $this->outcome_note,
             'completed_at' => $this->completed_at?->toIso8601String(),
             'is_overdue' => $this->status === 'pending' && $this->due_at?->isPast(),
             'lead' => $this->whenLoaded('lead', fn () => $this->lead ? [

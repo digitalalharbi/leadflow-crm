@@ -2,13 +2,24 @@ import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes 
 import { useId } from 'react'
 import { cn } from '@/lib/cn'
 
-const fieldBase =
-  'w-full rounded-lg border bg-[var(--color-surface)] px-3 text-sm transition-colors ' +
-  'placeholder:text-[var(--color-ink-subtle)] disabled:bg-[var(--color-surface-sunken)] disabled:opacity-60'
+/*
+ * A field is a recess, so it sits a half-step below the card it is on and
+ * carries a faint inner shadow. On focus it comes up to the surface colour and
+ * takes the brand ring — the control moving toward you, rather than just
+ * changing its border.
+ */
+const fieldBase = [
+  'w-full rounded-[var(--radius-control)] border px-3 text-sm',
+  'bg-[var(--color-surface-muted)] shadow-[inset_0_1px_1px_0_color-mix(in_srgb,var(--color-neutral-900)_4%,transparent)]',
+  'transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)]',
+  'placeholder:text-[var(--color-ink-subtle)]',
+  'focus:bg-[var(--color-surface)] focus:shadow-[0_0_0_3px_var(--brand-ring)] focus:outline-none',
+  'disabled:bg-[var(--color-surface-sunken)] disabled:opacity-60',
+].join(' ')
 
 function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.ReactNode; hint?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 flex items-baseline gap-2 text-[0.8125rem] font-medium">
+    <label htmlFor={htmlFor} className="mb-1.5 flex items-baseline gap-2 text-[0.8125rem] font-medium text-[var(--color-ink)]">
       <span>{children}</span>
       {hint && <span className="text-[0.75rem] font-normal text-[var(--color-ink-subtle)]">{hint}</span>}
     </label>
@@ -64,7 +75,7 @@ export function Input({
           'h-10',
           error
             ? 'border-[var(--color-status-lost)]'
-            : 'border-[var(--color-border-strong)] focus:border-[var(--brand)]',
+            : 'border-[var(--color-border)] focus:border-[var(--brand)]',
           className,
         )}
         {...props}
@@ -104,7 +115,7 @@ export function Textarea({
           'py-2 leading-relaxed',
           error
             ? 'border-[var(--color-status-lost)]'
-            : 'border-[var(--color-border-strong)] focus:border-[var(--brand)]',
+            : 'border-[var(--color-border)] focus:border-[var(--brand)]',
           className,
         )}
         {...props}
@@ -146,7 +157,7 @@ export function Select({
           '[background-position:left_0.65rem_center] [background-size:1.1rem] rtl:[background-position:left_0.65rem_center] ltr:[background-position:right_0.65rem_center]',
           error
             ? 'border-[var(--color-status-lost)]'
-            : 'border-[var(--color-border-strong)] focus:border-[var(--brand)]',
+            : 'border-[var(--color-border)] focus:border-[var(--brand)]',
           className,
         )}
         {...props}

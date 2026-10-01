@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, ArrowRight, CalendarPlus, Check, Flame, MessageCircle, Phone,
-  StickyNote, Trash2, UserCheck,
+  ArrowLeft, ArrowRight, CalendarPlus, Check, ClipboardCheck, Flame, MessageCircle,
+  Phone, StickyNote, Trash2, UserCheck,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -14,13 +14,15 @@ import { apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatBudgetRange, formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
+import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, Dropdown, DropdownItem, ErrorState,
   Input, Modal, Select, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { LeadStatus, LeadTemperature } from '@/types/api'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
+import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
+import { Conversation } from '@/components/whatsapp/Conversation'
 import { cn } from '@/lib/cn'
 
 const STATUSES: LeadStatus[] = ['new', 'contacted', 'qualified', 'appointment', 'won', 'lost']
@@ -44,6 +46,7 @@ export function LeadDetailPage() {
   const [followUpAt, setFollowUpAt] = useState('')
   const [followUpNote, setFollowUpNote] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [qualifyOpen, setQualifyOpen] = useState(false)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['lead', id],
@@ -165,7 +168,6 @@ export function LeadDetailPage() {
   }
 
   const { lead, activities, notes, follow_ups: followUps } = data
-  const currency = branding?.currency ?? 'SAR'
 
   const waHref = whatsappLink(lead.whatsapp, branding ? undefined : null, {
     name: lead.full_name,
@@ -227,13 +229,22 @@ export function LeadDetailPage() {
                 <Button
                   variant="outline"
                   icon={<MessageCircle className="size-4" />}
-                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  className="border-[color-mix(in_srgb,var(--color-status-won)_35%,transparent)] text-[var(--color-status-won)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)]"
                   data-testid="action-whatsapp"
                 >
                   {t('leads.whatsapp')}
                 </Button>
               </a>
             )}
+
+            <Button
+              variant="outline"
+              icon={<ClipboardCheck className="size-4" />}
+              onClick={() => setQualifyOpen(true)}
+              data-testid="action-qualify"
+            >
+              {t('qualification.action')}
+            </Button>
 
             <Button
               variant="outline"
@@ -380,7 +391,16 @@ export function LeadDetailPage() {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
+        {/*
+          Ordered by what a rep does, not by what the database holds:
+          qualify, talk, note, then look back. Attribution and the contact
+          details sit in the sidebar — read occasionally, acted on rarely.
+        */}
         <div className="space-y-4 lg:col-span-2">
+          <QualificationCard lead={lead} />
+
+          <Conversation lead={lead} />
+
           <Card>
             <CardHeader
               title={t('leads.notes')}
@@ -428,16 +448,13 @@ export function LeadDetailPage() {
             <Row label={t('leads.city')} value={lead.city} />
           </DetailCard>
 
+          {/* Interest used to be repeated here; the qualification card above
+              shows the same answers, editable, so this was two places to read
+              and one place to change. */}
           <DetailCard title={t('leads.interest')}>
             <Row label={t('leads.project')} value={lead.project?.name} />
-            <Row
-              label={t('leads.budget')}
-              value={formatBudgetRange(lead.budget_min, lead.budget_max, currency, i18n.language)}
-            />
-            <Row label={t('leads.propertyType')} value={lead.preferred_property_type} />
-            <Row label={t('leads.preferredLocation')} value={lead.preferred_location} />
-            <Row label={t('leads.paymentMethod')} value={lead.payment_method} />
-            <Row label={t('leads.timeline')} value={lead.purchase_timeline} />
+            <Row label={t('leads.firstContact')} value={formatDateTime(lead.first_contact_at, i18n.language)} />
+            <Row label={t('leads.firstResponse')} value={formatDateTime(lead.first_response_at, i18n.language)} />
           </DetailCard>
 
           <DetailCard title={t('leads.attribution')}>
@@ -484,6 +501,10 @@ export function LeadDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Reachable from the quick actions as well as the card, because a rep on
+          a call should not have to find the card first. */}
+      <QualificationDrawer lead={lead} open={qualifyOpen} onClose={() => setQualifyOpen(false)} />
 
       {/* Lost requires a reason — this is what makes the lost-reason report real. */}
       <Modal

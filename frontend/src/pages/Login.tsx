@@ -90,8 +90,8 @@ export function LoginPage() {
               <img src={logo} alt="" className="size-9 rounded-lg object-contain" />
             ) : (
               <span
-                className="grid size-9 place-items-center rounded-lg text-sm font-bold text-white"
-                style={{ background: 'var(--brand)' }}
+                className="grid size-9 place-items-center rounded-[var(--radius-control)] text-sm font-bold shadow-[var(--shadow-card)]"
+                style={{ background: 'var(--brand)', color: 'var(--brand-contrast)' }}
                 aria-hidden
               >
                 {systemName.slice(0, 1)}
@@ -103,7 +103,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => applyLocale(i18n.language.startsWith('ar') ? 'en' : 'ar')}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
+            className="pressable flex items-center gap-1.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
           >
             <Globe className="size-4" aria-hidden />
             {i18n.language.startsWith('ar') ? 'English' : 'العربية'}
@@ -155,7 +155,7 @@ export function LoginPage() {
               {error && (
                 <p
                   role="alert"
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[0.8125rem] text-red-800"
+                  className="rounded-[var(--radius-control)] border border-[color-mix(in_srgb,var(--color-status-lost)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-3 py-2.5 text-[0.8125rem] text-[var(--color-status-lost)]"
                 >
                   {error}
                 </p>
@@ -181,13 +181,34 @@ export function LoginPage() {
         style={{
           background: branding?.login_background_url
             ? `url(${branding.login_background_url}) center/cover`
-            : 'linear-gradient(145deg, var(--brand) 0%, var(--brand-secondary, #0f172a) 100%)',
+            : [
+                // Two off-axis highlights over the brand colour. A flat
+                // two-stop gradient is the default every template ships with;
+                // light that falls from somewhere reads as a made thing.
+                'radial-gradient(110% 80% at 18% 8%, color-mix(in srgb, var(--brand) 55%, white) 0%, transparent 55%)',
+                'radial-gradient(90% 70% at 85% 95%, color-mix(in srgb, var(--brand-secondary) 70%, black) 0%, transparent 60%)',
+                'linear-gradient(145deg, var(--brand) 0%, var(--brand-secondary, #16181f) 100%)',
+              ].join(', '),
         }}
       >
-        <div className="absolute inset-0 bg-slate-900/25" />
+        {/* A fine grid, barely there, so a large flat field has some texture
+            at close range without becoming a pattern. */}
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)',
+            backgroundSize: '44px 44px',
+          }}
+          aria-hidden
+        />
+        <div className="absolute inset-0 bg-[var(--color-neutral-900)]/20" />
+
         <div className="relative flex h-full flex-col justify-end p-12 text-white">
-          <h2 className="text-3xl font-semibold leading-snug">{branding?.company_name ?? systemName}</h2>
-          <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-white/85">
+          <h2 className="text-[2rem] leading-[1.2] font-semibold tracking-[-0.02em]">
+            {branding?.company_name ?? systemName}
+          </h2>
+          <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-white/80">
             {t('auth.welcomeSubtitle')}
           </p>
         </div>

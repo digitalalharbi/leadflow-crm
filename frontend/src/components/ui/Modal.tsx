@@ -58,7 +58,10 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         type="button"
         aria-label="close"
         tabIndex={-1}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
+        className={cn(
+          'absolute inset-0 animate-fade bg-[color-mix(in_srgb,var(--color-neutral-950)_45%,transparent)]',
+          'backdrop-blur-[3px] backdrop-saturate-150',
+        )}
         onClick={onClose}
       />
       <div
@@ -67,12 +70,20 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         aria-modal="true"
         tabIndex={-1}
         className={cn(
-          'relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden bg-[var(--color-surface)]',
-          'rounded-t-2xl shadow-[var(--shadow-pop)] outline-none sm:rounded-[var(--radius-card)]',
+          'relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden',
+          'bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)] outline-none',
+          // A sheet on a phone, a dialog on a desktop: it rises from the bottom
+          // edge where a thumb is, and from the centre where a cursor is.
+          'animate-rise rounded-t-[var(--radius-panel)] sm:rounded-[var(--radius-panel)]',
           sizes[size],
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4">
+        {/* The grab handle a sheet needs; invisible once it is a dialog. */}
+        <div className="flex justify-center pt-2 sm:hidden" aria-hidden>
+          <span className="h-1 w-9 rounded-full bg-[var(--color-border-strong)]" />
+        </div>
+
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-5 py-4">
           <div className="min-w-0">
             <h2 className="text-[0.9375rem] font-semibold">{title}</h2>
             {description && (
@@ -82,7 +93,12 @@ export function Modal({ open, onClose, title, description, children, footer, siz
           <button
             type="button"
             onClick={onClose}
-            className="-me-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
+            className={cn(
+              'pressable -me-1 -mt-1 grid size-8 shrink-0 place-items-center',
+              'rounded-[var(--radius-control)] text-[var(--color-ink-muted)]',
+              'hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]',
+            )}
+            aria-label="close"
           >
             <X className="size-4" aria-hidden />
           </button>
@@ -91,7 +107,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer && (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface-muted)] px-5 py-3">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-line)] bg-[var(--color-surface-muted)] px-5 py-3">
             {footer}
           </div>
         )}

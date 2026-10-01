@@ -57,7 +57,7 @@ export function OnboardingChecklist() {
               className={cn(
                 'flex items-center gap-2 rounded-lg border px-3 py-2 text-[0.8125rem] transition-colors',
                 complete
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  ? 'border-[color-mix(in_srgb,var(--color-status-won)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]'
                   : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-muted)]',
               )}
             >

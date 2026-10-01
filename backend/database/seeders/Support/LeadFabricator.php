@@ -5,9 +5,14 @@ namespace Database\Seeders\Support;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
+use App\Enums\MessageChannel;
+use App\Enums\MessageDirection;
+use App\Enums\MessageStatus;
+use App\Enums\QualificationStatus;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadMessage;
 use App\Models\LeadNote;
 use App\Models\LeadSourceEvent;
 use App\Models\Tenant;
@@ -101,10 +106,37 @@ class LeadFabricator
             'preferred_property_type' => DemoContent::PROPERTY_TYPES[array_rand(DemoContent::PROPERTY_TYPES)],
             'preferred_location' => $project->location,
             'purchase_timeline' => DemoContent::TIMELINES[array_rand(DemoContent::TIMELINES)],
+            // Everything past "new" has been worked, so it has been qualified to
+            // some degree. A demo where every lead is unqualified shows a CRM
+            // nobody is using.
+            'financing_status' => $this->financingFor($status),
+            'qualification_status' => $this->qualificationFor($status),
+            'qualified_at' => in_array($status, [
+                LeadStatus::Qualified->value, LeadStatus::Appointment->value, LeadStatus::Won->value,
+            ], true) ? $createdAt->copy()->addDays(random_int(1, 4)) : null,
+            'appointment_interest' => match ($status) {
+                LeadStatus::Appointment->value, LeadStatus::Won->value => true,
+                LeadStatus::Lost->value => random_int(0, 2) === 0,
+                LeadStatus::New->value => null,
+                default => random_int(0, 1) === 1,
+            },
             'provider' => 'generic_webhook',
             'provider_lead_id' => 'demo-'.Str::random(10),
             'assigned_at' => $assignee ? $createdAt->copy()->addMinutes(random_int(1, 120)) : null,
             'last_contact_at' => $status === LeadStatus::New->value ? null : $createdAt->copy()->addDays(random_int(1, 3)),
+            /*
+             * Response times a sales manager would recognise: most leads
+             * answered within the hour, a tail that took far longer. A seed
+             * where everyone is answered in four minutes makes the response
+             * report look broken.
+             */
+            'first_contact_at' => $status === LeadStatus::New->value
+                ? ($index % 5 === 0 ? null : $createdAt->copy()->addMinutes(random_int(4, 50)))
+                : $createdAt->copy()->addMinutes($index % 7 === 0 ? random_int(240, 2880) : random_int(3, 90)),
+            'first_response_at' => in_array($status, [LeadStatus::New->value, LeadStatus::Lost->value], true)
+                ? null
+                : $createdAt->copy()->addMinutes(random_int(60, 600)),
+            'whatsapp_opt_in_at' => $status === LeadStatus::New->value ? null : $createdAt->copy()->addHours(2),
             'won_at' => $status === LeadStatus::Won->value ? $createdAt->copy()->addDays(random_int(5, 20)) : null,
             'lost_at' => $status === LeadStatus::Lost->value ? $createdAt->copy()->addDays(random_int(3, 15)) : null,
             'lost_reason_id' => $status === LeadStatus::Lost->value ? $this->lostReasons->random()->id : null,
@@ -126,8 +158,100 @@ class LeadFabricator
 
         $this->buildTimeline($lead, $assignee, $status, $createdAt);
         $this->scheduleFollowUp($lead, $assignee, $status, $createdAt, $index);
+        $this->buildConversation($lead, $assignee, $status, $createdAt, $index);
 
         return $lead;
+    }
+
+    /**
+     * A WhatsApp exchange on roughly half the worked leads.
+     *
+     * A demo where every lead has a conversation looks staged, and one where
+     * none do cannot show the feature at all. Leads still sitting in "new" get
+     * nothing, which is the point of the neglected-leads panel.
+     */
+    private function buildConversation(Lead $lead, ?User $assignee, string $status, $createdAt, int $index): void
+    {
+        if ($status === LeadStatus::New->value || $index % 2 === 1) {
+            return;
+        }
+
+        /*
+         * Divided, not modulo'd: only even indexes reach here, so `$index %`
+         * could never select an odd-numbered script — which happened to be the
+         * one where the customer has not replied yet. A demo without that case
+         * cannot show why follow-ups exist.
+         */
+        $script = DemoContent::CONVERSATIONS[intdiv($index, 2) % count(DemoContent::CONVERSATIONS)];
+        $at = $createdAt->copy()->addMinutes(random_int(5, 90));
+
+        foreach ($script as $turn => $body) {
+            $outbound = $turn % 2 === 0;
+
+            LeadMessage::create([
+                'tenant_id' => $this->tenant->id,
+                'lead_id' => $lead->id,
+                'user_id' => $outbound ? $assignee?->id : null,
+                'direction' => $outbound ? MessageDirection::Outbound : MessageDirection::Inbound,
+                'channel' => MessageChannel::Whatsapp,
+                'provider' => 'mock',
+                'provider_message_id' => 'wamid.demo.'.$lead->id.'.'.$turn,
+                'message_type' => 'text',
+                'body' => $this->fill($body, $lead, $assignee),
+                // The last outbound message of an unfinished exchange is still
+                // only delivered — which is what "they have not replied yet"
+                // looks like on the screen.
+                'status' => match (true) {
+                    ! $outbound => MessageStatus::Received,
+                    $turn === count($script) - 1 => MessageStatus::Delivered,
+                    default => MessageStatus::Read,
+                },
+                'sent_at' => $outbound ? $at->copy() : null,
+                'delivered_at' => $outbound ? $at->copy()->addSeconds(4) : null,
+                'read_at' => $outbound && $turn < count($script) - 1 ? $at->copy()->addMinutes(2) : null,
+                'created_at' => $at->copy(),
+                'updated_at' => $at->copy(),
+            ]);
+
+            $at = $at->addMinutes(random_int(3, 45));
+        }
+    }
+
+    /** The placeholders a saved message carries, filled for this lead. */
+    private function fill(string $body, Lead $lead, ?User $assignee): string
+    {
+        return strtr($body, [
+            '{{name}}' => $lead->first_name ?? '',
+            '{{agent}}' => $assignee?->name ?? 'فريق المبيعات',
+            '{{company}}' => $this->tenant->name,
+            '{{project}}' => $lead->project?->name ?? '',
+        ]);
+    }
+
+    private function financingFor(string $status): ?string
+    {
+        return match ($status) {
+            LeadStatus::Won->value => 'approved',
+            LeadStatus::Appointment->value => random_int(0, 1) ? 'approved' : 'in_progress',
+            LeadStatus::Qualified->value => ['approved', 'in_progress', 'not_started'][random_int(0, 2)],
+            LeadStatus::Contacted->value => random_int(0, 1) ? 'in_progress' : 'not_started',
+            LeadStatus::Lost->value => random_int(0, 1) ? 'not_started' : 'unknown',
+            default => null,
+        };
+    }
+
+    private function qualificationFor(string $status): string
+    {
+        return match ($status) {
+            LeadStatus::Qualified->value,
+            LeadStatus::Appointment->value,
+            LeadStatus::Won->value => QualificationStatus::Qualified->value,
+            LeadStatus::Contacted->value => random_int(0, 2) === 0
+                ? QualificationStatus::Qualified->value
+                : QualificationStatus::PartiallyQualified->value,
+            LeadStatus::Lost->value => QualificationStatus::PartiallyQualified->value,
+            default => QualificationStatus::Unqualified->value,
+        };
     }
 
     /** Score bands that make each stage's temperature mix believable. */

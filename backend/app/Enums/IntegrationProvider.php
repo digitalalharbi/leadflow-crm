@@ -12,6 +12,7 @@ enum IntegrationProvider: string
     case LinkedIn = 'linkedin';
     case Snapchat = 'snapchat';
     case CsvImport = 'csv_import';
+    case Whatsapp = 'whatsapp';
     case Manual = 'manual';
 
     public static function values(): array
@@ -30,7 +31,9 @@ enum IntegrationProvider: string
             self::LinkedIn => Platform::LinkedIn,
             self::Snapchat => Platform::Snapchat,
             self::CsvImport => Platform::Import,
-            self::Manual => Platform::Manual,
+            // WhatsApp is a conversation channel, not a lead source. A lead that
+            // first appears over WhatsApp keeps whatever platform brought it in.
+            self::Whatsapp, self::Manual => Platform::Manual,
         };
     }
 }

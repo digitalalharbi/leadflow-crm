@@ -30,6 +30,7 @@ class SettingsController extends Controller
                 'assignment_mode' => $tenant->settings?->assignment_mode,
                 'score_warm_threshold' => $tenant->settings?->score_warm_threshold,
                 'score_hot_threshold' => $tenant->settings?->score_hot_threshold,
+                'first_contact_target_minutes' => $tenant->settings?->first_contact_target_minutes,
                 'whatsapp_template' => $tenant->settings?->whatsapp_template,
                 'onboarding' => $tenant->settings?->onboarding,
             ],
@@ -87,6 +88,9 @@ class SettingsController extends Controller
             'assignment_mode' => ['sometimes', 'in:manual,round_robin'],
             'score_warm_threshold' => ['sometimes', 'integer', 'min:1', 'max:99'],
             'score_hot_threshold' => ['sometimes', 'integer', 'min:2', 'max:100', 'gt:score_warm_threshold'],
+            // How long a new lead may sit untouched before the dashboard calls
+            // it neglected. A week is the ceiling; past that it is not a target.
+            'first_contact_target_minutes' => ['sometimes', 'integer', 'min:1', 'max:10080'],
             'whatsapp_template' => ['nullable', 'string', 'max:1000'],
         ]);
 

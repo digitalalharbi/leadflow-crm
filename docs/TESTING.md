@@ -1,7 +1,7 @@
 # Testing
 
 ```bash
-# Backend — 226 tests
+# Backend — 305 tests
 cd backend
 createdb leadflow_testing
 php artisan test
@@ -11,7 +11,7 @@ php artisan test
 cd frontend
 npm run lint && npm run typecheck && npm run test && npm run build
 
-# Browser — 74 Playwright tests (needs the API and the SPA running)
+# Browser — 91 Playwright tests (needs the API and the SPA running)
 npm run test:e2e
 ```
 
@@ -25,22 +25,29 @@ production broke — the opposite of what a test is for.
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
-| `TenantIsolationTest` | 18 | A tenant cannot reach another tenant's data by any route |
+| `LeadManagementTest` | 25 | Lead lifecycle, role visibility, duplicate handling, export |
 | `WebhookReadinessTest` | 24 | The public endpoint under every condition a real ad platform produces |
-| `LeadManagementTest` | 23 | Lead lifecycle, role visibility, duplicate handling, export |
 | `LeadIngestionTest` | 19 | The public webhook accepts real leads and refuses everything else |
-| `SecurityHardeningTest` | 17 | Regressions for every finding in both security reviews |
+| `TenantIsolationTest` | 18 | A tenant cannot reach another tenant's data by any route |
+| `SecurityHardeningTest` | 17 | Regressions for every finding in all three security reviews |
+| `WhatsappSecurityTest` | 15 | Signature forgery, replay, cross-tenant routing, credential leakage |
+| `QualificationTest` | 15 | Scoring is deterministic, explainable, and blind to who the person is |
+| `WhatsappMessagingTest` | 13 | Sending, receiving, delivery receipts, opt-out, idempotency |
+| `FollowUpTest` | 13 | Buckets — disjoint and exhaustive — outcomes, the next call, visibility |
 | `AuthenticationTest` | 12 | Login, lockout, token revocation, suspension, expiry |
+| `MessageTemplateTest` | 9 | Saved messages, and that no unfilled placeholder reaches a customer |
+| `CampaignQualityTest` | 9 | A noisy campaign and a good one read differently |
 | `CsvImportTest` | 8 | Upload, mapping, duplicates, failures, file cleanup |
-| `CrossTenantInjectionTest` | 8 | A foreign key from an untrusted payload can never reach another tenant's row |
-| `FollowUpTest` | 8 | Buckets — disjoint and exhaustive — completion, visibility |
+| `CrossTenantInjectionTest` | 8 | A foreign key from an untrusted payload can never reach another tenant |
 | `SuperAdminTest` | 8 | Tenant provisioning, suspension, platform stats |
 | `WhiteLabelTest` | 8 | Branding is public, isolated, and leaks nothing operational |
 | `PhoneNormalizerTest` | 6 (20 cases) | Every Saudi format collapses to one key |
-| `LeadSearchTest` | 6 (10 cases) | Name, email and phone search, in Arabic and in Arabic-Indic digits |
-| `AssignmentIntegrityTest` | 5 | Only someone who may reassign may choose an owner, and only an active colleague |
-| `ExportSafetyTest` | 4 (9 cases) | A formula submitted through the webhook cannot execute in the buyer's spreadsheet |
-| `LeadScorerTest` | 4 | Scoring and temperature thresholds |
+| `LeadSearchTest` | 6 (10 cases) | Name, email and phone search, in Arabic and Arabic-Indic digits |
+| `ResponseTimeTest` | 6 | Neglected leads surface, and the number matches the list behind it |
+| `AssignmentIntegrityTest` | 5 | Only someone who may reassign may choose an owner |
+| `LeadDetailPerformanceTest` | 5 | A six-month-old lead opens in the same queries as a new one |
+| `ExportSafetyTest` | 4 (9 cases) | A formula from the webhook cannot execute in the buyer's spreadsheet |
+| `LeadScoringServiceTest` | 4 | The bands, the documented weights, and no rule keyed on identity |
 | `DemoEndpointTest` | 4 | The demo lead generator cannot exist in production |
 | `MalformedInputTest` | 3 (21 cases) | A bad identifier is a 404, on every route and filter |
 
@@ -101,7 +108,7 @@ Worth recording, because they are the argument for writing them:
 
 ## Browser coverage
 
-74 Playwright tests across 11 specs, run against the real API and the real SPA.
+91 Playwright tests across 14 specs, run against the real API and the real SPA.
 
 | Spec | Tests | What it proves |
 | --- | --- | --- |
@@ -116,6 +123,9 @@ Worth recording, because they are the argument for writing them:
 | `mobile.spec.ts` | 5 | The drawer, the stacked list and working a lead on a Pixel 7 |
 | `pipeline.spec.ts` | 4 | Drag between columns, and the move reaching the backend and the timeline |
 | `tenant-onboarding.spec.ts` | 5 | A new client is created from the platform screen and signs in, with no code change |
+| `whatsapp.spec.ts` | 9 | Settings without leaking a secret, sending, inbound delivery, signature refusal, opt-out |
+| `qualification.spec.ts` | 5 | Qualifying from the quick actions moves the score, the temperature and the timeline |
+| `campaign-quality.spec.ts` | 3 | The report reads as rates, not counts, and a rep cannot open it |
 
 The fixtures come from a dedicated seeder (`leadflow:seed-e2e`), not the demo
 data: a suite that depends on data someone may reseed is a suite that will go red

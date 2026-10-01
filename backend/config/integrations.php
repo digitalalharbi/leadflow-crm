@@ -51,6 +51,25 @@ return [
         'per_ip_per_minute' => (int) env('LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE', 20),
     ],
 
+    /*
+     * WhatsApp callbacks are far chattier than lead ingestion — a single
+     * conversation produces a message plus sent, delivered and read receipts —
+     * and they arrive from Meta's own address range, so the meaningful bucket
+     * is the phone number, not the caller.
+     */
+    'whatsapp' => [
+        'per_number_per_minute' => (int) env('WHATSAPP_RATE_LIMIT_PER_NUMBER', 600),
+        'per_ip_per_minute' => (int) env('WHATSAPP_RATE_LIMIT_PER_IP', 3000),
+
+        /*
+         * Outbound, per conversation. Generous enough that a rep in a live
+         * exchange never notices, and low enough that a stuck client or a
+         * stolen token cannot turn one buyer into a complaint — and a reported
+         * number is the end of this channel for the tenant who owns it.
+         */
+        'messages_per_lead_per_minute' => (int) env('WHATSAPP_MESSAGES_PER_LEAD', 10),
+    ],
+
     'webhooks' => [
         'max_body_bytes' => (int) env('WEBHOOK_MAX_BODY_BYTES', 65536),
         'rate_limit_per_minute' => (int) env('WEBHOOK_RATE_LIMIT_PER_MINUTE', 120),

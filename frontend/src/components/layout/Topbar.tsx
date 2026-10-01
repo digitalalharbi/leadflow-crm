@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Check, Globe, LogOut, Menu, User as UserIcon } from 'lucide-react'
+import { Bell, Check, Globe, LogOut, Menu, Monitor, Moon, Sun, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
@@ -19,6 +19,8 @@ export function Topbar() {
   const user = useAuth((s) => s.user)
   const logout = useAuth((s) => s.logout)
   const toggleSidebar = useUi((s) => s.toggleSidebar)
+  const appearance = useUi((s) => s.appearance)
+  const setAppearance = useUi((s) => s.setAppearance)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   // Polling, not WebSockets: simpler to operate and enough for the MVP.
@@ -41,7 +43,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)]/90 px-4 backdrop-blur">
+    <header className="material sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-[var(--color-line)] px-4">
       <button
         type="button"
         onClick={toggleSidebar}
@@ -60,7 +62,7 @@ export function Topbar() {
             type="button"
             onClick={toggle}
             aria-label={t('settings.language')}
-            className="grid size-9 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
+            className="pressable grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
           >
             <Globe className="size-[1.125rem]" aria-hidden />
           </button>
@@ -90,13 +92,57 @@ export function Topbar() {
         )}
       </Dropdown>
 
+      {/* Appearance */}
+      <Dropdown
+        trigger={({ toggle }) => (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={t('appearance.label')}
+            data-testid="appearance-menu"
+            className="pressable grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+          >
+            {appearance === 'dark' ? (
+              <Moon className="size-[1.125rem]" aria-hidden />
+            ) : appearance === 'light' ? (
+              <Sun className="size-[1.125rem]" aria-hidden />
+            ) : (
+              <Monitor className="size-[1.125rem]" aria-hidden />
+            )}
+          </button>
+        )}
+      >
+        {({ close }) => (
+          <>
+            {(['system', 'light', 'dark'] as const).map((option) => (
+              <DropdownItem
+                key={option}
+                onClick={() => {
+                  setAppearance(option)
+                  close()
+                }}
+                icon={
+                  appearance === option ? (
+                    <Check className="size-4" aria-hidden />
+                  ) : (
+                    <span className="size-4" aria-hidden />
+                  )
+                }
+              >
+                {t(`appearance.${option}`)}
+              </DropdownItem>
+            ))}
+          </>
+        )}
+      </Dropdown>
+
       {/* Notifications */}
       <div className="relative">
         <button
           type="button"
           onClick={() => setNotificationsOpen((v) => !v)}
           aria-label={t('nav.notifications')}
-          className="relative grid size-9 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
+          className="pressable relative grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
         >
           <Bell className="size-[1.125rem]" aria-hidden />
           {unread > 0 && (

@@ -1,5 +1,7 @@
 import { request, type APIRequestContext } from '@playwright/test'
-import { PASSWORD } from './data'
+import { createHmac } from 'node:crypto'
+
+import { PASSWORD, WHATSAPP } from './data'
 
 const API_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:8000'
 
@@ -85,6 +87,61 @@ export async function postWebhook(
     })
   } finally {
     await context.dispose()
+  }
+}
+
+/**
+ * Delivers a WhatsApp Cloud API payload the way Meta does — signed with the
+ * tenant's app secret, over the raw body, because the server verifies the bytes
+ * it received rather than a re-serialisation of them.
+ */
+export async function postWhatsappWebhook(
+  payload: unknown,
+  appSecret: string | null = WHATSAPP.appSecret,
+): Promise<{ status: number; body: { data?: Record<string, number> } }> {
+  const context = await request.newContext({ baseURL: API_URL })
+  const raw = JSON.stringify(payload)
+
+  try {
+    const response = await context.post('/api/v1/integrations/whatsapp/webhook', {
+      data: raw,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(appSecret
+          ? { 'X-Hub-Signature-256': `sha256=${createHmac('sha256', appSecret).update(raw).digest('hex')}` }
+          : {}),
+      },
+      failOnStatusCode: false,
+    })
+
+    // Read the body before the context is disposed: a disposed response cannot
+    // be parsed, and the counts are the whole point of asserting on it.
+    const status = response.status()
+    const body = status === 200 ? await response.json() : {}
+
+    return { status, body }
+  } finally {
+    await context.dispose()
+  }
+}
+
+/** An inbound text message, in the shape the Cloud API sends. */
+export function inboundWhatsappMessage(from: string, text: string, id = `wamid.e2e.${Date.now()}`) {
+  return {
+    object: 'whatsapp_business_account',
+    entry: [{
+      id: '900900900',
+      changes: [{
+        field: 'messages',
+        value: {
+          messaging_product: 'whatsapp',
+          metadata: { display_phone_number: '966500000000', phone_number_id: WHATSAPP.phoneNumberId },
+          contacts: [{ profile: { name: 'عميل' }, wa_id: from }],
+          messages: [{ from, id, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: text } }],
+        },
+      }],
+    }],
   }
 }
 

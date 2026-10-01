@@ -42,6 +42,12 @@ new customers are created.
 * Activity timelines, notes, lost reasons and campaign attribution
 * 14 campaigns across Meta, TikTok, Snapchat, Google Ads, LinkedIn and owned
   channels, so the source report has something to say
+* WhatsApp conversations on about half the worked leads — including twenty-odd
+  where the customer has not replied yet, which is the case the follow-up
+  queue exists for
+* Qualification filled in to the degree each stage implies, so the scoring
+  card has reasons to show and the campaign quality report has rates to
+  compare
 
 Refresh it at any time with `./scripts/refresh-demo.sh`.
 

@@ -339,4 +339,27 @@ class LeadManagementTest extends TestCase
             'phone_normalized' => '+966512345678',
         ], $attributes)));
     }
+
+    public function test_a_budget_ceiling_can_be_given_without_a_floor(): void
+    {
+        // "Up to 900,000" is how most buyers answer the budget question. A rule
+        // that required a floor alongside it rejected the normal case.
+        $this->actingAs($this->t['admin'])->postJson('/api/v1/leads', [
+            'full_name' => 'عميل بسقف ميزانية',
+            'phone' => '0553334444',
+            'budget_max' => 900000,
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('leads', ['full_name' => 'عميل بسقف ميزانية', 'budget_max' => 900000]);
+    }
+
+    public function test_a_ceiling_below_the_floor_is_still_refused(): void
+    {
+        $this->actingAs($this->t['admin'])->postJson('/api/v1/leads', [
+            'full_name' => 'ميزانية مقلوبة',
+            'phone' => '0553335555',
+            'budget_min' => 900000,
+            'budget_max' => 100000,
+        ])->assertStatus(422)->assertJsonValidationErrors('budget_max');
+    }
 }

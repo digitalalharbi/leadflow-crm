@@ -6,6 +6,7 @@ use App\Enums\IntegrationProvider;
 use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\LostReason;
+use App\Models\MessageTemplate;
 use App\Models\Tenant;
 use App\Models\TenantBranding;
 use App\Models\TenantSetting;
@@ -62,6 +63,17 @@ class TenantProvisioningService
                     'whatsapp_template' => 'مرحباً {{name}}، معك {{agent}} من {{company}} بخصوص اهتمامك بمشروع {{project}}.',
                     'onboarding' => $this->initialOnboarding(),
                 ]);
+
+                // A workspace with no saved messages has a composer nobody uses.
+                foreach (MessageTemplate::DEFAULTS as $index => $template) {
+                    MessageTemplate::create([
+                        'name' => $template['name'],
+                        'body' => $template['body'],
+                        'channel' => 'whatsapp',
+                        'is_active' => true,
+                        'sort_order' => $index,
+                    ]);
+                }
 
                 foreach (LostReason::DEFAULTS as $index => $reason) {
                     LostReason::create([

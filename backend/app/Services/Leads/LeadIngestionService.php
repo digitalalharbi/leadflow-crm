@@ -6,7 +6,6 @@ use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
-use App\Enums\LeadTemperature;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
@@ -28,7 +27,7 @@ class LeadIngestionService
 {
     public function __construct(
         private PhoneNormalizer $phones,
-        private LeadScorer $scorer,
+        private LeadScoringService $scoring,
         private LeadAssignmentService $assignment,
         private ActivityLogger $activities,
         private TenantContext $context,
@@ -88,8 +87,6 @@ class LeadIngestionService
 
     private function create(Tenant $tenant, IncomingLead $incoming, ?string $phone, $settings): IngestionResult
     {
-        $score = $this->scorer->scoreIncoming($incoming);
-
         $lead = Lead::create([
             'first_name' => $incoming->firstName,
             'last_name' => $incoming->lastName,
@@ -109,12 +106,6 @@ class LeadIngestionService
             'form_name' => $incoming->formName,
             'form_id' => $incoming->formId,
             'status' => LeadStatus::New,
-            'temperature' => LeadTemperature::fromScore(
-                $score,
-                $settings?->score_warm_threshold ?? 40,
-                $settings?->score_hot_threshold ?? 70,
-            ),
-            'score' => $score,
             // Resolved under the tenant scope: an id belonging to another tenant
             // simply is not there, so it lands as null instead of leaking.
             'project_id' => $this->resolveProjectId($incoming->projectId),
@@ -129,6 +120,15 @@ class LeadIngestionService
             'provider_lead_id' => $incoming->providerLeadId,
             'provider_payload' => $incoming->redactedPayload() ?: null,
         ]);
+
+        /*
+         * Scored after the row exists, by the same engine the qualification
+         * screen uses. Scoring the DTO separately meant an inbound lead and the
+         * same lead re-saved by a rep could disagree about its own temperature.
+         */
+        $this->scoring->apply($lead);
+        $lead->qualification_status = $this->scoring->qualificationStatus($lead);
+        $lead->saveQuietly();
 
         $this->recordSourceEvent($lead, $incoming, false);
         $this->storeCustomFields($lead, $incoming);

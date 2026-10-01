@@ -28,7 +28,7 @@ use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Services\Leads\LeadIngestionService;
 use App\Services\Leads\LeadQueryBuilder;
-use App\Services\Leads\LeadScorer;
+use App\Services\Leads\LeadScoringService;
 use App\Services\Leads\PhoneNormalizer;
 use App\Support\ApiResponse;
 use App\Support\CsvWriter;
@@ -47,7 +47,7 @@ class LeadController extends Controller
         private LeadIngestionService $ingestion,
         private LeadAssignmentService $assignment,
         private ActivityLogger $activities,
-        private LeadScorer $scorer,
+        private LeadScoringService $scoring,
         private PhoneNormalizer $phones,
         private AuditLogger $audit,
     ) {}
@@ -257,14 +257,20 @@ class LeadController extends Controller
 
         if (in_array($new, [LeadStatus::Contacted, LeadStatus::Qualified, LeadStatus::Appointment], true)) {
             $lead->last_contact_at = now();
+            $lead->first_contact_at ??= now();
         }
 
-        $lead->score = $this->scorer->rescore($lead);
-        $lead->temperature = LeadTemperature::fromScore(
-            $lead->score,
-            $lead->tenant->settings?->score_warm_threshold ?? 40,
-            $lead->tenant->settings?->score_hot_threshold ?? 70,
-        );
+        // A booked appointment is the strongest possible form of "wants to
+        // visit", so the stage records the fact the score reads rather than the
+        // score carrying a separate bonus for the stage.
+        if ($new === LeadStatus::Appointment) {
+            $lead->appointment_interest = true;
+        }
+
+        // apply() sets the score and the temperature together, reading the
+        // tenant's own thresholds.
+        $this->scoring->apply($lead);
+        $lead->qualification_status = $this->scoring->qualificationStatus($lead);
 
         // The lead row and its activity rows have to land together: the reports
         // read the activities, so a half-applied change would misreport a win.
@@ -351,6 +357,9 @@ class LeadController extends Controller
 
         if ($data['channel'] !== 'no_answer') {
             $lead->last_contact_at = now();
+            // The response-time report measures from arrival to the first time
+            // anyone reached out, whichever way they did it.
+            $lead->first_contact_at ??= now();
 
             // First real contact moves the lead out of "new" automatically.
             if ($lead->status === LeadStatus::New) {

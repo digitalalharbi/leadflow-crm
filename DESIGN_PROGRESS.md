@@ -42,18 +42,23 @@ without re-reading the diff.
 | Dashboard analytics service | `backend/app/Services/Analytics/DashboardAnalytics.php` |
 | Demo campaigns with distinct quality profiles | `backend/database/seeders/Support/DemoContent.php` |
 | `/dev/design-system` | `frontend/src/pages/dev/DesignSystem.tsx` |
+| **Leads** list: chip filter bar, identity column, source column | `frontend/src/pages/Leads.tsx`, `components/leads/LeadFilters.tsx` |
+| **Lead detail** header: score ring + one-line facts | `frontend/src/pages/LeadDetail.tsx`, `components/leads/ScoreRing.tsx` |
+| **Reports**: five tabs, one filter set, lost-reason bars, sales-team table | `frontend/src/pages/Reports.tsx`, `charts/LostReasonsChart.tsx` |
+| Sales-team report API (measurements, not a ranking) | `backend/.../SalesPerformanceController::salesTeam` |
+| **Pipeline** card slimmed to what decides the next move | `frontend/src/pages/Pipeline.tsx` |
 
 ## Remaining
 
 Pages, in this order. Each needs individual design attention — inheriting
 tokens is not enough. Open each in the browser and look at it.
 
-- [ ] Leads
-- [ ] Lead Detail
-- [ ] Pipeline
+- [x] Leads
+- [x] Lead Detail
+- [x] Pipeline — card done; column headers and the mobile board still to review
 - [ ] Follow-ups
 - [ ] Projects
-- [ ] Reports (tabs: overview / campaigns / platforms / sales team / lost reasons)
+- [x] Reports (tabs: overview / campaigns / platforms / sales team / lost reasons)
 - [ ] Integrations
 - [ ] Users
 - [ ] Settings (split into sections, not one long page)
@@ -91,4 +96,25 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 ## Test baseline
 
-331 backend · 32 frontend unit · 91 Playwright. None of these may regress.
+**334 backend · 35 frontend unit · 91 Playwright.** None of these may regress.
+
+## Visual bugs found and fixed so far
+
+Each of these was found by opening the page, not by a failing test — which is
+the reason the brief asks for the browser pass.
+
+1. The brand mark's first two drafts read as a tadpole and as a Latin "C" with
+   the tail running backwards for Arabic. Redrawn twice.
+2. The demo seeder marked 80% of leads still in "new" as already contacted, so
+   the funnel's contact stage read 98% and the neglected-leads panel was empty.
+3. The lead header's score ring said 89 while the breakdown beneath it totalled
+   77 — the seeder wrote a random score per stage instead of running the rules
+   engine. All 180 demo leads now agree with it.
+4. An overdue follow-up rendered as `23:53`, a bare clock time with no hint it
+   had passed. `formatDue` now says how late it is.
+5. 62% of the demo workspace read "hot", because every qualification field was
+   filled for every lead regardless of stage. Qualification now arrives in the
+   order a rep learns it; the split is 39/16/45.
+6. Campaign bubbles in the matrix all clustered, because demo campaigns were
+   assigned at random and so converted identically. Campaigns now carry a
+   quality weight and are picked by how far the lead got.

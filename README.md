@@ -73,7 +73,7 @@ decision, including the ones that were deliberately left simple.
 
 ## Stack
 
-**Backend** — Laravel 12 · PHP 8.3+ · PostgreSQL 16 · Redis 7 · Sanctum · Horizon
+**Backend** — Laravel 12 · PHP 8.4 · PostgreSQL 16 · Redis 7 · Sanctum · Horizon
 **Frontend** — React 19 · Vite · TypeScript (strict) · Tailwind CSS 4 · TanStack Query · Zustand · React Router · dnd-kit · Recharts · i18next
 **Infrastructure** — Docker Compose · Nginx · GitHub Actions · Let's Encrypt
 
@@ -81,7 +81,7 @@ decision, including the ones that were deliberately left simple.
 
 ## Requirements
 
-* PHP 8.3 or 8.4 with `pdo_pgsql`, `mbstring`, `bcmath`, `intl`, `zip`
+* PHP 8.4 with `pdo_pgsql`, `mbstring`, `bcmath`, `intl`, `zip`
 * Composer 2
 * Node 22+
 * PostgreSQL 16 and Redis 7

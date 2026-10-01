@@ -1,12 +1,11 @@
 name: Frontend tests
 
 on:
-  push:
-    branches: [main, develop]
-    paths: ['frontend/**', '.github/workflows/frontend-tests.yml']
   pull_request:
     branches: [main, develop]
     paths: ['frontend/**', '.github/workflows/frontend-tests.yml']
+  # Called by the deploy workflows, which own the push path — running on push
+  # here as well would duplicate the work and cancel itself via `concurrency`.
   workflow_call:
 
 concurrency:

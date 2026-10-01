@@ -1,12 +1,11 @@
 name: Backend tests
 
 on:
-  push:
-    branches: [main, develop]
-    paths: ['backend/**', '.github/workflows/backend-tests.yml']
   pull_request:
     branches: [main, develop]
     paths: ['backend/**', '.github/workflows/backend-tests.yml']
+  # Called by the deploy workflows, which own the push path — running on push
+  # here as well would duplicate the work and cancel itself via `concurrency`.
   workflow_call:
 
 concurrency:
@@ -15,14 +14,9 @@ concurrency:
 
 jobs:
   test:
-    name: PHP ${{ matrix.php }}
+    name: PHP 8.4
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ['8.3', '8.4']
 
     services:
       postgres:
@@ -59,7 +53,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: '8.4'
           extensions: pdo_pgsql, pgsql, mbstring, bcmath, intl, zip
           coverage: none
           tools: composer:v2
@@ -71,8 +65,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/vendor
-          key: composer-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-${{ matrix.php }}-
+          key: composer-8.4-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-8.4-
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress

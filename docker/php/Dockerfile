@@ -3,7 +3,7 @@
 # Laravel API image. Used for php-fpm, the queue worker and Horizon — one image,
 # three commands, so they can never drift out of sync.
 # ---------------------------------------------------------------------------
-FROM php:8.3-fpm-alpine AS base
+FROM php:8.4-fpm-alpine AS base
 
 RUN apk add --no-cache \
         postgresql-dev \

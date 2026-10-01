@@ -33,12 +33,25 @@ new customers are created.
 
 ## Seeded data
 
-* 3 projects, 1 sales manager, 5 sales reps
-* ~85 leads spread realistically across the funnel, not evenly
+* 5 projects, 1 sales manager, 5 sales reps
+* 180 leads shaped like a real funnel — 48 new, 42 contacted, 31 qualified,
+  18 with an appointment, 14 won, 27 lost — not spread evenly
 * Hot / Warm / Cold mix driven by the actual scoring rules
-* Follow-ups deliberately split across overdue, today and upcoming
+* Follow-ups across all three buckets: 22 overdue, 59 due today, 36 upcoming.
+  Overdue has to be visible, because it is the problem the product solves
 * Activity timelines, notes, lost reasons and campaign attribution
-* Six realistic campaigns across Meta, TikTok, Snapchat, Google Ads and LinkedIn
+* 14 campaigns across Meta, TikTok, Snapchat, Google Ads, LinkedIn and owned
+  channels, so the source report has something to say
+
+Refresh it at any time with `./scripts/refresh-demo.sh`.
+
+## During a demo
+
+The **Integrations** page has a *Simulate an incoming lead* control. It pushes a
+lead through the real ingestion pipeline — normalisation, duplicate detection,
+assignment, activity log — so you can say "this one just arrived from the
+Snapchat campaign" and have the prospect watch it land. It is admin-only, and
+neither the control nor its endpoint exists in production.
 
 ## Webhook endpoint
 

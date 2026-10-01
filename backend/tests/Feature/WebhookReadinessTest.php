@@ -6,6 +6,7 @@ use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\WebhookEndpoint;
 use App\Models\WebhookLog;
+use App\Services\Leads\LeadIngestionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -307,5 +308,82 @@ class WebhookReadinessTest extends TestCase
 
         $this->assertSame('new', $lead->status->value);
         $this->assertNull($lead->lost_at);
+    }
+
+    public function test_an_endpoint_without_an_integration_is_not_a_server_error(): void
+    {
+        // integration_id is nullable, so an endpoint can legitimately stand
+        // alone. Authorizing against the class name instead of the record left
+        // the orphan case to fall through to a TypeError.
+        $endpoint = $this->asTenant($this->t['tenant'], fn () => WebhookEndpoint::first());
+        $endpoint->forceFill(['integration_id' => null])->saveQuietly();
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/webhook-endpoints/{$endpoint->uuid}/rotate")
+            ->assertStatus(404);
+
+        $this->actingAs($this->t['admin'])
+            ->deleteJson("/api/v1/webhook-endpoints/{$endpoint->uuid}")
+            ->assertStatus(404);
+    }
+
+    public function test_an_unknown_field_cannot_impersonate_a_canonical_one(): void
+    {
+        // flatten() also exposes the leaf of a dotted key ("lead.phone" => "phone").
+        // A key with no dot has no leaf, so taking one anyway lets "xcity" pass
+        // itself off as "city" — an advertiser's stray field overwriting ours.
+        $this->postJson("/api/v1/integrations/webhooks/{$this->key}/leads", [
+            'full_name' => 'كامل الاسم',
+            'phone' => '0556667777',
+            'xcity' => 'مدينة مزيفة',
+        ], ['X-Webhook-Secret' => $this->secret])->assertSuccessful();
+
+        $lead = Lead::withoutGlobalScopes()->firstWhere('full_name', 'كامل الاسم');
+
+        $this->assertNotNull($lead);
+        $this->assertNotSame('مدينة مزيفة', $lead->city);
+    }
+
+    public function test_the_secret_is_not_accepted_from_the_query_string(): void
+    {
+        // A query string is written to access logs, proxy logs and browser
+        // history. A shared secret that travels there is already compromised.
+        $this->postJson(
+            "/api/v1/integrations/webhooks/{$this->key}/leads?secret={$this->secret}",
+            ['full_name' => 'عميل الرابط', 'phone' => '0556660001'],
+        )->assertStatus(401);
+
+        $this->assertDatabaseMissing('leads', ['full_name' => 'عميل الرابط']);
+    }
+
+    public function test_the_secret_is_still_accepted_in_the_body(): void
+    {
+        $this->postJson("/api/v1/integrations/webhooks/{$this->key}/leads", [
+            'secret' => $this->secret,
+            'full_name' => 'عميل المتن',
+            'phone' => '0556660002',
+        ])->assertSuccessful();
+
+        $this->assertDatabaseHas('leads', ['full_name' => 'عميل المتن']);
+    }
+
+    public function test_an_ingestion_failure_never_shows_internal_detail_to_the_tenant(): void
+    {
+        // webhook_logs.error is rendered in the client's own integrations screen,
+        // and a database message carries the SQL with its bindings.
+        $this->mock(LeadIngestionService::class)
+            ->shouldReceive('ingest')
+            ->andThrow(new \RuntimeException("SQLSTATE[23505]: insert into \"leads\" values ('0555000111')"));
+
+        $this->postJson("/api/v1/integrations/webhooks/{$this->key}/leads", [
+            'full_name' => 'عميل الفشل',
+            'phone' => '0556660003',
+        ], ['X-Webhook-Secret' => $this->secret])->assertStatus(500);
+
+        $logged = \DB::table('webhook_logs')->orderByDesc('id')->first();
+
+        $this->assertNotNull($logged);
+        $this->assertStringNotContainsString('0555000111', (string) $logged->error);
+        $this->assertStringNotContainsString('insert into', (string) $logged->error);
     }
 }

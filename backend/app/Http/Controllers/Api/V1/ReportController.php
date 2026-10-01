@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
+use App\Support\CsvWriter;
 use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -64,11 +65,11 @@ class ReportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Label', 'Total Leads', 'Qualified', 'Appointments', 'Won', 'Lost', 'Conversion %']);
+            $csv = CsvWriter::open($out);
+            $csv->writeRow(['Label', 'Total Leads', 'Qualified', 'Appointments', 'Won', 'Lost', 'Conversion %']);
 
             foreach ($rows as $row) {
-                fputcsv($out, [
+                $csv->writeRow([
                     $row['label'], $row['total'], $row['qualified'],
                     $row['appointments'], $row['won'], $row['lost'], $row['conversion_rate'],
                 ]);

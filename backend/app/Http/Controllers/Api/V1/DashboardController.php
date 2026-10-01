@@ -11,6 +11,7 @@ use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\Uuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,11 +139,11 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('project_id')) {
-            $query->whereHas('project', fn ($p) => $p->where('uuid', $request->input('project_id')));
+            $query->whereHas('project', fn ($p) => $p->whereIn('uuid', Uuid::onlyValid($request->input('project_id'))));
         }
 
         if ($request->filled('assigned_to') && $request->user()->seesAllLeads()) {
-            $query->whereHas('assignee', fn ($u) => $u->where('uuid', $request->input('assigned_to')));
+            $query->whereHas('assignee', fn ($u) => $u->whereIn('uuid', Uuid::onlyValid($request->input('assigned_to'))));
         }
 
         return $query;

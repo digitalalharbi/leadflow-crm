@@ -47,6 +47,18 @@ class AuthController extends Controller
         $user = $candidates->first(fn (User $candidate) => Hash::check($password, $candidate->password));
 
         if (! $user) {
+            /*
+             * No candidate matched — which includes the case where the email is
+             * unknown and no hash was computed at all. Answering that in a few
+             * microseconds tells an attacker the address does not exist, so do
+             * the work anyway before refusing.
+             */
+            if ($candidates->isEmpty()) {
+                // Hashing costs the same as the check we did not get to perform,
+                // and tracks the configured cost factor on its own.
+                Hash::make($password);
+            }
+
             // Identical message either way — never reveal whether an email exists.
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
@@ -69,10 +81,6 @@ class AuthController extends Controller
         $token = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8))->plainTextToken;
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
-
-        // Guard against a timing side-channel from the loop above: the work done
-        // is the same whether or not an account matched.
-        unset($candidates);
 
         $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
 

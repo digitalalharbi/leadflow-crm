@@ -139,9 +139,17 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
                 continue;
             }
             $result[$key] = $value;
-            // also expose the leaf name on its own ("lead.phone" => "phone")
-            $leaf = substr(strrchr($key, '.') ?: $key, 1) ?: $key;
-            if (! isset($result[$leaf])) {
+
+            // Also expose the leaf of a nested key on its own ("lead.phone" =>
+            // "phone"). A key with no dot has no leaf: taking one anyway would
+            // let "xcity" pass itself off as "city".
+            if (! str_contains($key, '.')) {
+                continue;
+            }
+
+            $leaf = substr($key, strrpos($key, '.') + 1);
+
+            if ($leaf !== '' && ! isset($result[$leaf])) {
                 $result[$leaf] = $value;
             }
         }

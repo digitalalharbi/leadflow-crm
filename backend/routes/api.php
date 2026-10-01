@@ -20,6 +20,13 @@ use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
+/*
+ * Every public identifier is a UUID. Constraining the segment turns a malformed
+ * id into a 404 at the router, before it can reach a Postgres `uuid` column and
+ * raise SQLSTATE 22P02 — a 500 that any caller could trigger with a typo.
+ */
+Route::pattern('uuid', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
+
 Route::get('/health', HealthController::class);
 
 Route::prefix('v1')->group(function () {

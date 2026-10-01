@@ -42,6 +42,15 @@ class LeadPolicy
         return $user->belongsToTenant($lead->tenant_id) && $user->seesAllLeads();
     }
 
+    /**
+     * Naming an owner for a lead that does not exist yet. Same rule as assign(),
+     * minus the tenant check there is no record to make.
+     */
+    public function assignOnCreate(User $user): bool
+    {
+        return $user->seesAllLeads();
+    }
+
     public function delete(User $user, Lead $lead): bool
     {
         return $user->belongsToTenant($lead->tenant_id) && $user->isAdmin();

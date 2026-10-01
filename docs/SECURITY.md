@@ -113,6 +113,30 @@ defects. All are fixed and covered by regression tests
 | Low | `logout()` crashed on a session-authenticated request | Guarded against `TransientToken` |
 | Low | Pipeline issued ~24 queries; mark-all-read issued one UPDATE per row | One windowed query; one bulk UPDATE |
 
+## Second security review (pre-demo)
+
+The product was audited a second time before the Live Demo release, on the
+assumption that the first pass had been read too charitably. This round covered
+IDOR, tenant isolation, identifier guessing, webhook injection, CSV import,
+custom fields, project assignment, reporting, filters, super-admin routes,
+integration credentials and mass assignment.
+
+Each finding got a failing regression test **before** its fix, and every test was
+re-run against the unfixed code to confirm it actually detects the defect — the
+previous review had shipped one assertion that could never fail.
+
+| Severity | Defect | Fix | Test |
+| --- | --- | --- | --- |
+| **High** | Exported CSVs wrote lead fields verbatim, so a lead name submitted through the public webhook as `=cmd\|'/c calc'!A1` became a live formula in the buyer's spreadsheet — remote code execution against the customer, injected by an anonymous caller | `CsvWriter` prefixes any cell opening with `= + - @ TAB CR` with an apostrophe; both the leads export and the report export go through it | `ExportSafetyTest` |
+| Medium | Every `{uuid}` route and the `project_id` / `assigned_to` filters returned **500** for a malformed identifier: the value reached a Postgres `uuid` column and raised SQLSTATE 22P02, which the renderer had no case for | One route pattern constrains every identifier segment, so a bad id is a 404 at the router; filters drop malformed values; the renderer maps a query failure to 404/500 and never renders its message | `MalformedInputTest` |
+| Medium | The trusted-proxy test read a protected property through `??`, so it asserted `null !== '*'` and would have passed with every proxy trusted | Replaced with a behavioural assertion that a forged `X-Forwarded-For` does not reach the audit trail; `*` is now filtered out of `TRUSTED_PROXIES` rather than honoured | `SecurityHardeningTest` |
+| Low | Login answered an unknown email without hashing anything — a timing oracle for enumerating addresses. The `unset($candidates)` line claimed to prevent this and did nothing | When no candidate exists, hash anyway, at the configured cost | `SecurityHardeningTest` |
+| Low | The webhook secret could be sent in the query string, where it lands in access logs, proxy logs and browser history | Accepted only from the `X-Webhook-Secret` header, a bearer token, or the request body | `WebhookReadinessTest` |
+| Low | An ingestion failure wrote `$e->getMessage()` — the SQL statement with its bindings, i.e. the lead's name and phone — to the application log and to the tenant-readable `webhook_logs.error` | Both record the exception class and a correlation reference; the message is dropped | `WebhookReadinessTest` |
+| Low | `POST /leads` let a sales rep hand a lead to any colleague, and anyone hand one to a deactivated account or a user in another tenant — the id was resolved without checking the policy, `is_active`, or the result | Choosing an owner now requires `assignOnCreate`; the target must be active and in the tenant; an id we cannot honour is refused, not silently dropped | `AssignmentIntegrityTest` |
+| Low | `rotateWebhookSecret` authorized against `Integration::class` when the endpoint had no integration (`integration_id` is nullable), reaching a TypeError — a 500 and an unauthorized rotation path | Guarded with `abort_if`, as `deleteWebhook` already was | `WebhookReadinessTest` |
+| Low | The payload flattener took a "leaf" from keys with no dot, stripping their first character — so an advertiser's `xcity` field could pass itself off as `city` | A key with no dot has no leaf | `WebhookReadinessTest` |
+
 ## Known gaps
 
 Honest list of what is **not** done, and why:

@@ -44,8 +44,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trusting every proxy would make X-Forwarded-For caller-controlled, which
         // lets the login limiter be bypassed and forges the IP in the audit trail.
         // Set TRUSTED_PROXIES to the load balancer's address or CIDR in production.
+        // '*' is dropped rather than honoured: a deployment that wants every
+        // proxy trusted must name the network, so the decision is visible.
         $middleware->trustProxies(at: array_values(array_filter(
-            explode(',', (string) env('TRUSTED_PROXIES', ''))
+            array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', ''))),
+            fn (string $proxy) => $proxy !== '' && $proxy !== '*' && $proxy !== '**',
         )));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

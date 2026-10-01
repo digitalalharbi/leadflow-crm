@@ -225,7 +225,9 @@ class IntegrationController extends Controller
     public function rotateWebhookSecret(Request $request, string $uuid)
     {
         $endpoint = WebhookEndpoint::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('update', $endpoint->integration ?? Integration::class);
+
+        abort_if($endpoint->integration === null, 404, 'Resource not found.');
+        $this->authorize('update', $endpoint->integration);
 
         $secret = Str::random(48);
         $endpoint->update(['secret_hash' => Hash::make($secret)]);

@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadMessage;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -228,6 +229,181 @@ class WhatsappSecurityTest extends TestCase
         $this->assertSame(0, LeadMessage::withoutGlobalScopes()->count());
     }
 
+    public function test_an_unverifiable_delivery_is_refused_outside_development(): void
+    {
+        /*
+         * The guard was an exact-string check for "production", so APP_ENV of
+         * "prod", "staging" or anything misspelled accepted unsigned writes.
+         * A phone number id is a public Meta identifier, so that is the only
+         * thing an attacker needs to pick a victim.
+         */
+        $this->alphaIntegration->forceFill(['credentials' => ['verify_token' => 'v']])->save();
+
+        $payload = $this->payload('1000000001', '966551110001', 'بدون سر');
+
+        foreach (['production', 'prod', 'staging', 'uat', ''] as $environment) {
+            LeadMessage::withoutGlobalScopes()->delete();
+            $this->app->detectEnvironment(fn () => $environment);
+
+            $this->postWebhook($payload, signature: null)->assertStatus(401);
+
+            $this->assertSame(
+                0,
+                LeadMessage::withoutGlobalScopes()->count(),
+                "An unsigned delivery was accepted with APP_ENV=[{$environment}].",
+            );
+        }
+    }
+
+    public function test_a_workspace_cannot_send_unverified_outside_development(): void
+    {
+        // The same deny-list decided whether messages could be sent at all, so
+        // a staging-named environment would tell reps "Message sent." for
+        // messages the mock swallowed.
+        $this->alphaIntegration->forceFill(['credentials' => []])->save();
+        $this->app->detectEnvironment(fn () => 'staging');
+
+        $this->actingAs($this->alpha['admin'])
+            ->postJson("/api/v1/leads/{$this->alphaLead->uuid}/messages", ['body' => 'لن تصل'])
+            ->assertStatus(422);
+
+        $this->assertSame(0, LeadMessage::withoutGlobalScopes()->count());
+    }
+
+    public function test_a_negative_page_size_cannot_dump_the_whole_conversation(): void
+    {
+        // Laravel's query builder silently ignores a negative limit, so no LIMIT
+        // reaches Postgres and the entire history comes back in one response.
+        $this->postWebhook($this->payload('1000000001', '966551110001', 'رسالة'))->assertSuccessful();
+
+        $response = $this->actingAs($this->alpha['admin'])
+            ->getJson("/api/v1/leads/{$this->alphaLead->uuid}/messages?per_page=-1")
+            ->assertSuccessful();
+
+        $this->assertGreaterThanOrEqual(1, $response->json('meta.per_page'));
+    }
+
+    public function test_a_flood_of_rejected_deliveries_does_not_grow_the_ledger(): void
+    {
+        /*
+         * The rejection rows are the only trace that someone is probing the
+         * endpoint, so they are kept — but they were keyed on a fresh UUID,
+         * which means one row per request from an unauthenticated caller and
+         * no way for the unique index to collapse a repeat. That is a disk
+         * exhaustion primitive with no login required.
+         */
+        $payload = $this->payload('9999999999', '966551110001', 'رقم مجهول');
+
+        for ($i = 0; $i < 12; $i++) {
+            $this->postWebhook($payload)->assertSuccessful();
+        }
+
+        $rows = DB::table('whatsapp_events')
+            ->where('event_type', 'rejected')
+            ->where('outcome', 'unknown_phone_number_id')
+            ->count();
+
+        $this->assertLessThanOrEqual(2, $rows, "12 probes wrote {$rows} ledger rows.");
+    }
+
+    public function test_repeated_bad_signatures_are_recorded_without_unbounded_growth(): void
+    {
+        $payload = $this->payload('1000000001', '966551110001', 'توقيع خاطئ');
+
+        for ($i = 0; $i < 12; $i++) {
+            $this->postWebhook($payload, secret: 'not-the-right-secret')->assertStatus(401);
+        }
+
+        $rows = DB::table('whatsapp_events')->where('outcome', 'invalid_signature')->count();
+
+        // Still recorded — a workspace must be able to see it is being probed.
+        $this->assertGreaterThan(0, $rows);
+        $this->assertLessThanOrEqual(2, $rows, "12 bad signatures wrote {$rows} ledger rows.");
+    }
+
+    public function test_a_rejected_first_save_leaves_nothing_behind(): void
+    {
+        // The row was created before the number was validated, so a workspace
+        // whose first save was refused was left with an integration that
+        // reported itself connectable and told reps their messages had sent.
+        $fresh = $this->provisionTenant('Fresh Co');
+
+        $this->actingAs($fresh['admin'])
+            ->patchJson('/api/v1/integrations/whatsapp', ['phone_number_id' => '1000000001'])
+            ->assertStatus(422);
+
+        $this->assertSame(
+            0,
+            Integration::withoutGlobalScopes()
+                ->where('tenant_id', $fresh['tenant']->id)
+                ->where('provider', IntegrationProvider::Whatsapp)
+                ->count(),
+        );
+
+        $this->actingAs($fresh['admin'])
+            ->getJson('/api/v1/whatsapp/capability')
+            ->assertSuccessful()
+            ->assertJsonPath('data.can_send', false);
+    }
+
+    public function test_two_workspaces_cannot_hold_the_same_number_even_in_a_race(): void
+    {
+        // The application check is a time-of-check/time-of-use gap on its own;
+        // the database is what actually decides.
+        $other = $this->provisionTenant('Racing Co');
+
+        $this->expectException(QueryException::class);
+
+        $this->asTenant($other['tenant'], fn () => Integration::create([
+            'provider' => IntegrationProvider::Whatsapp,
+            'name' => 'WhatsApp Business',
+            'status' => Integration::CONFIGURATION_REQUIRED,
+            'config' => ['phone_number_id' => '1000000001'],
+            'credentials' => [],
+            'is_active' => true,
+        ]));
+    }
+
+    public function test_the_generic_integration_endpoint_leaves_whatsapp_alone(): void
+    {
+        /*
+         * The generic endpoints knew nothing about this provider: PATCH threw
+         * on an unknown mapping and answered 500, and DELETE succeeded —
+         * bypassing disconnect(), leaving the credentials in place and writing
+         * the wrong thing to the audit log.
+         */
+        $uuid = $this->alphaIntegration->uuid;
+
+        $this->actingAs($this->alpha['admin'])
+            ->patchJson("/api/v1/integrations/{$uuid}", ['name' => 'Renamed'])
+            ->assertStatus(404);
+
+        $this->actingAs($this->alpha['admin'])
+            ->deleteJson("/api/v1/integrations/{$uuid}")
+            ->assertStatus(404);
+
+        $this->assertNotNull(
+            $this->asTenant($this->alpha['tenant'], fn () => Integration::find($this->alphaIntegration->id)),
+        );
+    }
+
+    public function test_a_status_callback_cannot_stamp_text_onto_an_inbound_message(): void
+    {
+        // The failure columns were written before the terminality check and the
+        // lookup did not filter on direction, so a crafted `statuses` entry
+        // could put arbitrary text on a message the customer had sent us — and
+        // that text is rendered back to the tenant.
+        $this->postWebhook($this->payload('1000000001', '966551110001', 'رسالة العميل'))->assertSuccessful();
+
+        $inbound = LeadMessage::withoutGlobalScopes()->where('direction', 'inbound')->firstOrFail();
+
+        $this->postWebhook($this->failedStatus($inbound->provider_message_id))->assertSuccessful();
+
+        $inbound->refresh();
+        $this->assertSame('received', $inbound->status->value);
+        $this->assertNull($inbound->failure_reason);
+    }
+
     private function postWebhook(array $payload, ?string $secret = null, bool|string|null $signature = false)
     {
         $raw = json_encode($payload, JSON_UNESCAPED_UNICODE);
@@ -243,6 +419,29 @@ class WhatsappSecurityTest extends TestCase
         }
 
         return $this->call('POST', '/api/v1/integrations/whatsapp/webhook', [], [], [], $server, $raw);
+    }
+
+    private function failedStatus(string $messageId): array
+    {
+        return [
+            'object' => 'whatsapp_business_account',
+            'entry' => [[
+                'id' => '1',
+                'changes' => [[
+                    'field' => 'messages',
+                    'value' => [
+                        'messaging_product' => 'whatsapp',
+                        'metadata' => ['phone_number_id' => '1000000001'],
+                        'statuses' => [[
+                            'id' => $messageId,
+                            'status' => 'failed',
+                            'timestamp' => (string) now()->timestamp,
+                            'errors' => [['code' => 1, 'title' => 'نص يتحكم به المهاجم']],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ];
     }
 
     private function payload(string $phoneNumberId, string $from, string $text): array

@@ -62,7 +62,7 @@ class WhatsappWebhookController extends Controller
         }
 
         $payload = $request->json()->all();
-        $phoneNumberId = $this->phoneNumberIdFrom($payload);
+        $phoneNumberId = self::phoneNumberIdFrom($payload);
 
         if ($phoneNumberId === null) {
             return $this->accepted();
@@ -72,13 +72,8 @@ class WhatsappWebhookController extends Controller
 
         if (! $integration) {
             // Recorded without a tenant: this is the only trace that someone is
-            // delivering to numbers nobody here owns.
-            WhatsappEvent::create([
-                'event_type' => WhatsappEvent::TYPE_REJECTED,
-                'event_id' => Str::uuid()->toString(),
-                'phone_number_id' => $phoneNumberId,
-                'outcome' => 'unknown_phone_number_id',
-            ]);
+            // delivering to numbers nobody here owns. Counted, not accumulated.
+            WhatsappEvent::recordRejection(null, null, $phoneNumberId, 'unknown_phone_number_id');
 
             return $this->accepted();
         }
@@ -86,14 +81,12 @@ class WhatsappWebhookController extends Controller
         $provider = $this->manager->providerFor($integration);
 
         if (! $provider->verifySignature($integration, $raw, $request->header('X-Hub-Signature-256'))) {
-            WhatsappEvent::create([
-                'tenant_id' => $integration->tenant_id,
-                'integration_id' => $integration->id,
-                'event_type' => WhatsappEvent::TYPE_REJECTED,
-                'event_id' => Str::uuid()->toString(),
-                'phone_number_id' => $phoneNumberId,
-                'outcome' => 'invalid_signature',
-            ]);
+            WhatsappEvent::recordRejection(
+                $integration->tenant_id,
+                $integration->id,
+                $phoneNumberId,
+                'invalid_signature',
+            );
 
             return ApiResponse::error('Invalid signature.', null, 401);
         }
@@ -127,7 +120,21 @@ class WhatsappWebhookController extends Controller
         return ApiResponse::success($counts);
     }
 
-    private function phoneNumberIdFrom(array $payload): ?string
+    /**
+     * The number a delivery claims to be for, read the same way by the rate
+     * limiter and by the handler — so the bucket a request is counted in is
+     * always the tenant it would be routed to.
+     */
+    public static function phoneNumberIdOf(Request $request): string
+    {
+        $id = $request->query('phone_number_id') ?: self::phoneNumberIdFrom($request->json()->all());
+
+        // Everything unreadable shares one bucket, which is the right place for
+        // a flood of payloads that name no number at all.
+        return (string) ($id ?: 'unknown');
+    }
+
+    private static function phoneNumberIdFrom(array $payload): ?string
     {
         foreach ($payload['entry'] ?? [] as $entry) {
             foreach ($entry['changes'] ?? [] as $change) {

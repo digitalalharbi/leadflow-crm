@@ -11,6 +11,7 @@ use App\Services\Whatsapp\WhatsappManager;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -69,53 +70,61 @@ class WhatsappSettingsController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $integration = $this->manager->integration() ?? Integration::create([
-            'provider' => IntegrationProvider::Whatsapp,
-            'name' => 'WhatsApp Business',
-            'status' => Integration::CONFIGURATION_REQUIRED,
-            'config' => [],
-            'credentials' => [],
-        ]);
+        /*
+         * One transaction around the whole save. Creating the row before
+         * validating the number left a rejected first save behind as an orphan
+         * integration that reported itself connectable.
+         */
+        return DB::transaction(function () use ($request, $data) {
+            $integration = $this->manager->integration() ?? Integration::create([
+                'provider' => IntegrationProvider::Whatsapp,
+                'name' => 'WhatsApp Business',
+                'status' => Integration::CONFIGURATION_REQUIRED,
+                'config' => [],
+                'credentials' => [],
+                'is_active' => false,
+            ]);
 
-        $this->guardPhoneNumberIsNotClaimedElsewhere($data['phone_number_id'] ?? null, $integration);
+            $this->guardPhoneNumberIsNotClaimedElsewhere($data['phone_number_id'] ?? null, $integration);
 
-        $config = $integration->config ?? [];
-        foreach (['phone_number_id', 'business_account_id'] as $key) {
-            if (array_key_exists($key, $data)) {
-                $config[$key] = $data[$key] ?: null;
+            $config = $integration->config ?? [];
+            foreach (['phone_number_id', 'business_account_id'] as $key) {
+                if (array_key_exists($key, $data)) {
+                    $config[$key] = $data[$key] ?: null;
+                }
             }
-        }
 
-        // A blank secret means "leave it alone", not "erase it" — otherwise
-        // saving the form to change a phone number would wipe the token.
-        $credentials = $integration->credentials ?? [];
-        foreach (self::SECRETS as $key) {
-            if (filled($data[$key] ?? null)) {
-                $credentials[$key] = $data[$key];
+            // A blank secret means "leave it alone", not "erase it" — otherwise
+            // saving the form to change a phone number would wipe the token.
+            $credentials = $integration->credentials ?? [];
+            foreach (self::SECRETS as $key) {
+                if (filled($data[$key] ?? null)) {
+                    $credentials[$key] = $data[$key];
+                }
             }
-        }
 
-        // A workspace that has never set one still needs a verify token before
-        // Meta's handshake can succeed, so give it one it can copy.
-        $credentials['verify_token'] ??= Str::random(32);
+            // A workspace that has never set one still needs a verify token
+            // before Meta's handshake can succeed, so give it one it can copy.
+            $credentials['verify_token'] ??= Str::random(32);
 
-        $integration->forceFill([
-            'config' => $config,
-            'credentials' => $credentials,
-            'is_active' => $data['is_active'] ?? $integration->is_active ?? true,
-            'last_error' => null,
-        ]);
-        $integration->status = $this->manager->isLive($integration)
-            ? Integration::CONNECTED
-            : Integration::CONFIGURATION_REQUIRED;
-        $integration->save();
+            $integration->forceFill([
+                'config' => $config,
+                'credentials' => $credentials,
+                'is_active' => $data['is_active'] ?? true,
+                'last_error' => null,
+            ]);
+            $integration->status = $this->manager->isLive($integration)
+                ? Integration::CONNECTED
+                : Integration::CONFIGURATION_REQUIRED;
+            $integration->save();
 
-        // Which keys were set, never their values.
-        $this->audit->log('integration.whatsapp_updated', $request->user(), $integration, [
-            'fields' => array_keys($data),
-        ]);
+            // Which keys were set, never their values.
+            $this->audit->log('integration.whatsapp_updated', $request->user(), $integration, [
+                'fields' => array_keys($data),
+            ]);
 
-        return ApiResponse::success($this->present($integration->refresh()), 'Saved.');
+            return ApiResponse::success($this->present($integration->refresh()), 'Saved.');
+        });
     }
 
     /**

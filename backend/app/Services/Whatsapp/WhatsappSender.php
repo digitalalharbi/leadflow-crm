@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\PhoneNormalizer;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -46,10 +47,26 @@ class WhatsappSender
             throw new RuntimeException('This lead has asked not to receive WhatsApp messages.');
         }
 
+        /*
+         * Per conversation, not per user: the global API limiter would let one
+         * rep send a message a second to the same person, which is how a
+         * tenant's WhatsApp number gets reported — and a reported number ends
+         * the channel for them, not for us.
+         */
+        $perMinute = (int) config('integrations.whatsapp.messages_per_lead_per_minute');
+
+        if ($perMinute > 0 && RateLimiter::tooManyAttempts($key = 'wa-send:'.$lead->id, $perMinute)) {
+            throw new RuntimeException('Too many messages to this lead. Wait a moment before sending again.');
+        }
+
         $to = $lead->phone_normalized ?: $this->phones->normalize((string) $lead->phone);
 
         if (! $to) {
             throw new RuntimeException('This lead has no usable phone number.');
+        }
+
+        if ($perMinute > 0) {
+            RateLimiter::hit($key, 60);
         }
 
         $provider = $this->manager->providerFor($integration);

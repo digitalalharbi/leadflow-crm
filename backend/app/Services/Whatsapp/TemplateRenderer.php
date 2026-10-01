@@ -18,7 +18,11 @@ class TemplateRenderer
     public function render(string $template, Lead $lead, ?User $agent = null, ?string $company = null): string
     {
         $values = [
-            'name' => $lead->first_name ?: $this->firstWord($lead->full_name),
+            // A lead that arrived as a bare phone number has no first name, and
+            // greeting someone by their own phone number is worse than not
+            // greeting them — so an unusable name is dropped like any other
+            // placeholder we cannot fill.
+            'name' => $lead->first_name ?: $this->givenName($lead->full_name),
             'agent' => $agent?->name,
             'company' => $company ?: $lead->tenant?->branding?->company_name ?: $lead->tenant?->name,
             'project' => $lead->project?->name,
@@ -36,6 +40,27 @@ class TemplateRenderer
         $rendered = preg_replace('/\{\{\s*[a-z_]+\s*\}\}/i', '', $rendered) ?? $rendered;
 
         return $this->tidy($rendered);
+    }
+
+    /**
+     * The first word of a full name, or nothing if it is not a name at all.
+     *
+     * "مرحبًا عبدالله" reads as a person; "مرحبًا عبدالله الكريم المحترم" reads
+     * as a form letter, and "مرحبًا 0557778888" reads as a machine.
+     */
+    private function givenName(?string $fullName): ?string
+    {
+        $trimmed = trim((string) $fullName);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $first = preg_split('/\s+/u', $trimmed, 2)[0] ?? '';
+
+        // Digits, punctuation or an email landed in the name column during
+        // ingestion. None of those belong in a greeting.
+        return preg_match('/^\p{L}/u', $first) === 1 ? $first : null;
     }
 
     /**

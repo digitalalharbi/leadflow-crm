@@ -42,16 +42,22 @@ class MockWhatsappProvider implements WhatsappProviderInterface
      * so a signature test exercises the real comparison.
      *
      * With no secret configured it accepts the delivery — that is what makes
-     * the webhook demonstrable before any Meta app exists — but never in
-     * production, where a workspace holding a phone number and no app secret
-     * would otherwise accept messages from anyone who guessed the number.
+     * the webhook demonstrable before any Meta app exists — but only in local
+     * development and under test.
+     *
+     * Named environments are an allow-list, never a deny-list: `!environment(
+     * 'production')` reads as "safe everywhere but production" and is in fact
+     * "safe nowhere except where someone spelled production exactly", so an
+     * APP_ENV of `prod` or `staging` would accept unsigned, unauthenticated
+     * writes from anyone who knew a phone number id — which is a public Meta
+     * identifier, not a secret.
      */
     public function verifySignature(Integration $integration, string $rawBody, ?string $signature): bool
     {
         $secret = $integration->credentials['app_secret'] ?? null;
 
         if (! $secret) {
-            return ! app()->environment('production');
+            return app()->environment('local', 'testing');
         }
 
         return $signature !== null

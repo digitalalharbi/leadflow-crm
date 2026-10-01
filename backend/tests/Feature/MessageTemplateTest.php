@@ -111,14 +111,71 @@ class MessageTemplateTest extends TestCase
         $this->assertDatabaseMissing('lead_messages', ['body' => 'النص الأصلي عبدالله']);
     }
 
-    public function test_only_an_admin_can_change_the_saved_messages(): void
+    public function test_a_rep_may_read_the_saved_messages_but_not_rewrite_them(): void
     {
         $rep = $this->makeUser($this->t['tenant'], Role::Sales);
 
         $this->actingAs($rep)->getJson('/api/v1/message-templates')->assertSuccessful();
+
         $this->actingAs($rep)->postJson('/api/v1/message-templates', [
             'name' => 'رسالتي', 'body' => 'نص',
         ])->assertStatus(403);
+
+        $mine = $this->template('نص قابل للتعديل');
+
+        $this->actingAs($rep)
+            ->patchJson("/api/v1/message-templates/{$mine->uuid}", ['body' => 'نص معدّل'])
+            ->assertStatus(403);
+
+        $this->actingAs($rep)
+            ->deleteJson("/api/v1/message-templates/{$mine->uuid}")
+            ->assertStatus(403);
+    }
+
+    public function test_a_sales_manager_can_change_them(): void
+    {
+        // What a company says to its buyers is a management decision, not an
+        // API-key decision — which is what tying it to the integration policy
+        // had made it.
+        $manager = $this->makeUser($this->t['tenant'], Role::Manager);
+
+        $this->actingAs($manager)->postJson('/api/v1/message-templates', [
+            'name' => 'رسالة المدير', 'body' => 'مرحبًا {{name}}',
+        ])->assertStatus(201);
+    }
+
+    public function test_a_rep_is_not_shown_deactivated_messages(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+        $retired = $this->template('رسالة متوقفة');
+        $retired->update(['is_active' => false]);
+
+        $names = collect($this->actingAs($rep)
+            ->getJson('/api/v1/message-templates?all=1')
+            ->json('data.templates'))->pluck('name');
+
+        $this->assertFalse($names->contains($retired->name));
+
+        // A manager editing the list does need to see them.
+        $managerNames = collect($this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/message-templates?all=1')
+            ->json('data.templates'))->pluck('name');
+
+        $this->assertTrue($managerNames->contains($retired->name));
+    }
+
+    public function test_a_template_from_another_workspace_cannot_be_edited(): void
+    {
+        $other = $this->provisionTenant('Rival Co');
+        $theirs = $this->asTenant($other['tenant'], fn () => MessageTemplate::create([
+            'name' => 'رسالتهم', 'body' => 'نصهم', 'channel' => 'whatsapp', 'is_active' => true,
+        ]));
+
+        $this->actingAs($this->t['admin'])
+            ->patchJson("/api/v1/message-templates/{$theirs->uuid}", ['body' => 'مُخترق'])
+            ->assertStatus(404);
+
+        $this->assertSame('نصهم', $theirs->refresh()->body);
     }
 
     public function test_templates_do_not_cross_workspaces(): void
@@ -147,6 +204,60 @@ class MessageTemplateTest extends TestCase
             ->assertStatus(422);
 
         $this->assertDatabaseMissing('lead_messages', ['body' => 'نصهم']);
+    }
+
+    public function test_a_lead_with_no_first_name_can_still_be_sent_a_template(): void
+    {
+        // The normal shape of a lead that arrived as a bare phone number, which
+        // is exactly what a WhatsApp-first or minimal webhook lead looks like.
+        $nameless = $this->asTenant($this->t['tenant'], fn () => Lead::create([
+            'full_name' => '0557778888',
+            'phone' => '0557778888',
+            'phone_normalized' => '+966557778888',
+        ]));
+
+        $template = $this->template('مرحبًا {{name}}، معك {{agent}} من {{company}}.');
+
+        $body = $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$nameless->uuid}/messages/preview", ['template_uuid' => $template->uuid])
+            ->assertSuccessful()
+            ->json('data.body');
+
+        $this->assertStringNotContainsString('{{', $body);
+        $this->assertNotEmpty($body);
+    }
+
+    public function test_a_single_word_name_is_used_whole(): void
+    {
+        $single = $this->asTenant($this->t['tenant'], fn () => Lead::create([
+            'full_name' => 'نورة',
+            'phone' => '0557779999',
+            'phone_normalized' => '+966557779999',
+        ]));
+
+        $body = $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$single->uuid}/messages/preview", [
+                'template_uuid' => $this->template('مرحبًا {{name}}')->uuid,
+            ])
+            ->assertSuccessful()
+            ->json('data.body');
+
+        $this->assertStringContainsString('نورة', $body);
+    }
+
+    public function test_only_the_first_word_of_a_full_name_is_used(): void
+    {
+        // "مرحبًا عبدالله الكريم المحترم" reads as a form letter; a first name
+        // reads as a person.
+        $body = $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$this->lead->uuid}/messages/preview", [
+                'template_uuid' => $this->template('مرحبًا {{name}}')->uuid,
+            ])
+            ->assertSuccessful()
+            ->json('data.body');
+
+        $this->assertStringContainsString('عبدالله', $body);
+        $this->assertStringNotContainsString('الكريم', $body);
     }
 
     private function template(string $body): MessageTemplate

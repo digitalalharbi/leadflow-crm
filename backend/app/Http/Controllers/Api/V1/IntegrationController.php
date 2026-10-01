@@ -154,6 +154,7 @@ class IntegrationController extends Controller
     public function update(Request $request, string $uuid)
     {
         $integration = Integration::where('uuid', $uuid)->firstOrFail();
+        $this->guardAgainstDedicatedProvider($integration);
         $this->authorize('update', $integration);
 
         $data = $request->validate(array_merge([
@@ -190,6 +191,7 @@ class IntegrationController extends Controller
     public function destroy(Request $request, string $uuid)
     {
         $integration = Integration::where('uuid', $uuid)->firstOrFail();
+        $this->guardAgainstDedicatedProvider($integration);
         $this->authorize('delete', $integration);
 
         $this->audit->log('integration.deleted', $request->user(), $integration);
@@ -303,5 +305,23 @@ class IntegrationController extends Controller
         }
 
         return $integration->is_active ? Integration::CONNECTED : Integration::NOT_CONNECTED;
+    }
+
+    /**
+     * Some providers have a screen of their own, and the generic one does not
+     * know how to handle them.
+     *
+     * WhatsApp is the case today: PATCH here threw on a field mapping that does
+     * not exist, and DELETE succeeded — which bypassed the proper disconnect,
+     * left the credentials on the row, and wrote the wrong action to the audit
+     * trail. From here that integration simply is not found.
+     */
+    private function guardAgainstDedicatedProvider(Integration $integration): void
+    {
+        abort_if(
+            $integration->provider === IntegrationProvider::Whatsapp,
+            404,
+            'Resource not found.',
+        );
     }
 }

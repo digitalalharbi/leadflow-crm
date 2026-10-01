@@ -43,7 +43,10 @@ class LeadMessageController extends Controller
         $messages = $lead->messages()
             ->with('user:id,uuid,name')
             ->latest('id')
-            ->paginate(min((int) $request->input('per_page', 30), 100));
+            // Floored as well as capped: the query builder silently ignores a
+            // negative limit, so `per_page=-1` emitted no LIMIT at all and
+            // returned a year of conversation in one response.
+            ->paginate(max(1, min((int) $request->input('per_page', 30), 100)));
 
         return ApiResponse::paginated($messages, LeadMessageResource::class);
     }

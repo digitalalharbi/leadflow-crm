@@ -222,6 +222,40 @@ class WhatsappMessagingTest extends TestCase
         $this->assertStringNotContainsString('wa_id', $body);
     }
 
+    public function test_one_lead_cannot_be_flooded_with_messages(): void
+    {
+        /*
+         * A rep hammering the send button, a stuck client retrying, or a stolen
+         * token can otherwise fire a message a second at one person. That is
+         * the tenant's WhatsApp number getting reported, and their number being
+         * reported is the end of the channel for them.
+         */
+        $accepted = 0;
+        $refused = 0;
+
+        for ($i = 0; $i < 15; $i++) {
+            $status = $this->actingAs($this->t['admin'])
+                ->postJson("/api/v1/leads/{$this->lead->uuid}/messages", ['body' => 'رسالة '.$i])
+                ->status();
+
+            $status === 201 ? $accepted++ : $refused++;
+        }
+
+        $this->assertGreaterThan(0, $refused, 'A single lead accepted 15 messages in a row.');
+        $this->assertGreaterThan(0, $accepted, 'The limit must not block ordinary use.');
+
+        // And a different lead is unaffected — the limit is per conversation.
+        $other = $this->asTenant($this->t['tenant'], fn () => Lead::create([
+            'full_name' => 'عميل آخر',
+            'phone' => '0559998888',
+            'phone_normalized' => '+966559998888',
+        ]));
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$other->uuid}/messages", ['body' => 'رسالة عادية'])
+            ->assertStatus(201);
+    }
+
     private function sendAndCapture(): LeadMessage
     {
         $this->actingAs($this->t['admin'])

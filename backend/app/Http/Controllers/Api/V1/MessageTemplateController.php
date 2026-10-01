@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\MessageChannel;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MessageTemplateResource;
-use App\Models\Integration;
 use App\Models\MessageTemplate;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
@@ -19,8 +18,12 @@ class MessageTemplateController extends Controller
 {
     public function index(Request $request)
     {
+        // Every rep reads these; only a manager sees the deactivated ones.
+        $includeInactive = $request->boolean('all')
+            && $request->user()->can('viewInactive', MessageTemplate::class);
+
         $templates = MessageTemplate::query()
-            ->when(! $request->boolean('all'), fn ($q) => $q->active())
+            ->when(! $includeInactive, fn ($q) => $q->active())
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -33,7 +36,7 @@ class MessageTemplateController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorize('create', Integration::class);
+        $this->authorize('create', MessageTemplate::class);
 
         $data = $this->validated($request);
 
@@ -44,9 +47,9 @@ class MessageTemplateController extends Controller
 
     public function update(Request $request, string $uuid)
     {
-        $this->authorize('create', Integration::class);
-
         $template = MessageTemplate::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $template);
+
         $template->update($this->validated($request, $template));
 
         return ApiResponse::success(['template' => new MessageTemplateResource($template->refresh())]);
@@ -54,9 +57,10 @@ class MessageTemplateController extends Controller
 
     public function destroy(Request $request, string $uuid)
     {
-        $this->authorize('create', Integration::class);
+        $template = MessageTemplate::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('delete', $template);
 
-        MessageTemplate::where('uuid', $uuid)->firstOrFail()->delete();
+        $template->delete();
 
         return ApiResponse::noContent();
     }

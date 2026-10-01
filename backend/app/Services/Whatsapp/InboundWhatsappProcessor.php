@@ -84,13 +84,35 @@ class InboundWhatsappProcessor
             return 'duplicates';
         }
 
-        if (! $this->claim($integration, WhatsappEvent::TYPE_MESSAGE, $providerId, [
-            'from_phone' => $message['from'] ?? null,
-            'payload' => $message,
-        ])) {
-            return 'duplicates';
-        }
+        /*
+         * The claim and the write live in one transaction.
+         *
+         * Claiming first and writing afterwards leaves a window where a failure
+         * between them answers Meta's retry with "already seen" and loses the
+         * customer's message for good. Inside the transaction, a rollback
+         * releases the claim with it, and the retry is handled properly.
+         */
+        $outcome = null;
 
+        DB::transaction(function () use ($integration, $message, $providerId, $value, &$outcome) {
+            if (! $this->claim($integration, WhatsappEvent::TYPE_MESSAGE, $providerId, [
+                'from_phone' => $message['from'] ?? null,
+                'payload' => $message,
+            ])) {
+                $outcome = 'duplicates';
+
+                return;
+            }
+
+            $outcome = $this->attach($integration, $message, $providerId, $value);
+        });
+
+        return $outcome ?? 'duplicates';
+    }
+
+    /** @return 'messages'|'unmatched' */
+    private function attach(Integration $integration, array $message, string $providerId, array $value): string
+    {
         $from = $this->phones->normalize((string) ($message['from'] ?? ''));
         $lead = $from ? Lead::where('phone_normalized', $from)->first() : null;
 
@@ -110,46 +132,44 @@ class InboundWhatsappProcessor
             return 'unmatched';
         }
 
-        DB::transaction(function () use ($lead, $message, $providerId, $value) {
-            $body = $this->extractBody($message);
+        $body = $this->extractBody($message);
 
-            LeadMessage::create([
-                'lead_id' => $lead->id,
-                'direction' => MessageDirection::Inbound,
-                'channel' => MessageChannel::Whatsapp,
-                'provider' => 'whatsapp_cloud',
-                'provider_message_id' => $providerId,
-                'message_type' => (string) ($message['type'] ?? 'text'),
-                'body' => $body,
-                'status' => MessageStatus::Received,
-                'provider_payload' => ['message' => $message, 'contacts' => $value['contacts'] ?? null],
+        LeadMessage::create([
+            'lead_id' => $lead->id,
+            'direction' => MessageDirection::Inbound,
+            'channel' => MessageChannel::Whatsapp,
+            'provider' => 'whatsapp_cloud',
+            'provider_message_id' => $providerId,
+            'message_type' => (string) ($message['type'] ?? 'text'),
+            'body' => $body,
+            'status' => MessageStatus::Received,
+            'provider_payload' => ['message' => $message, 'contacts' => $value['contacts'] ?? null],
+        ]);
+
+        /*
+         * A reply is consent in the plainest sense, and it is also the
+         * engagement signal the score depends on. Both are recorded the
+         * first time only — re-stamping them on every reply would make the
+         * response-time report meaningless.
+         */
+        $lead->first_response_at ??= now();
+        $lead->whatsapp_opt_in_at ??= now();
+        $lead->last_contact_at = now();
+        $lead->first_contact_at ??= now();
+
+        $before = $lead->score;
+        $this->scoring->apply($lead);
+        $lead->saveQuietly();
+
+        $this->activities->log($lead, ActivityType::WhatsappReceived, null, Str::limit($body ?? '', 140));
+
+        if ($before !== $lead->score) {
+            $this->activities->log($lead, ActivityType::ScoreChanged, null, null, [
+                'from' => $before,
+                'to' => $lead->score,
+                'reason' => 'whatsapp_reply',
             ]);
-
-            /*
-             * A reply is consent in the plainest sense, and it is also the
-             * engagement signal the score depends on. Both are recorded the
-             * first time only — re-stamping them on every reply would make the
-             * response-time report meaningless.
-             */
-            $lead->first_response_at ??= now();
-            $lead->whatsapp_opt_in_at ??= now();
-            $lead->last_contact_at = now();
-            $lead->first_contact_at ??= now();
-
-            $before = $lead->score;
-            $this->scoring->apply($lead);
-            $lead->saveQuietly();
-
-            $this->activities->log($lead, ActivityType::WhatsappReceived, null, Str::limit($body ?? '', 140));
-
-            if ($before !== $lead->score) {
-                $this->activities->log($lead, ActivityType::ScoreChanged, null, null, [
-                    'from' => $before,
-                    'to' => $lead->score,
-                    'reason' => 'whatsapp_reply',
-                ]);
-            }
-        });
+        }
 
         return 'messages';
     }
@@ -170,20 +190,21 @@ class InboundWhatsappProcessor
             return 'duplicates';
         }
 
-        $message = LeadMessage::where('provider_message_id', $providerId)->first();
+        /*
+         * Outbound only. A receipt describes the delivery of something we sent;
+         * an id can repeat across providers within a tenant, and without this
+         * filter a crafted `statuses` entry could land on a message the
+         * customer sent us — whose failure text is rendered straight back to
+         * the tenant.
+         */
+        $message = LeadMessage::query()
+            ->outbound()
+            ->where('provider_message_id', $providerId)
+            ->orderBy('id')
+            ->first();
 
         if (! $message) {
             return 'duplicates';
-        }
-
-        $at = isset($status['timestamp']) ? now()->setTimestamp((int) $status['timestamp']) : now();
-
-        if ($state === 'failed') {
-            $error = $status['errors'][0] ?? [];
-            $message->forceFill([
-                'failure_code' => (string) ($error['code'] ?? 'unknown'),
-                'failure_reason' => (string) ($error['title'] ?? $error['message'] ?? 'Delivery failed.'),
-            ])->save();
         }
 
         $mapped = match ($state) {
@@ -194,8 +215,24 @@ class InboundWhatsappProcessor
             default => null,
         };
 
-        if ($mapped === null) {
+        if ($mapped === null || $message->status->isTerminal()) {
             return 'duplicates';
+        }
+
+        $at = isset($status['timestamp']) ? now()->setTimestamp((int) $status['timestamp']) : now();
+
+        // Written only once the status is allowed to move, and truncated: the
+        // reason is provider text we store and show, not a free column.
+        if ($mapped === MessageStatus::Failed) {
+            $error = $status['errors'][0] ?? [];
+
+            $message->forceFill([
+                'failure_code' => Str::limit((string) ($error['code'] ?? 'unknown'), 60, ''),
+                'failure_reason' => Str::limit(
+                    (string) ($error['title'] ?? $error['message'] ?? 'Delivery failed.'),
+                    400,
+                ),
+            ])->save();
         }
 
         $message->advanceStatus($mapped, $at);

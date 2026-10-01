@@ -56,7 +56,7 @@ Route::prefix('v1')->group(function () {
      * the payload, after the signature has been checked against that tenant's
      * own app secret.
      */
-    Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:webhook')->group(function () {
+    Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:whatsapp-webhook')->group(function () {
         Route::post('/', [WhatsappWebhookController::class, 'receive']);
         Route::get('/', [WhatsappWebhookController::class, 'verify']);
     });

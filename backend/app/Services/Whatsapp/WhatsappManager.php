@@ -31,13 +31,23 @@ class WhatsappManager
             ->first();
     }
 
-    /** Route an inbound delivery to its tenant by the phone number it arrived on. */
+    /**
+     * Route an inbound delivery to its tenant by the phone number it arrived on.
+     *
+     * Ordered, and active-only. A unique index now makes two workspaces holding
+     * the same number impossible, but an unordered `first()` over a duplicate
+     * would have let Postgres decide whose customer messages landed where — and
+     * "it cannot happen" is not a reason to write a query that would be wrong
+     * if it did.
+     */
     public function integrationForPhoneNumberId(string $phoneNumberId): ?Integration
     {
         return $this->context->withoutScope(
             fn () => Integration::query()
                 ->where('provider', IntegrationProvider::Whatsapp)
+                ->where('is_active', true)
                 ->whereRaw("config->>'phone_number_id' = ?", [$phoneNumberId])
+                ->orderBy('id')
                 ->first()
         );
     }
@@ -64,9 +74,13 @@ class WhatsappManager
     }
 
     /**
-     * Whether messages may be sent at all. In production an unconfigured
-     * workspace cannot send: the mock exists for development and for showing
-     * the product, not for pretending a customer was contacted.
+     * Whether messages may be sent at all.
+     *
+     * The mock exists for development and for showing the product, not for
+     * pretending a customer was contacted — so anywhere that is not local or
+     * test, an unconfigured workspace cannot send. An allow-list, for the same
+     * reason as the signature check: a deny-list on the literal string
+     * "production" quietly turns "staging" into a place that lies to reps.
      */
     public function canSend(?Integration $integration): bool
     {
@@ -74,7 +88,7 @@ class WhatsappManager
             return false;
         }
 
-        return $this->isLive($integration) || ! app()->environment('production');
+        return $this->isLive($integration) || app()->environment('local', 'testing');
     }
 
     public function status(?Integration $integration): string

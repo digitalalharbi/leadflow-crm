@@ -3,9 +3,9 @@
 Last updated: 2026-10-01
 
 ```
-Backend tests   226 passed (803 assertions)
+Backend tests   305 passed (1,212 assertions)
 Frontend tests   32 passed
-Browser tests    74 passed (Playwright, 11 specs)
+Browser tests    91 passed (Playwright, 14 specs)
 Lint / types     clean (Pint, oxlint, tsc strict)
 Production build succeeds
 ```
@@ -79,9 +79,9 @@ its own; the repository, database and artisan identifiers are unchanged.
 - [x] Nginx configs including a TLS edge example
 
 ### Tests
-- [x] 226 backend tests on PostgreSQL — never SQLite, which would pass while
+- [x] 305 backend tests on PostgreSQL — never SQLite, which would pass while
       production broke
-- [x] 74 Playwright tests over 11 specs, on deterministic fixtures from their
+- [x] 91 Playwright tests over 14 specs, on deterministic fixtures from their
       own seeder, running in CI and blocking the merge
 - [x] 32 frontend unit tests
 - [x] Performance measured and reproducible at 10,000 leads

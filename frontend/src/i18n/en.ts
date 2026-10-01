@@ -137,6 +137,7 @@ export default {
     webhook: 'Webhook', import: 'Import', manual: 'Manual', other: 'Other',
   },
   pipeline: {
+    noFollowUp: 'No follow-up',
     title: 'Pipeline', subtitle: 'Drag a lead to move it between stages',
     moveError: 'Could not move that lead. It has been put back.',
     empty: 'No leads in this stage', showing: 'Showing {{shown}} of {{total}}',

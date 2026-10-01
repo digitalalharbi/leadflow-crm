@@ -259,6 +259,7 @@ export default {
     other: 'أخرى',
   },
   pipeline: {
+    noFollowUp: 'بدون متابعة',
     title: 'مسار البيع',
     subtitle: 'اسحب العميل لتغيير مرحلته',
     moveError: 'تعذر نقل العميل. تمت إعادته لمكانه.',

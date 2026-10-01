@@ -11,10 +11,12 @@ import { changeLeadStatus, fetchLostReasons } from '@/features/leads'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import {
-  Button, Card, ErrorState, Modal, PageHeader, Select, Skeleton, Textarea, TemperatureBadge,
+  Button, Card, ErrorState, Modal, PageHeader, Select, Skeleton, Textarea,
 } from '@/components/ui'
 import type { LeadListItem, LeadStatus } from '@/types/api'
 import { cn } from '@/lib/cn'
+import { TEMPERATURE_COLOR } from '@/components/charts'
+import { formatDue, initials } from '@/lib/format'
 
 interface Column {
   status: LeadStatus
@@ -264,45 +266,79 @@ function DraggableLead({ lead }: { lead: LeadListItem }) {
   )
 }
 
+/**
+ * A board card carries only what decides the next move.
+ *
+ * The phone number was on every card and never read — nobody dials from a
+ * board, they open the lead. What a rep is scanning for is who is hot, what is
+ * late, and whose it is, so those three get the space the phone number had.
+ */
 function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <article
       data-testid="pipeline-card"
       className={cn(
-        'rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5',
-        overlay ? 'shadow-[var(--shadow-pop)] rotate-1' : 'shadow-[var(--shadow-card)]',
+        'rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-surface)] p-2.5',
+        'transition-shadow',
+        overlay
+          ? 'rotate-1 shadow-[var(--shadow-pop)]'
+          : 'shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-raised)]',
       )}
     >
-      <Link
-        to={`/leads/${lead.id}`}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="block truncate text-[0.8125rem] font-medium hover:text-[var(--brand)]"
-      >
-        {lead.full_name}
-      </Link>
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={`/leads/${lead.id}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium hover:text-[var(--brand)]"
+        >
+          {lead.full_name}
+        </Link>
 
-      <p className="tabular mt-0.5 truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
-        {lead.phone ?? '—'}
-      </p>
+        {/* A dot rather than a badge: at this size the word is noise and the
+            colour is the whole message. */}
+        <span
+          className="mt-1 size-2 shrink-0 rounded-full"
+          style={{ background: TEMPERATURE_COLOR[lead.temperature] }}
+          title={t(`temperature.${lead.temperature}`)}
+          aria-label={t(`temperature.${lead.temperature}`)}
+        />
+      </div>
 
       {lead.project?.name && (
-        <p className="mt-1 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{lead.project.name}</p>
+        <p className="mt-0.5 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          {lead.project.name}
+        </p>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <TemperatureBadge temperature={lead.temperature} />
-        {lead.is_overdue && (
-          <span className="rounded-md bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-1.5 py-0.5 text-[0.6875rem] font-medium text-[var(--color-status-lost)]">
-            {t('leads.overdue')}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {lead.next_follow_up_at ? (
+          <span
+            className={cn(
+              'truncate text-[0.6875rem]',
+              lead.is_overdue
+                ? 'font-medium text-[var(--color-status-lost)]'
+                : 'text-[var(--color-ink-muted)]',
+            )}
+          >
+            {formatDue(lead.next_follow_up_at, i18n.language, lead.is_overdue)}
+          </span>
+        ) : (
+          <span className="text-[0.6875rem] text-[var(--color-ink-subtle)]">
+            {t('pipeline.noFollowUp')}
+          </span>
+        )}
+
+        {lead.assignee && (
+          <span
+            className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--color-surface-sunken)] text-[0.5625rem] font-semibold text-[var(--color-ink-muted)]"
+            title={lead.assignee.name}
+          >
+            {initials(lead.assignee.name)}
           </span>
         )}
       </div>
-
-      {lead.assignee && (
-        <p className="mt-1.5 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{lead.assignee.name}</p>
-      )}
     </article>
   )
 }

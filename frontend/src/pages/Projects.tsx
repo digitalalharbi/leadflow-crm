@@ -202,20 +202,20 @@ export function ProjectsPage() {
             label={t('projects.name')}
             value={form.name}
             error={fieldErrors.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label={t('projects.developer')}
               hint={t('common.optional')}
               value={form.developer_name}
-              onChange={(e) => setForm({ ...form, developer_name: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, developer_name: e.target.value }))}
             />
             <Input
               label={t('projects.location')}
               hint={t('common.optional')}
               value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -226,12 +226,12 @@ export function ProjectsPage() {
               hint={t('common.optional')}
               value={form.starting_price}
               error={fieldErrors.starting_price}
-              onChange={(e) => setForm({ ...form, starting_price: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, starting_price: e.target.value }))}
             />
             <Select
               label={t('common.status')}
               value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
             >
               <option value="active">{t('projects.statusActive')}</option>
               <option value="paused">{t('projects.statusPaused')}</option>

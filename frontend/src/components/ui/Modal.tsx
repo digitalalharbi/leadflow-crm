@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -18,11 +18,21 @@ const sizes = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl' }
 export function Modal({ open, onClose, title, description, children, footer, size = 'md' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
+  // Callers pass an inline arrow for onClose, so it is a new function on every
+  // render. Keeping it in a ref lets the effect below depend only on `open` —
+  // otherwise it re-runs on each render and yanks focus out of whichever field
+  // the user is typing in, which silently breaks every form in a dialog.
+  const onCloseRef = useRef(onClose)
+
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose
+  })
+
   useEffect(() => {
     if (!open) return
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
 
     document.addEventListener('keydown', onKey)
@@ -31,14 +41,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
-    // Move focus into the dialog for keyboard and screen-reader users.
+    // Move focus into the dialog once, when it opens, for keyboard users.
     panelRef.current?.focus()
 
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = previousOverflow
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

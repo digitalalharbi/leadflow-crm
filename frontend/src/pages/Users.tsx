@@ -202,7 +202,7 @@ export function UsersPage() {
             label={t('users.name')}
             value={form.name}
             error={fieldErrors.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
           <Input
             required
@@ -211,7 +211,7 @@ export function UsersPage() {
             label={t('auth.email')}
             value={form.email}
             error={fieldErrors.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
           />
           <Input
             dir="ltr"
@@ -222,13 +222,13 @@ export function UsersPage() {
             required={!editing}
             value={form.password}
             error={fieldErrors.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label={t('users.role')}
               value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               disabled={editing?.id === currentUser?.id}
             >
               <option value="sales">{t('roles.sales')}</option>
@@ -240,7 +240,7 @@ export function UsersPage() {
               label={t('leads.phone')}
               hint={t('common.optional')}
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
             />
           </div>
         </form>

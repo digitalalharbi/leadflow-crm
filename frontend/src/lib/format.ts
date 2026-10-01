@@ -84,6 +84,14 @@ export function whatsappLink(
     text = text.replaceAll(`{{${key}}}`, value || '')
   }
 
+  // Never send a raw placeholder to a customer: drop any variable the caller
+  // did not supply, then tidy the whitespace it leaves behind.
+  text = text
+    .replaceAll(/\{\{\s*\w+\s*\}\}/g, '')
+    .replaceAll(/[ \t]{2,}/g, ' ')
+    .replaceAll(/\s+([،.,!؟?])/g, '$1')
+    .trim()
+
   const base = `https://wa.me/${phoneDigits}`
   return text.trim() ? `${base}?text=${encodeURIComponent(text.trim())}` : base
 }

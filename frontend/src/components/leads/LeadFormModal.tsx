@@ -103,7 +103,7 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
           label={t('leads.name')}
           value={form.full_name}
           error={fieldErrors.full_name}
-          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          onChange={(e) => setForm((prev) => ({ ...prev, full_name: e.target.value }))}
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -114,7 +114,7 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
             placeholder="05xxxxxxxx"
             value={form.phone}
             error={fieldErrors.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
           />
           <Input
             dir="ltr"
@@ -123,7 +123,7 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
             hint={t('common.optional')}
             value={form.email}
             error={fieldErrors.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
           />
         </div>
 
@@ -132,13 +132,13 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
             label={t('leads.city')}
             hint={t('common.optional')}
             value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
           />
           <Select
             label={t('leads.project')}
             hint={t('common.optional')}
             value={form.project_id}
-            onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, project_id: e.target.value }))}
           >
             <option value="">{t('leads.selectProject')}</option>
             {projects.map((p) => (
@@ -155,13 +155,13 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
             hint={t('common.optional')}
             value={form.budget_max}
             error={fieldErrors.budget_max}
-            onChange={(e) => setForm({ ...form, budget_max: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, budget_max: e.target.value }))}
           />
           <Input
             label={t('leads.propertyType')}
             hint={t('common.optional')}
             value={form.preferred_property_type}
-            onChange={(e) => setForm({ ...form, preferred_property_type: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, preferred_property_type: e.target.value }))}
           />
         </div>
 
@@ -170,7 +170,7 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
             label={t('leads.assignedTo')}
             hint={t('common.optional')}
             value={form.assigned_to}
-            onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, assigned_to: e.target.value }))}
           >
             <option value="">{t('leads.selectAssignee')}</option>
             {users.map((u) => (

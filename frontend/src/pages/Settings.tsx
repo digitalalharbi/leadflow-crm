@@ -192,12 +192,12 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
             <Input
               label={t('settings.companyName')}
               value={form.company_name}
-              onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, company_name: e.target.value }))}
             />
             <Input
               label={t('settings.systemName')}
               value={form.system_name}
-              onChange={(e) => setForm({ ...form, system_name: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, system_name: e.target.value }))}
             />
           </div>
 
@@ -206,7 +206,7 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
             label={t('settings.logoUrl')}
             hint={t('common.optional')}
             value={form.logo_url}
-            onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, logo_url: e.target.value }))}
             placeholder="https://…"
           />
 
@@ -214,12 +214,12 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
             <ColorInput
               label={t('settings.primaryColor')}
               value={form.primary_color}
-              onChange={(value) => setForm({ ...form, primary_color: value })}
+              onChange={(value) => setForm((prev) => ({ ...prev, primary_color: value }))}
             />
             <ColorInput
               label={t('settings.secondaryColor')}
               value={form.secondary_color}
-              onChange={(value) => setForm({ ...form, secondary_color: value })}
+              onChange={(value) => setForm((prev) => ({ ...prev, secondary_color: value }))}
             />
           </div>
 
@@ -230,14 +230,14 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
               label={t('settings.supportEmail')}
               hint={t('common.optional')}
               value={form.support_email}
-              onChange={(e) => setForm({ ...form, support_email: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, support_email: e.target.value }))}
             />
             <Input
               dir="ltr"
               label={t('settings.supportPhone')}
               hint={t('common.optional')}
               value={form.support_phone}
-              onChange={(e) => setForm({ ...form, support_phone: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, support_phone: e.target.value }))}
             />
           </div>
 
@@ -318,7 +318,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
             <Select
               label={t('settings.language')}
               value={form.locale}
-              onChange={(e) => setForm({ ...form, locale: e.target.value as 'ar' | 'en' })}
+              onChange={(e) => setForm((prev) => ({ ...prev, locale: e.target.value as 'ar' | 'en' }))}
             >
               <option value="ar">العربية</option>
               <option value="en">English</option>
@@ -328,13 +328,13 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               label={t('settings.currency')}
               value={form.currency}
               maxLength={3}
-              onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })}
+              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
             />
             <Input
               dir="ltr"
               label={t('settings.countryCode')}
               value={form.default_country_code}
-              onChange={(e) => setForm({ ...form, default_country_code: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, default_country_code: e.target.value }))}
             />
           </div>
 
@@ -342,7 +342,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
             label={t('settings.assignmentMode')}
             hint={t('settings.assignmentHint')}
             value={form.assignment_mode}
-            onChange={(e) => setForm({ ...form, assignment_mode: e.target.value as 'manual' | 'round_robin' })}
+            onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
           >
             <option value="manual">{t('settings.manual')}</option>
             <option value="round_robin">{t('settings.roundRobin')}</option>
@@ -355,7 +355,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               max={99}
               label={t('settings.warmThreshold')}
               value={form.score_warm_threshold}
-              onChange={(e) => setForm({ ...form, score_warm_threshold: Number(e.target.value) })}
+              onChange={(e) => setForm((prev) => ({ ...prev, score_warm_threshold: Number(e.target.value) }))}
             />
             <Input
               type="number"
@@ -363,7 +363,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               max={100}
               label={t('settings.hotThreshold')}
               value={form.score_hot_threshold}
-              onChange={(e) => setForm({ ...form, score_hot_threshold: Number(e.target.value) })}
+              onChange={(e) => setForm((prev) => ({ ...prev, score_hot_threshold: Number(e.target.value) }))}
             />
           </div>
 
@@ -371,7 +371,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
             label={t('settings.whatsappTemplate')}
             hint={t('settings.whatsappHint')}
             value={form.whatsapp_template}
-            onChange={(e) => setForm({ ...form, whatsapp_template: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, whatsapp_template: e.target.value }))}
             rows={3}
           />
 
@@ -522,17 +522,17 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
             label={t('settings.fieldKey')}
             hint="a-z, 0-9, _"
             value={form.key}
-            onChange={(e) => setForm({ ...form, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') })}
+            onChange={(e) => setForm((prev) => ({ ...prev, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') }))}
           />
           <Input
             label={t('settings.fieldLabel')}
             value={form.label}
-            onChange={(e) => setForm({ ...form, label: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
           />
           <Select
             label={t('settings.fieldType')}
             value={form.type}
-            onChange={(e) => setForm({ ...form, type: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
           >
             <option value="text">{t('settings.typeText')}</option>
             <option value="number">{t('settings.typeNumber')}</option>
@@ -544,7 +544,7 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
             <Textarea
               label={t('settings.fieldOptions')}
               value={form.options}
-              onChange={(e) => setForm({ ...form, options: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, options: e.target.value }))}
               rows={4}
             />
           )}

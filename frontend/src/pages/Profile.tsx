@@ -76,7 +76,7 @@ export function ProfilePage() {
                 label={t('auth.currentPassword')}
                 value={form.current_password}
                 error={fieldErrors.current_password}
-                onChange={(e) => setForm({ ...form, current_password: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, current_password: e.target.value }))}
               />
               <Input
                 required
@@ -86,7 +86,7 @@ export function ProfilePage() {
                 label={t('auth.newPassword')}
                 value={form.password}
                 error={fieldErrors.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
               />
               <Input
                 required
@@ -95,7 +95,7 @@ export function ProfilePage() {
                 autoComplete="new-password"
                 label={t('auth.confirmPassword')}
                 value={form.password_confirmation}
-                onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, password_confirmation: e.target.value }))}
               />
               <div className="flex justify-end">
                 <Button type="submit" loading={mutation.isPending}>{t('common.save')}</Button>

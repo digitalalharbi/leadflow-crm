@@ -226,14 +226,14 @@ export function PlatformPage() {
             label={t('superAdmin.companyName')}
             value={form.company_name}
             error={fieldErrors.company_name}
-            onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, company_name: e.target.value }))}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label={t('superAdmin.systemName')}
               hint={t('common.optional')}
               value={form.system_name}
-              onChange={(e) => setForm({ ...form, system_name: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, system_name: e.target.value }))}
             />
             <Input
               dir="ltr"
@@ -242,7 +242,7 @@ export function PlatformPage() {
               value={form.subdomain}
               error={fieldErrors.subdomain}
               onChange={(e) =>
-                setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
+                setForm((prev) => ({ ...prev, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))
               }
             />
           </div>
@@ -251,7 +251,7 @@ export function PlatformPage() {
             label={t('superAdmin.adminName')}
             value={form.admin_name}
             error={fieldErrors.admin_name}
-            onChange={(e) => setForm({ ...form, admin_name: e.target.value })}
+            onChange={(e) => setForm((prev) => ({ ...prev, admin_name: e.target.value }))}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
@@ -261,7 +261,7 @@ export function PlatformPage() {
               label={t('superAdmin.adminEmail')}
               value={form.admin_email}
               error={fieldErrors.admin_email}
-              onChange={(e) => setForm({ ...form, admin_email: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, admin_email: e.target.value }))}
             />
             <Input
               required
@@ -271,7 +271,7 @@ export function PlatformPage() {
               label={t('superAdmin.adminPassword')}
               value={form.admin_password}
               error={fieldErrors.admin_password}
-              onChange={(e) => setForm({ ...form, admin_password: e.target.value })}
+              onChange={(e) => setForm((prev) => ({ ...prev, admin_password: e.target.value }))}
             />
           </div>
         </form>

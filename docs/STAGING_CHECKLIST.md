@@ -197,7 +197,9 @@ gh api -X PUT repos/:owner/leadflow-crm/branches/develop/protection \
 ## 8. Before real customer data
 
 - [ ] `SUPER_ADMIN_PASSWORD` set (seeding refuses to run without it outside local)
-- [ ] `TRUSTED_PROXIES` set to the host Nginx range, not `*`
+- [ ] `TRUSTED_PROXIES` set to the host Nginx address or range. `*` is filtered
+      out rather than honoured, so leaving it there trusts nothing and the
+      audit log records the proxy's address instead of the caller's
 - [ ] A distinct `APP_KEY` per environment — it encrypts stored integration
       credentials, and losing it loses them
 - [ ] Backups pointed at off-server storage; `./backups` on the same VPS is not a backup
@@ -211,7 +213,7 @@ gh api -X PUT repos/:owner/leadflow-crm/branches/develop/protection \
 | Blocking? | Item |
 | --- | --- |
 | No | Everything above |
-| — | The app, its 180 backend / 32 unit / 72 browser tests and its pipeline all run today |
+| — | The app, its 226 backend / 32 unit / 73 browser tests and its pipeline all run today |
 
 The only genuine external dependencies are a server, a domain and certificates.
 Ad-platform API keys are listed in [EXTERNAL_SETUP.md](../EXTERNAL_SETUP.md); the

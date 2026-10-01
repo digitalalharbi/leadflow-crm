@@ -1,15 +1,18 @@
 # Testing
 
 ```bash
-# Backend — 150 tests
+# Backend — 226 tests
 cd backend
 createdb leadflow_testing
 php artisan test
 ./vendor/bin/pint --test
 
-# Frontend — 32 tests
+# Frontend — 32 unit tests
 cd frontend
 npm run lint && npm run typecheck && npm run test && npm run build
+
+# Browser — 73 Playwright tests (needs the API and the SPA running)
+npm run test:e2e
 ```
 
 ## Why PostgreSQL in tests
@@ -23,17 +26,23 @@ production broke — the opposite of what a test is for.
 | Suite | Tests | What it proves |
 | --- | --- | --- |
 | `TenantIsolationTest` | 18 | A tenant cannot reach another tenant's data by any route |
-| `LeadIngestionTest` | 19 | The public webhook accepts real leads and refuses everything else |
+| `WebhookReadinessTest` | 24 | The public endpoint under every condition a real ad platform produces |
 | `LeadManagementTest` | 23 | Lead lifecycle, role visibility, duplicate handling, export |
+| `LeadIngestionTest` | 19 | The public webhook accepts real leads and refuses everything else |
+| `SecurityHardeningTest` | 17 | Regressions for every finding in both security reviews |
 | `AuthenticationTest` | 12 | Login, lockout, token revocation, suspension, expiry |
 | `CsvImportTest` | 8 | Upload, mapping, duplicates, failures, file cleanup |
+| `CrossTenantInjectionTest` | 8 | A foreign key from an untrusted payload can never reach another tenant's row |
+| `FollowUpTest` | 8 | Buckets — disjoint and exhaustive — completion, visibility |
 | `SuperAdminTest` | 8 | Tenant provisioning, suspension, platform stats |
 | `WhiteLabelTest` | 8 | Branding is public, isolated, and leaks nothing operational |
-| `FollowUpTest` | 7 | Buckets, completion, visibility |
-| `PhoneNormalizerTest` | 20 | Every Saudi format collapses to one key |
+| `PhoneNormalizerTest` | 6 (20 cases) | Every Saudi format collapses to one key |
+| `LeadSearchTest` | 6 (10 cases) | Name, email and phone search, in Arabic and in Arabic-Indic digits |
+| `AssignmentIntegrityTest` | 5 | Only someone who may reassign may choose an owner, and only an active colleague |
+| `ExportSafetyTest` | 4 (9 cases) | A formula submitted through the webhook cannot execute in the buyer's spreadsheet |
 | `LeadScorerTest` | 4 | Scoring and temperature thresholds |
-| `CrossTenantInjectionTest` | 8 | A foreign key from an untrusted payload can never reach another tenant's row |
-| `SecurityHardeningTest` | 15 | Regressions for every finding in the pre-release security review |
+| `DemoEndpointTest` | 4 | The demo lead generator cannot exist in production |
+| `MalformedInputTest` | 3 (21 cases) | A bad identifier is a 404, on every route and filter |
 
 ### The test that matters most
 
@@ -90,19 +99,42 @@ Worth recording, because they are the argument for writing them:
 9. **Nine further security defects** from the same review, each with a
    regression test in `SecurityHardeningTest`.
 
+## Browser coverage
+
+73 Playwright tests across 11 specs, run against the real API and the real SPA.
+
+| Spec | Tests | What it proves |
+| --- | --- | --- |
+| `leads.spec.ts` | 12 | List, search, filters, pagination, creation, opening a lead |
+| `dashboard.spec.ts` | 8 | Every headline number loads, and each one links to the list it names |
+| `auth.spec.ts` | 7 | Sign in, refuse bad credentials, survive a reload, sign out |
+| `follow-ups.spec.ts` | 7 | Today, upcoming and overdue buckets, and completing one |
+| `white-label.spec.ts` | 7 | A second tenant renders its own name, logo and colour |
+| `tenant-isolation.spec.ts` | 7 | One tenant cannot reach another's data, in the browser or through the API |
+| `activities.spec.ts` | 6 | Notes, calls, the WhatsApp link, and the status-change timeline |
+| `lead-workflow.spec.ts` | 6 | New → Contacted → Qualified → Appointment → Won, and Lost with a reason |
+| `mobile.spec.ts` | 5 | The drawer, the stacked list and working a lead on a Pixel 7 |
+| `pipeline.spec.ts` | 4 | Drag between columns, and the move reaching the backend and the timeline |
+| `tenant-onboarding.spec.ts` | 4 | A new client is created from the platform screen and signs in, with no code change |
+
+The fixtures come from a dedicated seeder (`leadflow:seed-e2e`), not the demo
+data: a suite that depends on data someone may reseed is a suite that will go red
+for no reason. Specs sign in by injecting an API token rather than driving the
+login form — except the auth spec, which is about the form.
+
 ## CI
 
-Both suites run on every push and pull request to `main` and `develop`. The
-backend matrix covers PHP 8.3 and 8.4. A failing lint, type check, test or build
-blocks the deploy.
+Every suite runs on each push and pull request to `main` and `develop`: backend
+on PHP 8.3 and 8.4, frontend lint/type-check/unit/build, and the Playwright suite
+against PostgreSQL and Redis services. A failure in any of them blocks the merge
+and the deploy.
 
 ## Not covered
 
 Honest gaps:
 
-* No automated browser E2E. The flows were verified manually in a real browser
-  (login → dashboard → leads → detail → status → note → pipeline drag → mobile),
-  but there is no Playwright suite yet. That is the first thing to add.
-* No load testing.
+* No load testing beyond the 10,000-lead performance pass in
+  [PERFORMANCE.md](PERFORMANCE.md) — no concurrency testing.
 * Provider `fetch()` methods are tested with mocks only, since live credentials
   are not available.
+* The E2E suite runs one worker. It is deterministic, but it is not fast.

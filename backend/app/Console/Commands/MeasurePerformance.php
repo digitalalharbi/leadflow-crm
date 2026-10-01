@@ -59,6 +59,32 @@ class MeasurePerformance extends Command
             'Projects' => '/api/v1/projects',
         ];
 
+        /*
+         * The screens that look at everything a lead has ever done are the ones
+         * that degrade first, so the busiest lead in the tenant is measured
+         * rather than an average one.
+         */
+        $busiest = DB::table('lead_messages')
+            ->where('tenant_id', $tenant->id)
+            ->select('lead_id', DB::raw('count(*) as total'))
+            ->groupBy('lead_id')
+            ->orderByDesc('total')
+            ->first();
+
+        if ($busiest) {
+            $uuid = DB::table('leads')->where('id', $busiest->lead_id)->value('uuid');
+            $messages = (int) $busiest->total;
+            $activities = DB::table('lead_activities')->where('lead_id', $busiest->lead_id)->count();
+
+            $cases["Lead detail ({$messages} msg, {$activities} act)"] = '/api/v1/leads/'.$uuid;
+            $cases['Conversation, page 1'] = '/api/v1/leads/'.$uuid.'/messages';
+            $cases['Conversation, last page'] = '/api/v1/leads/'.$uuid.'/messages?page=4';
+            $cases['Qualification breakdown'] = '/api/v1/leads/'.$uuid.'/qualification';
+        }
+
+        $cases['Campaign quality'] = '/api/v1/reports/campaign-quality';
+        $cases['Sales performance'] = '/api/v1/reports/performance';
+
         $this->line(sprintf('Tenant [%s] — %s leads', $tenant->slug, number_format($leads)));
         $this->newLine();
         $this->line(sprintf('| %-28s | %7s | %8s | %8s | %4s |', 'Endpoint', 'Queries', 'Time', 'Payload', 'Code'));

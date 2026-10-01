@@ -47,16 +47,23 @@ class DashboardController extends Controller
          * in a single scan, which matters because this is the most-hit endpoint
          * in the product and the set grows with the tenant.
          */
+        $targetMinutes = (int) ($user->tenant?->settings?->first_contact_target_minutes ?? 30);
+        $cutoff = now()->subMinutes($targetMinutes);
+
         $tallies = (clone $base())
             ->selectRaw(
                 'count(*) filter (where temperature = ? and status not in (?, ?)) as hot,
                  count(*) filter (where assigned_to is null) as unassigned,
-                 count(*) filter (where created_at >= ?) as new_today',
+                 count(*) filter (where created_at >= ?) as new_today,
+                 count(*) filter (where first_contact_at is null and status = ? and created_at <= ?)
+                   as awaiting_contact',
                 [
                     LeadTemperature::Hot->value,
                     LeadStatus::Won->value,
                     LeadStatus::Lost->value,
                     today(),
+                    LeadStatus::New->value,
+                    $cutoff,
                 ],
             )
             ->first();
@@ -65,17 +72,13 @@ class DashboardController extends Controller
          * Leads nobody has touched yet, past the workspace's own target. This is
          * the panel that earns the product its keep: an ad lead answered inside
          * half an hour is a conversation, and the same lead answered tomorrow is
-         * a cold call.
+         * a cold call. The count rides along with the other tallies above; only
+         * the short list below needs its own pass.
          */
-        $targetMinutes = (int) ($user->tenant?->settings?->first_contact_target_minutes ?? 30);
-        $cutoff = now()->subMinutes($targetMinutes);
-
         $awaitingQuery = fn () => (clone $base())
             ->whereNull('first_contact_at')
             ->where('status', LeadStatus::New->value)
             ->where('leads.created_at', '<=', $cutoff);
-
-        $awaitingCount = (int) $awaitingQuery()->count();
 
         // Likewise for the follow-up buckets: one grouped query, not three counts.
         $followUpCounts = FollowUp::query()
@@ -107,7 +110,7 @@ class DashboardController extends Controller
                 'follow_ups_today' => (int) ($followUpCounts->due_today ?? 0),
                 'follow_ups_overdue' => (int) ($followUpCounts->overdue ?? 0),
                 'appointments' => $appointments,
-                'awaiting_first_contact' => $awaitingCount,
+                'awaiting_first_contact' => (int) ($tallies->awaiting_contact ?? 0),
                 'first_contact_target_minutes' => $targetMinutes,
             ],
             'charts' => [

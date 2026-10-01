@@ -157,6 +157,11 @@ export default {
     emptyTitle: 'No projects yet', emptyBody: 'Add your first project so leads can be linked to it.',
   },
   reports: {
+    tabs: { overview: 'Overview', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons' },
+    teamHint: 'Measurements per owner — not a ranking of people',
+    lostHint: 'Largest reason first — that is the one to fix',
+    noLost: 'No lost deals in this period',
+
     title: 'Reports', subtitle: 'How your sources and your team are performing',
     byPlatform: 'By platform', byCampaign: 'By campaign', byProject: 'By project',
     bySalesRep: 'By sales rep', byStatus: 'By stage', byLostReason: 'By lost reason',

@@ -347,6 +347,7 @@ export interface ReportRow {
   key: string
   label: string
   total: number
+  share: number
   qualified: number
   appointments: number
   won: number

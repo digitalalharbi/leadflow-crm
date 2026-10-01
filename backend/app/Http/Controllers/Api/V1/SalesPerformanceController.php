@@ -100,6 +100,56 @@ class SalesPerformanceController extends Controller
         ]);
     }
 
+    /**
+     * Per-rep metrics — measurements, deliberately not a ranking.
+     *
+     * A league table of people is easy to build and corrosive to use: it
+     * rewards whoever got the best leads that month and tells a manager
+     * nothing about why. These are the same funnel measures the rest of the
+     * product uses, per owner, plus how fast each one answers — which is the
+     * one number a rep genuinely controls.
+     */
+    public function salesTeam(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $tenantId = $request->user()->tenant_id;
+
+        $rows = $this->queries->build($request, $request->user())->reorder()
+            ->leftJoin('users', function ($join) use ($tenantId) {
+                $join->on('users.id', '=', 'leads.assigned_to')
+                    ->where('users.tenant_id', '=', $tenantId)
+                    ->whereNull('users.deleted_at');
+            })
+            ->select([
+                DB::raw("coalesce(users.name, '—') as name"),
+                DB::raw('users.uuid as user_id'),
+                ...$this->countExpressions(),
+            ])
+            ->selectRaw(
+                'avg(extract(epoch from (leads.first_contact_at - leads.created_at)))
+                   filter (where leads.first_contact_at is not null) as avg_first_contact_seconds'
+            )
+            ->groupBy('users.name', 'users.uuid')
+            ->orderByDesc(DB::raw('count(*)'))
+            ->limit(50)
+            ->get();
+
+        return ApiResponse::success([
+            'rows' => $rows->map(function ($row) {
+                $counts = $this->normaliseCounts($row);
+
+                return array_merge([
+                    'user_id' => $row->user_id,
+                    'name' => (string) $row->name,
+                    'avg_first_contact_seconds' => $row->avg_first_contact_seconds !== null
+                        ? (int) round((float) $row->avg_first_contact_seconds)
+                        : null,
+                ], $counts, $this->rates($counts));
+            })->all(),
+        ]);
+    }
+
     private function campaignRows(Request $request): array
     {
         $rows = $this->queries->build($request, $request->user())->reorder()

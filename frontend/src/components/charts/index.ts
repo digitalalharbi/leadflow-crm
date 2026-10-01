@@ -7,5 +7,6 @@ export { ResponseTimeChart, formatDuration, type ResponseTime } from './Response
 export { CampaignQualityChart } from './CampaignQualityChart'
 export { CampaignMatrix } from './CampaignMatrix'
 export { MetricCard } from './MetricCard'
+export { LostReasonsChart } from './LostReasonsChart'
 export { PlatformPerformanceChart } from './PlatformPerformanceChart'
 export * from './palette'

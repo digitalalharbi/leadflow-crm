@@ -168,6 +168,61 @@ class CampaignQualityTest extends TestCase
         $this->assertEqualsWithDelta(3600, $seconds, 60);
     }
 
+    public function test_the_sales_team_report_measures_rather_than_ranks(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->seedCampaign('meta', 'حملة الفريق', total: 6, contacted: 4, replied: 3, qualified: 2, won: 1);
+
+        $this->asTenant($this->t['tenant'], fn () => Lead::query()->limit(3)->update(['assigned_to' => $rep->id]));
+
+        $rows = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/reports/sales-team')
+            ->assertSuccessful()
+            ->json('data.rows');
+
+        $this->assertNotEmpty($rows);
+
+        $mine = collect($rows)->firstWhere('name', $rep->name);
+        $this->assertNotNull($mine);
+        $this->assertSame(3, $mine['leads']);
+
+        // Measurements, not a score: there is no rank, grade or position.
+        foreach ($rows as $row) {
+            $this->assertArrayNotHasKey('rank', $row);
+            $this->assertArrayNotHasKey('score', $row);
+            $this->assertArrayHasKey('avg_first_contact_seconds', $row);
+        }
+    }
+
+    public function test_the_sales_team_report_is_not_open_to_reps(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($rep)->getJson('/api/v1/reports/sales-team')->assertStatus(403);
+    }
+
+    public function test_the_sales_team_report_never_counts_another_workspace(): void
+    {
+        $other = $this->provisionTenant('Rival Co');
+        $stranger = $this->makeUser($other['tenant'], Role::Sales);
+
+        $this->asTenant($other['tenant'], fn () => Lead::create([
+            'full_name' => 'عميل منافس',
+            'phone' => '0599000111',
+            'phone_normalized' => '+966599000111',
+            'assigned_to' => $stranger->id,
+        ]));
+
+        $this->seedCampaign('meta', 'حملتنا', total: 2);
+
+        $names = collect($this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/reports/sales-team')
+            ->json('data.rows'))->pluck('name');
+
+        $this->assertFalse($names->contains($stranger->name));
+    }
+
     /** Builds a campaign with a known funnel shape. */
     private function seedCampaign(
         string $platform,

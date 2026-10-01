@@ -147,6 +147,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/campaign-quality', [SalesPerformanceController::class, 'campaignQuality']);
             Route::get('/reports/campaign-quality/export', [SalesPerformanceController::class, 'exportCampaignQuality']);
             Route::get('/reports/performance', [SalesPerformanceController::class, 'performance']);
+            Route::get('/reports/sales-team', [SalesPerformanceController::class, 'salesTeam']);
 
             // Integrations (admin only, enforced by policy)
             Route::get('/integrations', [IntegrationController::class, 'index']);

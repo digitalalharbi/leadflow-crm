@@ -100,6 +100,29 @@ export function fetchCampaignQuality(filters: Record<string, unknown> = {}) {
   )
 }
 
+export interface SalesTeamRow {
+  user_id: string | null
+  name: string
+  leads: number
+  contacted: number
+  replied: number
+  qualified: number
+  hot: number
+  appointments: number
+  won: number
+  lost: number
+  contact_rate: number
+  reply_rate: number
+  qualification_rate: number
+  appointment_rate: number
+  win_rate: number
+  avg_first_contact_seconds: number | null
+}
+
+export function fetchSalesTeam(filters: Record<string, unknown> = {}) {
+  return apiGet<{ rows: SalesTeamRow[] }>('/reports/sales-team', filters)
+}
+
 export function fetchSalesPerformance(filters: Record<string, unknown> = {}) {
   return apiGet<SalesPerformance>('/reports/performance', filters)
 }

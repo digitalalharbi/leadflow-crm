@@ -6,9 +6,10 @@ import { ApiError, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDate, formatNumber } from '@/lib/format'
+import { CURRENCIES, TIMEZONES } from '@/lib/locales'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
-  Pagination, SkeletonCards, SkeletonTable, StatCard, Table, TableWrap, Td, Th, Tr,
+  Pagination, Select, SkeletonCards, SkeletonTable, StatCard, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import type { PaginationMeta, TenantSummary } from '@/types/api'
 
@@ -21,11 +22,20 @@ interface PlatformStats {
   leads_last_30_days: number
 }
 
+/*
+ * Everything a client's identity is made of, set here once. Onboarding a
+ * customer is this form and nothing else — no code change, no migration, no
+ * deploy. The tenant's admin can change any of it later in their own settings.
+ */
 const EMPTY_FORM = {
   company_name: '',
   system_name: '',
   subdomain: '',
+  logo_url: '',
   primary_color: '#2563eb',
+  locale: 'ar',
+  currency: 'SAR',
+  timezone: 'Asia/Riyadh',
   admin_name: '',
   admin_email: '',
   admin_password: '',
@@ -64,6 +74,7 @@ export function PlatformPage() {
         ...form,
         system_name: form.system_name || undefined,
         subdomain: form.subdomain || undefined,
+        logo_url: form.logo_url || undefined,
       }),
     onSuccess: (result) => {
       setOpen(false)
@@ -246,6 +257,75 @@ export function PlatformPage() {
               }
             />
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              dir="ltr"
+              type="url"
+              label={t('superAdmin.logoUrl')}
+              hint={t('common.optional')}
+              placeholder="https://"
+              value={form.logo_url}
+              error={fieldErrors.logo_url}
+              onChange={(e) => setForm((prev) => ({ ...prev, logo_url: e.target.value }))}
+            />
+            {/* A colour picker alone hides the value; the operator usually has a
+                brand hex to paste, so show both and keep them in step. */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                {t('superAdmin.primaryColor')}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label={t('superAdmin.primaryColor')}
+                  className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-slate-800"
+                  value={form.primary_color}
+                  onChange={(e) => setForm((prev) => ({ ...prev, primary_color: e.target.value }))}
+                />
+                <Input
+                  dir="ltr"
+                  className="flex-1"
+                  value={form.primary_color}
+                  error={fieldErrors.primary_color}
+                  onChange={(e) => setForm((prev) => ({ ...prev, primary_color: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Select
+              label={t('settings.language')}
+              value={form.locale}
+              onChange={(e) => setForm((prev) => ({ ...prev, locale: e.target.value }))}
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </Select>
+            <Select
+              label={t('settings.currency')}
+              value={form.currency}
+              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
+            >
+              {CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label={t('settings.timezone')}
+              value={form.timezone}
+              onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
+            >
+              {TIMEZONES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </Select>
+          </div>
+
           <Input
             required
             label={t('superAdmin.adminName')}

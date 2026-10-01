@@ -6,6 +6,7 @@ import { apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
+import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, ErrorState, Input, Modal,
@@ -24,26 +25,6 @@ interface SettingsResponse {
 
 type Tab = 'branding' | 'general' | 'lostReasons' | 'customFields' | 'subscription'
 
-/**
- * The zones this product's customers actually operate in. A full IANA list would
- * be 400+ options to scroll past; anything missing can still be set through the
- * API, which validates against the complete list.
- */
-const TIMEZONES = [
-  'Asia/Riyadh',
-  'Asia/Dubai',
-  'Asia/Kuwait',
-  'Asia/Qatar',
-  'Asia/Bahrain',
-  'Asia/Muscat',
-  'Asia/Baghdad',
-  'Asia/Amman',
-  'Asia/Beirut',
-  'Africa/Cairo',
-  'Europe/Istanbul',
-  'Europe/London',
-  'UTC',
-]
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation()

@@ -409,6 +409,8 @@ export default {
     companyName: 'اسم الشركة',
     systemName: 'اسم النظام',
     subdomain: 'النطاق الفرعي',
+    logoUrl: 'رابط الشعار',
+    primaryColor: 'اللون الأساسي',
     adminName: 'اسم المدير',
     adminEmail: 'بريد المدير',
     adminPassword: 'كلمة مرور المدير',

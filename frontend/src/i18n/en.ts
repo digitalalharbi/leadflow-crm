@@ -192,7 +192,8 @@ export default {
   superAdmin: {
     title: 'Platform', subtitle: 'Your customers and their subscriptions',
     tenants: 'Customers', createTenant: 'New customer', companyName: 'Company name',
-    systemName: 'System name', subdomain: 'Subdomain', adminName: 'Admin name',
+    systemName: 'System name', subdomain: 'Subdomain',
+    logoUrl: 'Logo URL', primaryColor: 'Primary colour', adminName: 'Admin name',
     adminEmail: 'Admin email', adminPassword: 'Admin password', plan: 'Plan',
     users: 'Users', leads: 'Leads', createdAt: 'Created', suspend: 'Suspend',
     activate: 'Activate', totalTenants: 'Customers', activeTenants: 'Active',

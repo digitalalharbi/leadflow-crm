@@ -11,7 +11,7 @@ php artisan test
 cd frontend
 npm run lint && npm run typecheck && npm run test && npm run build
 
-# Browser — 73 Playwright tests (needs the API and the SPA running)
+# Browser — 74 Playwright tests (needs the API and the SPA running)
 npm run test:e2e
 ```
 
@@ -101,7 +101,7 @@ Worth recording, because they are the argument for writing them:
 
 ## Browser coverage
 
-73 Playwright tests across 11 specs, run against the real API and the real SPA.
+74 Playwright tests across 11 specs, run against the real API and the real SPA.
 
 | Spec | Tests | What it proves |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ Worth recording, because they are the argument for writing them:
 | `lead-workflow.spec.ts` | 6 | New → Contacted → Qualified → Appointment → Won, and Lost with a reason |
 | `mobile.spec.ts` | 5 | The drawer, the stacked list and working a lead on a Pixel 7 |
 | `pipeline.spec.ts` | 4 | Drag between columns, and the move reaching the backend and the timeline |
-| `tenant-onboarding.spec.ts` | 4 | A new client is created from the platform screen and signs in, with no code change |
+| `tenant-onboarding.spec.ts` | 5 | A new client is created from the platform screen and signs in, with no code change |
 
 The fixtures come from a dedicated seeder (`leadflow:seed-e2e`), not the demo
 data: a suite that depends on data someone may reseed is a suite that will go red

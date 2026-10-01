@@ -18,6 +18,8 @@ test.describe('Tenant onboarding', () => {
   const company = 'شركة الاختبار للتطوير'
   const systemName = 'اختبار CRM'
   const adminEmail = 'admin@e2e-onboarding.test'
+  const createdColour = '#c2410c'
+  const logo = 'https://cdn.example.test/e2e-onboarding.png'
   const colour = '#9333ea'
 
   test.beforeAll(() => {
@@ -36,6 +38,14 @@ test.describe('Tenant onboarding', () => {
     await dialog.getByLabel('اسم الشركة').fill(company)
     await dialog.getByLabel('اسم النظام').fill(systemName)
     await dialog.getByLabel('النطاق الفرعي').fill(slug)
+
+    // The whole identity is set here: everything a client needs to look like
+    // their own product, entered once by the operator.
+    await dialog.getByLabel('رابط الشعار').fill(logo)
+    await dialog.getByRole('textbox', { name: 'اللون الأساسي' }).fill(createdColour)
+    await dialog.getByLabel('العملة').selectOption('AED')
+    await dialog.getByLabel('المنطقة الزمنية').selectOption('Asia/Dubai')
+
     await dialog.getByLabel('اسم المدير').fill('مدير العميل الجديد')
     await dialog.getByLabel('بريد المدير').fill(adminEmail)
     await dialog.getByLabel('كلمة مرور المدير').fill(PASSWORD)
@@ -48,6 +58,31 @@ test.describe('Tenant onboarding', () => {
     await secretDialog.getByRole('button', { name: 'إغلاق' }).click()
 
     await expect(page.getByText(company)).toBeVisible()
+  })
+
+  test('the identity the operator entered is the one the client gets', async () => {
+    // Set on the creation form, visible on the client's own login screen before
+    // anyone has signed in or touched settings.
+    const session = await apiLogin('owner@e2e.test')
+    try {
+      const branding = await apiGet<{
+        company_name: string
+        system_name: string
+        logo_url: string
+        primary_color: string
+        currency: string
+        timezone: string
+      }>(session, `/api/v1/branding?tenant=${slug}`)
+
+      expect(branding.company_name).toBe(company)
+      expect(branding.system_name).toBe(systemName)
+      expect(branding.logo_url).toBe(logo)
+      expect(branding.primary_color.toLowerCase()).toBe(createdColour)
+      expect(branding.currency).toBe('AED')
+      expect(branding.timezone).toBe('Asia/Dubai')
+    } finally {
+      await session.dispose()
+    }
   })
 
   test('the new admin signs in to their own branded workspace', async ({ page }) => {

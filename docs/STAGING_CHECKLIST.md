@@ -213,7 +213,7 @@ gh api -X PUT repos/:owner/leadflow-crm/branches/develop/protection \
 | Blocking? | Item |
 | --- | --- |
 | No | Everything above |
-| — | The app, its 226 backend / 32 unit / 73 browser tests and its pipeline all run today |
+| — | The app, its 226 backend / 32 unit / 74 browser tests and its pipeline all run today |
 
 The only genuine external dependencies are a server, a domain and certificates.
 Ad-platform API keys are listed in [EXTERNAL_SETUP.md](../EXTERNAL_SETUP.md); the

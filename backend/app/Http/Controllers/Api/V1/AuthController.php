@@ -1,0 +1,124 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
+use App\Http\Resources\BrandingResource;
+use App\Http\Resources\UserResource;
+use App\Models\User;
+use App\Services\AuditLogger;
+use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+
+class AuthController extends Controller
+{
+    public function __construct(private AuditLogger $audit) {}
+
+    /**
+     * Token login for the SPA. The tenant is derived from the account, never
+     * from anything the client sends.
+     */
+    public function login(LoginRequest $request)
+    {
+        $email = strtolower($request->string('email')->toString());
+
+        $query = User::query()->with('tenant.branding', 'tenant.settings')->where('email', $email);
+
+        // Optional subdomain hint narrows the lookup when the same person has
+        // accounts in more than one organisation.
+        if ($slug = $request->input('tenant')) {
+            $query->whereHas('tenant', fn ($q) => $q->where('slug', $slug));
+        }
+
+        $user = $query->first();
+
+        if (! $user || ! Hash::check($request->string('password')->toString(), $user->password)) {
+            // Identical message either way — never reveal whether an email exists.
+            throw ValidationException::withMessages([
+                'email' => ['These credentials do not match our records.'],
+            ]);
+        }
+
+        if (! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['This account has been deactivated.'],
+            ]);
+        }
+
+        if (! $user->isSuperAdmin() && ! $user->tenant?->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['This organisation has been suspended.'],
+            ]);
+        }
+
+        // One token per device; logging in again elsewhere does not kill this session.
+        $token = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8))->plainTextToken;
+
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+        $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
+
+        return ApiResponse::success([
+            'token' => $token,
+            'user' => new UserResource($user),
+            'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
+            'is_super_admin' => $user->isSuperAdmin(),
+        ]);
+    }
+
+    public function me(Request $request)
+    {
+        $user = $request->user()->loadMissing('tenant.branding', 'tenant.settings');
+
+        return ApiResponse::success([
+            'user' => new UserResource($user),
+            'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
+            'is_super_admin' => $user->isSuperAdmin(),
+            'onboarding' => $user->tenant?->settings?->onboarding,
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return ApiResponse::success(null, 'Signed out.');
+    }
+
+    /** Revokes every token — used when a password changes or a device is lost. */
+    public function logoutAll(Request $request)
+    {
+        $request->user()->tokens()->delete();
+
+        return ApiResponse::success(null, 'Signed out of all devices.');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        $user->update(['password' => $data['password']]);
+
+        // Invalidate every other session; keep the one making the change.
+        $current = $user->currentAccessToken();
+        $user->tokens()->where('id', '!=', $current?->id)->delete();
+
+        $this->audit->log('auth.password_changed', $user, $user);
+
+        return ApiResponse::success(null, 'Password updated.');
+    }
+}

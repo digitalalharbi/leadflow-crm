@@ -1,0 +1,51 @@
+# Dependencies
+/node_modules
+/vendor
+
+# Environment — NEVER commit real credentials. Only .env.example is tracked.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.ppk
+id_rsa*
+*.p12
+
+# Build output
+/frontend/dist
+/frontend/node_modules
+/backend/vendor
+/backend/public/build
+/backend/public/hot
+/backend/public/storage
+/backend/storage/*.key
+/backend/storage/pail
+/backend/bootstrap/cache/*.php
+
+# Logs & caches
+*.log
+.phpunit.result.cache
+.phpunit.cache
+/backend/storage/logs/*
+/backend/storage/framework/cache/data/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/framework/testing/*
+/backend/storage/app/imports/*
+
+# Database dumps and backups
+*.sqlite
+*.sqlite-journal
+/backups
+*.sql.gz
+
+# Editors / OS
+.DS_Store
+.idea
+.vscode
+*.swp
+Thumbs.db
+
+# Local tooling
+/.claude

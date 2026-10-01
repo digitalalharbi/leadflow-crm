@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Enums;
+
+enum ActivityType: string
+{
+    case Created = 'created';
+    case Assigned = 'assigned';
+    case StatusChanged = 'status_changed';
+    case TemperatureChanged = 'temperature_changed';
+    case NoteAdded = 'note_added';
+    case Called = 'called';
+    case WhatsappClicked = 'whatsapp_clicked';
+    case EmailSent = 'email_sent';
+    case NoAnswer = 'no_answer';
+    case Contacted = 'contacted';
+    case FollowUpCreated = 'follow_up_created';
+    case FollowUpCompleted = 'follow_up_completed';
+    case AppointmentCreated = 'appointment_created';
+    case Won = 'won';
+    case Lost = 'lost';
+    case ReEngaged = 're_engaged';
+    case Updated = 'updated';
+
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
+}

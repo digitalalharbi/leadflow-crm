@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\DataTransferObjects\IncomingLead;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
-use App\Models\Lead;
 use App\Models\Project;
 use App\Services\Leads\LeadIngestionService;
 use App\Support\ApiResponse;
@@ -34,7 +33,9 @@ class DemoController extends Controller
             abort(404);
         }
 
-        $this->authorize('create', Lead::class);
+        // Whoever is running the demo, not whoever can enter a lead: fabricated
+        // customers are a presentation device, not a sales action.
+        abort_unless($request->user()->isAdmin(), 403, 'This action is not allowed.');
 
         $data = $request->validate([
             'platform' => ['nullable', 'in:meta,snapchat,tiktok,google_ads,linkedin,website'],

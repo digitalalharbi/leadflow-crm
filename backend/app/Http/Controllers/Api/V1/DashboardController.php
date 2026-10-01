@@ -86,10 +86,12 @@ class DashboardController extends Controller
                     ->orderBy('next_follow_up_at')->limit(5)->get()
             ),
             'filters' => [
-                'projects' => Project::orderBy('name')->get(['uuid as id', 'name']),
+                'projects' => Project::orderBy('name')->get(['uuid', 'name'])
+                    ->map(fn ($p) => ['id' => $p->uuid, 'name' => $p->name])->values(),
                 'users' => $user->seesAllLeads()
                     ? User::where('tenant_id', $user->tenant_id)->where('is_active', true)
-                        ->orderBy('name')->get(['uuid as id', 'name'])
+                        ->orderBy('name')->get(['uuid', 'name'])
+                        ->map(fn ($u) => ['id' => $u->uuid, 'name' => $u->name])->values()
                     : [],
             ],
         ]);

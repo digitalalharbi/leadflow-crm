@@ -293,6 +293,33 @@ class LeadManagementTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.lead.project.name', 'Jasmine Villas');
     }
 
+    public function test_dashboard_filter_options_carry_real_uuids(): void
+    {
+        // Regression: selecting `uuid as id` put the uuid in the `id` attribute,
+        // which Eloquent casts to an integer, so every option serialised as 0 and
+        // dashboard filtering silently did nothing.
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'Filterable']));
+
+        $response = $this->actingAs($this->t['admin'])->getJson('/api/v1/dashboard');
+
+        $projectId = $response->json('data.filters.projects.0.id');
+
+        $this->assertSame($project->uuid, $projectId);
+        $this->assertIsString($projectId);
+
+        $userId = $response->json('data.filters.users.0.id');
+        $this->assertIsString($userId);
+        $this->assertNotSame('0', (string) $userId);
+
+        // And the filter actually narrows the result set.
+        $this->makeLead(['project_id' => $project->id]);
+
+        $filtered = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/dashboard?project_id='.$projectId);
+
+        $this->assertSame(1, $filtered->json('data.summary.total_leads'));
+    }
+
     public function test_leads_export_streams_a_csv(): void
     {
         $this->makeLead(['full_name' => 'CSV Person']);

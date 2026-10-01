@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\WebhookEndpoint;
+use App\Models\WebhookLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -19,7 +20,9 @@ class LeadIngestionTest extends TestCase
     use RefreshDatabase;
 
     private array $t;
+
     private string $key;
+
     private string $secret = 'test-secret-0123456789abcdefghij';
 
     protected function setUp(): void
@@ -36,7 +39,7 @@ class LeadIngestionTest extends TestCase
     private function send(array $payload, ?string $secret = null, ?string $key = null)
     {
         return $this->withHeader('X-Webhook-Secret', $secret ?? $this->secret)
-            ->postJson("/api/v1/integrations/webhooks/".($key ?? $this->key)."/leads", $payload);
+            ->postJson('/api/v1/integrations/webhooks/'.($key ?? $this->key).'/leads', $payload);
     }
 
     public function test_a_webhook_creates_a_lead_and_maps_common_field_names(): void
@@ -131,7 +134,7 @@ class LeadIngestionTest extends TestCase
         $this->send(['phone' => '0512345678']);
         $this->send(['phone' => '0512345679'], secret: 'wrong');
 
-        $logs = \App\Models\WebhookLog::withoutGlobalScopes()->get();
+        $logs = WebhookLog::withoutGlobalScopes()->get();
 
         $this->assertCount(2, $logs);
         $this->assertEqualsCanonicalizing(['accepted', 'rejected'], $logs->pluck('status')->all());
@@ -145,7 +148,7 @@ class LeadIngestionTest extends TestCase
             'api_token' => 'super-sensitive',
         ])->assertOk();
 
-        $log = \App\Models\WebhookLog::withoutGlobalScopes()->first();
+        $log = WebhookLog::withoutGlobalScopes()->first();
 
         $this->assertArrayNotHasKey('secret', $log->payload);
         $this->assertSame('[redacted]', $log->payload['api_token']);

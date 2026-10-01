@@ -2,6 +2,7 @@
 
 namespace App\Services\Integrations\Providers;
 
+use App\DataTransferObjects\IncomingLead;
 use App\Enums\IntegrationProvider;
 use App\Models\Integration;
 use Illuminate\Support\Arr;
@@ -24,7 +25,7 @@ class MetaLeadProvider extends AbstractLeadProvider
     }
 
     /** Meta sends answers as [{name, values[]}] rather than a flat object. */
-    public function toIncomingLead(array $payload, ?Integration $integration = null): \App\DataTransferObjects\IncomingLead
+    public function toIncomingLead(array $payload, ?Integration $integration = null): IncomingLead
     {
         if (isset($payload['field_data']) && is_array($payload['field_data'])) {
             $flat = [];

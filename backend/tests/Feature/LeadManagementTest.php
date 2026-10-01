@@ -57,6 +57,42 @@ class LeadManagementTest extends TestCase
         $this->assertSame(1, Lead::withoutGlobalScopes()->first()->re_engaged_count);
     }
 
+    public function test_a_lead_a_rep_enters_by_hand_stays_with_that_rep(): void
+    {
+        // Even with round robin on: the rep has already spoken to this person,
+        // so handing the lead to someone else would be wrong.
+        $this->t['tenant']->settings->update(['assignment_mode' => 'round_robin']);
+
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+        $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($rep)->postJson('/api/v1/leads', [
+            'full_name' => 'Walk-in Buyer',
+            'phone' => '0501234567',
+        ])->assertCreated();
+
+        $lead = Lead::withoutGlobalScopes()->where('phone_normalized', '+966501234567')->first();
+
+        $this->assertSame($rep->id, $lead->assigned_to);
+        $this->assertSame($rep->id, $lead->created_by);
+    }
+
+    public function test_a_manager_can_still_hand_a_new_lead_to_someone_else(): void
+    {
+        $manager = $this->makeUser($this->t['tenant'], Role::Manager);
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($manager)->postJson('/api/v1/leads', [
+            'full_name' => 'Assigned Buyer',
+            'phone' => '0501234567',
+            'assigned_to' => $rep->uuid,
+        ])->assertCreated();
+
+        $lead = Lead::withoutGlobalScopes()->where('phone_normalized', '+966501234567')->first();
+
+        $this->assertSame($rep->id, $lead->assigned_to);
+    }
+
     public function test_a_lead_needs_a_phone_or_an_email(): void
     {
         $this->actingAs($this->t['admin'])
@@ -255,6 +291,33 @@ class LeadManagementTest extends TestCase
             'phone' => '0512345678',
             'project_id' => $project->uuid,
         ])->assertCreated()->assertJsonPath('data.lead.project.name', 'Jasmine Villas');
+    }
+
+    public function test_dashboard_filter_options_carry_real_uuids(): void
+    {
+        // Regression: selecting `uuid as id` put the uuid in the `id` attribute,
+        // which Eloquent casts to an integer, so every option serialised as 0 and
+        // dashboard filtering silently did nothing.
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'Filterable']));
+
+        $response = $this->actingAs($this->t['admin'])->getJson('/api/v1/dashboard');
+
+        $projectId = $response->json('data.filters.projects.0.id');
+
+        $this->assertSame($project->uuid, $projectId);
+        $this->assertIsString($projectId);
+
+        $userId = $response->json('data.filters.users.0.id');
+        $this->assertIsString($userId);
+        $this->assertNotSame('0', (string) $userId);
+
+        // And the filter actually narrows the result set.
+        $this->makeLead(['project_id' => $project->id]);
+
+        $filtered = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/dashboard?project_id='.$projectId);
+
+        $this->assertSame(1, $filtered->json('data.summary.total_leads'));
     }
 
     public function test_leads_export_streams_a_csv(): void

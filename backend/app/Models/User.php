@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use RuntimeException;
 
 /**
  * Users are deliberately NOT scoped by BelongsToTenant: the login lookup has to
@@ -37,6 +38,21 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'role' => Role::class,
         ];
+    }
+
+    public static function booted(): void
+    {
+        // A tenant-less user is, by definition, the platform super admin.
+        // Anything else without a tenant would be an orphan account that can
+        // neither sign in nor be governed by a policy, so refuse to create it.
+        static::saving(function (self $user) {
+            if ($user->tenant_id === null && $user->role !== Role::SuperAdmin) {
+                throw new RuntimeException(
+                    'Only a super admin may exist without a tenant; got role '
+                    .($user->role?->value ?? 'null').'.'
+                );
+            }
+        });
     }
 
     public function tenant(): BelongsTo

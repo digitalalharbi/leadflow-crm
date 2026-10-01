@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
-use App\Enums\Platform;
 use App\Enums\Role;
 use App\Models\CustomField;
 use App\Models\FollowUp;
@@ -53,6 +52,7 @@ class DemoSeeder extends Seeder
     ];
 
     private const PROPERTY_TYPES = ['شقة', 'فيلا', 'دوبلكس', 'أرض سكنية', 'تاون هاوس'];
+
     private const TIMELINES = ['immediate', 'within_month', 'within_3_months', 'within_6_months', 'exploring'];
 
     public function run(): void
@@ -95,6 +95,7 @@ class DemoSeeder extends Seeder
             $this->command->info('Seeding demo tenant: '.$tenant->name);
 
             $manager = User::create([
+                'tenant_id' => $tenant->id,
                 'name' => 'سارة القحطاني',
                 'email' => 'manager@rawasi.test',
                 'password' => 'password',
@@ -112,6 +113,7 @@ class DemoSeeder extends Seeder
             ];
 
             $sales = collect($salesNames)->map(fn ($s) => User::create([
+                'tenant_id' => $tenant->id,
                 'name' => $s[0],
                 'email' => $s[1],
                 'password' => 'password',
@@ -256,7 +258,7 @@ class DemoSeeder extends Seeder
 
     private function seedTimeline($tenant, Lead $lead, ?User $assignee, string $status, $createdAt): void
     {
-        $log = function (ActivityType $type, $at, array $meta = [], ?User $user = null) use ($tenant, $lead) {
+        $log = function (ActivityType $type, $at, array $meta = [], ?User $user = null) use ($lead) {
             LeadActivity::create([
                 'lead_id' => $lead->id,
                 'user_id' => $user?->id,

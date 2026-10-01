@@ -1,0 +1,92 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+# Never run two deploys at the same host at once, and never cancel one halfway.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  backend-tests:
+    uses: ./.github/workflows/backend-tests.yml
+
+  frontend-tests:
+    uses: ./.github/workflows/frontend-tests.yml
+
+  deploy:
+    name: Deploy to staging VPS
+    needs: [backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://${{ vars.STAGING_DOMAIN || 'staging.example.com' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deployment secrets
+        id: guard
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          if [ -z "$VPS_HOST" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deployment skipped::VPS secrets are not configured yet. Tests passed; see EXTERNAL_SETUP.md to enable deploys."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up the SSH key
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          # Written from a secret and never echoed.
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+          STAGING_PATH: ${{ secrets.STAGING_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" \
+            "set -e; \
+             export STAGING_PATH='${STAGING_PATH:-/var/www/leads-crm/staging}'; \
+             export DEPLOY_BRANCH=develop; \
+             export DEPLOY_COMMIT='${{ github.sha }}'; \
+             cd \"\$STAGING_PATH\" && ./scripts/deploy-staging.sh"
+
+      - name: Verify staging is serving the new build
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          STAGING_DOMAIN: ${{ vars.STAGING_DOMAIN }}
+        run: |
+          if [ -z "$STAGING_DOMAIN" ]; then
+            echo "::notice::STAGING_DOMAIN variable not set; skipping the public check."
+            exit 0
+          fi
+
+          for i in $(seq 1 10); do
+            if curl -fsS "https://${STAGING_DOMAIN}/api/health" | grep -q healthy; then
+              echo "::notice title=Staging is live::https://${STAGING_DOMAIN}"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Staging did not report healthy." >&2
+          exit 1
+
+      - name: Clean up the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

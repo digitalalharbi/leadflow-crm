@@ -37,6 +37,7 @@ class AuditLogger
             foreach ($sensitive as $needle) {
                 if (str_contains(strtolower((string) $key), $needle)) {
                     $changes[$key] = '[redacted]';
+
                     continue 2;
                 }
             }

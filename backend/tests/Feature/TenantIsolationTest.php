@@ -7,6 +7,7 @@ use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,8 +21,11 @@ class TenantIsolationTest extends TestCase
     use RefreshDatabase;
 
     private array $a;
+
     private array $b;
+
     private Lead $leadA;
+
     private Lead $leadB;
 
     protected function setUp(): void
@@ -195,11 +199,40 @@ class TenantIsolationTest extends TestCase
 
     public function test_a_model_cannot_be_created_without_a_tenant_context(): void
     {
-        app(\App\Support\TenantContext::class)->clear();
+        app(TenantContext::class)->clear();
 
         $this->expectException(\RuntimeException::class);
 
         Lead::create(['full_name' => 'Orphan', 'phone_normalized' => '+966599999999']);
+    }
+
+    public function test_only_a_super_admin_may_exist_without_a_tenant(): void
+    {
+        // An orphan user can neither sign in nor be governed by a policy, so the
+        // model refuses to create one. This guards seeders and admin tooling.
+        $this->expectException(\RuntimeException::class);
+
+        User::create([
+            'tenant_id' => null,
+            'name' => 'Orphan Rep',
+            'email' => 'orphan@example.test',
+            'password' => 'password123',
+            'role' => Role::Sales,
+        ]);
+    }
+
+    public function test_a_super_admin_may_exist_without_a_tenant(): void
+    {
+        $owner = User::create([
+            'tenant_id' => null,
+            'name' => 'Owner',
+            'email' => 'owner2@example.test',
+            'password' => 'password123',
+            'role' => Role::SuperAdmin,
+        ]);
+
+        $this->assertNull($owner->tenant_id);
+        $this->assertTrue($owner->isSuperAdmin());
     }
 
     public function test_a_lead_cannot_be_moved_to_another_tenant(): void

@@ -12,6 +12,8 @@ use App\Services\AuditLogger;
 use App\Services\Integrations\ProviderRegistry;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class IntegrationController extends Controller
@@ -151,8 +153,8 @@ class IntegrationController extends Controller
         $endpoint = WebhookEndpoint::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $endpoint->integration ?? Integration::class);
 
-        $secret = \Illuminate\Support\Str::random(48);
-        $endpoint->update(['secret_hash' => \Illuminate\Support\Facades\Hash::make($secret)]);
+        $secret = Str::random(48);
+        $endpoint->update(['secret_hash' => Hash::make($secret)]);
 
         $this->audit->log('integration.webhook_secret_rotated', $request->user(), $endpoint);
 

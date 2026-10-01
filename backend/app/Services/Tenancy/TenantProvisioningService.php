@@ -65,7 +65,7 @@ class TenantProvisioningService
 
                 foreach (LostReason::DEFAULTS as $index => $reason) {
                     LostReason::create([
-                            'key' => $reason['key'],
+                        'key' => $reason['key'],
                         'label' => $reason['label'],
                         'sort_order' => $index,
                     ]);

@@ -11,10 +11,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeLeadStatusRequest;
 use App\Http\Requests\StoreLeadRequest;
 use App\Http\Requests\UpdateLeadRequest;
+use App\Http\Resources\FollowUpResource;
 use App\Http\Resources\LeadActivityResource;
 use App\Http\Resources\LeadListResource;
 use App\Http\Resources\LeadNoteResource;
 use App\Http\Resources\LeadResource;
+use App\Models\CustomField;
+use App\Models\CustomFieldValue;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\LostReason;
@@ -28,7 +31,10 @@ use App\Services\Leads\LeadQueryBuilder;
 use App\Services\Leads\LeadScorer;
 use App\Services\Leads\PhoneNormalizer;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -78,7 +84,7 @@ class LeadController extends Controller
             'notes' => LeadNoteResource::collection(
                 $lead->notes()->with('user:id,uuid,name')->limit(50)->get()
             ),
-            'follow_ups' => \App\Http\Resources\FollowUpResource::collection(
+            'follow_ups' => FollowUpResource::collection(
                 $lead->followUps()->with('assignee:id,uuid,name')->orderBy('due_at')->get()
             ),
         ]);
@@ -95,6 +101,12 @@ class LeadController extends Controller
         $data['project_id'] = $this->resolveProjectId($data['project_id'] ?? null);
         $data['assigned_to'] = $this->resolveUserId($data['assigned_to'] ?? null);
 
+        // A rep typing in a lead has just spoken to that person, so it is theirs.
+        // Round-robin is for inbound traffic nobody has touched yet.
+        if ($data['assigned_to'] === null && $request->user()->isSales()) {
+            $data['assigned_to'] = $request->user()->id;
+        }
+
         $result = $this->ingestion->ingest(
             $request->user()->tenant,
             IncomingLead::fromArray(IntegrationProvider::Manual, $data),
@@ -106,11 +118,6 @@ class LeadController extends Controller
 
         $lead = $result->lead;
         $lead->forceFill(['created_by' => $request->user()->id])->saveQuietly();
-
-        // A rep adding a lead by hand owns it unless a manager said otherwise.
-        if (! $lead->assigned_to && $request->user()->isSales()) {
-            $this->assignment->assign($lead, $request->user(), $request->user(), notify: false);
-        }
 
         $fresh = $lead->fresh(['assignee:id,uuid,name', 'project:id,uuid,name', 'lostReason:id,uuid,label']);
 
@@ -283,7 +290,7 @@ class LeadController extends Controller
         $this->authorize('update', $lead);
 
         $request->validate([
-            'temperature' => ['required', \Illuminate\Validation\Rule::in(LeadTemperature::values())],
+            'temperature' => ['required', Rule::in(LeadTemperature::values())],
         ]);
 
         $previous = $lead->temperature;
@@ -311,7 +318,7 @@ class LeadController extends Controller
             'body' => $data['body'],
         ]);
 
-        $this->activities->log($lead, ActivityType::NoteAdded, $request->user(), \Illuminate\Support\Str::limit($data['body'], 120));
+        $this->activities->log($lead, ActivityType::NoteAdded, $request->user(), Str::limit($data['body'], 120));
 
         return ApiResponse::created(['note' => new LeadNoteResource($note->load('user:id,uuid,name'))]);
     }
@@ -415,13 +422,13 @@ class LeadController extends Controller
 
     private function resolveUserId(?string $uuid): ?int
     {
-        return $uuid ? User::where('tenant_id', app(\App\Support\TenantContext::class)->id())
+        return $uuid ? User::where('tenant_id', app(TenantContext::class)->id())
             ->where('uuid', $uuid)->value('id') : null;
     }
 
     private function syncCustomFields(Lead $lead, array $custom): void
     {
-        $fields = \App\Models\CustomField::where('is_active', true)
+        $fields = CustomField::where('is_active', true)
             ->whereIn('key', array_keys($custom))->get()->keyBy('key');
 
         foreach ($custom as $key => $value) {
@@ -429,7 +436,7 @@ class LeadController extends Controller
                 continue;
             }
 
-            \App\Models\CustomFieldValue::updateOrCreate(
+            CustomFieldValue::updateOrCreate(
                 ['custom_field_id' => $fields[$key]->id, 'lead_id' => $lead->id],
                 ['value' => $value === null ? null : (string) $value],
             );

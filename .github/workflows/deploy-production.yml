@@ -1,0 +1,167 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type "deploy" to confirm
+        required: true
+        default: ''
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  backend-tests:
+    uses: ./.github/workflows/backend-tests.yml
+
+  frontend-tests:
+    uses: ./.github/workflows/frontend-tests.yml
+
+  # Production gets one more gate than staging: the app must boot and the
+  # schema must apply cleanly against an empty database before we touch the VPS.
+  verify:
+    name: Pre-flight verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: leadflow_verify
+          POSTGRES_USER: leadflow
+          POSTGRES_PASSWORD: secret
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U leadflow"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, pgsql, mbstring, bcmath, intl, zip
+          tools: composer:v2
+
+      - name: Install production dependencies
+        working-directory: backend
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress
+
+      - name: Validate the production configuration
+        working-directory: backend
+        env:
+          APP_ENV: production
+          APP_DEBUG: 'false'
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: leadflow_verify
+          DB_USERNAME: leadflow
+          DB_PASSWORD: secret
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          # These fail loudly on a bad config, a bad route or a bad listener.
+          php artisan config:cache
+          php artisan route:cache
+          php artisan event:cache
+          php artisan about --only=environment
+
+      - name: Check migrations apply to an empty database
+        working-directory: backend
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: leadflow_verify
+          DB_USERNAME: leadflow
+          DB_PASSWORD: secret
+        run: php artisan migrate --force
+
+      - name: Refuse destructive commands in the deploy path
+        run: |
+          # migrate:fresh / db:wipe must never appear in a deploy script.
+          if grep -rnE 'migrate:fresh|db:wipe|DROP DATABASE' scripts/ .github/workflows/ ; then
+            echo "::error title=Unsafe command::A destructive database command is present in the deploy path."
+            exit 1
+          fi
+          echo "No destructive database commands found."
+
+  deploy:
+    name: Deploy to production VPS
+    needs: [backend-tests, frontend-tests, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://${{ vars.PRODUCTION_DOMAIN || 'app.example.com' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deployment secrets
+        id: guard
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          if [ -z "$VPS_HOST" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deployment skipped::VPS secrets are not configured. See EXTERNAL_SETUP.md."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up the SSH key
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" \
+            "set -e; \
+             export PRODUCTION_PATH='${PRODUCTION_PATH:-/var/www/leads-crm/production}'; \
+             export DEPLOY_BRANCH=main; \
+             export DEPLOY_COMMIT='${{ github.sha }}'; \
+             cd \"\$PRODUCTION_PATH\" && ./scripts/deploy-production.sh"
+
+      - name: Verify production is healthy
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+        run: |
+          if [ -z "$PRODUCTION_DOMAIN" ]; then
+            echo "::notice::PRODUCTION_DOMAIN variable not set; skipping the public check."
+            exit 0
+          fi
+
+          for i in $(seq 1 12); do
+            if curl -fsS "https://${PRODUCTION_DOMAIN}/api/health" | grep -q healthy; then
+              echo "::notice title=Production is live::https://${PRODUCTION_DOMAIN}"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Production did not report healthy." >&2
+          exit 1
+
+      - name: Clean up the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

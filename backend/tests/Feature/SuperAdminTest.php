@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\Lead;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -151,7 +152,7 @@ class SuperAdminTest extends TestCase
             ])->assertCreated();
         }
 
-        $slugs = \App\Models\Tenant::pluck('slug');
+        $slugs = Tenant::pluck('slug');
 
         $this->assertSame($slugs->unique()->count(), $slugs->count());
     }

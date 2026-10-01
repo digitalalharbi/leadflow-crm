@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\SuperAdmin;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\Tenant;
@@ -12,8 +13,8 @@ use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Validation\Rule;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * The SaaS owner's console. Creating a client here is the entire onboarding
@@ -191,7 +192,7 @@ class TenantController extends Controller
                 'name' => $data['name'],
                 'email' => strtolower($data['email']),
                 'password' => $data['password'],
-                'role' => \App\Enums\Role::Admin,
+                'role' => Role::Admin,
                 'is_active' => true,
             ]);
 

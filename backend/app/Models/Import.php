@@ -14,9 +14,13 @@ class Import extends Model
     use BelongsToTenant, HasFactory, HasUuid;
 
     public const PENDING = 'pending';
+
     public const MAPPING = 'mapping';
+
     public const PROCESSING = 'processing';
+
     public const COMPLETED = 'completed';
+
     public const FAILED = 'failed';
 
     protected $fillable = [

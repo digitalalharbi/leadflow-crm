@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, ArrowRight, CalendarPlus, MessageCircle, Phone, StickyNote, Trash2,
+  ArrowLeft, ArrowRight, CalendarPlus, Check, Flame, MessageCircle, Phone,
+  StickyNote, Trash2, UserCheck,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -15,8 +16,8 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatBudgetRange, formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
 import {
-  Badge, Button, Card, CardBody, CardHeader, ErrorState, Input, Modal, Select,
-  Skeleton, StatusBadge, TemperatureBadge, Textarea,
+  Badge, Button, Card, CardBody, CardHeader, Dropdown, DropdownItem, ErrorState,
+  Input, Modal, Select, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { LeadStatus, LeadTemperature } from '@/types/api'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
@@ -35,6 +36,7 @@ export function LeadDetailPage() {
   const translateError = useApiError()
 
   const [note, setNote] = useState('')
+  const [noteOpen, setNoteOpen] = useState(false)
   const [lostOpen, setLostOpen] = useState(false)
   const [lostReasonId, setLostReasonId] = useState('')
   const [lostNote, setLostNote] = useState('')
@@ -102,6 +104,7 @@ export function LeadDetailPage() {
     mutationFn: () => addLeadNote(id, note),
     onSuccess: () => {
       setNote('')
+      setNoteOpen(false)
       refresh()
     },
     onError,
@@ -205,30 +208,143 @@ export function LeadDetailPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          {/*
+            Every action a rep performs on a lead lives here, above the fold:
+            call, WhatsApp, note, follow-up, temperature and assignment. Nothing
+            that is done dozens of times a day should require scrolling.
+          */}
+          <div className="flex flex-wrap gap-2" data-testid="lead-quick-actions">
             {lead.phone && (
               <a href={`tel:${lead.phone}`} onClick={() => contactMutation.mutate('call')}>
-                <Button variant="outline" icon={<Phone className="size-4" />}>{t('leads.call')}</Button>
+                <Button variant="outline" icon={<Phone className="size-4" />} data-testid="action-call">
+                  {t('leads.call')}
+                </Button>
               </a>
             )}
+
             {waHref && (
               <a href={waHref} target="_blank" rel="noreferrer" onClick={() => contactMutation.mutate('whatsapp')}>
                 <Button
                   variant="outline"
                   icon={<MessageCircle className="size-4" />}
                   className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  data-testid="action-whatsapp"
                 >
                   {t('leads.whatsapp')}
                 </Button>
               </a>
             )}
+
+            <Button
+              variant="outline"
+              icon={<StickyNote className="size-4" />}
+              onClick={() => setNoteOpen(true)}
+              data-testid="action-note"
+            >
+              {t('leads.addNote')}
+            </Button>
+
             <Button
               variant="outline"
               icon={<CalendarPlus className="size-4" />}
               onClick={() => setFollowUpOpen(true)}
+              data-testid="action-follow-up"
             >
               {t('leads.setFollowUp')}
             </Button>
+
+            {/* Temperature: three options, so a dropdown beats a separate page. */}
+            <Dropdown
+              trigger={({ toggle }) => (
+                <Button
+                  variant="outline"
+                  icon={<Flame className="size-4" />}
+                  onClick={toggle}
+                  loading={temperatureMutation.isPending}
+                  data-testid="action-temperature"
+                >
+                  {t('leads.temperature')}
+                </Button>
+              )}
+            >
+              {({ close }) => (
+                <>
+                  {(['hot', 'warm', 'cold'] as const).map((temp) => (
+                    <DropdownItem
+                      key={temp}
+                      icon={
+                        lead.temperature === temp ? (
+                          <Check className="size-4" aria-hidden />
+                        ) : (
+                          <span className="size-4" aria-hidden />
+                        )
+                      }
+                      onClick={() => {
+                        temperatureMutation.mutate(temp)
+                        close()
+                      }}
+                    >
+                      {t(`temperature.${temp}`)}
+                    </DropdownItem>
+                  ))}
+                </>
+              )}
+            </Dropdown>
+
+            {can.assignLeads(user) && (
+              <Dropdown
+                trigger={({ toggle }) => (
+                  <Button
+                    variant="outline"
+                    icon={<UserCheck className="size-4" />}
+                    onClick={toggle}
+                    loading={assignMutation.isPending}
+                    data-testid="action-assign"
+                  >
+                    {t('leads.assign')}
+                  </Button>
+                )}
+              >
+                {({ close }) => (
+                  <div className="max-h-64 overflow-y-auto">
+                    <DropdownItem
+                      icon={
+                        lead.assignee ? (
+                          <span className="size-4" aria-hidden />
+                        ) : (
+                          <Check className="size-4" aria-hidden />
+                        )
+                      }
+                      onClick={() => {
+                        assignMutation.mutate('')
+                        close()
+                      }}
+                    >
+                      {t('common.unassigned')}
+                    </DropdownItem>
+                    {users.map((candidate) => (
+                      <DropdownItem
+                        key={candidate.id}
+                        icon={
+                          lead.assignee?.id === candidate.id ? (
+                            <Check className="size-4" aria-hidden />
+                          ) : (
+                            <span className="size-4" aria-hidden />
+                          )
+                        }
+                        onClick={() => {
+                          assignMutation.mutate(candidate.id)
+                          close()
+                        }}
+                      >
+                        {candidate.name}
+                      </DropdownItem>
+                    ))}
+                  </div>
+                )}
+              </Dropdown>
+            )}
+
             {can.manageTenant(user) && (
               <Button variant="ghost" size="icon" aria-label={t('common.delete')} onClick={() => setDeleteOpen(true)}>
                 <Trash2 className="size-4" />
@@ -239,7 +355,10 @@ export function LeadDetailPage() {
 
         {/* Stage switcher — one tap, no dropdown hunting. */}
         <div className="scroll-x border-t border-[var(--color-border)] px-5 py-3">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" data-testid="stage-switcher">
+            <span className="me-1 shrink-0 text-[0.75rem] font-medium text-[var(--color-ink-subtle)]">
+              {t('leads.changeStatus')}
+            </span>
             {STATUSES.map((status) => (
               <button
                 key={status}
@@ -262,30 +381,27 @@ export function LeadDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          {/* Note composer sits above the timeline: the most frequent write action. */}
           <Card>
-            <CardHeader title={t('leads.notes')} />
-            <CardBody className="space-y-3">
-              <Textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={t('leads.notePlaceholder')}
-                rows={2}
-              />
-              <div className="flex justify-end">
+            <CardHeader
+              title={t('leads.notes')}
+              action={
                 <Button
                   size="sm"
-                  disabled={!note.trim()}
-                  loading={noteMutation.isPending}
+                  variant="outline"
                   icon={<StickyNote className="size-4" />}
-                  onClick={() => noteMutation.mutate()}
+                  onClick={() => setNoteOpen(true)}
                 >
                   {t('leads.addNote')}
                 </Button>
-              </div>
-
-              {notes.length > 0 && (
-                <ul className="space-y-2.5 border-t border-[var(--color-border)] pt-3">
+              }
+            />
+            {notes.length === 0 ? (
+              <p className="px-5 py-8 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+                {t('leads.noNotes')}
+              </p>
+            ) : (
+              <CardBody>
+                <ul className="space-y-2.5" data-testid="notes-list">
                   {notes.map((entry) => (
                     <li key={entry.id} className="rounded-lg bg-[var(--color-surface-muted)] p-3">
                       <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
@@ -295,8 +411,8 @@ export function LeadDetailPage() {
                     </li>
                   ))}
                 </ul>
-              )}
-            </CardBody>
+              </CardBody>
+            )}
           </Card>
 
           <Card>
@@ -306,36 +422,6 @@ export function LeadDetailPage() {
         </div>
 
         <div className="space-y-4">
-          {can.assignLeads(user) && (
-            <Card>
-              <CardHeader title={t('leads.assign')} />
-              <CardBody className="space-y-3">
-                <Select
-                  value={lead.assignee?.id ?? ''}
-                  onChange={(e) => assignMutation.mutate(e.target.value)}
-                  disabled={assignMutation.isPending}
-                  aria-label={t('leads.assignedTo')}
-                >
-                  <option value="">{t('common.unassigned')}</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </Select>
-
-                <Select
-                  value={lead.temperature}
-                  onChange={(e) => temperatureMutation.mutate(e.target.value as LeadTemperature)}
-                  disabled={temperatureMutation.isPending}
-                  label={t('leads.temperature')}
-                >
-                  {(['hot', 'warm', 'cold'] as const).map((temp) => (
-                    <option key={temp} value={temp}>{t(`temperature.${temp}`)}</option>
-                  ))}
-                </Select>
-              </CardBody>
-            </Card>
-          )}
-
           <DetailCard title={t('leads.contactInfo')}>
             <Row label={t('leads.phone')} value={lead.phone} ltr />
             <Row label={t('leads.email')} value={lead.email} ltr />
@@ -438,6 +524,36 @@ export function LeadDetailPage() {
             onChange={(e) => setLostNote(e.target.value)}
           />
         </div>
+      </Modal>
+
+      {/* Quick note from the action bar, so a rep never has to scroll to write one. */}
+      <Modal
+        open={noteOpen}
+        onClose={() => setNoteOpen(false)}
+        title={t('leads.addNote')}
+        description={lead.full_name}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setNoteOpen(false)}>{t('common.cancel')}</Button>
+            <Button
+              disabled={!note.trim()}
+              loading={noteMutation.isPending}
+              onClick={() => noteMutation.mutate()}
+              data-testid="save-note"
+            >
+              {t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <Textarea
+          autoFocus
+          rows={4}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={t('leads.notePlaceholder')}
+          data-testid="note-input"
+        />
       </Modal>
 
       <Modal

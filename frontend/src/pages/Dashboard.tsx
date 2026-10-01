@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { AlertTriangle, CalendarClock, Flame, TrendingUp, UserPlus } from 'lucide-react'
+import {
+  AlertTriangle, CalendarCheck, CalendarClock, Flame, TrendingUp, UserPlus,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
@@ -50,6 +52,7 @@ export function DashboardPage() {
   })
 
   const isRtl = i18n.dir() === 'rtl'
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <>
@@ -114,34 +117,45 @@ export function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* "Your day" — the row a sales rep actually opens the app for. */}
+          {/* The row a rep opens the app for. Every tile is a link to the exact
+              list it names — a number you cannot act on is just decoration. */}
           <section>
             <h2 className="mb-2.5 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
               {t('dashboard.todayTitle')}
             </h2>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
               <StatCard
                 label={t('dashboard.newToday')}
                 value={formatNumber(data.today.new_leads, i18n.language)}
                 icon={<UserPlus className="size-4" />}
                 tone="brand"
+                to={`/leads?status[]=new&date_from=${today}`}
               />
               <StatCard
                 label={t('dashboard.followUpsToday')}
                 value={formatNumber(data.today.follow_ups_today, i18n.language)}
                 icon={<CalendarClock className="size-4" />}
+                to="/follow-ups?bucket=today"
               />
               <StatCard
                 label={t('dashboard.followUpsOverdue')}
                 value={formatNumber(data.today.follow_ups_overdue, i18n.language)}
                 icon={<AlertTriangle className="size-4" />}
                 tone={data.today.follow_ups_overdue > 0 ? 'danger' : 'neutral'}
+                to="/follow-ups?bucket=overdue"
               />
               <StatCard
                 label={t('dashboard.hotLeads')}
                 value={formatNumber(data.summary.hot_leads, i18n.language)}
                 icon={<Flame className="size-4" />}
                 tone={data.summary.hot_leads > 0 ? 'warning' : 'neutral'}
+                to="/leads?temperature[]=hot"
+              />
+              <StatCard
+                label={t('dashboard.appointments')}
+                value={formatNumber(data.summary.appointments, i18n.language)}
+                icon={<CalendarCheck className="size-4" />}
+                to="/leads?status[]=appointment"
               />
             </div>
           </section>
@@ -151,12 +165,34 @@ export function DashboardPage() {
             <h2 className="mb-2.5 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
               {t('dashboard.title')}
             </h2>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-              <StatCard label={t('dashboard.totalLeads')} value={formatNumber(data.summary.total_leads, i18n.language)} />
-              <StatCard label={t('status.new')} value={formatNumber(data.summary.new, i18n.language)} />
-              <StatCard label={t('dashboard.qualified')} value={formatNumber(data.summary.qualified, i18n.language)} />
-              <StatCard label={t('dashboard.appointments')} value={formatNumber(data.summary.appointments, i18n.language)} />
-              <StatCard label={t('dashboard.won')} value={formatNumber(data.summary.won, i18n.language)} tone="success" />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <StatCard
+                label={t('dashboard.totalLeads')}
+                value={formatNumber(data.summary.total_leads, i18n.language)}
+                to="/leads"
+              />
+              <StatCard
+                label={t('status.new')}
+                value={formatNumber(data.summary.new, i18n.language)}
+                to="/leads?status[]=new"
+              />
+              <StatCard
+                label={t('dashboard.qualified')}
+                value={formatNumber(data.summary.qualified, i18n.language)}
+                to="/leads?status[]=qualified"
+              />
+              <StatCard
+                label={t('dashboard.unassigned')}
+                value={formatNumber(data.summary.unassigned, i18n.language)}
+                tone={data.summary.unassigned > 0 ? 'warning' : 'neutral'}
+                to="/leads?assigned_to=unassigned"
+              />
+              <StatCard
+                label={t('dashboard.won')}
+                value={formatNumber(data.summary.won, i18n.language)}
+                tone="success"
+                to="/leads?status[]=won"
+              />
               <StatCard
                 label={t('dashboard.conversionRate')}
                 value={`${data.summary.conversion_rate}%`}

@@ -103,13 +103,29 @@ class FollowUpTest extends TestCase
         $this->lead->forceFill(['next_follow_up_at' => $followUp->due_at])->saveQuietly();
 
         $this->actingAs($this->t['admin'])
-            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", ['outcome' => 'تم الاتصال'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", [
+                'outcome' => 'replied',
+                'outcome_note' => 'تم الاتصال',
+            ])
             ->assertOk()
             ->assertJsonPath('data.follow_up.status', 'completed');
 
         $this->lead->refresh();
         $this->assertNull($this->lead->next_follow_up_at);
         $this->assertNotNull($this->lead->last_contact_at);
+
+        // An outcome was recorded, so the timeline says what happened rather
+        // than only that something was ticked off.
+        $this->assertDatabaseHas('lead_activities', ['lead_id' => $this->lead->id, 'type' => 'follow_up_outcome']);
+    }
+
+    public function test_completing_without_an_outcome_still_records_the_completion(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete")
+            ->assertOk();
 
         $this->assertDatabaseHas('lead_activities', ['lead_id' => $this->lead->id, 'type' => 'follow_up_completed']);
     }
@@ -161,5 +177,66 @@ class FollowUpTest extends TestCase
             'created_by' => $this->t['admin']->id,
             'due_at' => $dueAt,
         ]));
+    }
+
+    public function test_an_outcome_is_recorded_and_moves_the_lead(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", ['outcome' => 'appointment'])
+            ->assertOk()
+            ->assertJsonPath('data.follow_up.outcome', 'appointment');
+
+        // "They want to come and see it" is the strongest buying signal a rep
+        // can record, so it has to reach the lead, not only the follow-up.
+        $lead = $this->lead->refresh();
+        $this->assertTrue($lead->appointment_interest);
+        $this->assertGreaterThan(0, $lead->score);
+    }
+
+    public function test_a_not_interested_outcome_is_recorded_too(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", ['outcome' => 'not_interested'])
+            ->assertOk();
+
+        $this->assertFalse($this->lead->refresh()->appointment_interest);
+    }
+
+    public function test_completing_one_follow_up_can_schedule_the_next(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", [
+                'outcome' => 'callback',
+                'next_due_at' => now()->addDays(3)->toIso8601String(),
+                'next_note' => 'يعاود الاتصال بعد 3 أيام',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('follow_ups', [
+            'lead_id' => $this->lead->id,
+            'status' => 'pending',
+            'note' => 'يعاود الاتصال بعد 3 أيام',
+        ]);
+
+        // The lead's marker points at the new one, not at nothing.
+        $this->assertNotNull($this->lead->refresh()->next_follow_up_at);
+    }
+
+    public function test_a_next_follow_up_in_the_past_is_refused(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", [
+                'next_due_at' => now()->subDay()->toIso8601String(),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('next_due_at');
     }
 }

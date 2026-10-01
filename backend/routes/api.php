@@ -9,14 +9,20 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\LeadController;
+use App\Http\Controllers\Api\V1\LeadMessageController;
+use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PipelineController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
+use App\Http\Controllers\Api\V1\WhatsappSettingsController;
+use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +48,17 @@ Route::prefix('v1')->group(function () {
     Route::prefix('integrations/webhooks/{key}')->middleware('throttle:webhook')->group(function () {
         Route::post('/leads', [WebhookController::class, 'receive']);
         Route::get('/leads', [WebhookController::class, 'verify']); // Meta subscription handshake
+    });
+
+    /*
+     * WhatsApp Cloud API callbacks. One URL for the whole platform, because Meta
+     * allows one per app: the tenant is decided by the phone number id inside
+     * the payload, after the signature has been checked against that tenant's
+     * own app secret.
+     */
+    Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:webhook')->group(function () {
+        Route::post('/', [WhatsappWebhookController::class, 'receive']);
+        Route::get('/', [WhatsappWebhookController::class, 'verify']);
     });
 
     /*
@@ -83,6 +100,17 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);
 
+            // Conversation
+            Route::get('/leads/{uuid}/messages', [LeadMessageController::class, 'index']);
+            Route::post('/leads/{uuid}/messages', [LeadMessageController::class, 'store']);
+            Route::post('/leads/{uuid}/messages/preview', [LeadMessageController::class, 'preview']);
+            Route::post('/leads/{uuid}/whatsapp-opt-out', [LeadMessageController::class, 'optOut']);
+
+            // Qualification
+            Route::get('/qualification/options', [QualificationController::class, 'options']);
+            Route::get('/leads/{uuid}/qualification', [QualificationController::class, 'show']);
+            Route::patch('/leads/{uuid}/qualification', [QualificationController::class, 'update']);
+
             Route::get('/pipeline', [PipelineController::class, 'index']);
 
             // Follow-ups
@@ -108,9 +136,30 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports', [ReportController::class, 'index']);
             Route::get('/reports/export', [ReportController::class, 'export']);
 
+            /*
+             * Which campaigns bring buyers rather than clicks, and how fast the
+             * team works what arrives. Separate from /reports because the row
+             * shape is wider than the shared one.
+             */
+            Route::get('/reports/campaign-quality', [SalesPerformanceController::class, 'campaignQuality']);
+            Route::get('/reports/campaign-quality/export', [SalesPerformanceController::class, 'exportCampaignQuality']);
+            Route::get('/reports/performance', [SalesPerformanceController::class, 'performance']);
+
             // Integrations (admin only, enforced by policy)
             Route::get('/integrations', [IntegrationController::class, 'index']);
             Route::post('/integrations', [IntegrationController::class, 'store']);
+            // WhatsApp Business. Secrets are written here and never read back.
+            Route::get('/integrations/whatsapp', [WhatsappSettingsController::class, 'show']);
+            Route::patch('/integrations/whatsapp', [WhatsappSettingsController::class, 'update']);
+            Route::post('/integrations/whatsapp/test', [WhatsappSettingsController::class, 'test']);
+            Route::post('/integrations/whatsapp/rotate-verify-token', [WhatsappSettingsController::class, 'rotateVerifyToken']);
+            Route::delete('/integrations/whatsapp', [WhatsappSettingsController::class, 'disconnect']);
+
+            Route::get('/message-templates', [MessageTemplateController::class, 'index']);
+            Route::post('/message-templates', [MessageTemplateController::class, 'store']);
+            Route::patch('/message-templates/{uuid}', [MessageTemplateController::class, 'update']);
+            Route::delete('/message-templates/{uuid}', [MessageTemplateController::class, 'destroy']);
+
             Route::patch('/integrations/{uuid}', [IntegrationController::class, 'update']);
             Route::delete('/integrations/{uuid}', [IntegrationController::class, 'destroy']);
             Route::post('/integrations/{uuid}/webhooks', [IntegrationController::class, 'createWebhook']);

@@ -23,6 +23,8 @@ class LeadResource extends JsonResource
             'status' => $this->status?->value,
             'temperature' => $this->temperature?->value,
             'score' => $this->score,
+            'qualification_status' => $this->qualification_status?->value,
+            'qualified_at' => $this->qualified_at?->toIso8601String(),
 
             'platform' => $this->platform,
             'source' => $this->source,
@@ -41,9 +43,13 @@ class LeadResource extends JsonResource
             'preferred_property_type' => $this->preferred_property_type,
             'preferred_location' => $this->preferred_location,
             'purchase_timeline' => $this->purchase_timeline,
+            'appointment_interest' => $this->appointment_interest,
 
             'next_follow_up_at' => $this->next_follow_up_at?->toIso8601String(),
             'last_contact_at' => $this->last_contact_at?->toIso8601String(),
+            'first_contact_at' => $this->first_contact_at?->toIso8601String(),
+            'first_response_at' => $this->first_response_at?->toIso8601String(),
+            'whatsapp_opt_out_at' => $this->whatsapp_opt_out_at?->toIso8601String(),
             'won_at' => $this->won_at?->toIso8601String(),
             'lost_at' => $this->lost_at?->toIso8601String(),
             'lost_note' => $this->lost_note,

@@ -61,6 +61,22 @@ class DashboardController extends Controller
             )
             ->first();
 
+        /*
+         * Leads nobody has touched yet, past the workspace's own target. This is
+         * the panel that earns the product its keep: an ad lead answered inside
+         * half an hour is a conversation, and the same lead answered tomorrow is
+         * a cold call.
+         */
+        $targetMinutes = (int) ($user->tenant?->settings?->first_contact_target_minutes ?? 30);
+        $cutoff = now()->subMinutes($targetMinutes);
+
+        $awaitingQuery = fn () => (clone $base())
+            ->whereNull('first_contact_at')
+            ->where('status', LeadStatus::New->value)
+            ->where('leads.created_at', '<=', $cutoff);
+
+        $awaitingCount = (int) $awaitingQuery()->count();
+
         // Likewise for the follow-up buckets: one grouped query, not three counts.
         $followUpCounts = FollowUp::query()
             ->visibleTo($user)
@@ -91,6 +107,8 @@ class DashboardController extends Controller
                 'follow_ups_today' => (int) ($followUpCounts->due_today ?? 0),
                 'follow_ups_overdue' => (int) ($followUpCounts->overdue ?? 0),
                 'appointments' => $appointments,
+                'awaiting_first_contact' => $awaitingCount,
+                'first_contact_target_minutes' => $targetMinutes,
             ],
             'charts' => [
                 'by_platform' => $this->groupCount($base(), 'platform'),
@@ -108,6 +126,11 @@ class DashboardController extends Controller
                     ->whereNotIn('status', [LeadStatus::Won->value, LeadStatus::Lost->value])
                     ->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
                     ->orderByDesc('score')->limit(5)->get()
+            ),
+            'awaiting_contact_leads' => LeadListResource::collection(
+                $awaitingQuery()
+                    ->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
+                    ->orderBy('leads.created_at')->limit(5)->get()
             ),
             'overdue_leads' => LeadListResource::collection(
                 (clone $base())->overdueFollowUp()

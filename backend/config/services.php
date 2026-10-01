@@ -28,6 +28,20 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+     * WhatsApp Business Platform. Nothing here is a credential: every tenant
+     * brings its own token, phone number id and app secret, stored encrypted on
+     * its integration row. These are only the endpoint and its limits.
+     */
+    'whatsapp' => [
+        'graph_url' => env('WHATSAPP_GRAPH_URL', 'https://graph.facebook.com'),
+        'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v21.0'),
+        'timeout' => env('WHATSAPP_TIMEOUT', 15),
+        // Longest message we will accept from the composer. The Cloud API caps
+        // a text body at 4096 characters.
+        'max_body_length' => 4096,
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

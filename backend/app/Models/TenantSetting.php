@@ -13,7 +13,7 @@ class TenantSetting extends Model
     protected $fillable = [
         'locale', 'currency', 'timezone', 'default_country_code',
         'assignment_mode', 'round_robin_cursor',
-        'score_warm_threshold', 'score_hot_threshold',
+        'score_warm_threshold', 'score_hot_threshold', 'first_contact_target_minutes',
         'whatsapp_template', 'onboarding',
     ];
 

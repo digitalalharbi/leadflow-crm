@@ -66,12 +66,13 @@ class ReportController extends Controller
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             $csv = CsvWriter::open($out);
-            $csv->writeRow(['Label', 'Total Leads', 'Qualified', 'Appointments', 'Won', 'Lost', 'Conversion %']);
+            $csv->writeRow(['Label', 'Total Leads', 'Qualified', 'Appointments', 'Won', 'Lost', 'Conversion %', 'Share %']);
 
             foreach ($rows as $row) {
                 $csv->writeRow([
                     $row['label'], $row['total'], $row['qualified'],
-                    $row['appointments'], $row['won'], $row['lost'], $row['conversion_rate'],
+                    $row['appointments'], $row['won'], $row['lost'],
+                    $row['conversion_rate'], $row['share'],
                 ]);
             }
 
@@ -132,6 +133,11 @@ class ReportController extends Controller
             ->limit(200)
             ->get();
 
+        // Share of the whole report, which is the number that matters on a lost
+        // analysis: "budget" meaning 8% of losses and meaning 60% are different
+        // problems with different answers.
+        $grandTotal = (int) $rows->sum('total');
+
         return $rows->map(fn ($row) => [
             'key' => (string) $row->label,
             'label' => (string) $row->label,
@@ -141,6 +147,7 @@ class ReportController extends Controller
             'won' => (int) $row->won,
             'lost' => (int) $row->lost,
             'conversion_rate' => $row->total > 0 ? round($row->won / $row->total * 100, 1) : 0.0,
+            'share' => $grandTotal > 0 ? round($row->total / $grandTotal * 100, 1) : 0.0,
         ])->all();
     }
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
@@ -18,6 +19,13 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
+
+/*
+ * Every public identifier is a UUID. Constraining the segment turns a malformed
+ * id into a 404 at the router, before it can reach a Postgres `uuid` column and
+ * raise SQLSTATE 22P02 — a 500 that any caller could trigger with a typo.
+ */
+Route::pattern('uuid', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
 
 Route::get('/health', HealthController::class);
 
@@ -115,6 +123,15 @@ Route::prefix('v1')->group(function () {
             Route::post('/imports', [ImportController::class, 'upload']);
             Route::get('/imports/{uuid}', [ImportController::class, 'show']);
             Route::post('/imports/{uuid}/process', [ImportController::class, 'process']);
+
+            /*
+             * Sales demo helper. Registered only outside production: it creates a
+             * believable inbound lead on demand so the pipeline can be shown
+             * working live. The controller refuses production as well.
+             */
+            if (! app()->environment('production')) {
+                Route::post('/demo/simulate-lead', [DemoController::class, 'simulateLead']);
+            }
 
             // Settings & white label
             Route::get('/settings', [SettingsController::class, 'show']);

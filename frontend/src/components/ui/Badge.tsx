@@ -24,23 +24,37 @@ const tempTone: Record<LeadTemperature, string> = {
 const base =
   'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.75rem] font-medium ring-1 ring-inset whitespace-nowrap'
 
-export function StatusBadge({ status, className }: { status: LeadStatus; className?: string }) {
+export function StatusBadge({
+  status,
+  className,
+  testId,
+}: {
+  status: LeadStatus
+  className?: string
+  testId?: string
+}) {
   const { t } = useTranslation()
 
-  return <span className={cn(base, statusTone[status], className)}>{t(`status.${status}`)}</span>
+  return (
+    <span className={cn(base, statusTone[status], className)} data-testid={testId}>
+      {t(`status.${status}`)}
+    </span>
+  )
 }
 
 export function TemperatureBadge({
   temperature,
   className,
+  testId,
 }: {
   temperature: LeadTemperature
   className?: string
+  testId?: string
 }) {
   const { t } = useTranslation()
 
   return (
-    <span className={cn(base, tempTone[temperature], className)}>
+    <span className={cn(base, tempTone[temperature], className)} data-testid={testId}>
       <span
         className={cn(
           'size-1.5 rounded-full',

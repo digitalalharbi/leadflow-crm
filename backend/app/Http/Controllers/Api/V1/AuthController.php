@@ -47,6 +47,18 @@ class AuthController extends Controller
         $user = $candidates->first(fn (User $candidate) => Hash::check($password, $candidate->password));
 
         if (! $user) {
+            /*
+             * No candidate matched — which includes the case where the email is
+             * unknown and no hash was computed at all. Answering that in a few
+             * microseconds tells an attacker the address does not exist, so do
+             * the work anyway before refusing.
+             */
+            if ($candidates->isEmpty()) {
+                // Hashing costs the same as the check we did not get to perform,
+                // and tracks the configured cost factor on its own.
+                Hash::make($password);
+            }
+
             // Identical message either way — never reveal whether an email exists.
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
@@ -70,10 +82,6 @@ class AuthController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
-        // Guard against a timing side-channel from the loop above: the work done
-        // is the same whether or not an account matched.
-        unset($candidates);
-
         $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
 
         return ApiResponse::success([
@@ -93,6 +101,9 @@ class AuthController extends Controller
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
             'onboarding' => $user->tenant?->settings?->onboarding,
+            // Lets the SPA offer the sales-demo helpers. False in production, so
+            // the controls simply do not exist for a real customer.
+            'demo_mode' => ! app()->environment('production'),
         ]);
     }
 

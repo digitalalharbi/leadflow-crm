@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarCheck, Check, MessageCircle, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -18,14 +18,32 @@ type Bucket = 'overdue' | 'today' | 'upcoming' | 'completed'
 
 const BUCKETS: Bucket[] = ['overdue', 'today', 'upcoming', 'completed']
 
+/**
+ * How late a follow-up is. For one that slipped earlier the same day the
+ * relative form would just repeat the time already shown, so say "overdue".
+ */
+function overdueLabel(dueAt: string, lang: string, fallback: string): string {
+  const relative = formatRelative(dueAt, lang)
+
+  return /^\d{1,2}:\d{2}$/.test(relative) ? fallback : relative
+}
+
 export function FollowUpsPage() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
-  const [bucket, setBucket] = useState<Bucket>('today')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [page, setPage] = useState(1)
+
+  const requested = searchParams.get('bucket')
+  const bucket: Bucket = BUCKETS.includes(requested as Bucket) ? (requested as Bucket) : 'today'
+
+  function selectBucket(next: Bucket) {
+    setSearchParams({ bucket: next }, { replace: true })
+    setPage(1)
+  }
   const [completing, setCompleting] = useState<FollowUp | null>(null)
   const [outcome, setOutcome] = useState('')
 
@@ -84,10 +102,7 @@ export function FollowUpsPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => {
-                  setBucket(key)
-                  setPage(1)
-                }}
+                onClick={() => selectBucket(key)}
                 className={cn(
                   'flex items-center gap-2 rounded-lg px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
                   bucket === key
@@ -146,12 +161,18 @@ export function FollowUpsPage() {
 
                     <p
                       className={cn(
-                        'mt-1 text-[0.75rem]',
-                        followUp.is_overdue ? 'font-medium text-[var(--color-status-lost)]' : 'text-[var(--color-ink-subtle)]',
+                        'mt-1 flex flex-wrap items-center gap-x-2 text-[0.75rem]',
+                        followUp.is_overdue
+                          ? 'font-medium text-[var(--color-status-lost)]'
+                          : 'text-[var(--color-ink-subtle)]',
                       )}
                     >
-                      {formatDateTime(followUp.due_at, i18n.language)}
-                      {followUp.is_overdue && ` · ${formatRelative(followUp.due_at, i18n.language)}`}
+                      <span>{formatDateTime(followUp.due_at, i18n.language)}</span>
+                      {followUp.is_overdue && (
+                        <span className="rounded bg-red-50 px-1.5 py-0.5">
+                          {overdueLabel(followUp.due_at, i18n.language, t('followUps.overdue'))}
+                        </span>
+                      )}
                     </p>
                   </div>
 

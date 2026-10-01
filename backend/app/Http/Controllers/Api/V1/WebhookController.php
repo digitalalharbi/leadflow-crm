@@ -12,6 +12,7 @@ use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Public ingestion endpoint — the one route in the system that runs without a
@@ -49,9 +50,11 @@ class WebhookController extends Controller
             return ApiResponse::error('Invalid endpoint or secret.', null, 401);
         }
 
+        // Deliberately not $request->input(), which would also read the query
+        // string: a secret in a URL is copied into access and proxy logs.
         $secret = $request->header('X-Webhook-Secret')
             ?? $request->bearerToken()
-            ?? $request->input('secret');
+            ?? $request->post('secret');
 
         if (! $secret || ! $endpoint->verifySecret($secret)) {
             $this->log($endpoint, 'rejected', 401, $request, null, 'Invalid secret');
@@ -78,13 +81,21 @@ class WebhookController extends Controller
 
             $result = $this->ingestion->ingest($tenant, $incoming);
         } catch (\Throwable $e) {
+            // The message of a database exception carries the statement and its
+            // bindings — the lead's own name and phone number. It goes neither
+            // to our log nor to webhook_logs, which the client can read. A
+            // reference ties the client's copy to the trace we keep.
+            $reference = (string) Str::uuid();
+
             Log::error('webhook.ingest_failed', [
                 'endpoint' => $endpoint->uuid,
                 'provider' => $providerKey,
-                'error' => $e->getMessage(),
+                'reference' => $reference,
+                'exception' => $e::class,
+                'at' => $e->getFile().':'.$e->getLine(),
             ]);
 
-            $this->log($endpoint, 'failed', 500, $request, null, $e->getMessage());
+            $this->log($endpoint, 'failed', 500, $request, null, 'Processing failed. Reference: '.$reference);
 
             return ApiResponse::error('Could not process this lead.', null, 500);
         }
@@ -158,7 +169,7 @@ class WebhookController extends Controller
             });
         } catch (\Throwable $e) {
             // Logging must never break ingestion.
-            Log::warning('webhook.log_failed', ['error' => $e->getMessage()]);
+            Log::warning('webhook.log_failed', ['exception' => $e::class, 'at' => $e->getFile().':'.$e->getLine()]);
         }
     }
 

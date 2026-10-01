@@ -80,6 +80,54 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
         return $mapped;
     }
 
+    /**
+     * Meta-style lead forms answer as a list of {name, values[]} rather than a
+     * flat object. Understood by every provider, not just the Meta one, because
+     * these payloads commonly arrive at a generic endpoint via Zapier or Make.
+     */
+    protected function normaliseAnswerList(array $payload): array
+    {
+        $answers = $payload['field_data'] ?? $payload['form_response'] ?? null;
+
+        if (! is_array($answers)) {
+            return $payload;
+        }
+
+        $flat = [];
+
+        foreach ($answers as $field) {
+            if (! is_array($field)) {
+                continue;
+            }
+
+            $name = Arr::get($field, 'name') ?? Arr::get($field, 'key');
+            $value = Arr::get($field, 'values.0') ?? Arr::get($field, 'value');
+
+            if (is_string($name) && $value !== null && ! is_array($value)) {
+                $flat[$name] = $value;
+            }
+        }
+
+        if ($flat === []) {
+            return $payload;
+        }
+
+        unset($payload['field_data'], $payload['form_response']);
+
+        // In this envelope `id` is the provider's own lead id, which is what makes
+        // a retried delivery traceable. Outside it, `id` is too generic to trust.
+        foreach (['id', 'lead_id'] as $candidate) {
+            if (filled($payload[$candidate] ?? null) && blank($payload['provider_lead_id'] ?? null)) {
+                $payload['provider_lead_id'] = $payload[$candidate];
+                break;
+            }
+        }
+
+        // The envelope's own fields (campaign, ad, form) still apply; the answers
+        // win where both carry the same key.
+        return $flat + $payload;
+    }
+
     /** Dot-flatten so nested provider payloads can be mapped with simple keys. */
     protected function flatten(array $payload): array
     {
@@ -91,9 +139,17 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
                 continue;
             }
             $result[$key] = $value;
-            // also expose the leaf name on its own ("lead.phone" => "phone")
-            $leaf = substr(strrchr($key, '.') ?: $key, 1) ?: $key;
-            if (! isset($result[$leaf])) {
+
+            // Also expose the leaf of a nested key on its own ("lead.phone" =>
+            // "phone"). A key with no dot has no leaf: taking one anyway would
+            // let "xcity" pass itself off as "city".
+            if (! str_contains($key, '.')) {
+                continue;
+            }
+
+            $leaf = substr($key, strrpos($key, '.') + 1);
+
+            if ($leaf !== '' && ! isset($result[$leaf])) {
                 $result[$leaf] = $value;
             }
         }
@@ -179,6 +235,8 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
 
     public function toIncomingLead(array $payload, ?Integration $integration = null): IncomingLead
     {
+        $payload = $this->normaliseAnswerList($payload);
+
         $mapped = $this->applyMapping($payload, $integration);
 
         if (! isset($mapped['platform'])) {

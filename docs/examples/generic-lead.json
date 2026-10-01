@@ -1,0 +1,10 @@
+{
+  "_comment": "Generic webhook — the shape a landing page or no-code tool sends. Field names are mapped per tenant, so these are only the common defaults.",
+  "name": "سعود الحربي",
+  "mobile": "0512345678",
+  "email": "saud@example.com",
+  "city": "الرياض",
+  "campaign": "حملة النرجس",
+  "source": "landing_page",
+  "notes": "مهتم بشقة ثلاث غرف"
+}

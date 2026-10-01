@@ -6,6 +6,7 @@ import { apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
+import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, ErrorState, Input, Modal,
@@ -23,6 +24,7 @@ interface SettingsResponse {
 }
 
 type Tab = 'branding' | 'general' | 'lostReasons' | 'customFields' | 'subscription'
+
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
@@ -337,6 +339,23 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               onChange={(e) => setForm((prev) => ({ ...prev, default_country_code: e.target.value }))}
             />
           </div>
+
+          {/*
+            The timezone drives how every date in the app is read. It was
+            settable through the API but had no control here, so a tenant outside
+            Riyadh could not correct it without a support request.
+          */}
+          <Select
+            label={t('settings.timezone')}
+            value={form.timezone}
+            onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
+          >
+            {TIMEZONES.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </Select>
 
           <Select
             label={t('settings.assignmentMode')}

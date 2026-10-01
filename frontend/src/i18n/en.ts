@@ -1,6 +1,6 @@
 export default {
   common: {
-    appName: 'LeadFlow CRM',
+    appName: 'Muhtam',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
     delete: 'Delete', edit: 'Edit', add: 'Add', create: 'Create', search: 'Search',
     filter: 'Filter', clearFilters: 'Clear filters', export: 'Export', retry: 'Try again',
@@ -41,11 +41,11 @@ export default {
     title: 'Overview', subtitle: "Your team's activity at a glance",
     totalLeads: 'Total leads', newLeads: 'New leads', qualified: 'Qualified',
     appointments: 'Appointments', won: 'Won', lost: 'Lost', conversionRate: 'Conversion rate',
-    hotLeads: 'Hot leads', unassigned: 'Awaiting assignment', todayTitle: 'Your day',
+    hotLeads: 'Hot leads', unassigned: 'Awaiting assignment', todayTitle: "Today's tasks", funnelTitle: 'Funnel summary',
     newToday: 'new today', followUpsToday: 'due today', followUpsOverdue: 'overdue',
     appointmentsCount: 'appointments', byPlatform: 'Leads by platform',
     byStatus: 'Leads by stage', byCampaign: 'Top campaigns', trend: 'Leads over 14 days',
-    needsAttention: 'Needs your attention', hotLeadsList: 'Hot leads',
+    needsAttention: 'Needs your attention', hotLeadsList: 'Top hot leads',
     overdueList: 'Overdue follow-ups', viewAll: 'View all',
     noHotLeads: 'No hot leads right now.', noOverdue: 'Nothing overdue. Nice work.',
   },
@@ -151,6 +151,10 @@ export default {
     noLogs: 'Nothing received yet.', leadsReceived: 'leads received',
     importCsv: 'Import from CSV', credentialsNeeded: 'Needs credentials from the platform',
     savedMsg: 'Settings saved.',
+    simulate: 'Simulate an incoming lead',
+    simulating: 'Receiving…',
+    simulateHint: 'Creates a lead through the real ingestion pipeline — available outside production only.',
+    simulated: 'A lead just arrived from {{campaign}}',
   },
   imports: {
     title: 'Import leads', upload: 'Upload file', uploadHint: 'CSV file, up to 10 MB',
@@ -188,7 +192,8 @@ export default {
   superAdmin: {
     title: 'Platform', subtitle: 'Your customers and their subscriptions',
     tenants: 'Customers', createTenant: 'New customer', companyName: 'Company name',
-    systemName: 'System name', subdomain: 'Subdomain', adminName: 'Admin name',
+    systemName: 'System name', subdomain: 'Subdomain',
+    logoUrl: 'Logo URL', primaryColor: 'Primary colour', adminName: 'Admin name',
     adminEmail: 'Admin email', adminPassword: 'Admin password', plan: 'Plan',
     users: 'Users', leads: 'Leads', createdAt: 'Created', suspend: 'Suspend',
     activate: 'Activate', totalTenants: 'Customers', activeTenants: 'Active',

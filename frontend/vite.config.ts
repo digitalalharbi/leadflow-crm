@@ -10,6 +10,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    watch: {
+      // Playwright writes traces, screenshots and HTML snapshots under e2e/ while
+      // a test is running. Without this the watcher treats them as source edits
+      // and reloads the page mid-assertion, which looks exactly like a flaky app.
+      ignored: ['**/e2e/.results/**', '**/e2e/.report/**', '**/playwright-report/**'],
+    },
     // Lets the SPA call the API on the same origin in development,
     // which keeps cookies and CORS out of the way entirely.
     proxy: {

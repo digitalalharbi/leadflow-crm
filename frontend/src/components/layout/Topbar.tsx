@@ -172,6 +172,7 @@ export function Topbar() {
           <button
             type="button"
             onClick={toggle}
+            data-testid="account-menu"
             className="flex items-center gap-2 rounded-lg p-1 ps-2 hover:bg-[var(--color-surface-sunken)]"
           >
             <span className="hidden text-[0.8125rem] font-medium sm:block">{user?.name}</span>
@@ -203,7 +204,7 @@ export function Topbar() {
             >
               {t('nav.profile')}
             </DropdownItem>
-            <DropdownItem danger icon={<LogOut className="size-4" />} onClick={handleSignOut}>
+            <DropdownItem danger icon={<LogOut className="size-4" />} onClick={handleSignOut} testId="sign-out">
               {t('auth.signOut')}
             </DropdownItem>
           </>

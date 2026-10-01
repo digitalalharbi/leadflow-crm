@@ -11,6 +11,7 @@ use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\Uuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,36 @@ class DashboardController extends Controller
         $qualified = (int) ($statusCounts[LeadStatus::Qualified->value] ?? 0);
         $appointments = (int) ($statusCounts[LeadStatus::Appointment->value] ?? 0);
 
-        $followUps = FollowUp::query()->visibleTo($user);
+        /*
+         * One pass for the remaining lead figures. These were four separate
+         * COUNT queries over the same filtered set; aggregate FILTER gets them
+         * in a single scan, which matters because this is the most-hit endpoint
+         * in the product and the set grows with the tenant.
+         */
+        $tallies = (clone $base())
+            ->selectRaw(
+                'count(*) filter (where temperature = ? and status not in (?, ?)) as hot,
+                 count(*) filter (where assigned_to is null) as unassigned,
+                 count(*) filter (where created_at >= ?) as new_today',
+                [
+                    LeadTemperature::Hot->value,
+                    LeadStatus::Won->value,
+                    LeadStatus::Lost->value,
+                    today(),
+                ],
+            )
+            ->first();
+
+        // Likewise for the follow-up buckets: one grouped query, not three counts.
+        $followUpCounts = FollowUp::query()
+            ->visibleTo($user)
+            ->pending()
+            ->selectRaw(
+                'count(*) filter (where due_at < ?) as overdue,
+                 count(*) filter (where due_at >= ? and due_at <= ?) as due_today',
+                [now(), now(), now()->endOfDay()],
+            )
+            ->first();
 
         return ApiResponse::success([
             'summary' => [
@@ -53,15 +83,14 @@ class DashboardController extends Controller
                 'lost' => (int) ($statusCounts[LeadStatus::Lost->value] ?? 0),
                 // Conversion = won / everything that entered the funnel.
                 'conversion_rate' => $total > 0 ? round($won / $total * 100, 1) : 0.0,
-                'hot_leads' => (clone $base())->where('temperature', LeadTemperature::Hot->value)
-                    ->whereNotIn('status', [LeadStatus::Won->value, LeadStatus::Lost->value])->count(),
-                'unassigned' => (clone $base())->whereNull('assigned_to')->count(),
+                'hot_leads' => (int) ($tallies->hot ?? 0),
+                'unassigned' => (int) ($tallies->unassigned ?? 0),
             ],
             'today' => [
-                'new_leads' => (clone $base())->whereDate('created_at', today())->count(),
-                'follow_ups_today' => (clone $followUps)->dueToday()->count(),
-                'follow_ups_overdue' => (clone $followUps)->overdue()->count(),
-                'appointments' => (clone $base())->where('status', LeadStatus::Appointment->value)->count(),
+                'new_leads' => (int) ($tallies->new_today ?? 0),
+                'follow_ups_today' => (int) ($followUpCounts->due_today ?? 0),
+                'follow_ups_overdue' => (int) ($followUpCounts->overdue ?? 0),
+                'appointments' => $appointments,
             ],
             'charts' => [
                 'by_platform' => $this->groupCount($base(), 'platform'),
@@ -110,11 +139,11 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('project_id')) {
-            $query->whereHas('project', fn ($p) => $p->where('uuid', $request->input('project_id')));
+            $query->whereHas('project', fn ($p) => $p->whereIn('uuid', Uuid::onlyValid($request->input('project_id'))));
         }
 
         if ($request->filled('assigned_to') && $request->user()->seesAllLeads()) {
-            $query->whereHas('assignee', fn ($u) => $u->where('uuid', $request->input('assigned_to')));
+            $query->whereHas('assignee', fn ($u) => $u->whereIn('uuid', Uuid::onlyValid($request->input('assigned_to'))));
         }
 
         return $query;

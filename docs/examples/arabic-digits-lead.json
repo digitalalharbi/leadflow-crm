@@ -1,0 +1,7 @@
+{
+  "_comment": "The same buyer as generic-lead.json, written with Arabic-Indic digits and a different format. Sending this after generic-lead.json re-engages that lead instead of creating a duplicate.",
+  "name": "سعود الحربي",
+  "mobile": "٠٥١٢٣٤٥٦٧٨",
+  "campaign": "حملة سناب - عرض نهاية العام",
+  "platform": "snapchat"
+}

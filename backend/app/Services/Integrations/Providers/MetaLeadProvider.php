@@ -2,7 +2,6 @@
 
 namespace App\Services\Integrations\Providers;
 
-use App\DataTransferObjects\IncomingLead;
 use App\Enums\IntegrationProvider;
 use App\Models\Integration;
 use Illuminate\Support\Arr;
@@ -24,40 +23,10 @@ class MetaLeadProvider extends AbstractLeadProvider
         return ['access_token'];
     }
 
-    /** Meta sends answers as [{name, values[]}] rather than a flat object. */
-    public function toIncomingLead(array $payload, ?Integration $integration = null): IncomingLead
-    {
-        if (isset($payload['field_data']) && is_array($payload['field_data'])) {
-            $flat = [];
-
-            foreach ($payload['field_data'] as $field) {
-                $name = Arr::get($field, 'name');
-                $value = Arr::get($field, 'values.0');
-
-                if ($name !== null) {
-                    $flat[$name] = $value;
-                }
-            }
-
-            $flat += [
-                'provider_lead_id' => Arr::get($payload, 'id'),
-                'form_id' => Arr::get($payload, 'form_id'),
-                'form_name' => Arr::get($payload, 'form_name'),
-                'campaign_id' => Arr::get($payload, 'campaign_id'),
-                'campaign_name' => Arr::get($payload, 'campaign_name'),
-                'adset_id' => Arr::get($payload, 'adset_id'),
-                'adset_name' => Arr::get($payload, 'adset_name'),
-                'ad_id' => Arr::get($payload, 'ad_id'),
-                'ad_name' => Arr::get($payload, 'ad_name'),
-                'platform' => Arr::get($payload, 'platform', 'meta'),
-            ];
-
-            $payload = array_filter($flat, fn ($v) => $v !== null) + ['_raw' => true];
-        }
-
-        return parent::toIncomingLead($payload, $integration);
-    }
-
+    /**
+     * Meta's own field names. The {name, values[]} envelope is flattened by the
+     * base provider, since those payloads also arrive at generic endpoints.
+     */
     protected function aliases(): array
     {
         return parent::aliases() + [

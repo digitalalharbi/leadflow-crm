@@ -27,15 +27,28 @@ export function LeadsPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
 
-  // Deep links from the dashboard ("hot leads", "overdue") pre-seed the filters.
-  const [filters, setFilters] = useState<LeadFilters>(() => ({
-    page: 1,
-    per_page: 25,
-    temperature: searchParams.getAll('temperature[]').length
-      ? searchParams.getAll('temperature[]')
-      : undefined,
-    overdue: searchParams.get('overdue') === '1' || undefined,
-  }))
+  // Deep links from the dashboard pre-seed the filters, so every tile on the
+  // "today" row lands on exactly the list it names.
+  const [filters, setFilters] = useState<LeadFilters>(() => {
+    const multi = (key: string) => {
+      const values = searchParams.getAll(`${key}[]`)
+      return values.length > 0 ? values : undefined
+    }
+
+    return {
+      page: 1,
+      per_page: 25,
+      status: multi('status'),
+      temperature: multi('temperature'),
+      platform: multi('platform'),
+      project_id: searchParams.get('project_id') ?? undefined,
+      assigned_to: searchParams.get('assigned_to') ?? undefined,
+      follow_up: searchParams.get('follow_up') ?? undefined,
+      date_from: searchParams.get('date_from') ?? undefined,
+      date_to: searchParams.get('date_to') ?? undefined,
+      overdue: searchParams.get('overdue') === '1' || undefined,
+    }
+  })
 
   const query = useMemo(
     () => ({ ...filters, search: debouncedSearch || undefined }),

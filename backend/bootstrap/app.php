@@ -16,7 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        /*
+         * Deliberately NOT $middleware->statefulApi().
+         *
+         * The SPA authenticates with a Bearer token and is served from a
+         * different origin to the API in every deployed environment. Enabling
+         * Sanctum's cookie mode makes any request whose Origin matches a
+         * "stateful domain" go through session + CSRF instead — which answers
+         * 419 to every write unless the client first fetches a CSRF cookie.
+         * Nothing here uses cookie auth, so the safest configuration is to not
+         * offer it at all.
+         */
 
         // Without this the `api` rate limiter defined in AppServiceProvider is
         // never attached, and every authenticated endpoint is unthrottled.
@@ -34,8 +44,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trusting every proxy would make X-Forwarded-For caller-controlled, which
         // lets the login limiter be bypassed and forges the IP in the audit trail.
         // Set TRUSTED_PROXIES to the load balancer's address or CIDR in production.
+        // '*' is dropped rather than honoured: a deployment that wants every
+        // proxy trusted must name the network, so the decision is visible.
         $middleware->trustProxies(at: array_values(array_filter(
-            explode(',', (string) env('TRUSTED_PROXIES', ''))
+            array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', ''))),
+            fn (string $proxy) => $proxy !== '' && $proxy !== '*' && $proxy !== '**',
         )));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

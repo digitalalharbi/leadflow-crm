@@ -215,6 +215,7 @@ function PipelineColumn({ column }: { column: Column }) {
   return (
     <section
       ref={setNodeRef}
+      data-testid={`pipeline-column-${column.status}`}
       className={cn(
         'flex w-[17rem] shrink-0 flex-col rounded-[var(--radius-card)] border bg-[var(--color-surface-muted)]',
         isOver ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-[var(--color-border)]',
@@ -223,7 +224,10 @@ function PipelineColumn({ column }: { column: Column }) {
       <header className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
         <span className={cn('size-2 rounded-full', COLUMN_ACCENT[column.status])} aria-hidden />
         <h2 className="flex-1 text-[0.8125rem] font-semibold">{t(`status.${column.status}`)}</h2>
-        <span className="tabular rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.75rem] font-medium text-[var(--color-ink-muted)]">
+        <span
+          data-testid="column-total"
+          className="tabular rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.75rem] font-medium text-[var(--color-ink-muted)]"
+        >
           {column.total}
         </span>
       </header>
@@ -265,6 +269,7 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
 
   return (
     <article
+      data-testid="pipeline-card"
       className={cn(
         'rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5',
         overlay ? 'shadow-[var(--shadow-pop)] rotate-1' : 'shadow-[var(--shadow-card)]',

@@ -31,6 +31,7 @@ use App\Services\Leads\LeadQueryBuilder;
 use App\Services\Leads\LeadScorer;
 use App\Services\Leads\PhoneNormalizer;
 use App\Support\ApiResponse;
+use App\Support\CsvWriter;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -100,7 +101,7 @@ class LeadController extends Controller
         $data = $request->validated();
 
         $data['project_id'] = $this->resolveProjectId($data['project_id'] ?? null);
-        $data['assigned_to'] = $this->resolveUserId($data['assigned_to'] ?? null);
+        $data['assigned_to'] = $this->resolveAssignee($request->user(), $data['assigned_to'] ?? null);
 
         // A rep typing in a lead has just spoken to that person, so it is theirs.
         // Round-robin is for inbound traffic nobody has touched yet.
@@ -381,16 +382,16 @@ class LeadController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF"); // BOM so Excel renders Arabic correctly
+            $csv = CsvWriter::open($out);
 
-            fputcsv($out, [
+            $csv->writeRow([
                 'Name', 'Phone', 'Email', 'City', 'Project', 'Platform', 'Campaign',
                 'Status', 'Temperature', 'Score', 'Assigned To', 'Next Follow-up', 'Created At',
             ]);
 
-            $query->chunk(500, function ($leads) use ($out) {
+            $query->chunk(500, function ($leads) use ($csv) {
                 foreach ($leads as $lead) {
-                    fputcsv($out, [
+                    $csv->writeRow([
                         $lead->full_name,
                         $lead->phone_normalized ?? $lead->phone,
                         $lead->email,
@@ -437,10 +438,36 @@ class LeadController extends Controller
         return $id;
     }
 
-    private function resolveUserId(?string $uuid): ?int
+    /**
+     * Naming an owner is privileged — commission follows the assignment — so a
+     * rep may not hand a lead to a colleague, and nobody may hand one to a
+     * deactivated account or to a stranger from another tenant. An id we cannot
+     * honour is refused rather than quietly dropped.
+     */
+    private function resolveAssignee(User $actor, ?string $uuid): ?int
     {
-        return $uuid ? User::where('tenant_id', app(TenantContext::class)->id())
-            ->where('uuid', $uuid)->value('id') : null;
+        if ($uuid === null) {
+            return null;
+        }
+
+        if ($actor->cannot('assignOnCreate', Lead::class)) {
+            throw ValidationException::withMessages([
+                'assigned_to' => ['You may not choose who this lead belongs to.'],
+            ]);
+        }
+
+        $id = User::where('tenant_id', app(TenantContext::class)->id())
+            ->where('uuid', $uuid)
+            ->where('is_active', true)
+            ->value('id');
+
+        if ($id === null) {
+            throw ValidationException::withMessages([
+                'assigned_to' => ['This user is not available.'],
+            ]);
+        }
+
+        return $id;
     }
 
     private function syncCustomFields(Lead $lead, array $custom): void

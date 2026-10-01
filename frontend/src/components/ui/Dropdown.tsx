@@ -56,16 +56,19 @@ export function DropdownItem({
   onClick,
   danger,
   icon,
+  testId,
 }: {
   children: ReactNode
   onClick?: () => void
   danger?: boolean
   icon?: ReactNode
+  testId?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
       className={cn(
         'flex w-full items-center gap-2.5 px-3 py-2 text-start text-[0.8125rem]',
         'hover:bg-[var(--color-surface-sunken)]',

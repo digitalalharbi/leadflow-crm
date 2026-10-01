@@ -36,7 +36,7 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
   }
 
   return (
-    <ol className="relative space-y-0 p-5">
+    <ol className="relative space-y-0 p-5" data-testid="activity-timeline">
       {activities.map((activity, index) => {
         const style = STYLES[activity.type] ?? STYLES.updated
         const Icon = style.Icon

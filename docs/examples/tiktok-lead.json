@@ -1,0 +1,14 @@
+{
+  "_comment": "TikTok Lead Generation instant form. Keys match what the Business API returns for a lead task.",
+  "lead_id": "7312345678901234567",
+  "advertiser_id": "6987654321098765432",
+  "page_id": "1234567890",
+  "campaign_name": "حملة تيك توك - فلل الياسمين",
+  "adgroup_name": "تيك توك - For You",
+  "ad_name": "جولة 360",
+  "platform": "tiktok",
+  "name": "خالد الدوسري",
+  "phone_number": "+966555123456",
+  "email": "khalid@example.com",
+  "city": "الرياض"
+}

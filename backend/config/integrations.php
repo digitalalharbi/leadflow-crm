@@ -32,6 +32,25 @@ return [
         'client_id' => env('SNAPCHAT_CLIENT_ID'),
         'client_secret' => env('SNAPCHAT_CLIENT_SECRET'),
     ],
+    /*
+     * Credential-stuffing guard. Deliberately low by default. Raise it only in
+     * an environment where an automated suite signs in repeatedly — never in
+     * production.
+     */
+    /*
+     * General API throttle, applied to every authenticated endpoint. Keyed per
+     * user when authenticated, per IP otherwise. Configurable because a browser
+     * suite drives hundreds of requests a minute from one address.
+     */
+    'api' => [
+        'per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 120),
+    ],
+
+    'login' => [
+        'per_email_per_minute' => (int) env('LOGIN_RATE_LIMIT_PER_MINUTE', 5),
+        'per_ip_per_minute' => (int) env('LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE', 20),
+    ],
+
     'webhooks' => [
         'max_body_bytes' => (int) env('WEBHOOK_MAX_BODY_BYTES', 65536),
         'rate_limit_per_minute' => (int) env('WEBHOOK_RATE_LIMIT_PER_MINUTE', 120),

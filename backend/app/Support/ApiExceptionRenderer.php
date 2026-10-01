@@ -5,6 +5,8 @@ namespace App\Support;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -63,6 +65,10 @@ class ApiExceptionRenderer
                 429,
             ),
 
+            // A query error carries the SQL and its bindings — customer names and
+            // phone numbers — so its message is never rendered, debug or not.
+            $e instanceof QueryException => self::renderQueryFailure($e),
+
             $e instanceof HttpExceptionInterface => ApiResponse::error(
                 $e->getMessage() ?: 'Request failed.',
                 null,
@@ -75,5 +81,19 @@ class ApiExceptionRenderer
                 500,
             ),
         };
+    }
+
+    /**
+     * A value the column's type cannot hold is a client mistake: the identifier
+     * simply does not exist. Anything else is ours, and stays opaque.
+     */
+    private static function renderQueryFailure(QueryException $e): JsonResponse
+    {
+        // 22P02 invalid_text_representation, 22023 invalid_parameter_value.
+        if (in_array($e->getCode(), ['22P02', '22023'], true)) {
+            return ApiResponse::error('Resource not found.', null, 404);
+        }
+
+        return ApiResponse::error('An unexpected error occurred.', null, 500);
     }
 }

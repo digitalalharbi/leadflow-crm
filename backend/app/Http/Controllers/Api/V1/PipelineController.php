@@ -23,7 +23,11 @@ class PipelineController extends Controller
     {
         $this->authorize('viewAny', Lead::class);
 
-        $limit = min((int) $request->input('per_column', 50), 100);
+        // A column shows about six cards before it scrolls, so fetching fifty was
+        // sending a 200KB payload to render a fraction of it. Twenty-five keeps
+        // scrolling smooth at roughly half the bytes; the true total is reported
+        // separately, so nothing is hidden from the user.
+        $limit = min((int) $request->input('per_column', 25), 100);
 
         // One grouped count for every column, rather than a count per column.
         $totals = $this->queries->build($request, $request->user())

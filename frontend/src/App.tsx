@@ -1,122 +1,116 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, lazy, Suspense } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '@/stores/auth'
+import { useBrandingTheme } from '@/hooks/useBrandingTheme'
+import { AppShell } from '@/components/layout/AppShell'
+import { LoginPage } from '@/pages/Login'
+import { DashboardPage } from '@/pages/Dashboard'
+import { Toaster, Skeleton } from '@/components/ui'
 
-function App() {
-  const [count, setCount] = useState(0)
+// Everything past the dashboard is code-split: the first paint only pays for
+// what a user actually lands on.
+const LeadsPage = lazy(() => import('@/pages/Leads').then((m) => ({ default: m.LeadsPage })))
+const LeadDetailPage = lazy(() => import('@/pages/LeadDetail').then((m) => ({ default: m.LeadDetailPage })))
+const PipelinePage = lazy(() => import('@/pages/Pipeline').then((m) => ({ default: m.PipelinePage })))
+const FollowUpsPage = lazy(() => import('@/pages/FollowUps').then((m) => ({ default: m.FollowUpsPage })))
+const ProjectsPage = lazy(() => import('@/pages/Projects').then((m) => ({ default: m.ProjectsPage })))
+const ReportsPage = lazy(() => import('@/pages/Reports').then((m) => ({ default: m.ReportsPage })))
+const IntegrationsPage = lazy(() => import('@/pages/Integrations').then((m) => ({ default: m.IntegrationsPage })))
+const UsersPage = lazy(() => import('@/pages/Users').then((m) => ({ default: m.UsersPage })))
+const SettingsPage = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.SettingsPage })))
+const ProfilePage = lazy(() => import('@/pages/Profile').then((m) => ({ default: m.ProfilePage })))
+const PlatformPage = lazy(() => import('@/pages/Platform').then((m) => ({ default: m.PlatformPage })))
 
+function PageFallback() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <div className="space-y-4" aria-busy="true">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-64 w-full" />
+    </div>
   )
 }
 
-export default App
+/** Blocks a route until the session is known, so no flash of the login screen. */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const status = useAuth((s) => s.status)
+  const location = useLocation()
+
+  if (status === 'idle' || status === 'loading') {
+    return (
+      <div className="grid min-h-dvh place-items-center">
+        <Skeleton className="size-10 rounded-full" />
+      </div>
+    )
+  }
+
+  if (status === 'anonymous') {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
+export function App() {
+  const restore = useAuth((s) => s.restore)
+  const branding = useAuth((s) => s.branding)
+  const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const { i18n } = useTranslation()
+
+  useBrandingTheme(branding)
+
+  useEffect(() => {
+    void restore()
+  }, [restore])
+
+  // Keep <html dir> in sync whenever the language changes anywhere in the app.
+  useEffect(() => {
+    document.documentElement.dir = i18n.dir()
+    document.documentElement.lang = i18n.language
+  }, [i18n, i18n.language])
+
+  return (
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        >
+          <Route
+            index
+            element={isSuperAdmin ? <Navigate to="/platform" replace /> : <DashboardPage />}
+          />
+
+          <Route
+            path="*"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <Routes>
+                  <Route path="/leads" element={<LeadsPage />} />
+                  <Route path="/leads/:id" element={<LeadDetailPage />} />
+                  <Route path="/pipeline" element={<PipelinePage />} />
+                  <Route path="/follow-ups" element={<FollowUpsPage />} />
+                  <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/integrations" element={<IntegrationsPage />} />
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/settings/profile" element={<ProfilePage />} />
+                  <Route path="/platform" element={<PlatformPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            }
+          />
+        </Route>
+      </Routes>
+
+      <Toaster />
+    </>
+  )
+}

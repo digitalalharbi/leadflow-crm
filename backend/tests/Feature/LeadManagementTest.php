@@ -57,6 +57,42 @@ class LeadManagementTest extends TestCase
         $this->assertSame(1, Lead::withoutGlobalScopes()->first()->re_engaged_count);
     }
 
+    public function test_a_lead_a_rep_enters_by_hand_stays_with_that_rep(): void
+    {
+        // Even with round robin on: the rep has already spoken to this person,
+        // so handing the lead to someone else would be wrong.
+        $this->t['tenant']->settings->update(['assignment_mode' => 'round_robin']);
+
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+        $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($rep)->postJson('/api/v1/leads', [
+            'full_name' => 'Walk-in Buyer',
+            'phone' => '0501234567',
+        ])->assertCreated();
+
+        $lead = Lead::withoutGlobalScopes()->where('phone_normalized', '+966501234567')->first();
+
+        $this->assertSame($rep->id, $lead->assigned_to);
+        $this->assertSame($rep->id, $lead->created_by);
+    }
+
+    public function test_a_manager_can_still_hand_a_new_lead_to_someone_else(): void
+    {
+        $manager = $this->makeUser($this->t['tenant'], Role::Manager);
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($manager)->postJson('/api/v1/leads', [
+            'full_name' => 'Assigned Buyer',
+            'phone' => '0501234567',
+            'assigned_to' => $rep->uuid,
+        ])->assertCreated();
+
+        $lead = Lead::withoutGlobalScopes()->where('phone_normalized', '+966501234567')->first();
+
+        $this->assertSame($rep->id, $lead->assigned_to);
+    }
+
     public function test_a_lead_needs_a_phone_or_an_email(): void
     {
         $this->actingAs($this->t['admin'])

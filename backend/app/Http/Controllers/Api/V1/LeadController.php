@@ -95,6 +95,12 @@ class LeadController extends Controller
         $data['project_id'] = $this->resolveProjectId($data['project_id'] ?? null);
         $data['assigned_to'] = $this->resolveUserId($data['assigned_to'] ?? null);
 
+        // A rep typing in a lead has just spoken to that person, so it is theirs.
+        // Round-robin is for inbound traffic nobody has touched yet.
+        if ($data['assigned_to'] === null && $request->user()->isSales()) {
+            $data['assigned_to'] = $request->user()->id;
+        }
+
         $result = $this->ingestion->ingest(
             $request->user()->tenant,
             IncomingLead::fromArray(IntegrationProvider::Manual, $data),
@@ -106,11 +112,6 @@ class LeadController extends Controller
 
         $lead = $result->lead;
         $lead->forceFill(['created_by' => $request->user()->id])->saveQuietly();
-
-        // A rep adding a lead by hand owns it unless a manager said otherwise.
-        if (! $lead->assigned_to && $request->user()->isSales()) {
-            $this->assignment->assign($lead, $request->user(), $request->user(), notify: false);
-        }
 
         $fresh = $lead->fresh(['assignee:id,uuid,name', 'project:id,uuid,name', 'lostReason:id,uuid,label']);
 

@@ -95,6 +95,7 @@ class DemoSeeder extends Seeder
             $this->command->info('Seeding demo tenant: '.$tenant->name);
 
             $manager = User::create([
+                'tenant_id' => $tenant->id,
                 'name' => 'سارة القحطاني',
                 'email' => 'manager@rawasi.test',
                 'password' => 'password',
@@ -112,6 +113,7 @@ class DemoSeeder extends Seeder
             ];
 
             $sales = collect($salesNames)->map(fn ($s) => User::create([
+                'tenant_id' => $tenant->id,
                 'name' => $s[0],
                 'email' => $s[1],
                 'password' => 'password',

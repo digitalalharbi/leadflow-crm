@@ -202,6 +202,35 @@ class TenantIsolationTest extends TestCase
         Lead::create(['full_name' => 'Orphan', 'phone_normalized' => '+966599999999']);
     }
 
+    public function test_only_a_super_admin_may_exist_without_a_tenant(): void
+    {
+        // An orphan user can neither sign in nor be governed by a policy, so the
+        // model refuses to create one. This guards seeders and admin tooling.
+        $this->expectException(\RuntimeException::class);
+
+        User::create([
+            'tenant_id' => null,
+            'name' => 'Orphan Rep',
+            'email' => 'orphan@example.test',
+            'password' => 'password123',
+            'role' => Role::Sales,
+        ]);
+    }
+
+    public function test_a_super_admin_may_exist_without_a_tenant(): void
+    {
+        $owner = User::create([
+            'tenant_id' => null,
+            'name' => 'Owner',
+            'email' => 'owner2@example.test',
+            'password' => 'password123',
+            'role' => Role::SuperAdmin,
+        ]);
+
+        $this->assertNull($owner->tenant_id);
+        $this->assertTrue($owner->isSuperAdmin());
+    }
+
     public function test_a_lead_cannot_be_moved_to_another_tenant(): void
     {
         $this->expectException(\RuntimeException::class);

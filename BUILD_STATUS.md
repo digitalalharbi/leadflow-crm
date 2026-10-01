@@ -3,11 +3,15 @@
 Last updated: 2026-10-01
 
 ```
-Backend tests   150 passed
+Backend tests   226 passed (803 assertions)
 Frontend tests   32 passed
+Browser tests    73 passed (Playwright, 11 specs)
 Lint / types     clean (Pint, oxlint, tsc strict)
 Production build succeeds
 ```
+
+The product is named **مهتم**. That is the default a tenant sees before it sets
+its own; the repository, database and artisan identifiers are unchanged.
 
 ---
 
@@ -28,8 +32,8 @@ Production build succeeds
 - [x] Roles: admin, manager, sales + platform super admin
 - [x] Tenant suspension and subscription expiry enforced mid-session
 - [x] 18 isolation tests, run as their own CI step
-- [x] Adversarial security review completed; 15 defects found and fixed, each
-      with a regression test (see `docs/SECURITY.md`)
+- [x] Two adversarial security reviews; 24 defects found and fixed, each with a
+      regression test written before the fix (see `docs/SECURITY.md`)
 
 ### White label
 - [x] Per-tenant branding served from a public endpoint
@@ -74,8 +78,18 @@ Production build succeeds
 - [x] CI gate that refuses destructive database commands in the deploy path
 - [x] Nginx configs including a TLS edge example
 
+### Tests
+- [x] 226 backend tests on PostgreSQL — never SQLite, which would pass while
+      production broke
+- [x] 73 Playwright tests over 11 specs, on deterministic fixtures from their
+      own seeder, running in CI and blocking the merge
+- [x] 32 frontend unit tests
+- [x] Performance measured and reproducible at 10,000 leads
+      (`leadflow:measure`)
+
 ### Documentation
-- [x] README, 9 documents in `docs/`, `EXTERNAL_SETUP.md`, `README-DEMO.md`
+- [x] README, 11 documents in `docs/`, `EXTERNAL_SETUP.md`, `README-DEMO.md`,
+      `docs/STAGING_CHECKLIST.md`, example payloads in `docs/examples/`
 
 ---
 
@@ -109,24 +123,24 @@ WebSockets · custom domains
 
 Honest list:
 
-1. **No automated browser E2E.** Flows were verified by hand in a real browser —
-   login, dashboard, leads, detail, status change, note, pipeline drag, mobile
-   layout. A Playwright suite is the first thing to add.
-2. **Backups default to the same VPS.** Flagged in `EXTERNAL_SETUP.md`; needs an
+1. **Backups default to the same VPS.** Flagged in `EXTERNAL_SETUP.md`; needs an
    off-site target before go-live.
-3. **No password-reset email flow.** Needs a configured mailer; admins can set a
+2. **No password-reset email flow.** Needs a configured mailer; admins can set a
    password in the meantime.
-4. **Provider `fetch()` tested with mocks only**, since live credentials are not
+3. **Provider `fetch()` tested with mocks only**, since live credentials are not
    available.
+4. **No concurrency testing.** Throughput was measured at 10,000 leads, but not
+   under parallel load.
 5. **`/horizon` is admin-gated only.** Put it behind a VPN before exposing it.
 
 ---
 
 ## Next five, commercially
 
-1. Automated browser E2E, so releases stop depending on a manual pass
-2. WhatsApp Cloud API — a real inbox is the most-requested feature in this market
-3. Campaign spend ingestion → CPL, CPQL, cost per appointment, cost per sale
-4. Billing: Stripe or a local gateway against the plan fields that already exist
-5. Conversion APIs (Meta CAPI, Google offline conversions, TikTok Events) to send
+1. WhatsApp Cloud API — a real inbox is the most-requested feature in this market
+2. Campaign spend ingestion → CPL, CPQL, cost per appointment, cost per sale
+3. Billing: Stripe or a local gateway against the plan fields that already exist
+4. Conversion APIs (Meta CAPI, Google offline conversions, TikTok Events) to send
    won deals back to the ad platforms
+5. A live staging URL, which needs only a server, a domain and certificates —
+   see `docs/STAGING_CHECKLIST.md`

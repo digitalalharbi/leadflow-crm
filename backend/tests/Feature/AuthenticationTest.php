@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -162,7 +163,7 @@ class AuthenticationTest extends TestCase
 
     public function test_a_super_admin_has_no_tenant_workspace_but_owns_the_console(): void
     {
-        $superAdmin = \App\Models\User::create([
+        $superAdmin = User::create([
             'tenant_id' => null,
             'name' => 'Platform Owner',
             'email' => 'owner@platform.test',

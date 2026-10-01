@@ -1,0 +1,116 @@
+# ---------------------------------------------------------------------------
+# Local development. `docker compose up -d` then `./scripts/setup-local.sh`.
+# ---------------------------------------------------------------------------
+name: ${COMPOSE_PROJECT_NAME:-leadflow}
+
+x-backend-env: &backend-env
+  APP_ENV: local
+  APP_DEBUG: "true"
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_DATABASE: ${DB_DATABASE:-leadflow_local}
+  DB_USERNAME: ${DB_USERNAME:-leadflow}
+  DB_PASSWORD: ${DB_PASSWORD:-secret}
+  REDIS_CLIENT: predis
+  REDIS_HOST: redis
+  CACHE_STORE: redis
+  QUEUE_CONNECTION: redis
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-leadflow_local}
+      POSTGRES_USER: ${DB_USERNAME:-leadflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-leadflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: development
+    environment: *backend-env
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  api:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./docker/nginx/api.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend:/var/www/html
+    ports:
+      - "${APP_PORT:-8000}:80"
+    depends_on:
+      - backend
+
+  # Queue worker. Separate from Horizon so a crash in one does not stop the other.
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: development
+    command: php artisan queue:work --tries=3 --timeout=300 --sleep=1
+    environment: *backend-env
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      backend: { condition: service_started }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  horizon:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: development
+    command: php artisan horizon
+    environment: *backend-env
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      backend: { condition: service_started }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_PROXY_TARGET: http://api
+    volumes:
+      - ./frontend:/app
+      - frontend-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres-data:
+  redis-data:
+  frontend-modules:

@@ -14,7 +14,9 @@ class FollowUp extends Model
     use BelongsToTenant, HasFactory, HasUuid;
 
     public const PENDING = 'pending';
+
     public const COMPLETED = 'completed';
+
     public const CANCELLED = 'cancelled';
 
     protected $fillable = [

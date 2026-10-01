@@ -7,7 +7,9 @@ use App\Models\Lead;
 class IngestionResult
 {
     public const CREATED = 'created';
+
     public const RE_ENGAGED = 're_engaged';
+
     public const REJECTED = 'rejected';
 
     private function __construct(

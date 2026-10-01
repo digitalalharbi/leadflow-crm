@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessLeadImport;
 use App\Models\Import;
+use App\Models\Lead;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * CSV import wizard: upload -> preview -> map columns -> validate -> import.
@@ -17,7 +17,7 @@ class ImportController extends Controller
 {
     public function index(Request $request)
     {
-        $this->authorize('create', \App\Models\Lead::class);
+        $this->authorize('create', Lead::class);
 
         $imports = Import::with('user:id,uuid,name')->latest()->limit(25)->get();
 
@@ -29,7 +29,7 @@ class ImportController extends Controller
     /** Step 1 + 2: store the file and return headers with a few sample rows. */
     public function upload(Request $request)
     {
-        $this->authorize('create', \App\Models\Lead::class);
+        $this->authorize('create', Lead::class);
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'], // 10 MB
@@ -83,7 +83,7 @@ class ImportController extends Controller
     public function process(Request $request, string $uuid)
     {
         $import = Import::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('create', \App\Models\Lead::class);
+        $this->authorize('create', Lead::class);
 
         if ($import->status === Import::PROCESSING || $import->status === Import::COMPLETED) {
             return ApiResponse::error('This import has already been processed.', null, 409);
@@ -108,7 +108,7 @@ class ImportController extends Controller
     public function show(string $uuid)
     {
         $import = Import::with('user:id,uuid,name')->where('uuid', $uuid)->firstOrFail();
-        $this->authorize('create', \App\Models\Lead::class);
+        $this->authorize('create', Lead::class);
 
         return ApiResponse::success([
             'import' => $this->present($import),

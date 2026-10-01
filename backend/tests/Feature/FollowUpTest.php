@@ -13,6 +13,7 @@ class FollowUpTest extends TestCase
     use RefreshDatabase;
 
     private array $t;
+
     private Lead $lead;
 
     protected function setUp(): void

@@ -20,6 +20,7 @@ class ProcessLeadImport implements ShouldQueue
     use Queueable;
 
     public int $tries = 1;
+
     public int $timeout = 900;
 
     public function __construct(public int $importId, public int $tenantId) {}

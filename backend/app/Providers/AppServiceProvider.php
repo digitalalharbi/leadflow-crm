@@ -15,11 +15,11 @@ use App\Policies\ProjectPolicy;
 use App\Policies\TenantSettingsPolicy;
 use App\Policies\UserPolicy;
 use App\Support\TenantContext;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider

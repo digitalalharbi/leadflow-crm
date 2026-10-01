@@ -14,8 +14,11 @@ class Integration extends Model
     use BelongsToTenant, HasFactory, HasUuid;
 
     public const CONNECTED = 'connected';
+
     public const NOT_CONNECTED = 'not_connected';
+
     public const CONFIGURATION_REQUIRED = 'configuration_required';
+
     public const ERROR = 'error';
 
     protected $fillable = [

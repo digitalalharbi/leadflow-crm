@@ -14,7 +14,6 @@ use App\Models\LeadSourceEvent;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 
 /**

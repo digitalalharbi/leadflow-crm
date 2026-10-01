@@ -7,6 +7,7 @@ use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,8 +21,11 @@ class TenantIsolationTest extends TestCase
     use RefreshDatabase;
 
     private array $a;
+
     private array $b;
+
     private Lead $leadA;
+
     private Lead $leadB;
 
     protected function setUp(): void
@@ -195,7 +199,7 @@ class TenantIsolationTest extends TestCase
 
     public function test_a_model_cannot_be_created_without_a_tenant_context(): void
     {
-        app(\App\Support\TenantContext::class)->clear();
+        app(TenantContext::class)->clear();
 
         $this->expectException(\RuntimeException::class);
 

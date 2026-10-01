@@ -318,6 +318,25 @@ export interface DashboardData {
     by_campaign: ChartPoint[]
     trend: ChartPoint[]
   }
+  funnel: Array<{ key: string; count: number; of_total: number; from_previous: number }>
+  quality: Array<{ key: string; count: number; share: number }>
+  response_time: {
+    buckets: Array<{ key: string; count: number; share: number }>
+    contacted: number
+    uncontacted: number
+    average_seconds: number | null
+    median_seconds: number | null
+  }
+  /** Absent when no date range is set — "everything" has no previous period. */
+  comparison: {
+    from: string
+    to: string
+    total: number
+    qualified: number
+    hot: number
+    appointments: number
+    won: number
+  } | null
   hot_leads: LeadListItem[]
   overdue_leads: LeadListItem[]
   awaiting_contact_leads: LeadListItem[]

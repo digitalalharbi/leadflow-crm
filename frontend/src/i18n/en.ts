@@ -38,6 +38,22 @@ export default {
     settings: 'Settings', superAdmin: 'Platform', notifications: 'Notifications', profile: 'Profile',
   },
   dashboard: {
+    greeting: 'Welcome{{name}}',
+    lastDays: 'Last {{count}} days',
+    allProjects: 'All projects',
+    allOwners: 'All owners',
+    vsPrevious: 'vs the previous period',
+    funnelHint: 'Conversion between each stage',
+    platformsTitle: 'Platform performance',
+    platformsHint: 'Where leads come from, and which convert',
+    qualityTitle: 'Lead interest',
+    qualityHint: 'Open leads only',
+    responseTitle: 'Response speed',
+    responseHint: 'How long the team takes to answer a new lead',
+    noLeadsYet: 'No data in this period',
+    noOpenLeads: 'No open leads',
+    viewReports: 'Reports',
+
     awaitingContact: 'Not contacted',
     awaitingContactList: 'Nobody has answered these in {{minutes}} minutes',
     noAwaitingContact: 'Every new lead has been contacted.',
@@ -215,6 +231,20 @@ export default {
   units: { seconds: 's', minutes: 'min', hours: 'h', days: 'd' },
 
   appearance: { label: 'Appearance', system: 'Match device', light: 'Light', dark: 'Dark' },
+
+  brand: { tagline: 'Turn interest into opportunity', subtext: 'Leads, qualification and follow-up in one place.' },
+
+  funnel: { total: 'All leads', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewings', won: 'Sold' },
+
+  response: {
+    median: 'Median time to first contact',
+    average: 'Average',
+    under_5: 'Under 5 min',
+    under_15: '5 – 15 min',
+    under_30: '15 – 30 min',
+    over_30: 'Over 30 min',
+    uncontacted: '{{count}} leads have not been contacted at all — not counted above.',
+  },
 
   integrations: {
     title: 'Lead sources', subtitle: 'Connect your campaigns and forms so leads arrive automatically',

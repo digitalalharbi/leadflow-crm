@@ -9,6 +9,7 @@ import { apiGet } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
+import { BrandLockup } from '@/components/brand'
 
 interface NavItem {
   to: string
@@ -55,8 +56,6 @@ export function Sidebar() {
         { to: '/settings', labelKey: 'nav.settings', Icon: Settings, visible: true },
       ]
 
-  const systemName = branding?.system_name ?? t('common.appName')
-
   return (
     <>
       {/* Mobile scrim */}
@@ -77,20 +76,8 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--color-line)] px-4">
-          <div className="flex min-w-0 items-center gap-2.5">
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt="" className="size-8 shrink-0 rounded-lg object-contain" />
-            ) : (
-              <span
-                className="grid size-8 shrink-0 place-items-center rounded-lg text-[0.8125rem] font-bold text-white"
-                style={{ background: 'var(--brand)' }}
-                aria-hidden
-              >
-                {systemName.slice(0, 1)}
-              </span>
-            )}
-            <span className="truncate text-[0.9375rem] font-semibold">{systemName}</span>
-          </div>
+          {/* One component decides whose identity this is — see BrandLockup. */}
+          <BrandLockup to="/" size="md" />
 
           <button
             type="button"

@@ -10,6 +10,7 @@ use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Analytics\DashboardAnalytics;
 use App\Support\ApiResponse;
 use App\Support\Uuid;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardController extends Controller
 {
+    public function __construct(private DashboardAnalytics $analytics) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Lead::class);
@@ -113,6 +116,19 @@ class DashboardController extends Controller
                 'awaiting_first_contact' => (int) ($tallies->awaiting_contact ?? 0),
                 'first_contact_target_minutes' => $targetMinutes,
             ],
+            /*
+             * Everything the charts need, in the same request as the figures
+             * above. Each is one query against the same filtered base, so the
+             * whole screen agrees with itself and costs one round trip.
+             */
+            'funnel' => $this->analytics->funnel($base()),
+            'quality' => $this->analytics->quality($base()),
+            'response_time' => $this->analytics->responseTime($base()),
+            'comparison' => $this->analytics->comparison(
+                $request,
+                fn ($from, $to) => $this->baseQuery($request)
+                    ->whereBetween('leads.created_at', [$from, $to]),
+            ),
             'charts' => [
                 'by_platform' => $this->groupCount($base(), 'platform'),
                 'by_status' => LeadStatus::values() === [] ? [] : collect(LeadStatus::cases())

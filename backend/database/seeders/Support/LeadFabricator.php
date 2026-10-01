@@ -130,8 +130,18 @@ class LeadFabricator
              * where everyone is answered in four minutes makes the response
              * report look broken.
              */
+            /*
+             * A lead still sitting in "new" has mostly not been worked — that
+             * is what the stage means, and it is the gap the neglected-leads
+             * panel exists to show. Only a minority have been called without
+             * anyone moving them along.
+             *
+             * Everything past "new" was contacted, most of it quickly, with a
+             * tail that took far longer: a demo where every lead is answered in
+             * four minutes makes the response report look broken.
+             */
             'first_contact_at' => $status === LeadStatus::New->value
-                ? ($index % 5 === 0 ? null : $createdAt->copy()->addMinutes(random_int(4, 50)))
+                ? ($index % 4 === 0 ? $createdAt->copy()->addMinutes(random_int(4, 50)) : null)
                 : $createdAt->copy()->addMinutes($index % 7 === 0 ? random_int(240, 2880) : random_int(3, 90)),
             'first_response_at' => in_array($status, [LeadStatus::New->value, LeadStatus::Lost->value], true)
                 ? null

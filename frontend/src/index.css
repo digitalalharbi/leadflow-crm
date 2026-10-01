@@ -33,19 +33,24 @@
    * Neutrals, warmed very slightly off pure grey. A pure-grey interface reads
    * as cold and a little cheap next to the warm whites screens actually show.
    */
+  /*
+   * Mahtam neutrals. Cooled a half-step toward the ink colour rather than
+   * toward grey, so a page of white cards sits inside the identity instead of
+   * beside it.
+   */
   --color-neutral-0: #ffffff;
   --color-neutral-25: #fcfcfd;
-  --color-neutral-50: #f8f9fb;
-  --color-neutral-100: #f1f3f7;
-  --color-neutral-200: #e6e8ee;
-  --color-neutral-300: #d4d7e0;
-  --color-neutral-400: #a0a5b4;
-  --color-neutral-500: #6f7585;
-  --color-neutral-600: #545a69;
-  --color-neutral-700: #3c414e;
-  --color-neutral-800: #252932;
-  --color-neutral-900: #16181f;
-  --color-neutral-950: #0d0f14;
+  --color-neutral-50: #f7f8fa;
+  --color-neutral-100: #eff1f5;
+  --color-neutral-200: #e4e7ec;
+  --color-neutral-300: #d0d5dd;
+  --color-neutral-400: #98a2b3;
+  --color-neutral-500: #667085;
+  --color-neutral-600: #475467;
+  --color-neutral-700: #344054;
+  --color-neutral-800: #1d2939;
+  --color-neutral-900: #101828;
+  --color-neutral-950: #0b1220;
 
   /* Semantic surfaces, swapped wholesale in dark mode. */
   --color-surface: var(--color-neutral-0);
@@ -67,32 +72,63 @@
    * fully saturated hues on one board is a fruit salad, and the eye stops
    * being able to tell which one means trouble.
    */
-  --color-status-new: #4f7cf7;
-  --color-status-contacted: #7c6bf0;
-  --color-status-qualified: #0e9aa7;
-  --color-status-appointment: #c77a1c;
-  --color-status-won: #0f9d6f;
-  --color-status-lost: #d6455a;
+  --color-status-new: #4f7cff;
+  --color-status-contacted: #8b73f5;
+  --color-status-qualified: #12a594;
+  --color-status-appointment: #e0922f;
+  --color-status-won: #16a34a;
+  --color-status-lost: #e85d75;
 
-  --color-temp-hot: #d6455a;
-  --color-temp-warm: #c77a1c;
-  --color-temp-cold: #2f8ed6;
+  --color-temp-hot: #e85d75;
+  --color-temp-warm: #e0922f;
+  --color-temp-cold: #3aa8e0;
 
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbe6ff;
-  --color-brand-500: #3b74f0;
-  --color-brand-600: #2b5fd9;
-  --color-brand-700: #2049ac;
+  /* Semantic feedback, distinct from the pipeline stages they often share a
+     hue with — "won" is a stage, "success" is an outcome of an action. */
+  --color-success: #16a34a;
+  --color-warning: #e0922f;
+  --color-danger: #e85d75;
+  --color-info: #4f7cff;
+
+  /*
+   * Mahtam teal. Chosen against the field it competes in: this market's CRMs
+   * are overwhelmingly blue, and a teal reads as adjacent-but-not-the-same at
+   * a glance — confident rather than corporate, and it survives being printed
+   * on a sales deck.
+   */
+  --color-brand-50: #eafaf7;
+  --color-brand-100: #ccf2eb;
+  --color-brand-500: #12a594;
+  --color-brand-600: #0e8c7e;
+  --color-brand-700: #0a6e63;
+
+  /* Mahtam ink — the identity's dark, used for headings and the brand field. */
+  --color-ink-strong: #0b1220;
+
+  /*
+   * The data palette. Deliberately not derived from the brand: a chart whose
+   * every series is a tint of one hue is unreadable, and under white label the
+   * brand colour belongs to the customer. Only the primary series takes it.
+   */
+  --chart-1: #12a594;
+  --chart-2: #4f7cff;
+  --chart-3: #8b73f5;
+  --chart-4: #e0922f;
+  --chart-5: #16a34a;
+  --chart-6: #e85d75;
+  --chart-7: #3aa8e0;
+  --chart-8: #7c8698;
 
   /*
    * The tenant's colour, written at runtime by useBrandingTheme. Defaults are
    * here so the login screen has an identity before branding resolves.
    */
-  --brand: #2b5fd9;
-  --brand-secondary: #16181f;
-  --brand-soft: #eef4ff;
-  --brand-softer: #f6f9ff;
-  --brand-ring: color-mix(in srgb, #2b5fd9 28%, transparent);
+  --brand: #12a594;
+  --brand-hover: #0e8c7e;
+  --brand-secondary: #0b1220;
+  --brand-soft: #eafaf7;
+  --brand-softer: #f4fbf9;
+  --brand-ring: color-mix(in srgb, #12a594 28%, transparent);
   --brand-contrast: #ffffff;
 
   /*
@@ -133,30 +169,58 @@
  * getting *lighter* than the page, borders become light at low opacity, and
  * the brand colour is softened so it does not glow.
  */
+/*
+ * Dark mode is built from the ink colour rather than from black. Pure black
+ * makes every shadow invisible and every white text edge buzz; a blue-black
+ * keeps the identity and lets surfaces separate by lightness.
+ */
 .dark {
-  --color-surface: #1a1d24;
-  --color-surface-raised: #21252e;
-  --color-surface-muted: #131519;
-  --color-surface-sunken: #272b35;
-  --color-border: #2f343f;
-  --color-border-strong: #3d4350;
+  --color-surface: #141a26;
+  --color-surface-raised: #1b2230;
+  --color-surface-muted: #0b1220;
+  --color-surface-sunken: #202939;
+  --color-border: #2a3344;
+  --color-border-strong: #3a4557;
   --color-line: color-mix(in srgb, #ffffff 10%, transparent);
 
-  --color-ink: #eceef2;
-  --color-ink-muted: #9aa0ae;
-  --color-ink-subtle: #6f7685;
-  --color-ink-inverted: #16181f;
+  --color-ink: #eceff4;
+  --color-ink-muted: #98a2b3;
+  --color-ink-subtle: #6b7688;
+  --color-ink-inverted: #0b1220;
 
-  --color-status-new: #7fa3ff;
-  --color-status-contacted: #a396ff;
-  --color-status-qualified: #3cc3ce;
-  --color-status-appointment: #e5a44e;
-  --color-status-won: #38c79a;
-  --color-status-lost: #ff7389;
+  /*
+   * Hues lifted and slightly desaturated. A colour that reads as confident on
+   * white glows on a dark field, and a glowing status badge is the fastest way
+   * to make a dark theme look like a toy.
+   */
+  --color-status-new: #7d9dff;
+  --color-status-contacted: #a996ff;
+  --color-status-qualified: #2bc4b0;
+  --color-status-appointment: #edab51;
+  --color-status-won: #44c77a;
+  --color-status-lost: #ff8398;
 
-  --color-temp-hot: #ff7389;
-  --color-temp-warm: #e5a44e;
-  --color-temp-cold: #63b4f0;
+  --color-temp-hot: #ff8398;
+  --color-temp-warm: #edab51;
+  --color-temp-cold: #5fbcea;
+
+  --color-success: #44c77a;
+  --color-warning: #edab51;
+  --color-danger: #ff8398;
+  --color-info: #7d9dff;
+
+  --color-brand-50: #0d2b28;
+  --color-brand-100: #11433c;
+
+  /* Series lifted the same way, so a chart keeps its separation on dark. */
+  --chart-1: #2bc4b0;
+  --chart-2: #7d9dff;
+  --chart-3: #a996ff;
+  --chart-4: #edab51;
+  --chart-5: #44c77a;
+  --chart-6: #ff8398;
+  --chart-7: #5fbcea;
+  --chart-8: #93a0b4;
 
   --shadow-card:
     0 0 0 0.5px color-mix(in srgb, #ffffff 7%, transparent),
@@ -325,6 +389,131 @@
   /* A hairline that stays one device pixel on any display. */
   .hairline {
     border-color: var(--color-line);
+  }
+
+  /*
+   * The type scale.
+   *
+   * Eight steps, each with its own job. Components use these rather than
+   * picking a size, which is what stops twelve slightly different "card title"
+   * sizes accumulating across thirty screens.
+   *
+   * The metric step is the one that matters commercially: a dashboard number
+   * has to win against its own label at a glance, so it is large, tight and
+   * tabular while the label stays small and quiet.
+   */
+  .t-display {
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  .t-page-title {
+    font-size: 1.375rem;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .t-section-title {
+    font-size: 1rem;
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .t-card-title {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  .t-body {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .t-small {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .t-caption {
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--color-ink-muted);
+  }
+
+  .t-metric {
+    font-size: 1.75rem;
+    line-height: 1.1;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .t-metric-sm {
+    font-size: 1.25rem;
+    line-height: 1.15;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Arabic takes no negative tracking at any size. */
+  [dir='rtl'] .t-display,
+  [dir='rtl'] .t-page-title,
+  [dir='rtl'] .t-section-title,
+  [dir='rtl'] .t-metric,
+  [dir='rtl'] .t-metric-sm {
+    letter-spacing: 0;
+  }
+
+  /*
+   * The brand mark's one movement: the dot arrives, then the link to it
+   * settles. Runs once, on mount, and never loops — a logo that keeps moving
+   * is a logo nobody can stop looking at.
+   */
+  @keyframes brand-dot-arrive {
+    from { opacity: 0; transform: translate(4px, -4px) scale(0.6); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes brand-link-draw {
+    from { opacity: 0; }
+    to { opacity: 0.45; }
+  }
+
+  .brand-mark-dot {
+    transform-origin: 24.79px 7.75px;
+    animation: brand-dot-arrive var(--duration-slow) var(--ease-out-soft) both;
+  }
+
+  .brand-mark-link {
+    animation: brand-link-draw var(--duration-slow) var(--ease-out-soft) 120ms both;
+  }
+
+  /*
+   * The login field settles in once. Points fade up in column order, so the
+   * eye follows the same left-to-right progression the picture is about.
+   */
+  @keyframes field-in {
+    from { opacity: 0; transform: scale(0.4); }
+  }
+
+  @keyframes field-link-in {
+    from { opacity: 0; }
+  }
+
+  .brand-field-node {
+    animation: field-in 520ms var(--ease-out-soft) both;
+  }
+
+  .brand-field-link {
+    animation: field-link-in 700ms var(--ease-out-soft) both;
   }
 
   /*

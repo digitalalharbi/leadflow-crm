@@ -1,35 +1,36 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
-  Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts'
-import {
-  AlertTriangle, CalendarCheck, CalendarClock, Flame, PhoneOff, TrendingUp, UserPlus,
+  AlertTriangle, CalendarCheck, CalendarClock, Flame, PhoneOff, Target, UserPlus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
+import { fetchCampaignQuality } from '@/features/conversations'
 import { useAuth } from '@/stores/auth'
 import { useApiError } from '@/hooks/useApiError'
 import { formatNumber, formatRelative } from '@/lib/format'
 import {
-  Card, CardBody, CardHeader, EmptyState, ErrorState, PageHeader, Select,
-  SkeletonCards, StatCard, StatusBadge, TemperatureBadge,
+  Card, ErrorState, PageHeader, Select, Skeleton, SkeletonCards, StatusBadge, TemperatureBadge,
 } from '@/components/ui'
-import { OnboardingChecklist } from '@/components/OnboardingChecklist'
+import {
+  CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar, MetricCard,
+  PlatformPerformanceChart, ResponseTimeChart, TEMPERATURE_COLOR,
+} from '@/components/charts'
 import type { DashboardData, LeadListItem } from '@/types/api'
 
-const STATUS_COLORS: Record<string, string> = {
-  new: '#3b82f6',
-  contacted: '#8b5cf6',
-  qualified: '#0891b2',
-  appointment: '#d97706',
-  won: '#059669',
-  lost: '#dc2626',
-}
-
+/**
+ * The first screen.
+ *
+ * Ordered by the question it answers rather than by what is easiest to draw:
+ * the headline numbers, then where the pipeline leaks, then where the leads
+ * come from and how good they are, then what has to happen today. Everything
+ * on it is a link to the list it counts — a number nobody can act on is
+ * decoration, and a dashboard full of decoration is why people stop opening
+ * dashboards.
+ */
 export function DashboardPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const user = useAuth((s) => s.user)
   const translateError = useApiError()
 
@@ -37,13 +38,15 @@ export function DashboardPage() {
   const [assignedTo, setAssignedTo] = useState('')
   const [range, setRange] = useState('30')
 
+  const dateFrom =
+    range === 'all'
+      ? undefined
+      : new Date(Date.now() - Number(range) * 86_400_000).toISOString().slice(0, 10)
+
   const filters = {
     project_id: projectId || undefined,
     assigned_to: assignedTo || undefined,
-    date_from:
-      range === 'all'
-        ? undefined
-        : new Date(Date.now() - Number(range) * 86_400_000).toISOString().slice(0, 10),
+    date_from: dateFrom,
   }
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -51,14 +54,26 @@ export function DashboardPage() {
     queryFn: () => apiGet<DashboardData>('/dashboard', filters),
   })
 
-  const isRtl = i18n.dir() === 'rtl'
+  // The campaign and platform sections share one request — the same figures
+  // answer both questions, and two endpoints would risk them disagreeing.
+  const { data: campaigns, isLoading: campaignsLoading } = useQuery({
+    queryKey: ['dashboard-campaigns', filters],
+    queryFn: () => fetchCampaignQuality(filters),
+  })
+
   const today = new Date().toISOString().slice(0, 10)
+  const comparison = data?.comparison ?? null
+  const trend = data?.charts.trend.map((point) => point.count) ?? []
 
   return (
     <>
       <PageHeader
-        title={`${t('dashboard.title')}`}
-        subtitle={user ? `${t('dashboard.subtitle')}` : undefined}
+        title={
+          user?.name
+            ? t('dashboard.greeting', { name: `، ${user.name.split(' ')[0]}` })
+            : t('dashboard.title')
+        }
+        subtitle={t('dashboard.subtitle')}
         actions={
           <div className="flex flex-wrap gap-2">
             <Select
@@ -66,10 +81,11 @@ export function DashboardPage() {
               onChange={(e) => setRange(e.target.value)}
               className="h-9 w-auto min-w-32"
               aria-label={t('common.date')}
+              data-testid="range-filter"
             >
-              <option value="7">7</option>
-              <option value="30">30</option>
-              <option value="90">90</option>
+              <option value="7">{t('dashboard.lastDays', { count: 7 })}</option>
+              <option value="30">{t('dashboard.lastDays', { count: 30 })}</option>
+              <option value="90">{t('dashboard.lastDays', { count: 90 })}</option>
               <option value="all">{t('common.all')}</option>
             </Select>
 
@@ -77,12 +93,13 @@ export function DashboardPage() {
               <Select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="h-9 w-auto min-w-40"
+                className="h-9 w-auto min-w-36"
                 aria-label={t('leads.project')}
+                data-testid="project-filter"
               >
-                <option value="">{t('leads.project')}: {t('common.all')}</option>
-                {data?.filters.projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                <option value="">{t('dashboard.allProjects')}</option>
+                {data?.filters.projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </Select>
             )}
@@ -91,12 +108,13 @@ export function DashboardPage() {
               <Select
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className="h-9 w-auto min-w-40"
+                className="h-9 w-auto min-w-36"
                 aria-label={t('leads.assignedTo')}
+                data-testid="owner-filter"
               >
-                <option value="">{t('leads.assignedTo')}: {t('common.all')}</option>
-                {data?.filters.users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
+                <option value="">{t('dashboard.allOwners')}</option>
+                {data?.filters.users.map((owner) => (
+                  <option key={owner.id} value={owner.id}>{owner.name}</option>
                 ))}
               </Select>
             )}
@@ -104,183 +122,151 @@ export function DashboardPage() {
         }
       />
 
-      <OnboardingChecklist />
-
       {isError ? (
-        <Card>
-          <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
-        </Card>
+        <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
       ) : isLoading || !data ? (
         <div className="space-y-5">
-          <SkeletonCards count={4} />
-          <SkeletonCards count={4} />
+          <SkeletonCards count={5} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Skeleton className="h-72" />
+            <Skeleton className="h-72" />
+          </div>
         </div>
       ) : (
         <div className="space-y-5">
-          {/* The row a rep opens the app for. Every tile is a link to the exact
-              list it names — a number you cannot act on is just decoration. */}
-          <section>
-            <h2 className="mb-2.5 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
-              {t('dashboard.todayTitle')}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              {/* The one tile that creates work rather than reporting it: leads
-                  that arrived and that nobody has answered yet. */}
-              <StatCard
-                label={t('dashboard.awaitingContact')}
-                value={formatNumber(data.today.awaiting_first_contact, i18n.language)}
-                icon={<PhoneOff className="size-4" />}
-                tone={data.today.awaiting_first_contact > 0 ? 'danger' : 'neutral'}
-                to="/leads?status[]=new&awaiting_contact=1"
-                testId="stat-awaiting-contact"
-              />
-              <StatCard
-                label={t('dashboard.newToday')}
-                value={formatNumber(data.today.new_leads, i18n.language)}
-                icon={<UserPlus className="size-4" />}
-                tone="brand"
-                to={`/leads?status[]=new&date_from=${today}`}
-              />
-              <StatCard
-                label={t('dashboard.followUpsToday')}
-                value={formatNumber(data.today.follow_ups_today, i18n.language)}
-                icon={<CalendarClock className="size-4" />}
-                to="/follow-ups?bucket=today"
-              />
-              <StatCard
-                label={t('dashboard.followUpsOverdue')}
-                value={formatNumber(data.today.follow_ups_overdue, i18n.language)}
-                icon={<AlertTriangle className="size-4" />}
-                tone={data.today.follow_ups_overdue > 0 ? 'danger' : 'neutral'}
-                to="/follow-ups?bucket=overdue"
-              />
-              <StatCard
-                label={t('dashboard.hotLeads')}
-                value={formatNumber(data.summary.hot_leads, i18n.language)}
-                icon={<Flame className="size-4" />}
-                tone={data.summary.hot_leads > 0 ? 'warning' : 'neutral'}
-                to="/leads?temperature[]=hot"
-              />
-              <StatCard
-                label={t('dashboard.appointments')}
-                value={formatNumber(data.summary.appointments, i18n.language)}
-                icon={<CalendarCheck className="size-4" />}
-                to="/leads?status[]=appointment"
-              />
-            </div>
+          {/*
+            The five figures a sales manager quotes in a meeting. Each carries
+            its change against the previous period of equal length — which is
+            absent, rather than invented, when no range is set.
+          */}
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <MetricCard
+              label={t('dashboard.totalLeads')}
+              value={data.summary.total_leads}
+              previous={comparison?.total}
+              icon={<UserPlus className="size-4" />}
+              tone="brand"
+              to="/leads"
+              spark={trend}
+              testId="kpi-total"
+            />
+            <MetricCard
+              label={t('dashboard.qualified')}
+              value={data.summary.qualified}
+              previous={comparison?.qualified}
+              icon={<Target className="size-4" />}
+              to="/leads?status[]=qualified"
+              testId="kpi-qualified"
+            />
+            <MetricCard
+              label={t('dashboard.hotLeads')}
+              value={data.summary.hot_leads}
+              previous={comparison?.hot}
+              icon={<Flame className="size-4" />}
+              tone={data.summary.hot_leads > 0 ? 'warning' : 'neutral'}
+              to="/leads?temperature[]=hot"
+              testId="kpi-hot"
+            />
+            <MetricCard
+              label={t('dashboard.appointments')}
+              value={data.summary.appointments}
+              previous={comparison?.appointments}
+              icon={<CalendarCheck className="size-4" />}
+              to="/leads?status[]=appointment"
+              testId="kpi-appointments"
+            />
+            <MetricCard
+              label={t('dashboard.won')}
+              value={data.summary.won}
+              previous={comparison?.won}
+              icon={<CalendarCheck className="size-4" />}
+              tone="success"
+              to="/leads?status[]=won"
+              testId="kpi-won"
+            />
           </section>
 
-          {/* Funnel totals */}
-          <section>
-            <h2 className="mb-2.5 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
-              {t('dashboard.funnelTitle')}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              <StatCard
-                label={t('dashboard.totalLeads')}
-                value={formatNumber(data.summary.total_leads, i18n.language)}
-                to="/leads"
-              />
-              <StatCard
-                label={t('status.new')}
-                value={formatNumber(data.summary.new, i18n.language)}
-                to="/leads?status[]=new"
-              />
-              <StatCard
-                label={t('dashboard.qualified')}
-                value={formatNumber(data.summary.qualified, i18n.language)}
-                to="/leads?status[]=qualified"
-              />
-              <StatCard
-                label={t('dashboard.unassigned')}
-                value={formatNumber(data.summary.unassigned, i18n.language)}
-                tone={data.summary.unassigned > 0 ? 'warning' : 'neutral'}
-                to="/leads?assigned_to=unassigned"
-              />
-              <StatCard
-                label={t('dashboard.won')}
-                value={formatNumber(data.summary.won, i18n.language)}
-                tone="success"
-                to="/leads?status[]=won"
-              />
-              <StatCard
-                label={t('dashboard.conversionRate')}
-                value={`${data.summary.conversion_rate}%`}
-                icon={<TrendingUp className="size-4" />}
-                tone="brand"
-              />
-            </div>
-          </section>
+          {/* What has to happen today, and what is already late. */}
+          <TodayStrip data={data} today={today} />
 
-          {/* Charts */}
           <section className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader title={t('dashboard.trend')} />
-              <CardBody className="p-3">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.charts.trend} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                    <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                    <XAxis
-                      dataKey="key"
-                      tickFormatter={(v: string) => v.slice(5)}
-                      tick={{ fontSize: 11, fill: 'var(--color-ink-subtle)' }}
-                      axisLine={false}
-                      tickLine={false}
-                      reversed={isRtl}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 11, fill: 'var(--color-ink-subtle)' }}
-                      axisLine={false}
-                      tickLine={false}
-                      orientation={isRtl ? 'right' : 'left'}
-                      width={28}
-                    />
-                    <Tooltip
-                      cursor={{ fill: 'var(--color-surface-sunken)' }}
-                      contentStyle={{
-                        borderRadius: 8,
-                        border: '1px solid var(--color-border)',
-                        fontSize: 12,
-                      }}
-                    />
-                    <Bar dataKey="count" fill="var(--brand)" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardBody>
-            </Card>
+            <ChartCard
+              title={t('dashboard.funnelTitle')}
+              description={t('dashboard.funnelHint')}
+              height={290}
+              empty={data.summary.total_leads === 0}
+              emptyMessage={t('dashboard.noLeadsYet')}
+              testId="funnel-card"
+            >
+              <ConversionFunnel stages={data.funnel} />
+            </ChartCard>
 
-            <Card>
-              <CardHeader title={t('dashboard.byStatus')} />
-              <CardBody className="space-y-3">
-                {data.charts.by_status.map((point) => {
-                  const total = data.summary.total_leads || 1
-
-                  return (
-                    <div key={point.key}>
-                      <div className="mb-1 flex items-baseline justify-between gap-3">
-                        <span className="text-[0.8125rem]">{t(`status.${point.key}`)}</span>
-                        <span className="tabular shrink-0 text-[0.8125rem] font-medium text-[var(--color-ink-muted)]">
-                          {formatNumber(point.count, i18n.language)}
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
-                        <div
-                          className="h-full rounded-full transition-[width] duration-500"
-                          style={{
-                            width: `${(point.count / total) * 100}%`,
-                            background: STATUS_COLORS[point.key] ?? 'var(--brand)',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </CardBody>
-            </Card>
+            <ChartCard
+              title={t('campaignQuality.title')}
+              description={t('campaignQuality.subtitle')}
+              height={290}
+              loading={campaignsLoading}
+              empty={(campaigns?.rows.length ?? 0) === 0}
+              emptyMessage={t('campaignQuality.empty')}
+              action={
+                <Link to="/reports" className="t-caption hover:text-[var(--brand)]">
+                  {t('dashboard.viewReports')}
+                </Link>
+              }
+              testId="campaign-card"
+            >
+              <CampaignQualityChart rows={campaigns?.rows ?? []} />
+            </ChartCard>
           </section>
 
-          {/* Needs attention */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            <ChartCard
+              title={t('dashboard.platformsTitle')}
+              description={t('dashboard.platformsHint')}
+              height={290}
+              loading={campaignsLoading}
+              empty={(campaigns?.rows.length ?? 0) === 0}
+              emptyMessage={t('campaignQuality.empty')}
+              testId="platforms-card"
+            >
+              <PlatformPerformanceChart rows={campaigns?.rows ?? []} />
+            </ChartCard>
+
+            <div className="grid gap-4">
+              <ChartCard
+                title={t('dashboard.qualityTitle')}
+                description={t('dashboard.qualityHint')}
+                height={120}
+                empty={data.quality.every((segment) => segment.count === 0)}
+                emptyMessage={t('dashboard.noOpenLeads')}
+                testId="quality-card"
+              >
+                <DistributionBar
+                  testId="quality-distribution"
+                  segments={data.quality.map((segment) => ({
+                    key: segment.key,
+                    label: t(`temperature.${segment.key}`),
+                    count: segment.count,
+                    share: segment.share,
+                    color: TEMPERATURE_COLOR[segment.key],
+                    to: `/leads?temperature[]=${segment.key}`,
+                  }))}
+                />
+              </ChartCard>
+
+              <ChartCard
+                title={t('dashboard.responseTitle')}
+                description={t('dashboard.responseHint')}
+                height={150}
+                empty={data.response_time.contacted === 0 && data.response_time.uncontacted === 0}
+                emptyMessage={t('dashboard.noLeadsYet')}
+                testId="response-card"
+              >
+                <ResponseTimeChart data={data.response_time} />
+              </ChartCard>
+            </div>
+          </section>
+
           <section className="grid gap-4 lg:grid-cols-2">
             <LeadMiniList
               title={t('dashboard.hotLeadsList')}
@@ -298,25 +284,97 @@ export function DashboardPage() {
           </section>
 
           {data.awaiting_contact_leads.length > 0 && (
-            <section>
-              <LeadMiniList
-                title={t('dashboard.awaitingContactList', {
-                  minutes: data.today.first_contact_target_minutes,
-                })}
-                leads={data.awaiting_contact_leads}
-                emptyText={t('dashboard.noAwaitingContact')}
-                to="/leads?status[]=new&awaiting_contact=1"
-              />
-            </section>
+            <LeadMiniList
+              title={t('dashboard.awaitingContactList', {
+                minutes: data.today.first_contact_target_minutes,
+              })}
+              leads={data.awaiting_contact_leads}
+              emptyText={t('dashboard.noAwaitingContact')}
+              to="/leads?awaiting_contact=1"
+              tone="warning"
+            />
           )}
-
-          <section className="grid gap-4 lg:grid-cols-2">
-            <BreakdownCard title={t('dashboard.byPlatform')} points={data.charts.by_platform} translateKey="platforms" />
-            <BreakdownCard title={t('dashboard.byCampaign')} points={data.charts.by_campaign} />
-          </section>
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Today's work, as one row of linked counts.
+ *
+ * Separate from the KPI strip above because these are not measurements — they
+ * are a to-do list, and mixing the two makes both harder to read.
+ */
+function TodayStrip({ data, today }: { data: DashboardData; today: string }) {
+  const { t, i18n } = useTranslation()
+
+  const items = [
+    {
+      key: 'new',
+      label: t('dashboard.newToday'),
+      value: data.today.new_leads,
+      icon: <UserPlus className="size-4" />,
+      to: `/leads?status[]=new&date_from=${today}`,
+    },
+    {
+      key: 'due',
+      label: t('dashboard.followUpsToday'),
+      value: data.today.follow_ups_today,
+      icon: <CalendarClock className="size-4" />,
+      to: '/follow-ups?bucket=today',
+    },
+    {
+      key: 'overdue',
+      label: t('dashboard.followUpsOverdue'),
+      value: data.today.follow_ups_overdue,
+      icon: <AlertTriangle className="size-4" />,
+      to: '/follow-ups?bucket=overdue',
+      urgent: data.today.follow_ups_overdue > 0,
+    },
+    {
+      key: 'awaiting',
+      label: t('dashboard.awaitingContact'),
+      value: data.today.awaiting_first_contact,
+      icon: <PhoneOff className="size-4" />,
+      to: '/leads?awaiting_contact=1',
+      urgent: data.today.awaiting_first_contact > 0,
+    },
+  ]
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-3">
+        <h2 className="t-card-title">{t('dashboard.todayTitle')}</h2>
+      </div>
+
+      <ul className="grid divide-y divide-[var(--color-line)] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 [&>li:not(:last-child)]:sm:border-e [&>li]:sm:border-[var(--color-line)]">
+        {items.map((item) => (
+          <li key={item.key}>
+            <Link
+              to={item.to}
+              data-testid={`today-${item.key}`}
+              className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-[var(--color-surface-muted)]"
+            >
+              <span
+                className={`grid size-9 shrink-0 place-items-center rounded-[var(--radius-control)] ${
+                  item.urgent
+                    ? 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]'
+                    : 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]'
+                }`}
+              >
+                {item.icon}
+              </span>
+
+              <span className="min-w-0">
+                <span className="t-metric-sm block">{formatNumber(item.value, i18n.language)}</span>
+                <span className="t-caption block truncate">{item.label}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 
@@ -326,102 +384,59 @@ function LeadMiniList({
   emptyText,
   to,
   showDue = false,
+  tone,
 }: {
   title: string
   leads: LeadListItem[]
   emptyText: string
   to: string
   showDue?: boolean
+  tone?: 'warning'
 }) {
   const { t, i18n } = useTranslation()
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader
-        title={title}
-        action={
-          leads.length > 0 ? (
-            <Link to={to} className="text-[0.8125rem] font-medium text-[var(--brand)] hover:underline">
-              {t('dashboard.viewAll')}
-            </Link>
-          ) : undefined
-        }
-      />
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-3">
+        <h2 className="t-card-title">{title}</h2>
+        <Link to={to} className="t-caption hover:text-[var(--brand)]">
+          {t('common.showMore')}
+        </Link>
+      </div>
+
       {leads.length === 0 ? (
-        <EmptyState title={emptyText} className="py-10" />
+        <p className="t-small px-5 py-8 text-center text-[var(--color-ink-muted)]">{emptyText}</p>
       ) : (
-        <ul className="divide-y divide-[var(--color-border)]">
+        <ul className="divide-y divide-[var(--color-line)]">
           {leads.map((lead) => (
             <li key={lead.id}>
               <Link
                 to={`/leads/${lead.id}`}
-                className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--color-surface-muted)]"
+                className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-[var(--color-surface-muted)]"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.875rem] font-medium">{lead.full_name}</p>
-                  <p className="tabular mt-0.5 truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
-                    {lead.phone ?? '—'}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
+                <span className="min-w-0">
+                  <span className="t-small block truncate font-medium">{lead.full_name}</span>
+                  <span className="t-caption block truncate">
+                    {lead.project?.name ?? lead.campaign_name ?? lead.phone}
+                  </span>
+                </span>
+
+                <span className="flex shrink-0 items-center gap-2">
                   {showDue && lead.next_follow_up_at ? (
-                    <span className="text-[0.75rem] text-[var(--color-status-lost)]">
+                    <span
+                      className={`t-caption ${tone === 'warning' ? 'text-[var(--color-warning)]' : 'text-[var(--color-danger)]'}`}
+                    >
                       {formatRelative(lead.next_follow_up_at, i18n.language)}
                     </span>
                   ) : (
                     <TemperatureBadge temperature={lead.temperature} />
                   )}
-                  <StatusBadge status={lead.status} />
-                </div>
+                  <StatusBadge status={lead.status} className="hidden sm:inline-flex" />
+                </span>
               </Link>
             </li>
           ))}
         </ul>
-      )}
-    </Card>
-  )
-}
-
-function BreakdownCard({
-  title,
-  points,
-  translateKey,
-}: {
-  title: string
-  points: { key: string; count: number }[]
-  translateKey?: string
-}) {
-  const { t, i18n } = useTranslation()
-  const max = Math.max(...points.map((p) => p.count), 1)
-
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader title={title} />
-      {points.length === 0 ? (
-        <EmptyState title={t('reports.empty')} className="py-10" />
-      ) : (
-        <CardBody className="space-y-2.5">
-          {points.map((point) => (
-            <div key={point.key}>
-              <div className="mb-1 flex items-baseline justify-between gap-3">
-                <span className="truncate text-[0.8125rem]">
-                  {translateKey
-                    ? t(`${translateKey}.${point.key}`, { defaultValue: point.key })
-                    : point.key}
-                </span>
-                <span className="tabular shrink-0 text-[0.8125rem] font-medium text-[var(--color-ink-muted)]">
-                  {formatNumber(point.count, i18n.language)}
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${(point.count / max) * 100}%`, background: 'var(--brand)' }}
-                />
-              </div>
-            </div>
-          ))}
-        </CardBody>
       )}
     </Card>
   )

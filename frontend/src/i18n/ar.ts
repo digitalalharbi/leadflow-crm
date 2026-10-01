@@ -89,6 +89,22 @@ export default {
     profile: 'الملف الشخصي',
   },
   dashboard: {
+    greeting: 'مرحبًا{{name}}',
+    lastDays: 'آخر {{count}} يوم',
+    allProjects: 'كل المشاريع',
+    allOwners: 'كل المسؤولين',
+    vsPrevious: 'مقارنة بالفترة السابقة',
+    funnelHint: 'نسبة التحويل بين كل مرحلة',
+    platformsTitle: 'أداء المنصات',
+    platformsHint: 'من أين يأتي العملاء، وأيها يتحول',
+    qualityTitle: 'مستوى اهتمام العملاء',
+    qualityHint: 'العملاء المفتوحون فقط',
+    responseTitle: 'سرعة التواصل',
+    responseHint: 'كم يستغرق الفريق للرد على عميل جديد',
+    noLeadsYet: 'لا توجد بيانات في هذه الفترة',
+    noOpenLeads: 'لا يوجد عملاء مفتوحون',
+    viewReports: 'التقارير',
+
     awaitingContact: 'لم يتم التواصل',
     awaitingContactList: 'لم يتم التواصل معهم خلال {{minutes}} دقيقة',
     noAwaitingContact: 'تم التواصل مع كل العملاء الجدد.',
@@ -420,6 +436,20 @@ export default {
   units: { seconds: 'ثانية', minutes: 'دقيقة', hours: 'ساعة', days: 'يوم' },
 
   appearance: { label: 'المظهر', system: 'حسب الجهاز', light: 'فاتح', dark: 'داكن' },
+
+  brand: { tagline: 'حوّل الاهتمام إلى فرصة', subtext: 'إدارة العملاء المحتملين، التأهيل والمتابعة في مكان واحد.' },
+
+  funnel: { total: 'كل العملاء', contacted: 'تم التواصل', qualified: 'مؤهلون', appointment: 'مواعيد', won: 'تم البيع' },
+
+  response: {
+    median: 'وسيط زمن أول تواصل',
+    average: 'المتوسط',
+    under_5: 'أقل من 5 د',
+    under_15: '5 – 15 د',
+    under_30: '15 – 30 د',
+    over_30: 'أكثر من 30 د',
+    uncontacted: 'لم يتم التواصل مع {{count}} عميل بعد — غير محتسبين في الأرقام أعلاه.',
+  },
 
   integrations: {
     title: 'مصادر العملاء',

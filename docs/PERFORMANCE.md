@@ -1,27 +1,36 @@
 # Performance
 
 Measured against a single tenant holding **10,000 leads**, through the real
-middleware and controller stack (`php artisan leadflow:seed-load-test`).
+middleware and controller stack. Reproduce it in two commands:
+
+```bash
+php artisan leadflow:seed-load-test --leads=10000 --tenant=loadtest
+php artisan leadflow:measure --tenant=loadtest
+```
+
+Requests are dispatched into the HTTP kernel rather than sent over the network,
+so the numbers describe our code and not the dev server's single-threaded socket
+handling. Each case runs twice; the second run is the one reported.
 
 ## Results
 
 | Endpoint | Queries | Time | Payload |
 | --- | ---: | ---: | ---: |
-| Leads, page 1 | 5 | 15 ms | 18 KB |
-| Leads, page 100 | 5 | 17 ms | 18 KB |
-| Leads, search by name | 5 | 17 ms | 18 KB |
-| Leads, search by phone | 5 | 18 ms | 1 KB |
-| Leads, status filter | 5 | 15 ms | 18 KB |
-| Leads, combined filters | 5 | 34 ms | 18 KB |
-| Leads, overdue | 5 | 37 ms | 18 KB |
-| Dashboard | 15 | 39–60 ms | 10 KB |
-| Pipeline (6 columns) | 6 | 90 ms | 104 KB |
-| Follow-ups, overdue | 2 | 4 ms | — |
-| Follow-up counts | 4 | 4 ms | — |
-| Reports (each type) | 2 | 6–16 ms | 1–5 KB |
-| Users / Projects | 2 | 11–13 ms | 1 KB |
+| Leads, page 1 | 5 | 16 ms | 19 KB |
+| Leads, page 100 | 5 | 18 ms | 19 KB |
+| Leads, search by name | 5 | 28 ms | 20 KB |
+| Leads, search by phone | 5 | 19 ms | 1 KB |
+| Leads, status filter | 5 | 16 ms | 18 KB |
+| Leads, combined filters | 5 | 14 ms | 18 KB |
+| Leads, overdue | 5 | 15 ms | 19 KB |
+| Leads, malformed filter | 2 | 4 ms | — |
+| Dashboard | 15 | 39 ms | 11 KB |
+| Pipeline (6 columns) | 6 | 47 ms | 109 KB |
+| Follow-ups, each bucket | 2 | 3 ms | — |
+| Reports, each type | 2 | 9–10 ms | 1–5 KB |
+| Users / Projects | 2 | 7–10 ms | 1–2 KB |
 
-No endpoint exceeds 120 ms or 110 KB at this volume, and query counts are flat
+No endpoint exceeds 50 ms or 110 KB at this volume, and query counts are flat
 with respect to the number of leads — the only counts that scale are with the
 number of *columns* or *charts* on a screen, which are fixed.
 

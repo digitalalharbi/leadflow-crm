@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors, type DragEndEvent, type DragStartEvent,
+  DndContext, DragOverlay, useDraggable, useDroppable,
+  MouseSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
@@ -46,7 +47,18 @@ export function PipelinePage() {
   const [lostNote, setLostNote] = useState('')
 
   // A small activation distance keeps a tap on a card working as a link.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  /*
+   * Mouse and touch are separated deliberately.
+   *
+   * One PointerSensor with a 6px threshold meant that on a phone, any swipe to
+   * scroll the board became a drag — the board was unusable with a thumb. A
+   * mouse keeps the small distance threshold, and touch requires a short press
+   * first, so a swipe scrolls and a hold picks a card up.
+   */
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['pipeline'],
@@ -219,22 +231,38 @@ function PipelineColumn({ column }: { column: Column }) {
       ref={setNodeRef}
       data-testid={`pipeline-column-${column.status}`}
       className={cn(
-        'flex w-[17rem] shrink-0 flex-col rounded-[var(--radius-card)] border bg-[var(--color-surface-muted)]',
-        isOver ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-[var(--color-border)]',
+        // Narrower than before: six columns at 17rem forced a scroll on a
+        // 1440px screen, which defeats the one thing a board is for.
+        'flex w-[15.5rem] shrink-0 flex-col rounded-[var(--radius-card)] border',
+        'bg-[var(--color-surface-muted)] transition-colors',
+        isOver
+          ? 'border-[var(--brand)] bg-[var(--brand-soft)]'
+          : 'border-[var(--color-line)]',
       )}
     >
-      <header className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
-        <span className={cn('size-2 rounded-full', COLUMN_ACCENT[column.status])} aria-hidden />
-        <h2 className="flex-1 text-[0.8125rem] font-semibold">{t(`status.${column.status}`)}</h2>
+      {/*
+        The stage's colour is a rule along the top edge rather than six tinted
+        panels. On a board the cards carry the colour that matters — temperature
+        — and a column painted in its own hue competes with every card in it.
+      */}
+      <header className="relative overflow-hidden rounded-t-[var(--radius-card)] border-b border-[var(--color-line)] px-3 pt-2.5 pb-2">
         <span
-          data-testid="column-total"
-          className="tabular rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.75rem] font-medium text-[var(--color-ink-muted)]"
-        >
-          {column.total}
-        </span>
+          className={cn('absolute inset-x-0 top-0 h-[3px]', COLUMN_ACCENT[column.status])}
+          aria-hidden
+        />
+
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="t-small truncate font-semibold">{t(`status.${column.status}`)}</h2>
+          <span data-testid="column-total" className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+            {column.total}
+          </span>
+        </div>
       </header>
 
-      <div className="min-h-24 flex-1 space-y-2 overflow-y-auto p-2" style={{ maxHeight: 'calc(100dvh - 15rem)' }}>
+      <div
+        className="min-h-24 flex-1 space-y-2 overflow-y-auto p-2"
+        style={{ maxHeight: 'calc(100dvh - 15rem)' }}
+      >
         {column.leads.length === 0 ? (
           <p className="px-2 py-8 text-center text-[0.75rem] text-[var(--color-ink-subtle)]">
             {t('pipeline.empty')}

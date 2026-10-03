@@ -114,6 +114,11 @@ class LeadQueryBuilder
             // the number did.
             // Leads who answered us — the first stage the customer controls.
             ->when($request->boolean('replied'), fn ($q) => $q->whereNotNull('first_response_at'))
+            // The project cards and the funnel both link here.
+            ->when($request->filled('qualification_status'), fn ($q) => $q->whereIn(
+                'qualification_status',
+                (array) $request->input('qualification_status'),
+            ))
             ->when($request->boolean('awaiting_contact'), function (Builder $q) use ($request) {
                 $minutes = (int) ($request->user()?->tenant?->settings?->first_contact_target_minutes ?? 30);
 

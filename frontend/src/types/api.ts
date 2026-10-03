@@ -286,6 +286,16 @@ export interface Project {
   created_at: string
 }
 
+/** The funnel metrics a project card shows, keyed to the project's uuid. */
+export interface ProjectMetrics {
+  id: string
+  leads: number
+  qualified: number
+  appointments: number
+  won: number
+  qualification_rate: number
+}
+
 export interface ChartPoint {
   key: string
   count: number

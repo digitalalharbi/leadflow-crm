@@ -260,6 +260,7 @@ export default {
   },
 
   integrations: {
+    lastSync: 'Last sync',
     title: 'Lead sources', subtitle: 'Connect your campaigns and forms so leads arrive automatically',
     connected: 'Connected', notConnected: 'Not connected',
     configurationRequired: 'Configuration required', error: 'Error',

@@ -465,6 +465,7 @@ export default {
   },
 
   integrations: {
+    lastSync: 'آخر مزامنة',
     title: 'مصادر العملاء',
     subtitle: 'اربط حملاتك ونماذجك لتصل العملاء تلقائياً',
     connected: 'متصل',

@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { apiGetPaginated, apiPost } from '@/lib/api'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
+import { formatClock, formatDateTime, formatDue, whatsappLink } from '@/lib/format'
 import {
   Button, Card, EmptyState, ErrorState, Input, PageHeader, Pagination, Select,
-  SkeletonTable, StatusBadge, Textarea, Modal, TemperatureBadge,
+  Badge, SkeletonTable, StatusBadge, Textarea, Modal, TemperatureBadge,
 } from '@/components/ui'
 import type { FollowUp, FollowUpOutcome, PaginationMeta } from '@/types/api'
 import { cn } from '@/lib/cn'
@@ -25,15 +25,6 @@ const OUTCOMES: FollowUpOutcome[] = [
 /** Days from now, or a date the rep picks. */
 type NextIn = '' | '1' | '3' | '7' | 'custom'
 
-/**
- * How late a follow-up is. For one that slipped earlier the same day the
- * relative form would just repeat the time already shown, so say "overdue".
- */
-function overdueLabel(dueAt: string, lang: string, fallback: string): string {
-  const relative = formatRelative(dueAt, lang)
-
-  return /^\d{1,2}:\d{2}$/.test(relative) ? fallback : relative
-}
 
 export function FollowUpsPage() {
   const { t, i18n } = useTranslation()
@@ -126,7 +117,7 @@ export function FollowUpsPage() {
 
       <Card className="overflow-hidden">
         {/* Buckets as tabs: a rep works overdue first, then today. */}
-        <div className="scroll-x flex gap-1 border-b border-[var(--color-border)] p-2">
+        <div className="scroll-x flex gap-1 border-b border-[var(--color-line)] p-2">
           {BUCKETS.map((key) => {
             const count = badge(key)
 
@@ -148,7 +139,7 @@ export function FollowUpsPage() {
                     className={cn(
                       'tabular rounded-full px-1.5 py-0.5 text-[0.6875rem] font-semibold',
                       key === 'overdue'
-                        ? 'bg-[var(--color-status-lost)] text-white'
+                        ? 'bg-[var(--color-danger)] text-white'
                         : 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]',
                     )}
                   >
@@ -168,44 +159,71 @@ export function FollowUpsPage() {
           <EmptyState icon={<CalendarCheck className="size-6" />} title={emptyText} />
         ) : (
           <>
-            <ul className="divide-y divide-[var(--color-border)]">
+            <ul className="divide-y divide-[var(--color-line)]">
               {followUps.map((followUp) => (
-                <li key={followUp.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                <li
+                  key={followUp.id}
+                  data-testid="follow-up-row"
+                  className="flex flex-wrap items-center gap-3 px-5 py-3.5 transition-colors hover:bg-[var(--color-surface-muted)]"
+                >
+                  {/*
+                    The due time leads the row. On a work queue the question is
+                    always "is this late, and how late" — the lead's name is how
+                    you act on it, but the clock is why you are looking.
+                  */}
+                  <div
+                    className={cn(
+                      'flex w-[5.5rem] shrink-0 flex-col items-center justify-center',
+                      'rounded-[var(--radius-control)] px-2 py-1.5',
+                      followUp.is_overdue
+                        ? 'bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)] text-[var(--color-danger)]'
+                        : 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]',
+                    )}
+                  >
+                    <span className="t-small text-center leading-tight font-medium">
+                      {formatDue(followUp.due_at, i18n.language, followUp.is_overdue)}
+                    </span>
+                    {/* The relative label already says which day; repeating the
+                        full date here only made it wrap. */}
+                    <span
+                      className="tabular text-[0.6875rem] opacity-75"
+                      dir="ltr"
+                      title={formatDateTime(followUp.due_at, i18n.language)}
+                    >
+                      {formatClock(followUp.due_at)}
+                    </span>
+                  </div>
+
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {followUp.lead ? (
                         <Link
                           to={`/leads/${followUp.lead.id}`}
-                          className="truncate font-medium hover:text-[var(--brand)] hover:underline"
+                          className="truncate font-medium hover:text-[var(--brand)]"
                         >
                           {followUp.lead.full_name}
                         </Link>
                       ) : (
                         <span className="text-[var(--color-ink-subtle)]">—</span>
                       )}
-                      {followUp.lead && <StatusBadge status={followUp.lead.status} />}
                       {followUp.lead && <TemperatureBadge temperature={followUp.lead.temperature} />}
+                      {followUp.lead && (
+                        <StatusBadge status={followUp.lead.status} className="hidden sm:inline-flex" />
+                      )}
+                      {followUp.outcome && (
+                        <Badge tone="neutral">{t(`outcomes.${followUp.outcome}`)}</Badge>
+                      )}
                     </div>
 
-                    {followUp.note && (
-                      <p className="mt-1 truncate text-[0.8125rem] text-[var(--color-ink-muted)]">{followUp.note}</p>
-                    )}
-
-                    <p
-                      className={cn(
-                        'mt-1 flex flex-wrap items-center gap-x-2 text-[0.75rem]',
-                        followUp.is_overdue
-                          ? 'font-medium text-[var(--color-status-lost)]'
-                          : 'text-[var(--color-ink-subtle)]',
-                      )}
-                    >
-                      <span>{formatDateTime(followUp.due_at, i18n.language)}</span>
-                      {followUp.is_overdue && (
-                        <span className="rounded bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-1.5 py-0.5">
-                          {overdueLabel(followUp.due_at, i18n.language, t('followUps.overdue'))}
-                        </span>
-                      )}
+                    <p className="t-caption mt-0.5 flex flex-wrap items-center gap-x-2">
+                      {followUp.assignee?.name && <span>{followUp.assignee.name}</span>}
                     </p>
+
+                    {(followUp.note || followUp.outcome_note) && (
+                      <p className="t-small mt-1 truncate text-[var(--color-ink-muted)]">
+                        {followUp.outcome_note ?? followUp.note}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 items-center gap-1.5">
@@ -213,7 +231,7 @@ export function FollowUpsPage() {
                       <a
                         href={`tel:${followUp.lead.phone}`}
                         aria-label={t('leads.call')}
-                        className="grid size-9 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--brand)]"
+                        className="pressable grid size-9 place-items-center rounded-[var(--radius-control)] border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:text-[var(--brand)]"
                       >
                         <Phone className="size-4" aria-hidden />
                       </a>
@@ -224,13 +242,18 @@ export function FollowUpsPage() {
                         target="_blank"
                         rel="noreferrer"
                         aria-label={t('leads.whatsapp')}
-                        className="grid size-9 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-status-won)]"
+                        className="pressable grid size-9 place-items-center rounded-[var(--radius-control)] border border-[var(--color-line)] text-[var(--color-ink-muted)] hover:text-[var(--color-status-won)]"
                       >
                         <MessageCircle className="size-4" aria-hidden />
                       </a>
                     )}
                     {followUp.status === 'pending' && (
-                      <Button size="sm" icon={<Check className="size-4" />} onClick={() => setCompleting(followUp)}>
+                      <Button
+                        size="sm"
+                        icon={<Check className="size-4" />}
+                        onClick={() => setCompleting(followUp)}
+                        data-testid="complete-follow-up"
+                      >
                         {t('followUps.complete')}
                       </Button>
                     )}

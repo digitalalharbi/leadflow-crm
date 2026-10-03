@@ -35,6 +35,11 @@ export function formatRelative(iso: string | null | undefined, lang = 'ar'): str
   return formatDistanceToNowStrict(date, { addSuffix: true, locale })
 }
 
+/** Just the clock, for pairing with a relative label that carries the day. */
+export function formatClock(iso: string | null | undefined): string {
+  return iso ? format(parseISO(iso), 'HH:mm') : '—'
+}
+
 /**
  * A due time that says whether it has passed.
  *

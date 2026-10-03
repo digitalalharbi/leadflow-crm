@@ -295,6 +295,13 @@ export default {
   },
   roles: { admin: 'Admin', manager: 'Sales manager', sales: 'Sales rep', super_admin: 'Platform admin' },
   settings: {
+    leads: 'Leads',
+    scoring: 'Qualification & scoring',
+    generalHint: 'Language, currency, timezone and how leads are assigned',
+    scoringHint: 'What makes a lead hot, and how long before it counts as neglected',
+    firstContactTarget: 'First-contact target (minutes)',
+    firstContactHint: 'After this a lead appears in “not contacted”',
+
     title: 'Settings', subtitle: 'Your branding and how your team works',
     branding: 'Branding', general: 'General', lostReasons: 'Lost reasons',
     customFields: 'Custom fields', subscription: 'Subscription', security: 'Security',

@@ -537,6 +537,13 @@ export default {
     super_admin: 'مدير المنصة',
   },
   settings: {
+    leads: 'العملاء المحتملون',
+    scoring: 'التأهيل والتقييم',
+    generalHint: 'اللغة والعملة والمنطقة الزمنية وطريقة الإسناد',
+    scoringHint: 'ما الذي يجعل العميل Hot، وكم ننتظر قبل اعتباره مهملًا',
+    firstContactTarget: 'هدف أول تواصل (دقيقة)',
+    firstContactHint: 'بعدها يظهر العميل في «لم يتم التواصل»',
+
     title: 'الإعدادات',
     subtitle: 'هوية النظام وتفضيلات العمل',
     branding: 'هوية النظام',

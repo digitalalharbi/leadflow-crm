@@ -440,6 +440,7 @@ export interface TenantSettings {
   assignment_mode: 'manual' | 'round_robin'
   score_warm_threshold: number
   score_hot_threshold: number
+  first_contact_target_minutes: number
   whatsapp_template: string | null
   onboarding: OnboardingState | null
 }

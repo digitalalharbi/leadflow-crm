@@ -195,3 +195,7 @@ the reason the brief asks for the browser pass.
    hiding that name below `sm`, where the avatar beside it is `aria-hidden`.
    Neither shows up in a screenshot, which is why the visual pass walked past
    both — found by querying the live page for unnamed interactive elements.
+20. The dashboard's overdue panel rendered a follow-up due today as "21:24" —
+   a time under a heading that says it is late. `formatDue` was written for
+   exactly this on the follow-ups page; the dashboard's copy of the list never
+   got it.

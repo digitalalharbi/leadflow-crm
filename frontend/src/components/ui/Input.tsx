@@ -19,7 +19,9 @@ const fieldBase = [
 
 function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.ReactNode; hint?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 flex items-baseline gap-2 text-[0.8125rem] font-medium text-[var(--color-ink)]">
+    // `flex-wrap`: a long hint beside a long label squeezed the label onto two
+    // lines on a phone and left the pair looking collided. It drops below instead.
+    <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-2 text-[0.8125rem] font-medium text-[var(--color-ink)]">
       <span>{children}</span>
       {hint && <span className="text-[0.75rem] font-normal text-[var(--color-ink-subtle)]">{hint}</span>}
     </label>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBudgetRange, formatCurrency, formatDue, formatRelative, initials, telLink, whatsappLink } from './format'
+import { formatBudgetRange, formatCurrency, formatDue, formatLastSeen, formatRelative, initials, telLink, whatsappLink } from './format'
 
 describe('whatsappLink', () => {
   it('builds a wa.me link from digits', () => {
@@ -88,5 +88,30 @@ describe('formatDue', () => {
 
   it('handles a missing date', () => {
     expect(formatDue(null, 'ar', true)).toBe('—')
+  })
+})
+
+describe('formatLastSeen', () => {
+  it('never renders today as a bare clock, which reads as a number', () => {
+    const now = new Date().toISOString()
+
+    const ar = formatLastSeen(now, 'ar')
+    const en = formatLastSeen(now, 'en')
+
+    // The bug this guards: "آخر عميل 22:56" in a column of "منذ 4 أيام".
+    expect(ar).not.toMatch(/^\d{2}:\d{2}$/)
+    expect(en).not.toMatch(/^\d{2}:\d{2}$/)
+    expect(ar).toContain('اليوم')
+    expect(en).toContain('Today')
+  })
+
+  it('falls back to the relative label for anything older', () => {
+    const old = new Date(Date.now() - 5 * 86_400_000).toISOString()
+
+    expect(formatLastSeen(old, 'ar')).toBe(formatRelative(old, 'ar'))
+  })
+
+  it('says nothing rather than guessing when there is no date', () => {
+    expect(formatLastSeen(null)).toBe('—')
   })
 })

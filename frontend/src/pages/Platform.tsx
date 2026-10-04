@@ -6,7 +6,7 @@ import { ApiError, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { useDebounced } from '@/hooks/useDebounced'
-import { formatDate, formatNumber, formatRelative, initials } from '@/lib/format'
+import { formatDate, formatNumber, formatLastSeen, initials } from '@/lib/format'
 import { CURRENCIES, TIMEZONES } from '@/lib/locales'
 import { MetricCard, DistributionBar, SERIES } from '@/components/charts'
 import {
@@ -327,7 +327,7 @@ export function PlatformPage() {
                         <UsageBar value={tenant.leads_last_30_days ?? 0} peak={busiest} />
                         <span className="t-caption mt-1 block whitespace-nowrap">
                           {tenant.last_lead_at
-                            ? t('superAdmin.lastLead', { when: formatRelative(tenant.last_lead_at, i18n.language) })
+                            ? t('superAdmin.lastLead', { when: formatLastSeen(tenant.last_lead_at, i18n.language) })
                             : t('superAdmin.noLeadsYet')}
                         </span>
                       </Td>
@@ -659,7 +659,7 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
                     </div>
                     <span className="t-caption shrink-0">{user.role ? t(`roles.${user.role}`) : '—'}</span>
                     <span className="t-caption w-20 shrink-0 text-end">
-                      {user.last_login_at ? formatRelative(user.last_login_at, i18n.language) : t('superAdmin.neverLoggedIn')}
+                      {user.last_login_at ? formatLastSeen(user.last_login_at, i18n.language) : t('superAdmin.neverLoggedIn')}
                     </span>
                     {!user.is_active && <Badge tone="neutral">{t('common.inactive')}</Badge>}
                   </li>

@@ -6,7 +6,7 @@ import { ApiError, apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatNumber, formatRelative } from '@/lib/format'
+import { formatNumber, formatLastSeen } from '@/lib/format'
 import { fetchSalesTeam } from '@/features/conversations'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
@@ -183,7 +183,7 @@ export function UsersPage() {
                       {formatNumber(metricsByName.get(user.name)?.won ?? 0, i18n.language)}
                     </Td>
                     <Td className="hidden xl:table-cell">
-                      {user.last_login_at ? formatRelative(user.last_login_at, i18n.language) : '—'}
+                      {user.last_login_at ? formatLastSeen(user.last_login_at, i18n.language) : '—'}
                     </Td>
                     <Td>
                       <Badge tone={user.is_active ? 'success' : 'neutral'}>

@@ -293,15 +293,29 @@ function OverviewTab({
 
   const rates = (performance.data as { rates?: Record<string, number> } | undefined)?.rates
 
+  /** How many leads reached a stage, which is what the funnel and rates mean. */
+  const stage = (key: string) => data.funnel.find((row) => row.key === key)?.count ?? 0
+
   return (
     <div className="space-y-4">
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {/*
+          Every stage figure here comes from the funnel, because the rates
+          directly beneath them are computed the same way: a card reading
+          "qualified 31" above a rate of 41.7% of 180 is two measurements
+          wearing one word. The dashboard's summary counts leads *sitting in* a
+          stage, which is the right question there and the wrong one here.
+        */}
         <MetricCard label={t('dashboard.totalLeads')} value={data.summary.total_leads} to="/leads" />
-        <MetricCard label={t('campaignQuality.contacted')} value={data.response_time.contacted} />
-        <MetricCard label={t('dashboard.qualified')} value={data.summary.qualified} to="/leads?status[]=qualified" />
+        <MetricCard
+          label={t('campaignQuality.contacted')}
+          value={stage('contacted')}
+          to="/leads?status[]=contacted"
+        />
+        <MetricCard label={t('dashboard.qualified')} value={stage('qualified')} to="/leads?status[]=qualified" />
         <MetricCard label={t('dashboard.hotLeads')} value={data.summary.hot_leads} tone="warning" to="/leads?temperature[]=hot" />
-        <MetricCard label={t('dashboard.appointments')} value={data.summary.appointments} to="/leads?status[]=appointment" />
-        <MetricCard label={t('dashboard.won')} value={data.summary.won} tone="success" to="/leads?status[]=won" />
+        <MetricCard label={t('dashboard.appointments')} value={stage('appointment')} to="/leads?status[]=appointment" />
+        <MetricCard label={t('dashboard.won')} value={stage('won')} tone="success" to="/leads?status[]=won" />
       </section>
 
       {rates && (

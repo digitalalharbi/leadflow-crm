@@ -178,15 +178,33 @@ class SalesPerformanceController extends Controller
     {
         return [
             DB::raw('count(*) as leads'),
-            DB::raw('count(*) filter (where leads.first_contact_at is not null) as contacted'),
+            /*
+             * Reached, not recorded. A rep who drags a lead to "contacted"
+             * without the system ever stamping a first-contact time has still
+             * contacted them, and counting only the stamp put a rate of 0% on
+             * the same screen as a funnel reading 74% — two numbers, one word,
+             * both claiming to be the truth.
+             */
+            DB::raw(sprintf(
+                "count(*) filter (where leads.first_contact_at is not null or leads.status <> '%s') as contacted",
+                LeadStatus::New->value,
+            )),
+            // Replies are the exception: there is no "replied" stage to reach,
+            // so an inbound message is the only evidence there is.
             DB::raw('count(*) filter (where leads.first_response_at is not null) as replied'),
             DB::raw(sprintf(
-                "count(*) filter (where leads.qualification_status = '%s') as qualified",
+                "count(*) filter (where leads.qualification_status = '%s'
+                   or leads.status in ('%s', '%s', '%s')) as qualified",
                 QualificationStatus::Qualified->value,
+                LeadStatus::Qualified->value,
+                LeadStatus::Appointment->value,
+                LeadStatus::Won->value,
             )),
             DB::raw(sprintf(
-                "count(*) filter (where leads.temperature = '%s') as hot",
+                "count(*) filter (where leads.temperature = '%s' and leads.status not in ('%s', '%s')) as hot",
                 LeadTemperature::Hot->value,
+                LeadStatus::Won->value,
+                LeadStatus::Lost->value,
             )),
             // Reaching the appointment stage, not sitting in it: a lead that was
             // booked and then bought must still count as an appointment, or the

@@ -35,6 +35,25 @@ export function formatRelative(iso: string | null | undefined, lang = 'ar'): str
   return formatDistanceToNowStrict(date, { addSuffix: true, locale })
 }
 
+/**
+ * When something last happened, as a label that stands on its own.
+ *
+ * `formatRelative` renders today as a bare clock, which is right inside a
+ * timeline where the day is already established and wrong in a column headed
+ * "last lead" — "22:56" there reads as a duration, a count, or nothing at all.
+ */
+export function formatLastSeen(iso: string | null | undefined, lang = 'ar'): string {
+  if (!iso) return '—'
+
+  const date = parseISO(iso)
+
+  if (isToday(date)) {
+    return `${lang.startsWith('ar') ? 'اليوم' : 'Today'} ${format(date, 'HH:mm')}`
+  }
+
+  return formatRelative(iso, lang)
+}
+
 /** Just the clock, for pairing with a relative label that carries the day. */
 export function formatClock(iso: string | null | undefined): string {
   return iso ? format(parseISO(iso), 'HH:mm') : '—'

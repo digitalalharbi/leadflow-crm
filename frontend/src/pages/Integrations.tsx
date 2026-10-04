@@ -8,7 +8,7 @@ import { apiGet, apiPost, http } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDateTime, formatNumber, formatRelative } from '@/lib/format'
+import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState,
   Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr,
@@ -170,7 +170,7 @@ export function IntegrationsPage() {
                       <div>
                         <dt className="t-caption text-[0.6875rem]">{t('integrations.lastSync')}</dt>
                         <dd className="t-small">
-                          {formatRelative(card.integration.last_synced_at, i18n.language)}
+                          {formatLastSeen(card.integration.last_synced_at, i18n.language)}
                         </dd>
                       </div>
                     )}

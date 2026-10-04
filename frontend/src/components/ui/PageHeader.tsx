@@ -17,7 +17,7 @@ export function PageHeader({
           what zeroes letter-spacing in RTL, and tightening Arabic crowds the
           cursive joins. Every page's title was carrying -0.55px of it.
         */}
-        <h1 className="t-page-title">{title}</h1>
+        <h1 className="t-page-title" data-testid="page-title">{title}</h1>
         {subtitle && <p className="t-caption mt-1">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

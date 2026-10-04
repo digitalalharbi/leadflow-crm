@@ -43,7 +43,7 @@ test.describe('Product identity', () => {
 
     await authenticateAs(page, BETA.admin.email)
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'نظرة عامة', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('page-title')).toBeVisible()
     const beta = await identity(page)
 
     expect(beta.title).toBe(BETA.systemName)
@@ -74,7 +74,7 @@ test.describe('Product identity', () => {
     await expect(page.locator('html')).toHaveClass(/dark/)
 
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'نظرة عامة', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('page-title')).toBeVisible()
     await expect(page.locator('html')).toHaveClass(/dark/)
   })
 })

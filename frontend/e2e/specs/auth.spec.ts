@@ -14,7 +14,7 @@ test.describe('Authentication', () => {
     await page.getByLabel('كلمة المرور', { exact: true }).fill(PASSWORD)
     await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
 
-    await expect(page.getByRole('heading', { name: 'نظرة عامة', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('page-title')).toBeVisible()
     await expect(page).toHaveURL(/\/$/)
     expect(await storedToken(page)).toBeTruthy()
   })
@@ -53,7 +53,7 @@ test.describe('Authentication', () => {
 
     await page.reload()
 
-    await expect(page.getByRole('heading', { name: 'نظرة عامة', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('page-title')).toBeVisible()
     await expect(page).not.toHaveURL(/\/login/)
   })
 

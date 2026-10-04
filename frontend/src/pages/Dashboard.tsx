@@ -10,7 +10,7 @@ import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { useApiError } from '@/hooks/useApiError'
-import { formatNumber, formatRelative } from '@/lib/format'
+import { formatDue, formatNumber } from '@/lib/format'
 import {
   Card, ErrorState, PageHeader, Select, Skeleton, SkeletonCards, StatusBadge, TemperatureBadge,
 } from '@/components/ui'
@@ -460,7 +460,13 @@ function LeadMiniList({
                     <span
                       className={`t-caption ${tone === 'warning' ? 'text-[var(--color-warning)]' : 'text-[var(--color-danger)]'}`}
                     >
-                      {formatRelative(lead.next_follow_up_at, i18n.language)}
+                      {/*
+                        In the overdue panel a bare clock is the bug `formatDue`
+                        exists for: "21:24" under a heading that says "late" is a
+                        time, not a warning. In the due-today panel the day is
+                        already established, so the clock is the useful part.
+                      */}
+                      {formatDue(lead.next_follow_up_at, i18n.language, tone !== 'warning')}
                     </span>
                   ) : (
                     <TemperatureBadge temperature={lead.temperature} />

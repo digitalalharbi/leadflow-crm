@@ -104,7 +104,7 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 ## Test baseline
 
-**345 backend · 42 frontend unit · 113 Playwright.** None of these may regress.
+**345 backend · 43 frontend unit · 113 Playwright.** None of these may regress.
 
 `php artisan leadflow:measure`, against the load-test tenant — **10,000 leads**:
 
@@ -190,3 +190,8 @@ the reason the brief asks for the browser pass.
    column headed "last lead", "last login" or "last synced".
 18. A field label with a long hint squeezed itself onto two lines on a phone
    instead of letting the hint drop below it.
+19. Two controls a screen reader could not name: the sidebar's close button is
+   a bare X, and the account button carries the user's name as its label while
+   hiding that name below `sm`, where the avatar beside it is `aria-hidden`.
+   Neither shows up in a screenshot, which is why the visual pass walked past
+   both — found by querying the live page for unnamed interactive elements.

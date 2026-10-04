@@ -12,6 +12,7 @@ use App\Services\Tenancy\TenantProvisioningService;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -229,7 +230,7 @@ class TenantController extends Controller
             'leads_count' => $tenant->leads_count ?? null,
             'leads_last_30_days' => isset($tenant->leads_last_30_days) ? (int) $tenant->leads_last_30_days : null,
             'last_lead_at' => $tenant->leads_max_created_at
-                ? \Illuminate\Support\Carbon::parse($tenant->leads_max_created_at)->toIso8601String()
+                ? Carbon::parse($tenant->leads_max_created_at)->toIso8601String()
                 : null,
             'created_at' => $tenant->created_at?->toIso8601String(),
         ];

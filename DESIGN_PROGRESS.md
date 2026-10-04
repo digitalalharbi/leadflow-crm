@@ -199,3 +199,8 @@ the reason the brief asks for the browser pass.
    a time under a heading that says it is late. `formatDue` was written for
    exactly this on the follow-ups page; the dashboard's copy of the list never
    got it.
+21. The phone dashboard was 12,734px tall — about sixteen screens — which
+   buried the two lists at the bottom that a rep opens the app for. The six
+   analytics cards now fold behind one tap below `sm`: 2,266px closed, 5,428px
+   open. Found by reading the height of a full-page capture, which is the sort
+   of thing a screenshot shows and a test does not.

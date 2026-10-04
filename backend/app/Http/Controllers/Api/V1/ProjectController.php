@@ -30,17 +30,24 @@ class ProjectController extends Controller
          * for all of them rather than a count per card — the page was going to
          * be a list of names otherwise.
          */
+        /*
+         * "Reached", not "sitting in" — the same definition the dashboard funnel
+         * uses. Counting only leads currently in the qualified stage made a card
+         * read "0 qualified · 5 appointments · 5 won", which is not a thing that
+         * can happen, and drew a conversion bar with the middle segment missing.
+         */
         $metrics = Lead::query()
             ->whereNotNull('project_id')
             ->visibleTo($request->user())
             ->selectRaw(
                 'project_id,
                  count(*) as leads,
-                 count(*) filter (where qualification_status = ?) as qualified,
+                 count(*) filter (where qualification_status = ? or status in (?, ?, ?)) as qualified,
                  count(*) filter (where status in (?, ?)) as appointments,
                  count(*) filter (where status = ?) as won',
                 [
                     QualificationStatus::Qualified->value,
+                    LeadStatus::Qualified->value, LeadStatus::Appointment->value, LeadStatus::Won->value,
                     LeadStatus::Appointment->value, LeadStatus::Won->value,
                     LeadStatus::Won->value,
                 ],

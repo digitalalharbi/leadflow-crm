@@ -151,6 +151,12 @@ class DashboardAnalytics
      *
      * "+12.4%" means nothing unless the comparison window matches the one being
      * viewed, so the period is derived from the filters rather than fixed.
+     *
+     * It also means nothing unless the two figures are the same measurement.
+     * These counts therefore mirror the summary in DashboardController exactly
+     * — current status, not the qualification form, and hot excluding closed
+     * leads. They drifted apart once, and the change arrow on three of the five
+     * cards was quietly comparing two different things.
      */
     public function comparison(Request $request, callable $baseFor): ?array
     {
@@ -164,14 +170,14 @@ class DashboardAnalytics
 
         $row = $baseFor($from, $to)->selectRaw(
             'count(*) as total,
-             count(*) filter (where qualification_status = ?) as qualified,
-             count(*) filter (where temperature = ?) as hot,
-             count(*) filter (where status in (?, ?)) as appointments,
+             count(*) filter (where status = ?) as qualified,
+             count(*) filter (where temperature = ? and status not in (?, ?)) as hot,
+             count(*) filter (where status = ?) as appointments,
              count(*) filter (where status = ?) as won',
             [
-                QualificationStatus::Qualified->value,
-                LeadTemperature::Hot->value,
-                LeadStatus::Appointment->value, LeadStatus::Won->value,
+                LeadStatus::Qualified->value,
+                LeadTemperature::Hot->value, LeadStatus::Won->value, LeadStatus::Lost->value,
+                LeadStatus::Appointment->value,
                 LeadStatus::Won->value,
             ],
         )->first();

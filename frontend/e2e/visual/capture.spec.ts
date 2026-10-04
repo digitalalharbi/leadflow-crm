@@ -1,6 +1,7 @@
 import { test, type Page } from '@playwright/test'
-import { ALPHA } from '../fixtures/data'
+import { ALPHA, PASSWORD } from '../fixtures/data'
 import { authenticateAs } from '../fixtures/pages'
+import { artisan } from '../fixtures/seed'
 
 /**
  * The visual review pass, as something that can be re-run.
@@ -17,7 +18,8 @@ import { authenticateAs } from '../fixtures/pages'
  * is in the repository, the pictures are regenerated on demand.
  */
 
-const OWNER = 'owner@example.com'
+// The platform owner belongs to no tenant, so the fixtures do not carry one.
+const OWNER = 'owner@e2e-visual.test'
 
 const SCREENS = [
   { name: 'dashboard', path: '/' },
@@ -73,6 +75,10 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 test.describe('platform console', () => {
+  test.beforeAll(() => {
+    artisan(['leadflow:create-super-admin', `--email=${OWNER}`, `--password=${PASSWORD}`])
+  })
+
   for (const theme of ['light', 'dark'] as const) {
     test(`${theme}`, async ({ page }, testInfo) => {
       await setTheme(page, theme)

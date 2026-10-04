@@ -126,7 +126,7 @@ class DashboardController extends Controller
             'response_time' => $this->analytics->responseTime($base()),
             'comparison' => $this->analytics->comparison(
                 $request,
-                fn ($from, $to) => $this->baseQuery($request)
+                fn ($from, $to) => $this->baseQuery($request, withDates: false)
                     ->whereBetween('leads.created_at', [$from, $to]),
             ),
             'charts' => [
@@ -168,15 +168,21 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function baseQuery(Request $request): Builder
+    /**
+     * @param  bool  $withDates  false for the comparison window, which supplies
+     *                           its own range — applying the viewed period as
+     *                           well intersects the two into nothing, and every
+     *                           previous-period figure comes back zero.
+     */
+    private function baseQuery(Request $request, bool $withDates = true): Builder
     {
         $query = Lead::query()->visibleTo($request->user());
 
-        if ($request->filled('date_from')) {
+        if ($withDates && $request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date('date_from'));
         }
 
-        if ($request->filled('date_to')) {
+        if ($withDates && $request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date('date_to'));
         }
 

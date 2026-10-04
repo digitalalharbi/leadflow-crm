@@ -104,7 +104,7 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 ## Test baseline
 
-**345 backend · 39 frontend unit · 113 Playwright.** None of these may regress.
+**345 backend · 42 frontend unit · 113 Playwright.** None of these may regress.
 
 `php artisan leadflow:measure`, against the load-test tenant — **10,000 leads**:
 
@@ -180,3 +180,13 @@ the reason the brief asks for the browser pass.
    which is every dashboard. And the counts it compared were not the counts it
    displayed: three of the five cards would have drawn an arrow from two
    unrelated quantities. `MetricConsistencyTest` now pins them together.
+16. The Reports overview then showed the same disease in the open: a KPI card
+   reading "تم التواصل 0" directly above a funnel stage of the same name
+   reading 32, and a qualification rate of 41.7% above a card reading 31. The
+   shared count expressions behind every rate counted a timestamp where the
+   funnel counted a stage. Every figure on that page now derives one way.
+17. "آخر عميل 22:56" — a bare clock in a column of "منذ 4 أيام", because
+   `formatRelative` renders today as a time. Right in a timeline, wrong in a
+   column headed "last lead", "last login" or "last synced".
+18. A field label with a long hint squeezed itself onto two lines on a phone
+   instead of letting the hint drop below it.

@@ -80,7 +80,10 @@ Then:
 - [x] Consistency audit (raw palette, radii, duplicate card styles, stale
       "LeadFlow" strings visible to users)
 - [x] Performance re-measure, as a test rather than a one-off reading
-- [ ] E2E additions — written; suite being run green
+- [x] E2E additions (platform console, product identity, report tabs, lead
+      filter chips) — 113 Playwright green
+- [x] Visual QA — `npx playwright test --config=playwright.visual.config.ts`
+      writes 44 captures to `artifacts/visual-review/` (untracked)
 - [ ] PR to `develop`, CI green, merge, tag `v0.4.0`
 
 ## How to run
@@ -101,7 +104,7 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 ## Test baseline
 
-**343 backend · 39 frontend unit · 113 Playwright.** None of these may regress.
+**345 backend · 39 frontend unit · 113 Playwright.** None of these may regress.
 
 `php artisan leadflow:measure`, against the load-test tenant — **10,000 leads**:
 
@@ -166,3 +169,14 @@ the reason the brief asks for the browser pass.
    their full width.
 13. The pipeline board left two half-columns wherever a swipe ended, and its
    loading skeleton was 17rem against a real column of 15.5rem.
+14. A project card read "0 qualified · 5 appointments · 5 won" and drew a
+   conversion bar with its middle segment missing: the card counted leads
+   *sitting in* the qualified stage while the dashboard funnel counted leads
+   that had *reached* it. One word, two measurements, same product.
+15. Chasing (14) turned up the bigger one. The dashboard's period-over-period
+   comparison built its window from a base query that already applied the
+   viewed period, intersecting the two into nothing — so every previous figure
+   was zero and the change chip never rendered on any filtered dashboard,
+   which is every dashboard. And the counts it compared were not the counts it
+   displayed: three of the five cards would have drawn an arrow from two
+   unrelated quantities. `MetricConsistencyTest` now pins them together.

@@ -103,11 +103,27 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 **343 backend · 39 frontend unit · 113 Playwright.** None of these may regress.
 
-Measured on the demo workspace (180 leads), warm, including auth middleware:
-dashboard 24 queries / 93ms · leads 10 / 27ms · pipeline 18 / 172ms ·
-projects 12 / 35ms · follow-ups 25 / 96ms · campaign quality 12 / 34ms ·
-sales team 14 / 39ms. `ScreenPerformanceTest` asserts the counts do not grow
-with the row count, which is the regression that actually matters.
+`php artisan leadflow:measure`, against the load-test tenant — **10,000 leads**:
+
+| Endpoint | Queries | Time | Payload |
+| --- | --- | --- | --- |
+| Leads, page 1 | 5 | 20 ms | 19 KB |
+| Leads, page 100 | 5 | 21 ms | 19 KB |
+| Leads, combined filters | 5 | 36 ms | 18 KB |
+| Dashboard | 22 | 90 ms | 15 KB |
+| Pipeline | 6 | 70 ms | 109 KB |
+| Projects | 3 | 23 ms | 1 KB |
+| Campaign quality | 2 | 30 ms | 5 KB |
+| Lead detail (100 msgs, 500 activities) | 8 | 16 ms | 19 KB |
+
+Page 1 and page 100 cost the same, which is the only pagination result worth
+having. The pipeline's payload is the largest but bounded — the board asks for
+25 cards per column, not every lead in the stage.
+
+`ScreenPerformanceTest` asserts the part a reading cannot: that the query count
+does not grow with the row count. Every screen rebuilt here learned to show a
+figure per row, which is exactly the change that turns one query into one per
+row without anyone noticing on a demo workspace.
 
 ## Visual bugs found and fixed so far
 

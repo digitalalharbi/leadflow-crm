@@ -81,7 +81,7 @@ export function Sidebar() {
 
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
+            className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="size-4" aria-hidden />

@@ -416,7 +416,7 @@ export function LeadDetailPage() {
                 disabled={statusMutation.isPending}
                 onClick={() => (status === 'lost' ? setLostOpen(true) : statusMutation.mutate(status))}
                 className={cn(
-                  'rounded-lg border px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
+                  'rounded-[var(--radius-control)] border px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
                   lead.status === status
                     ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]'
                     : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
@@ -462,7 +462,7 @@ export function LeadDetailPage() {
               <CardBody>
                 <ul className="space-y-2.5" data-testid="notes-list">
                   {notes.map((entry) => (
-                    <li key={entry.id} className="rounded-lg bg-[var(--color-surface-muted)] p-3">
+                    <li key={entry.id} className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3">
                       <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
                       <p className="mt-1.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
                         {entry.user?.name} · {formatRelative(entry.created_at, i18n.language)}

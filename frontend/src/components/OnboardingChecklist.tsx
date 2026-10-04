@@ -40,7 +40,7 @@ export function OnboardingChecklist() {
           type="button"
           onClick={() => setDismissed(true)}
           aria-label={t('onboarding.dismiss')}
-          className="grid size-7 place-items-center rounded-lg text-[var(--color-ink-subtle)] hover:bg-[var(--color-surface-sunken)]"
+          className="grid size-7 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-subtle)] hover:bg-[var(--color-surface-sunken)]"
         >
           <X className="size-4" aria-hidden />
         </button>
@@ -55,7 +55,7 @@ export function OnboardingChecklist() {
               key={step.key}
               to={step.to}
               className={cn(
-                'flex items-center gap-2 rounded-lg border px-3 py-2 text-[0.8125rem] transition-colors',
+                'flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 text-[0.8125rem] transition-colors',
                 complete
                   ? 'border-[color-mix(in_srgb,var(--color-status-won)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]'
                   : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-muted)]',

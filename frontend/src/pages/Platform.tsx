@@ -735,7 +735,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
         >
           {value}
         </code>
@@ -747,7 +747,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
             setCopied(true)
             setTimeout(() => setCopied(false), 1800)
           }}
-          className="grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
+          className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
         >
           {copied ? <Check className="size-4 text-[var(--color-status-won)]" aria-hidden /> : <Copy className="size-4" aria-hidden />}
         </button>

@@ -199,7 +199,7 @@ export function LoginPage() {
         <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />
 
         <div className="relative flex h-full flex-col justify-end p-12 text-white">
-          <h2 className="text-[2.125rem] leading-[1.15] font-semibold tracking-[-0.02em]">
+          <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
             {branding?.company_name ?? systemName}
           </h2>
           {/* The tagline belongs to مهتم; a tenant's own name stands alone. */}

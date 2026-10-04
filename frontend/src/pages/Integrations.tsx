@@ -184,7 +184,7 @@ export function IntegrationsPage() {
                 )}
 
                 {card.integration?.webhook_endpoints?.map((endpoint) => (
-                  <div key={endpoint.id} className="mt-3 rounded-lg bg-[var(--color-surface-muted)] p-2.5">
+                  <div key={endpoint.id} className="mt-3 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-2.5">
                     <p className="text-[0.6875rem] font-medium text-[var(--color-ink-muted)]">
                       {t('integrations.webhookUrl')}
                     </p>
@@ -273,7 +273,7 @@ export function IntegrationsPage() {
           <Field label={t('integrations.webhookSecret')} value={secret?.secret ?? ''} />
           <pre
             dir="ltr"
-            className="overflow-x-auto rounded-lg bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-[var(--color-ink-inverted)]"
+            className="overflow-x-auto rounded-[var(--radius-control)] bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-[var(--color-ink-inverted)]"
           >
 {`curl -X POST '${secret?.url ?? ''}' \\
   -H 'Content-Type: application/json' \\
@@ -295,7 +295,7 @@ function Field({ label, value }: { label: string; value: string }) {
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
         >
           {value}
         </code>
@@ -319,7 +319,7 @@ function CopyButton({ value }: { value: string }) {
         setTimeout(() => setCopied(false), 1800)
       }}
       className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)]',
+        'grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--color-border)]',
         copied ? 'text-[var(--color-status-won)]' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
       )}
     >
@@ -451,7 +451,7 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
           {headers.map((header) => (
             <div key={header} className="flex items-center gap-3">
-              <code className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]">
+              <code className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]">
                 {header}
               </code>
               <Select

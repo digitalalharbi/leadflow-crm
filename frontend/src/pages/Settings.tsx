@@ -290,7 +290,7 @@ function ColorInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
-          className="size-10 shrink-0 cursor-pointer rounded-lg border border-[var(--color-border-strong)] bg-transparent p-1"
+          className="size-10 shrink-0 cursor-pointer rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-transparent p-1"
         />
         <Input
           dir="ltr"

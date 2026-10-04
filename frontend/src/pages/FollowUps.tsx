@@ -127,7 +127,7 @@ export function FollowUpsPage() {
                 type="button"
                 onClick={() => selectBucket(key)}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
+                  'flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
                   bucket === key
                     ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
                     : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',

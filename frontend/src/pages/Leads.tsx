@@ -247,7 +247,7 @@ export function LeadsPage() {
                             <a
                               href={telLink(lead.phone) ?? '#'}
                               aria-label={t('leads.call')}
-                              className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--brand)]"
+                              className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--brand)]"
                             >
                               <Phone className="size-4" aria-hidden />
                             </a>
@@ -260,7 +260,7 @@ export function LeadsPage() {
                               target="_blank"
                               rel="noreferrer"
                               aria-label={t('leads.whatsapp')}
-                              className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] hover:text-[var(--color-status-won)]"
+                              className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] hover:text-[var(--color-status-won)]"
                             >
                               <MessageCircle className="size-4" aria-hidden />
                             </a>

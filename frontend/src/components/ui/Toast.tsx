@@ -27,7 +27,7 @@ export function Toaster() {
           <div
             key={id}
             className={cn(
-              'pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-lg border px-3.5 py-3',
+              'pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-[var(--radius-card)] border px-3.5 py-3',
               'text-[0.8125rem] shadow-[var(--shadow-pop)]',
               cls,
             )}

@@ -7,6 +7,21 @@ import type { Branding } from '@/types/api'
  * `var(--brand)`, so one assignment here rebrands the entire application —
  * no rebuild, no per-customer bundle.
  */
+const PLATFORM_NAME = 'مهتم'
+const PLATFORM_FAVICON = '/favicon.svg'
+
+function setIcon(selector: string, href: string) {
+  let link = document.querySelector<HTMLLinkElement>(selector)
+
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+
+  link.href = href
+}
+
 export function useBrandingTheme(branding: Branding | null) {
   // Re-applied when the theme flips, because the soft tints are mixed against
   // the page colour and that colour has just changed.
@@ -40,21 +55,21 @@ export function useBrandingTheme(branding: Branding | null) {
     // is chosen from the brand's own luminance rather than assumed.
     root.style.setProperty('--brand-contrast', readableOn(primary))
 
-    if (branding.system_name) {
-      document.title = branding.system_name
-    }
+    // The browser's own chrome on a phone, so a tenant's app reaches the
+    // status bar rather than stopping at the viewport.
+    document
+      .querySelector<HTMLMetaElement>("meta[name='theme-color']")
+      ?.setAttribute('content', primary)
 
-    if (branding.favicon_url) {
-      let link = document.querySelector<HTMLLinkElement>("link[rel='icon']")
+    document.title = branding.system_name || PLATFORM_NAME
 
-      if (!link) {
-        link = document.createElement('link')
-        link.rel = 'icon'
-        document.head.appendChild(link)
-      }
-
-      link.href = branding.favicon_url
-    }
+    /*
+     * Written on every branding change, not only when the tenant has one of
+     * their own: signing out of a branded tenant and into an unbranded one
+     * would otherwise leave the previous customer's icon and title in the tab,
+     * which is the one white-label leak a user can see without looking.
+     */
+    setIcon("link[rel='icon']", branding.favicon_url || PLATFORM_FAVICON)
   }, [branding, appearance])
 }
 

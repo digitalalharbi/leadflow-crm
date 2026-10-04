@@ -6,6 +6,7 @@ use App\Enums\LeadStatus;
 use App\Enums\QualificationStatus;
 use App\Enums\Role;
 use App\Models\Lead;
+use App\Models\Project;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -166,6 +167,117 @@ class CampaignQualityTest extends TestCase
             ->json('data.timing.avg_first_contact_seconds');
 
         $this->assertEqualsWithDelta(3600, $seconds, 60);
+    }
+
+    public function test_the_sales_team_report_measures_rather_than_ranks(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->seedCampaign('meta', 'حملة الفريق', total: 6, contacted: 4, replied: 3, qualified: 2, won: 1);
+
+        $this->asTenant($this->t['tenant'], fn () => Lead::query()->limit(3)->update(['assigned_to' => $rep->id]));
+
+        $rows = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/reports/sales-team')
+            ->assertSuccessful()
+            ->json('data.rows');
+
+        $this->assertNotEmpty($rows);
+
+        $mine = collect($rows)->firstWhere('name', $rep->name);
+        $this->assertNotNull($mine);
+        $this->assertSame(3, $mine['leads']);
+
+        // Measurements, not a score: there is no rank, grade or position.
+        foreach ($rows as $row) {
+            $this->assertArrayNotHasKey('rank', $row);
+            $this->assertArrayNotHasKey('score', $row);
+            $this->assertArrayHasKey('avg_first_contact_seconds', $row);
+        }
+    }
+
+    public function test_the_sales_team_report_is_not_open_to_reps(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($rep)->getJson('/api/v1/reports/sales-team')->assertStatus(403);
+    }
+
+    public function test_the_sales_team_report_never_counts_another_workspace(): void
+    {
+        $other = $this->provisionTenant('Rival Co');
+        $stranger = $this->makeUser($other['tenant'], Role::Sales);
+
+        $this->asTenant($other['tenant'], fn () => Lead::create([
+            'full_name' => 'عميل منافس',
+            'phone' => '0599000111',
+            'phone_normalized' => '+966599000111',
+            'assigned_to' => $stranger->id,
+        ]));
+
+        $this->seedCampaign('meta', 'حملتنا', total: 2);
+
+        $names = collect($this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/reports/sales-team')
+            ->json('data.rows'))->pluck('name');
+
+        $this->assertFalse($names->contains($stranger->name));
+    }
+
+    public function test_projects_carry_their_own_funnel_metrics(): void
+    {
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create([
+            'name' => 'مشروع القياس',
+            'location' => 'الرياض',
+            'starting_price' => 900_000,
+        ]));
+
+        $this->seedCampaign('meta', 'حملة المشروع', total: 5, contacted: 4, qualified: 3, appointments: 1, won: 1);
+        $this->asTenant($this->t['tenant'], fn () => Lead::query()->update(['project_id' => $project->id]));
+
+        $metrics = collect($this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/projects')
+            ->assertSuccessful()
+            ->json('data.metrics'))->firstWhere('id', $project->uuid);
+
+        $this->assertSame(5, $metrics['leads']);
+        $this->assertSame(3, $metrics['qualified']);
+        $this->assertSame(2, $metrics['appointments']);
+        $this->assertSame(1, $metrics['won']);
+        $this->assertEquals(60, $metrics['qualification_rate']);
+    }
+
+    public function test_a_project_with_no_leads_reports_zeroes(): void
+    {
+        $empty = $this->asTenant($this->t['tenant'], fn () => Project::create([
+            'name' => 'مشروع جديد',
+            'location' => 'جدة',
+        ]));
+
+        $metrics = collect($this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/projects')
+            ->json('data.metrics'))->firstWhere('id', $empty->uuid);
+
+        $this->assertSame(0, $metrics['leads']);
+        $this->assertEquals(0, $metrics['qualification_rate']);
+    }
+
+    public function test_project_metrics_respect_what_a_rep_may_see(): void
+    {
+        // A rep's project card must count their own leads, not the workspace's.
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'مشروع مشترك']));
+
+        $this->seedCampaign('meta', 'حملة', total: 4);
+        $this->asTenant($this->t['tenant'], function () use ($project, $rep) {
+            Lead::query()->update(['project_id' => $project->id]);
+            Lead::query()->limit(1)->update(['assigned_to' => $rep->id]);
+        });
+
+        $mine = collect($this->actingAs($rep)->getJson('/api/v1/projects')->json('data.metrics'))
+            ->firstWhere('id', $project->uuid);
+
+        $this->assertSame(1, $mine['leads']);
     }
 
     /** Builds a campaign with a known funnel shape. */

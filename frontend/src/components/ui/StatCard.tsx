@@ -59,7 +59,7 @@ export function StatCard({
       </div>
       {/* Tight tracking on a large numeral: the default spacing makes a
           four-digit figure look like a phone number. */}
-      <p className={cn('tabular mt-2 text-2xl font-semibold tracking-[-0.02em]', tones[tone])}>{value}</p>
+      <p className={cn('t-metric-sm tabular mt-2', tones[tone])}>{value}</p>
       {hint && <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">{hint}</p>}
     </>
   )

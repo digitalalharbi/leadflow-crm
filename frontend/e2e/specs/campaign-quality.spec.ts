@@ -13,23 +13,32 @@ test.describe('Campaign quality', () => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/reports')
 
-    await page.getByRole('button', { name: 'جودة الحملات' }).click()
+    await page.getByTestId('tab-campaigns').click()
 
-    const report = page.getByTestId('campaign-quality')
-    await expect(report).toBeVisible()
-    await expect(report).toContainText('حملة الاختبار')
+    // The chart answers "which campaign" at a glance; the table carries the
+    // figures underneath it. Both have to be there.
+    await expect(page.getByTestId('report-campaign-quality')).toBeVisible()
+
+    const table = page.getByTestId('campaign-table')
+    await expect(table).toBeVisible()
+    await expect(table).toContainText('حملة الاختبار')
 
     // The share is the point of the report; a lead count alone hides a bad campaign.
-    await expect(report).toContainText('نسبة التأهيل')
-    await expect(report).toContainText('%')
+    await expect(table).toContainText('نسبة التأهيل')
+    await expect(table).toContainText('%')
   })
 
-  test('the headline figures include the response time', async ({ page }) => {
+  test('the headline figures are rates, not only totals', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/reports')
-    await page.getByRole('button', { name: 'جودة الحملات' }).click()
 
-    await expect(page.getByTestId('avg-first-contact')).toBeVisible()
+    const rates = page.getByTestId('report-rates')
+    await expect(rates).toBeVisible()
+
+    // Five rates, every one of them a percentage of the stage before it.
+    for (const label of ['نسبة التواصل', 'نسبة الرد', 'نسبة التأهيل', 'نسبة المواعيد', 'نسبة الإغلاق']) {
+      await expect(rates).toContainText(label)
+    }
   })
 
   test('a sales rep cannot open the reports page at all', async ({ page }) => {

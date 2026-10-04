@@ -48,7 +48,7 @@ export function Topbar() {
         type="button"
         onClick={toggleSidebar}
         aria-label={t('common.actions')}
-        className="grid size-9 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
+        className="grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
       >
         <Menu className="size-5" aria-hidden />
       </button>
@@ -117,6 +117,7 @@ export function Topbar() {
             {(['system', 'light', 'dark'] as const).map((option) => (
               <DropdownItem
                 key={option}
+                testId={`appearance-${option}`}
                 onClick={() => {
                   setAppearance(option)
                   close()
@@ -158,7 +159,7 @@ export function Topbar() {
               className="fixed inset-0 z-30 cursor-default"
               onClick={() => setNotificationsOpen(false)}
             />
-            <div className="absolute end-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)]">
+            <div className="absolute end-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)]">
               <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
                 <h3 className="text-[0.8125rem] font-semibold">{t('notifications.title')}</h3>
                 {unread > 0 && (
@@ -219,7 +220,11 @@ export function Topbar() {
             type="button"
             onClick={toggle}
             data-testid="account-menu"
-            className="flex items-center gap-2 rounded-lg p-1 ps-2 hover:bg-[var(--color-surface-sunken)]"
+            /* The name is the label on a wide screen and hidden on a phone, where
+               the avatar beside it is decorative — so below `sm` this button had
+               no accessible name at all. */
+            aria-label={user?.name ?? t('nav.profile')}
+            className="flex items-center gap-2 rounded-[var(--radius-control)] p-1 ps-2 hover:bg-[var(--color-surface-sunken)]"
           >
             <span className="hidden text-[0.8125rem] font-medium sm:block">{user?.name}</span>
             <span

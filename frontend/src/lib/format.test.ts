@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBudgetRange, formatCurrency, initials, telLink, whatsappLink } from './format'
+import { formatBudgetRange, formatCurrency, formatDue, formatLastSeen, formatRelative, initials, telLink, whatsappLink } from './format'
 
 describe('whatsappLink', () => {
   it('builds a wa.me link from digits', () => {
@@ -67,5 +67,51 @@ describe('initials', () => {
   it('takes the first two words', () => {
     expect(initials('عبدالله الحربي')).toBe('عا')
     expect(initials('Fahad Al Otaibi')).toBe('FA')
+  })
+})
+
+describe('formatDue', () => {
+  it('says how late an overdue follow-up is rather than printing a clock time', () => {
+    // formatRelative renders anything due today as "23:53", which on a work
+    // queue reads as a number with no hint that it has already passed.
+    const anHourAgo = new Date(Date.now() - 3600_000).toISOString()
+
+    expect(formatDue(anHourAgo, 'ar', true)).not.toMatch(/^\d{2}:\d{2}$/)
+    expect(formatDue(anHourAgo, 'ar', true).length).toBeGreaterThan(0)
+  })
+
+  it('leaves an upcoming follow-up to the usual relative format', () => {
+    const inAnHour = new Date(Date.now() + 3600_000).toISOString()
+
+    expect(formatDue(inAnHour, 'ar', false)).toBe(formatRelative(inAnHour, 'ar'))
+  })
+
+  it('handles a missing date', () => {
+    expect(formatDue(null, 'ar', true)).toBe('—')
+  })
+})
+
+describe('formatLastSeen', () => {
+  it('never renders today as a bare clock, which reads as a number', () => {
+    const now = new Date().toISOString()
+
+    const ar = formatLastSeen(now, 'ar')
+    const en = formatLastSeen(now, 'en')
+
+    // The bug this guards: "آخر عميل 22:56" in a column of "منذ 4 أيام".
+    expect(ar).not.toMatch(/^\d{2}:\d{2}$/)
+    expect(en).not.toMatch(/^\d{2}:\d{2}$/)
+    expect(ar).toContain('اليوم')
+    expect(en).toContain('Today')
+  })
+
+  it('falls back to the relative label for anything older', () => {
+    const old = new Date(Date.now() - 5 * 86_400_000).toISOString()
+
+    expect(formatLastSeen(old, 'ar')).toBe(formatRelative(old, 'ar'))
+  })
+
+  it('says nothing rather than guessing when there is no date', () => {
+    expect(formatLastSeen(null)).toBe('—')
   })
 })

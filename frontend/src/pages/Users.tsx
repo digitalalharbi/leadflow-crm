@@ -6,7 +6,8 @@ import { ApiError, apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatNumber, formatRelative } from '@/lib/format'
+import { formatNumber, formatLastSeen } from '@/lib/format'
+import { fetchSalesTeam } from '@/features/conversations'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
   Select, SkeletonTable, Table, TableWrap, Td, Th, Tr,
@@ -24,6 +25,22 @@ export function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'sales', phone: '' })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+
+  const canManage = can.manageUsers(currentUser)
+
+  /*
+   * The outcome columns come from the sales-team report rather than a second
+   * per-user endpoint — it already computes exactly these figures under the
+   * same visibility rules, and two sources would eventually disagree.
+   */
+  const { data: team } = useQuery({
+    queryKey: ['users-metrics'],
+    queryFn: () => fetchSalesTeam(),
+    enabled: canManage,
+  })
+
+  const metricsByName = new Map((team?.rows ?? []).map((row) => [row.name, row]))
 
   const { data: users = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['users'],
@@ -96,7 +113,6 @@ export function UsersPage() {
     mutation.mutate()
   }
 
-  const canManage = can.manageUsers(currentUser)
 
   return (
     <>
@@ -128,10 +144,11 @@ export function UsersPage() {
               <thead>
                 <tr>
                   <Th>{t('users.name')}</Th>
-                  <Th className="hidden sm:table-cell">{t('auth.email')}</Th>
                   <Th>{t('users.role')}</Th>
                   <Th className="hidden md:table-cell">{t('users.leadsAssigned')}</Th>
-                  <Th className="hidden lg:table-cell">{t('users.lastLogin')}</Th>
+                  <Th className="hidden md:table-cell">{t('campaignQuality.qualified')}</Th>
+                  <Th className="hidden lg:table-cell">{t('campaignQuality.won')}</Th>
+                  <Th className="hidden xl:table-cell">{t('users.lastLogin')}</Th>
                   <Th>{t('common.status')}</Th>
                   {canManage && <Th className="text-end">{t('common.actions')}</Th>}
                 </tr>
@@ -139,19 +156,34 @@ export function UsersPage() {
               <tbody>
                 {users.map((user) => (
                   <Tr key={user.id}>
-                    <Td className="font-medium">
-                      {user.name}
-                      {user.id === currentUser?.id && (
-                        <span className="ms-2 text-[0.75rem] font-normal text-[var(--color-ink-subtle)]">
-                          ({t('nav.profile')})
-                        </span>
-                      )}
+                    {/* Name and email together: two columns of one-line facts
+                        made the eye cross the table to identify one person. */}
+                    <Td>
+                      <span className="block font-medium">
+                        {user.name}
+                        {user.id === currentUser?.id && (
+                          <span className="t-caption ms-2 font-normal">({t('nav.profile')})</span>
+                        )}
+                      </span>
+                      {/* The email keeps Latin order but not Latin
+                          alignment — `dir` on the block itself would pull it to
+                          the far side and leave a ragged gap under the name. */}
+                      <span className="t-caption block truncate text-[0.75rem]">
+                        <bdi dir="ltr">{user.email}</bdi>
+                      </span>
                     </Td>
-                    <Td className="hidden sm:table-cell" dir="ltr">{user.email}</Td>
                     <Td>{t(`roles.${user.role}`)}</Td>
-                    <Td className="tabular hidden md:table-cell">{formatNumber(user.leads_count ?? 0, i18n.language)}</Td>
-                    <Td className="hidden lg:table-cell">
-                      {user.last_login_at ? formatRelative(user.last_login_at, i18n.language) : '—'}
+                    <Td className="tabular hidden md:table-cell">
+                      {formatNumber(user.leads_count ?? 0, i18n.language)}
+                    </Td>
+                    <Td className="tabular hidden md:table-cell">
+                      {formatNumber(metricsByName.get(user.name)?.qualified ?? 0, i18n.language)}
+                    </Td>
+                    <Td className="tabular hidden font-medium text-[var(--color-status-won)] lg:table-cell">
+                      {formatNumber(metricsByName.get(user.name)?.won ?? 0, i18n.language)}
+                    </Td>
+                    <Td className="hidden xl:table-cell">
+                      {user.last_login_at ? formatLastSeen(user.last_login_at, i18n.language) : '—'}
                     </Td>
                     <Td>
                       <Badge tone={user.is_active ? 'success' : 'neutral'}>

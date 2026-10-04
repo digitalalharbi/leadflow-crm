@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn'
 
 /** Shimmer placeholder. Pages never render blank while loading. */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('skeleton rounded-md', className)} aria-hidden />
+  return <div className={cn('skeleton rounded-[var(--radius-control)]', className)} aria-hidden />
 }
 
 export function SkeletonTable({ rows = 6, cols = 6 }: { rows?: number; cols?: number }) {

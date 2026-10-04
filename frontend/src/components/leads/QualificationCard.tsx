@@ -100,7 +100,7 @@ export function QualificationCard({ lead }: { lead: Lead }) {
           )}
 
           {breakdown && breakdown.reasons.length > 0 && (
-            <div className="rounded-xl border border-[var(--color-line)] p-3" data-testid="score-reasons">
+            <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] p-3" data-testid="score-reasons">
               <div className="mb-2 flex items-center justify-between">
                 <p className="flex items-center gap-1.5 text-[0.8125rem] font-medium">
                   <Sparkles className="size-3.5 text-[var(--color-ink-muted)]" />

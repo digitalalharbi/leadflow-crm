@@ -216,7 +216,7 @@ function MessageBubble({ message }: { message: LeadMessage }) {
     <div className={cn('flex', outbound ? 'justify-start' : 'justify-end')} data-testid={`message-${message.direction}`}>
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-3 py-2 text-sm sm:max-w-[75%]',
+          'max-w-[85%] rounded-[var(--radius-panel)] px-3 py-2 text-sm sm:max-w-[75%]',
           outbound
             ? 'bg-[var(--brand-soft)] text-[var(--color-ink)]'
             : 'bg-[var(--color-surface-sunken)] text-[var(--color-ink)]',

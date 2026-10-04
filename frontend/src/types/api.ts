@@ -286,6 +286,16 @@ export interface Project {
   created_at: string
 }
 
+/** The funnel metrics a project card shows, keyed to the project's uuid. */
+export interface ProjectMetrics {
+  id: string
+  leads: number
+  qualified: number
+  appointments: number
+  won: number
+  qualification_rate: number
+}
+
 export interface ChartPoint {
   key: string
   count: number
@@ -318,6 +328,25 @@ export interface DashboardData {
     by_campaign: ChartPoint[]
     trend: ChartPoint[]
   }
+  funnel: Array<{ key: string; count: number; of_total: number; from_previous: number }>
+  quality: Array<{ key: string; count: number; share: number }>
+  response_time: {
+    buckets: Array<{ key: string; count: number; share: number }>
+    contacted: number
+    uncontacted: number
+    average_seconds: number | null
+    median_seconds: number | null
+  }
+  /** Absent when no date range is set — "everything" has no previous period. */
+  comparison: {
+    from: string
+    to: string
+    total: number
+    qualified: number
+    hot: number
+    appointments: number
+    won: number
+  } | null
   hot_leads: LeadListItem[]
   overdue_leads: LeadListItem[]
   awaiting_contact_leads: LeadListItem[]
@@ -328,6 +357,7 @@ export interface ReportRow {
   key: string
   label: string
   total: number
+  share: number
   qualified: number
   appointments: number
   won: number
@@ -383,6 +413,9 @@ export interface TenantSummary {
   is_active: boolean
   users_count: number | null
   leads_count: number | null
+  /** Inbound over the last 30 days — size tells you nothing about activity. */
+  leads_last_30_days: number | null
+  last_lead_at: string | null
   created_at: string
 }
 
@@ -410,6 +443,7 @@ export interface TenantSettings {
   assignment_mode: 'manual' | 'round_robin'
   score_warm_threshold: number
   score_hot_threshold: number
+  first_contact_target_minutes: number
   whatsapp_template: string | null
   onboarding: OnboardingState | null
 }

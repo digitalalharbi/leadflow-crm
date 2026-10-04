@@ -100,6 +100,56 @@ class SalesPerformanceController extends Controller
         ]);
     }
 
+    /**
+     * Per-rep metrics — measurements, deliberately not a ranking.
+     *
+     * A league table of people is easy to build and corrosive to use: it
+     * rewards whoever got the best leads that month and tells a manager
+     * nothing about why. These are the same funnel measures the rest of the
+     * product uses, per owner, plus how fast each one answers — which is the
+     * one number a rep genuinely controls.
+     */
+    public function salesTeam(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $tenantId = $request->user()->tenant_id;
+
+        $rows = $this->queries->build($request, $request->user())->reorder()
+            ->leftJoin('users', function ($join) use ($tenantId) {
+                $join->on('users.id', '=', 'leads.assigned_to')
+                    ->where('users.tenant_id', '=', $tenantId)
+                    ->whereNull('users.deleted_at');
+            })
+            ->select([
+                DB::raw("coalesce(users.name, '—') as name"),
+                DB::raw('users.uuid as user_id'),
+                ...$this->countExpressions(),
+            ])
+            ->selectRaw(
+                'avg(extract(epoch from (leads.first_contact_at - leads.created_at)))
+                   filter (where leads.first_contact_at is not null) as avg_first_contact_seconds'
+            )
+            ->groupBy('users.name', 'users.uuid')
+            ->orderByDesc(DB::raw('count(*)'))
+            ->limit(50)
+            ->get();
+
+        return ApiResponse::success([
+            'rows' => $rows->map(function ($row) {
+                $counts = $this->normaliseCounts($row);
+
+                return array_merge([
+                    'user_id' => $row->user_id,
+                    'name' => (string) $row->name,
+                    'avg_first_contact_seconds' => $row->avg_first_contact_seconds !== null
+                        ? (int) round((float) $row->avg_first_contact_seconds)
+                        : null,
+                ], $counts, $this->rates($counts));
+            })->all(),
+        ]);
+    }
+
     private function campaignRows(Request $request): array
     {
         $rows = $this->queries->build($request, $request->user())->reorder()
@@ -128,15 +178,33 @@ class SalesPerformanceController extends Controller
     {
         return [
             DB::raw('count(*) as leads'),
-            DB::raw('count(*) filter (where leads.first_contact_at is not null) as contacted'),
+            /*
+             * Reached, not recorded. A rep who drags a lead to "contacted"
+             * without the system ever stamping a first-contact time has still
+             * contacted them, and counting only the stamp put a rate of 0% on
+             * the same screen as a funnel reading 74% — two numbers, one word,
+             * both claiming to be the truth.
+             */
+            DB::raw(sprintf(
+                "count(*) filter (where leads.first_contact_at is not null or leads.status <> '%s') as contacted",
+                LeadStatus::New->value,
+            )),
+            // Replies are the exception: there is no "replied" stage to reach,
+            // so an inbound message is the only evidence there is.
             DB::raw('count(*) filter (where leads.first_response_at is not null) as replied'),
             DB::raw(sprintf(
-                "count(*) filter (where leads.qualification_status = '%s') as qualified",
+                "count(*) filter (where leads.qualification_status = '%s'
+                   or leads.status in ('%s', '%s', '%s')) as qualified",
                 QualificationStatus::Qualified->value,
+                LeadStatus::Qualified->value,
+                LeadStatus::Appointment->value,
+                LeadStatus::Won->value,
             )),
             DB::raw(sprintf(
-                "count(*) filter (where leads.temperature = '%s') as hot",
+                "count(*) filter (where leads.temperature = '%s' and leads.status not in ('%s', '%s')) as hot",
                 LeadTemperature::Hot->value,
+                LeadStatus::Won->value,
+                LeadStatus::Lost->value,
             )),
             // Reaching the appointment stage, not sitting in it: a lead that was
             // booked and then bought must still count as an appointment, or the

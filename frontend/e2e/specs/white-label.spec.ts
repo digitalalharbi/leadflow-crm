@@ -85,6 +85,9 @@ test.describe('White label', () => {
     await signInAs(page, ALPHA.admin.email)
     await page.goto('/settings')
 
+    // Settings is sections now, and identity is one of them.
+    await page.getByTestId('settings-tab-branding').click()
+
     await page.getByLabel('اسم النظام').fill('ألفا بعد التغيير')
     // fill() drives the control the way a user does; assigning .value directly
     // is swallowed by React's value tracker.

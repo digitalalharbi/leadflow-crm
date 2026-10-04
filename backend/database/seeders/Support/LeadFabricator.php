@@ -4,7 +4,6 @@ namespace Database\Seeders\Support;
 
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
-use App\Enums\LeadTemperature;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
@@ -17,6 +16,7 @@ use App\Models\LeadNote;
 use App\Models\LeadSourceEvent;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Leads\LeadScoringService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -31,6 +31,8 @@ class LeadFabricator
 {
     private int $phoneCounter;
 
+    private LeadScoringService $scoring;
+
     public function __construct(
         private Tenant $tenant,
         private Collection $assignees,
@@ -39,6 +41,7 @@ class LeadFabricator
         int $phoneSeed = 1000,
     ) {
         $this->phoneCounter = $phoneSeed;
+        $this->scoring = app(LeadScoringService::class);
     }
 
     /**
@@ -63,7 +66,7 @@ class LeadFabricator
     {
         $first = DemoContent::FIRST_NAMES[array_rand(DemoContent::FIRST_NAMES)];
         $last = DemoContent::LAST_NAMES[array_rand(DemoContent::LAST_NAMES)];
-        $campaign = DemoContent::CAMPAIGNS[array_rand(DemoContent::CAMPAIGNS)];
+        $campaign = $this->campaignFor($status);
         $project = $this->projects->random();
 
         // A few fresh leads stay unassigned so the "awaiting assignment" card and
@@ -74,8 +77,19 @@ class LeadFabricator
 
         $createdAt = now()->subDays(random_int(0, $daysBack))->subHours(random_int(0, 23));
         $phone = '+96655'.str_pad((string) (++$this->phoneCounter), 7, '0', STR_PAD_LEFT);
-        $score = $this->scoreFor($status);
         $budgetMin = [500_000, 800_000, 1_000_000, 1_500_000, 2_000_000, 2_800_000][random_int(0, 5)];
+
+        /*
+         * How much of the qualification is filled in, by how far the lead got.
+         * A little noise either side so the demo does not look generated.
+         */
+        $known = match ($status) {
+            LeadStatus::Won->value, LeadStatus::Appointment->value => 4,
+            LeadStatus::Qualified->value => random_int(3, 4),
+            LeadStatus::Contacted->value => random_int(1, 3),
+            LeadStatus::Lost->value => random_int(1, 3),
+            default => random_int(0, 1),
+        };
 
         $lead = Lead::create([
             'tenant_id' => $this->tenant->id,
@@ -97,28 +111,40 @@ class LeadFabricator
             'ad_name' => $campaign[3],
             'form_name' => 'نموذج التسجيل - '.$project->name,
             'status' => $status,
-            'temperature' => LeadTemperature::fromScore($score)->value,
-            'score' => $score,
-            'budget_min' => $budgetMin,
-            'budget_max' => (int) ($budgetMin * 1.4),
-            'purchase_purpose' => random_int(0, 1) ? 'residence' : 'investment',
-            'payment_method' => random_int(0, 2) === 0 ? 'cash' : 'financing',
-            'preferred_property_type' => DemoContent::PROPERTY_TYPES[array_rand(DemoContent::PROPERTY_TYPES)],
-            'preferred_location' => $project->location,
-            'purchase_timeline' => DemoContent::TIMELINES[array_rand(DemoContent::TIMELINES)],
-            // Everything past "new" has been worked, so it has been qualified to
-            // some degree. A demo where every lead is unqualified shows a CRM
-            // nobody is using.
-            'financing_status' => $this->financingFor($status),
+            /*
+             * Qualification arrives in the order a rep learns it, not all at
+             * once. A lead that just came off an ad form has a name, a phone
+             * and nothing else; budget and timing come out of the first call,
+             * financing out of the second.
+             *
+             * Filling every field for every lead made the scoring engine rate
+             * 62% of the workspace "hot" — which is not a pipeline, it is a
+             * broken thermometer, and it makes the one number a manager sorts
+             * by useless.
+             */
+            'budget_min' => $known >= 2 ? $budgetMin : null,
+            'budget_max' => $known >= 2 ? (int) ($budgetMin * 1.4) : null,
+            'purchase_purpose' => $known >= 1 ? (random_int(0, 1) ? 'residence' : 'investment') : null,
+            'payment_method' => $known >= 3 ? (random_int(0, 2) === 0 ? 'cash' : 'financing') : null,
+            'preferred_property_type' => $known >= 1
+                ? DemoContent::PROPERTY_TYPES[array_rand(DemoContent::PROPERTY_TYPES)]
+                : null,
+            'preferred_location' => $known >= 3 ? $project->location : null,
+            'purchase_timeline' => $known >= 2
+                ? DemoContent::TIMELINES[array_rand(DemoContent::TIMELINES)]
+                : null,
+            'financing_status' => $known >= 4 ? $this->financingFor($status) : null,
             'qualification_status' => $this->qualificationFor($status),
             'qualified_at' => in_array($status, [
                 LeadStatus::Qualified->value, LeadStatus::Appointment->value, LeadStatus::Won->value,
             ], true) ? $createdAt->copy()->addDays(random_int(1, 4)) : null,
-            'appointment_interest' => match ($status) {
-                LeadStatus::Appointment->value, LeadStatus::Won->value => true,
-                LeadStatus::Lost->value => random_int(0, 2) === 0,
-                LeadStatus::New->value => null,
-                default => random_int(0, 1) === 1,
+            'appointment_interest' => match (true) {
+                in_array($status, [LeadStatus::Appointment->value, LeadStatus::Won->value], true) => true,
+                $status === LeadStatus::Lost->value => random_int(0, 2) === 0,
+                $status === LeadStatus::New->value => null,
+                // Only asked once someone has actually spoken to them.
+                $known >= 3 => random_int(0, 1) === 1,
+                default => null,
             },
             'provider' => 'generic_webhook',
             'provider_lead_id' => 'demo-'.Str::random(10),
@@ -130,8 +156,18 @@ class LeadFabricator
              * where everyone is answered in four minutes makes the response
              * report look broken.
              */
+            /*
+             * A lead still sitting in "new" has mostly not been worked — that
+             * is what the stage means, and it is the gap the neglected-leads
+             * panel exists to show. Only a minority have been called without
+             * anyone moving them along.
+             *
+             * Everything past "new" was contacted, most of it quickly, with a
+             * tail that took far longer: a demo where every lead is answered in
+             * four minutes makes the response report look broken.
+             */
             'first_contact_at' => $status === LeadStatus::New->value
-                ? ($index % 5 === 0 ? null : $createdAt->copy()->addMinutes(random_int(4, 50)))
+                ? ($index % 4 === 0 ? $createdAt->copy()->addMinutes(random_int(4, 50)) : null)
                 : $createdAt->copy()->addMinutes($index % 7 === 0 ? random_int(240, 2880) : random_int(3, 90)),
             'first_response_at' => in_array($status, [LeadStatus::New->value, LeadStatus::Lost->value], true)
                 ? null
@@ -155,6 +191,17 @@ class LeadFabricator
             'ad_name' => $campaign[3],
             'received_at' => $createdAt,
         ]);
+
+        /*
+         * Score through the same engine the product uses, never a made-up
+         * number. The seeder used to write a random score per stage, so the
+         * ring in the lead header said 89 while the breakdown beneath it
+         * totalled 77 — the first thing a prospect would notice, and a reason
+         * to distrust every other number on the screen.
+         */
+        $lead->load('project', 'lostReason');
+        $this->scoring->apply($lead);
+        $lead->saveQuietly();
 
         $this->buildTimeline($lead, $assignee, $status, $createdAt);
         $this->scheduleFollowUp($lead, $assignee, $status, $createdAt, $index);
@@ -254,17 +301,48 @@ class LeadFabricator
         };
     }
 
-    /** Score bands that make each stage's temperature mix believable. */
-    private function scoreFor(string $status): int
+    /**
+     * Pick a campaign whose quality matches how far this lead actually got.
+     *
+     * Assigning campaigns at random would give every one of them the same
+     * conversion rate, and the campaign-quality report — the reason a
+     * developer buys this — would show fourteen identical bars. Weighting the
+     * choice by the lead's own outcome reproduces what really happens: search
+     * traffic converts, broad video campaigns fill the list and go nowhere.
+     */
+    private function campaignFor(string $status): array
     {
-        return match ($status) {
-            LeadStatus::Won->value => random_int(78, 100),
-            LeadStatus::Appointment->value => random_int(70, 95),
-            LeadStatus::Qualified->value => random_int(55, 85),
-            LeadStatus::Contacted->value => random_int(35, 70),
-            LeadStatus::Lost->value => random_int(10, 55),
-            default => random_int(20, 68),
+        // How "good" this lead turned out, on the same 0–1 scale as a campaign.
+        $outcome = match ($status) {
+            LeadStatus::Won->value => 0.95,
+            LeadStatus::Appointment->value => 0.8,
+            LeadStatus::Qualified->value => 0.65,
+            LeadStatus::Contacted->value => 0.35,
+            LeadStatus::Lost->value => 0.2,
+            default => 0.25,
         };
+
+        // Weight each campaign by how close its quality is to this outcome,
+        // then pick from that distribution — so a won deal usually comes from
+        // a search campaign and a dead lead usually comes from a video feed,
+        // without either becoming a rule.
+        $weights = [];
+        foreach (DemoContent::CAMPAIGNS as $index => $campaign) {
+            $distance = abs($campaign[5] - $outcome);
+            $weights[$index] = (int) round((1 - $distance) ** 3 * 100) + 1;
+        }
+
+        $roll = random_int(1, array_sum($weights));
+
+        foreach ($weights as $index => $weight) {
+            $roll -= $weight;
+
+            if ($roll <= 0) {
+                return DemoContent::CAMPAIGNS[$index];
+            }
+        }
+
+        return DemoContent::CAMPAIGNS[0];
     }
 
     private function buildTimeline(Lead $lead, ?User $assignee, string $status, $createdAt): void

@@ -10,6 +10,14 @@ import { Toaster, Skeleton } from '@/components/ui'
 
 // Everything past the dashboard is code-split: the first paint only pays for
 // what a user actually lands on.
+/*
+ * Guarded at the import, not only at the route. `import.meta.env.DEV` is
+ * replaced with `false` at build time, so the branch is dead code and the
+ * chunk is never emitted — a conditional route alone still ships the file.
+ */
+const DesignSystemPage = import.meta.env.DEV
+  ? lazy(() => import('@/pages/dev/DesignSystem').then((m) => ({ default: m.DesignSystemPage })))
+  : () => null
 const LeadsPage = lazy(() => import('@/pages/Leads').then((m) => ({ default: m.LeadsPage })))
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetail').then((m) => ({ default: m.LeadDetailPage })))
 const PipelinePage = lazy(() => import('@/pages/Pipeline').then((m) => ({ default: m.PipelinePage })))
@@ -115,6 +123,16 @@ export function App() {
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/settings/profile" element={<ProfilePage />} />
+
+                  {/*
+                    Internal reference, development only. It is not a feature,
+                    and a customer finding it would be reading our notes —
+                    `import.meta.env.DEV` is compile-time, so the route and its
+                    chunk are absent from a production build entirely.
+                  */}
+                  {import.meta.env.DEV && (
+                    <Route path="/dev/design-system" element={<DesignSystemPage />} />
+                  )}
                   <Route
                     path="/platform"
                     element={

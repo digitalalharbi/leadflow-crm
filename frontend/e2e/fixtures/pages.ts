@@ -34,15 +34,19 @@ export async function authenticateAs(page: Page, email: string, password: string
   }
 }
 
-/** Signs in and lands on the dashboard, without touching the login form. */
+/**
+ * Signs in and lands on the app, without touching the login form.
+ *
+ * Deliberately does not wait for a particular heading: the dashboard greets
+ * the user by name when it knows it, the platform owner gets the console
+ * instead, and both of those are copy. What proves the session took is that
+ * the app rendered a page rather than bouncing to the login screen.
+ */
 export async function signInAs(page: Page, email: string, password: string = PASSWORD) {
   await authenticateAs(page, email, password)
   await page.goto('/')
-  await expect(
-    page
-      .getByRole('heading', { name: 'نظرة عامة', level: 1 })
-      .or(page.getByRole('heading', { name: 'إدارة المنصة', level: 1 })),
-  ).toBeVisible()
+  await expect(page.getByTestId('page-title')).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
 }
 
 /** Drives the real login form. Used by the authentication spec itself. */
@@ -54,12 +58,9 @@ export async function signIn(page: Page, email: string, password: string = PASSW
   await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
 
   // Where a session lands depends on who it belongs to: a tenant user gets the
-  // dashboard, the platform owner gets the console. Accept either.
-  await expect(
-    page
-      .getByRole('heading', { name: 'نظرة عامة', level: 1 })
-      .or(page.getByRole('heading', { name: 'إدارة المنصة', level: 1 })),
-  ).toBeVisible()
+  // dashboard, the platform owner gets the console. Either is a landing.
+  await expect(page.getByTestId('page-title')).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
 }
 
 export async function signOut(page: Page) {
@@ -81,7 +82,7 @@ export async function waitForLeadsTable(page: Page) {
 
 export async function openLeadByName(page: Page, name: string) {
   await gotoLeads(page)
-  await page.getByPlaceholder('بحث…').fill(name)
+  await page.getByTestId('lead-search').fill(name)
   await expect(page.getByRole('link', { name })).toBeVisible()
   await page.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { name })).toBeVisible()

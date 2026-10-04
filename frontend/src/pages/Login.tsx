@@ -9,6 +9,7 @@ import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { applyLocale } from '@/i18n'
 import { Button, Input } from '@/components/ui'
 import type { Branding } from '@/types/api'
+import { BrandField, BrandMark } from '@/components/brand'
 
 /**
  * The login screen renders the *customer's* brand, not ours: logo, colours and
@@ -87,15 +88,9 @@ export function LoginPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {logo ? (
-              <img src={logo} alt="" className="size-9 rounded-lg object-contain" />
+              <img src={logo} alt="" className="size-9 rounded-[var(--radius-control)] object-contain" />
             ) : (
-              <span
-                className="grid size-9 place-items-center rounded-[var(--radius-control)] text-sm font-bold shadow-[var(--shadow-card)]"
-                style={{ background: 'var(--brand)', color: 'var(--brand-contrast)' }}
-                aria-hidden
-              >
-                {systemName.slice(0, 1)}
-              </span>
+              <BrandMark size={30} animated />
             )}
             <span className="text-[0.9375rem] font-semibold">{systemName}</span>
           </div>
@@ -112,8 +107,8 @@ export function LoginPage() {
 
         <div className="flex flex-1 items-center justify-center py-10">
           <div className="w-full max-w-sm">
-            <h1 className="text-2xl font-semibold tracking-tight">{t('auth.welcome')}</h1>
-            <p className="mt-1.5 text-sm text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
+            <h1 className="t-display">{t('auth.welcome')}</h1>
+            <p className="t-small mt-1.5 text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
 
             <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
               <Input
@@ -191,26 +186,31 @@ export function LoginPage() {
               ].join(', '),
         }}
       >
-        {/* A fine grid, barely there, so a large flat field has some texture
-            at close range without becoming a pattern. */}
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)',
-            backgroundSize: '44px 44px',
-          }}
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-[var(--color-neutral-900)]/20" />
+        {/*
+          Not decoration: the field draws interests arriving, travelling, and a
+          few of them resolving into opportunities. It is the product's claim,
+          rendered — and it is suppressed when a tenant supplies its own
+          background, because then the picture is theirs to choose.
+        */}
+        {!branding?.login_background_url && (
+          <BrandField className="absolute inset-0 h-full w-full text-white" />
+        )}
+
+        <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />
 
         <div className="relative flex h-full flex-col justify-end p-12 text-white">
-          <h2 className="text-[2rem] leading-[1.2] font-semibold tracking-[-0.02em]">
+          <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
             {branding?.company_name ?? systemName}
           </h2>
-          <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-white/80">
-            {t('auth.welcomeSubtitle')}
+          {/* The tagline belongs to مهتم; a tenant's own name stands alone. */}
+          <p className="mt-2.5 text-[1.0625rem] font-medium text-white/90">
+            {branding?.company_name ? t('auth.welcomeSubtitle') : t('brand.tagline')}
           </p>
+          {!branding?.company_name && (
+            <p className="mt-3 max-w-sm text-[0.9375rem] leading-relaxed text-white/70">
+              {t('brand.subtext')}
+            </p>
+          )}
         </div>
       </div>
     </div>

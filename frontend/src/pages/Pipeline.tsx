@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors, type DragEndEvent, type DragStartEvent,
+  DndContext, DragOverlay, useDraggable, useDroppable,
+  MouseSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
@@ -11,10 +12,12 @@ import { changeLeadStatus, fetchLostReasons } from '@/features/leads'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import {
-  Button, Card, ErrorState, Modal, PageHeader, Select, Skeleton, Textarea, TemperatureBadge,
+  Button, Card, ErrorState, Modal, PageHeader, Select, Skeleton, Textarea,
 } from '@/components/ui'
 import type { LeadListItem, LeadStatus } from '@/types/api'
 import { cn } from '@/lib/cn'
+import { TEMPERATURE_COLOR } from '@/components/charts'
+import { formatDue, initials } from '@/lib/format'
 
 interface Column {
   status: LeadStatus
@@ -44,7 +47,18 @@ export function PipelinePage() {
   const [lostNote, setLostNote] = useState('')
 
   // A small activation distance keeps a tap on a card working as a link.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  /*
+   * Mouse and touch are separated deliberately.
+   *
+   * One PointerSensor with a 6px threshold meant that on a phone, any swipe to
+   * scroll the board became a drag — the board was unusable with a thumb. A
+   * mouse keeps the small distance threshold, and touch requires a short press
+   * first, so a swipe scrolls and a hold picks a card up.
+   */
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['pipeline'],
@@ -142,12 +156,19 @@ export function PipelinePage() {
       {isLoading || !data ? (
         <div className="scroll-x flex gap-3 pb-3" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[28rem] w-[17rem] shrink-0" />
+            <Skeleton key={i} className="h-[28rem] w-[15.5rem] shrink-0" />
           ))}
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="scroll-x flex gap-3 pb-4">
+          {/*
+            On a phone the board is swiped one stage at a time, so it snaps:
+            without it a swipe ends wherever the finger left off and the screen
+            shows two half-columns, which reads as a broken layout rather than
+            as "there is more to the right". Above `sm` the board scrolls
+            freely, because there the point is to see several stages at once.
+          */}
+          <div className="scroll-x flex gap-3 pb-4 max-sm:snap-x max-sm:snap-mandatory">
             {data.columns.map((column) => (
               <PipelineColumn key={column.status} column={column} />
             ))}
@@ -217,22 +238,39 @@ function PipelineColumn({ column }: { column: Column }) {
       ref={setNodeRef}
       data-testid={`pipeline-column-${column.status}`}
       className={cn(
-        'flex w-[17rem] shrink-0 flex-col rounded-[var(--radius-card)] border bg-[var(--color-surface-muted)]',
-        isOver ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-[var(--color-border)]',
+        // Narrower than before: six columns at 17rem forced a scroll on a
+        // 1440px screen, which defeats the one thing a board is for.
+        'flex w-[15.5rem] shrink-0 flex-col rounded-[var(--radius-card)] border',
+        'max-sm:w-[min(19rem,82vw)] max-sm:snap-start',
+        'bg-[var(--color-surface-muted)] transition-colors',
+        isOver
+          ? 'border-[var(--brand)] bg-[var(--brand-soft)]'
+          : 'border-[var(--color-line)]',
       )}
     >
-      <header className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
-        <span className={cn('size-2 rounded-full', COLUMN_ACCENT[column.status])} aria-hidden />
-        <h2 className="flex-1 text-[0.8125rem] font-semibold">{t(`status.${column.status}`)}</h2>
+      {/*
+        The stage's colour is a rule along the top edge rather than six tinted
+        panels. On a board the cards carry the colour that matters — temperature
+        — and a column painted in its own hue competes with every card in it.
+      */}
+      <header className="relative overflow-hidden rounded-t-[var(--radius-card)] border-b border-[var(--color-line)] px-3 pt-2.5 pb-2">
         <span
-          data-testid="column-total"
-          className="tabular rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.75rem] font-medium text-[var(--color-ink-muted)]"
-        >
-          {column.total}
-        </span>
+          className={cn('absolute inset-x-0 top-0 h-[3px]', COLUMN_ACCENT[column.status])}
+          aria-hidden
+        />
+
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="t-small truncate font-semibold">{t(`status.${column.status}`)}</h2>
+          <span data-testid="column-total" className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+            {column.total}
+          </span>
+        </div>
       </header>
 
-      <div className="min-h-24 flex-1 space-y-2 overflow-y-auto p-2" style={{ maxHeight: 'calc(100dvh - 15rem)' }}>
+      <div
+        className="min-h-24 flex-1 space-y-2 overflow-y-auto p-2"
+        style={{ maxHeight: 'calc(100dvh - 15rem)' }}
+      >
         {column.leads.length === 0 ? (
           <p className="px-2 py-8 text-center text-[0.75rem] text-[var(--color-ink-subtle)]">
             {t('pipeline.empty')}
@@ -264,45 +302,79 @@ function DraggableLead({ lead }: { lead: LeadListItem }) {
   )
 }
 
+/**
+ * A board card carries only what decides the next move.
+ *
+ * The phone number was on every card and never read — nobody dials from a
+ * board, they open the lead. What a rep is scanning for is who is hot, what is
+ * late, and whose it is, so those three get the space the phone number had.
+ */
 function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <article
       data-testid="pipeline-card"
       className={cn(
-        'rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5',
-        overlay ? 'shadow-[var(--shadow-pop)] rotate-1' : 'shadow-[var(--shadow-card)]',
+        'rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-surface)] p-2.5',
+        'transition-shadow',
+        overlay
+          ? 'rotate-1 shadow-[var(--shadow-pop)]'
+          : 'shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-raised)]',
       )}
     >
-      <Link
-        to={`/leads/${lead.id}`}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="block truncate text-[0.8125rem] font-medium hover:text-[var(--brand)]"
-      >
-        {lead.full_name}
-      </Link>
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={`/leads/${lead.id}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium hover:text-[var(--brand)]"
+        >
+          {lead.full_name}
+        </Link>
 
-      <p className="tabular mt-0.5 truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
-        {lead.phone ?? '—'}
-      </p>
+        {/* A dot rather than a badge: at this size the word is noise and the
+            colour is the whole message. */}
+        <span
+          className="mt-1 size-2 shrink-0 rounded-full"
+          style={{ background: TEMPERATURE_COLOR[lead.temperature] }}
+          title={t(`temperature.${lead.temperature}`)}
+          aria-label={t(`temperature.${lead.temperature}`)}
+        />
+      </div>
 
       {lead.project?.name && (
-        <p className="mt-1 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{lead.project.name}</p>
+        <p className="mt-0.5 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          {lead.project.name}
+        </p>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <TemperatureBadge temperature={lead.temperature} />
-        {lead.is_overdue && (
-          <span className="rounded-md bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-1.5 py-0.5 text-[0.6875rem] font-medium text-[var(--color-status-lost)]">
-            {t('leads.overdue')}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {lead.next_follow_up_at ? (
+          <span
+            className={cn(
+              'truncate text-[0.6875rem]',
+              lead.is_overdue
+                ? 'font-medium text-[var(--color-status-lost)]'
+                : 'text-[var(--color-ink-muted)]',
+            )}
+          >
+            {formatDue(lead.next_follow_up_at, i18n.language, lead.is_overdue)}
+          </span>
+        ) : (
+          <span className="text-[0.6875rem] text-[var(--color-ink-subtle)]">
+            {t('pipeline.noFollowUp')}
+          </span>
+        )}
+
+        {lead.assignee && (
+          <span
+            className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--color-surface-sunken)] text-[0.5625rem] font-semibold text-[var(--color-ink-muted)]"
+            title={lead.assignee.name}
+          >
+            {initials(lead.assignee.name)}
           </span>
         )}
       </div>
-
-      {lead.assignee && (
-        <p className="mt-1.5 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{lead.assignee.name}</p>
-      )}
     </article>
   )
 }

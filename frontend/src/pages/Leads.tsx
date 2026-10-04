@@ -8,13 +8,14 @@ import { fetchAssignableUsers, fetchLeads, fetchProjects, type LeadFilters } fro
 import { can, useAuth } from '@/stores/auth'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useApiError } from '@/hooks/useApiError'
-import { formatRelative, telLink, whatsappLink } from '@/lib/format'
+import { formatDue, telLink, whatsappLink } from '@/lib/format'
 import { LeadFiltersBar } from '@/components/leads/LeadFilters'
 import { LeadFormModal } from '@/components/leads/LeadFormModal'
 import {
   Button, Card, EmptyState, ErrorState, PageHeader, Pagination,
   SkeletonTable, StatusBadge, Table, TableWrap, Td, TemperatureBadge, Th, Tr,
 } from '@/components/ui'
+import { platformColor } from '@/components/charts'
 
 export function LeadsPage() {
   const { t, i18n } = useTranslation()
@@ -158,51 +159,83 @@ export function LeadsPage() {
               <Table>
                 <thead>
                   <tr>
-                    <Th className="min-w-44">{t('leads.name')}</Th>
-                    <Th>{t('leads.phone')}</Th>
-                    <Th className="hidden xl:table-cell">{t('leads.project')}</Th>
-                    <Th className="hidden 2xl:table-cell">{t('leads.platform')}</Th>
+                    {/* The identity column carries name, phone and project
+                        together — three columns of one-line facts made the eye
+                        travel the full width of the table for one lead. */}
+                    <Th className="min-w-56">{t('leads.name')}</Th>
+                    <Th className="hidden lg:table-cell">{t('leads.source')}</Th>
                     <Th className="hidden md:table-cell">{t('leads.status')}</Th>
-                    <Th className="hidden md:table-cell">{t('leads.temperature')}</Th>
+                    <Th className="hidden sm:table-cell">{t('leads.temperature')}</Th>
                     <Th className="hidden xl:table-cell">{t('leads.assignedTo')}</Th>
-                    <Th className="hidden 2xl:table-cell">{t('leads.nextFollowUp')}</Th>
+                    <Th className="hidden lg:table-cell">{t('leads.nextFollowUp')}</Th>
                     <Th className="text-end">{t('common.actions')}</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {leads.map((lead) => (
                     <Tr key={lead.id}>
-                      <Td className="min-w-44">
+                      <Td className="min-w-56">
                         <Link
                           to={`/leads/${lead.id}`}
-                          className="block truncate font-medium whitespace-nowrap hover:text-[var(--brand)] hover:underline"
+                          className="block truncate font-medium hover:text-[var(--brand)]"
                         >
                           {lead.full_name}
                         </Link>
-                        {lead.city && (
-                          <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">{lead.city}</p>
-                        )}
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1 md:hidden">
+
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          {lead.phone && (
+                            <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
+                              {lead.phone}
+                            </span>
+                          )}
+                          {lead.project?.name && (
+                            <span className="t-caption max-w-40 truncate text-[0.75rem]">
+                              {lead.project.name}
+                            </span>
+                          )}
+                        </span>
+
+                        {/* Below `sm` the badges have nowhere else to live. */}
+                        <span className="mt-1.5 flex flex-wrap items-center gap-1 sm:hidden">
                           <StatusBadge status={lead.status} />
                           <TemperatureBadge temperature={lead.temperature} />
-                        </div>
+                        </span>
                       </Td>
-                      <Td className="tabular whitespace-nowrap" dir="ltr">{lead.phone ?? '—'}</Td>
-                      <Td className="hidden max-w-40 truncate xl:table-cell">{lead.project?.name ?? '—'}</Td>
-                      <Td className="hidden whitespace-nowrap 2xl:table-cell">
-                        {lead.platform ? t(`platforms.${lead.platform}`, { defaultValue: lead.platform }) : '—'}
+
+                      <Td className="hidden lg:table-cell">
+                        {lead.platform ? (
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ background: platformColor(lead.platform) }}
+                              aria-hidden
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-[0.8125rem]">
+                                {t(`platforms.${lead.platform}`, { defaultValue: lead.platform })}
+                              </span>
+                              {lead.campaign_name && (
+                                <span className="t-caption block max-w-40 truncate text-[0.6875rem]">
+                                  {lead.campaign_name}
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-[var(--color-ink-subtle)]">—</span>
+                        )}
                       </Td>
                       <Td className="hidden md:table-cell"><StatusBadge status={lead.status} /></Td>
-                      <Td className="hidden md:table-cell"><TemperatureBadge temperature={lead.temperature} /></Td>
+                      <Td className="hidden sm:table-cell"><TemperatureBadge temperature={lead.temperature} /></Td>
                       <Td className="hidden max-w-36 truncate xl:table-cell">
                         {lead.assignee?.name ?? (
                           <span className="text-[var(--color-ink-subtle)]">{t('common.unassigned')}</span>
                         )}
                       </Td>
-                      <Td className="hidden whitespace-nowrap 2xl:table-cell">
+                      <Td className="hidden whitespace-nowrap lg:table-cell">
                         {lead.next_follow_up_at ? (
                           <span className={lead.is_overdue ? 'font-medium text-[var(--color-status-lost)]' : undefined}>
-                            {formatRelative(lead.next_follow_up_at, i18n.language)}
+                            {formatDue(lead.next_follow_up_at, i18n.language, lead.is_overdue)}
                           </span>
                         ) : (
                           '—'
@@ -214,7 +247,7 @@ export function LeadsPage() {
                             <a
                               href={telLink(lead.phone) ?? '#'}
                               aria-label={t('leads.call')}
-                              className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--brand)]"
+                              className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--brand)]"
                             >
                               <Phone className="size-4" aria-hidden />
                             </a>
@@ -227,7 +260,7 @@ export function LeadsPage() {
                               target="_blank"
                               rel="noreferrer"
                               aria-label={t('leads.whatsapp')}
-                              className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] hover:text-[var(--color-status-won)]"
+                              className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] hover:text-[var(--color-status-won)]"
                             >
                               <MessageCircle className="size-4" aria-hidden />
                             </a>

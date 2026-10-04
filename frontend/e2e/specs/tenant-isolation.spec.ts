@@ -29,7 +29,7 @@ test.describe('Tenant isolation', () => {
     await signInAs(page, ALPHA.admin.email)
 
     await page.goto('/leads')
-    await page.getByPlaceholder('بحث…').fill(BETA.secretLead)
+    await page.getByTestId('lead-search').fill(BETA.secretLead)
     await expect(page.getByText('لا توجد نتائج مطابقة للتصفية الحالية.')).toBeVisible()
 
     await page.goto('/users')

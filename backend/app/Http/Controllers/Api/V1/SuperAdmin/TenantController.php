@@ -12,6 +12,7 @@ use App\Services\Tenancy\TenantProvisioningService;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -39,6 +40,11 @@ class TenantController extends Controller
                 ->when($request->filled('status'), fn ($q) => $q->where('subscription_status', $request->input('status')))
                 ->with('branding')
                 ->withCount(['users', 'leads'])
+                // Usage, not just size: a thousand old leads and a dead month
+                // look identical without it.
+                ->withCount(['leads as leads_last_30_days' => fn ($q) => $q
+                    ->where('created_at', '>=', now()->subDays(30))])
+                ->withMax('leads', 'created_at')
                 ->orderByDesc('created_at')
                 ->paginate(min((int) $request->input('per_page', 25), 100));
 
@@ -68,6 +74,10 @@ class TenantController extends Controller
                 'users' => User::whereNotNull('tenant_id')->count(),
                 'leads' => Lead::count(),
                 'leads_last_30_days' => Lead::where('created_at', '>=', now()->subDays(30))->count(),
+                // The one number that needs acting on this week.
+                'trials_ending_soon' => Tenant::where('subscription_status', 'trialing')
+                    ->whereBetween('trial_ends_at', [now(), now()->addDays(7)])->count(),
+                'suspended' => Tenant::where('is_active', false)->count(),
                 'by_plan' => Tenant::select('plan', DB::raw('count(*) as aggregate'))
                     ->groupBy('plan')->get()
                     ->map(fn ($r) => ['key' => $r->plan, 'count' => (int) $r->aggregate]),
@@ -218,6 +228,10 @@ class TenantController extends Controller
             'is_active' => $tenant->is_active,
             'users_count' => $tenant->users_count ?? null,
             'leads_count' => $tenant->leads_count ?? null,
+            'leads_last_30_days' => isset($tenant->leads_last_30_days) ? (int) $tenant->leads_last_30_days : null,
+            'last_lead_at' => $tenant->leads_max_created_at
+                ? Carbon::parse($tenant->leads_max_created_at)->toIso8601String()
+                : null,
             'created_at' => $tenant->created_at?->toIso8601String(),
         ];
     }

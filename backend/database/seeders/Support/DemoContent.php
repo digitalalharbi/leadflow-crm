@@ -38,32 +38,44 @@ final class DemoContent
      *
      * [campaign, platform, ad set, ad creative, source]
      */
+    /**
+     * Campaigns with deliberately different shapes, because the product's
+     * whole argument is that lead count and lead quality are different things.
+     *
+     * The sixth element is a quality weight from 0 to 1: how likely a lead
+     * from this campaign is to be worth a rep's time. A broad video campaign
+     * on a social feed produces volume and very little intent; someone typing
+     * "شقق للبيع الرياض" into Google is already shopping. A demo where every
+     * campaign performs the same cannot show the one thing this product is for.
+     *
+     * [name, platform, adset, ad, source, quality]
+     */
     public const CAMPAIGNS = [
-        // Meta — the biggest spender in this market
-        ['حملة إطلاق مشروع النرجس', 'meta', 'انستقرام - ستوري', 'فيديو جولة المشروع', 'paid_social'],
-        ['حملة تمويل عقاري - الرياض', 'meta', 'فيسبوك - خبر', 'كاروسيل الوحدات', 'paid_social'],
-        ['ريتارجتنج - زوار الموقع', 'meta', 'انستقرام - ريلز', 'عرض الدفعة الأولى', 'retargeting'],
-        ['حملة الشقق العائلية', 'meta', 'فيسبوك - ماركت بليس', 'صور الوحدات', 'paid_social'],
+        // Meta — the biggest spender here, and a wide spread of outcomes.
+        ['حملة إطلاق مشروع النرجس', 'meta', 'انستقرام - ستوري', 'فيديو جولة المشروع', 'paid_social', 0.30],
+        ['حملة تمويل عقاري - الرياض', 'meta', 'فيسبوك - خبر', 'كاروسيل الوحدات', 'paid_social', 0.55],
+        ['ريتارجتنج - زوار الموقع', 'meta', 'انستقرام - ريلز', 'عرض الدفعة الأولى', 'retargeting', 0.70],
+        ['حملة الشقق العائلية', 'meta', 'فيسبوك - ماركت بليس', 'صور الوحدات', 'paid_social', 0.35],
 
-        // Snapchat — strong reach with Saudi buyers
-        ['حملة سناب - شقق التحلية', 'snapchat', 'سناب - ستوري', 'إعلان فيديو عمودي', 'paid_social'],
-        ['سناب - عرض نهاية العام', 'snapchat', 'سناب - ديسكفر', 'موشن جرافيك العرض', 'paid_social'],
+        // Snapchat — the volume play: cheap reach, thin intent.
+        ['حملة سناب - شقق التحلية', 'snapchat', 'سناب - ستوري', 'إعلان فيديو عمودي', 'paid_social', 0.12],
+        ['سناب - عرض نهاية العام', 'snapchat', 'سناب - ديسكفر', 'موشن جرافيك العرض', 'paid_social', 0.08],
 
-        // TikTok
-        ['حملة تيك توك - فلل الياسمين', 'tiktok', 'تيك توك - For You', 'جولة 360', 'paid_social'],
-        ['تيك توك - جولة المشروع', 'tiktok', 'تيك توك - اهتمامات', 'فيديو من المالك', 'paid_social'],
+        // TikTok — the most volume, the least qualified.
+        ['حملة تيك توك - فلل الياسمين', 'tiktok', 'تيك توك - For You', 'جولة 360', 'paid_social', 0.10],
+        ['تيك توك - جولة المشروع', 'tiktok', 'تيك توك - اهتمامات', 'فيديو من المالك', 'paid_social', 0.06],
 
-        // Google — high intent
-        ['بحث جوجل - شقق للبيع الرياض', 'google_ads', 'بحث - كلمات شراء', 'نص إعلاني A', 'search'],
-        ['بحث جوجل - فلل جدة', 'google_ads', 'بحث - كلمات الموقع', 'نص إعلاني B', 'search'],
-        ['حملة الشبكة الإعلانية', 'google_ads', 'عرض - اهتمامات عقارية', 'بانر المشروع', 'display'],
+        // Google — fewer leads, and the ones that buy.
+        ['بحث جوجل - شقق للبيع الرياض', 'google_ads', 'بحث - كلمات شراء', 'نص إعلاني A', 'search', 0.75],
+        ['بحث جوجل - فلل جدة', 'google_ads', 'بحث - كلمات الموقع', 'نص إعلاني B', 'search', 0.65],
+        ['حملة الشبكة الإعلانية', 'google_ads', 'عرض - اهتمامات عقارية', 'بانر المشروع', 'display', 0.15],
 
-        // LinkedIn — investors
-        ['حملة لينكدإن - مستثمرين', 'linkedin', 'لينكدإن - فيد', 'عرض الاستثمار', 'paid_social'],
+        // LinkedIn — investors: very few, very serious.
+        ['حملة لينكدإن - مستثمرين', 'linkedin', 'لينكدإن - اهتمامات', 'عرض العائد الاستثماري', 'paid_social', 0.80],
 
-        // Owned channels
-        ['نموذج الموقع الإلكتروني', 'website', 'الصفحة الرئيسية', 'نموذج طلب عرض', 'organic'],
-        ['صفحة هبوط - عرض رمضان', 'landing_page', 'صفحة الهبوط', 'نموذج العرض', 'landing_page'],
+        // Owned channels.
+        ['نموذج الموقع الإلكتروني', 'website', 'الموقع', 'نموذج الاهتمام', 'website', 0.60],
+        ['صفحة هبوط - عرض رمضان', 'landing_page', 'صفحة هبوط', 'نموذج العرض', 'landing_page', 0.45],
     ];
 
     /** Notes a sales rep would plausibly type. */

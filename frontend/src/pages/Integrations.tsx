@@ -1,28 +1,22 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check, Copy, FileUp, Plug, Sparkles, Upload, Webhook,
+  Check, Copy, FileUp, Sparkles, Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost, http } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState,
   Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import type { IntegrationCard } from '@/types/api'
 import { cn } from '@/lib/cn'
+import { ProviderMark } from '@/components/integrations/ProviderMark'
 import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
-
-const STATUS_TONE = {
-  connected: 'success',
-  not_connected: 'neutral',
-  configuration_required: 'warning',
-  error: 'danger',
-} as const
 
 const STATUS_LABEL = {
   connected: 'integrations.connected',
@@ -139,27 +133,48 @@ export function IntegrationsPage() {
             <Card key={card.provider} className="flex flex-col">
               <CardBody className="flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-9 place-items-center rounded-lg bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]">
-                      {card.provider === 'generic_webhook' ? (
-                        <Webhook className="size-[1.125rem]" aria-hidden />
-                      ) : (
-                        <Plug className="size-[1.125rem]" aria-hidden />
-                      )}
-                    </span>
-                    <h3 className="text-[0.9375rem] font-semibold">
-                      {t(`platforms.${card.provider}`, {
-                        defaultValue: card.provider === 'generic_webhook' ? 'Webhook' : card.provider,
-                      })}
-                    </h3>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <ProviderMark provider={card.provider} />
+                    <div className="min-w-0">
+                      <h3 className="t-card-title truncate">
+                        {t(`platforms.${card.provider}`, {
+                          defaultValue: card.provider === 'generic_webhook' ? 'Webhook' : card.provider,
+                        })}
+                      </h3>
+                      {/* Status as words next to the name, not only as a chip —
+                          "needs setup" is the thing an admin is scanning for. */}
+                      <p className="t-caption">{t(STATUS_LABEL[card.status])}</p>
+                    </div>
                   </div>
-                  <Badge tone={STATUS_TONE[card.status]}>{t(STATUS_LABEL[card.status])}</Badge>
+                  <span
+                    className={cn(
+                      'mt-1 size-2 shrink-0 rounded-full',
+                      card.status === 'connected' && 'bg-[var(--color-success)]',
+                      card.status === 'configuration_required' && 'bg-[var(--color-warning)]',
+                      card.status === 'error' && 'bg-[var(--color-danger)]',
+                      card.status === 'not_connected' && 'bg-[var(--color-border-strong)]',
+                    )}
+                    aria-hidden
+                  />
                 </div>
 
                 {card.integration && (
-                  <p className="tabular mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]">
-                    {card.integration.leads_received} {t('integrations.leadsReceived')}
-                  </p>
+                  <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+                    <div>
+                      <dt className="t-caption text-[0.6875rem]">{t('integrations.leadsReceived')}</dt>
+                      <dd className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+                        {formatNumber(card.integration.leads_received, i18n.language)}
+                      </dd>
+                    </div>
+                    {card.integration.last_synced_at && (
+                      <div>
+                        <dt className="t-caption text-[0.6875rem]">{t('integrations.lastSync')}</dt>
+                        <dd className="t-small">
+                          {formatLastSeen(card.integration.last_synced_at, i18n.language)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                 )}
 
                 {card.required_credentials.length > 0 && card.status !== 'connected' && (
@@ -169,7 +184,7 @@ export function IntegrationsPage() {
                 )}
 
                 {card.integration?.webhook_endpoints?.map((endpoint) => (
-                  <div key={endpoint.id} className="mt-3 rounded-lg bg-[var(--color-surface-muted)] p-2.5">
+                  <div key={endpoint.id} className="mt-3 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-2.5">
                     <p className="text-[0.6875rem] font-medium text-[var(--color-ink-muted)]">
                       {t('integrations.webhookUrl')}
                     </p>
@@ -181,9 +196,14 @@ export function IntegrationsPage() {
                 ))}
               </CardBody>
 
-              <div className="border-t border-[var(--color-border)] p-3">
+              <div className="border-t border-[var(--color-line)] p-3">
+                {/*
+                  Outline, not primary. Eight full-width accent buttons turned
+                  the page into a wall of green shouting at an admin who is
+                  reading status, not deciding to connect eight networks at once.
+                */}
                 <Button
-                  variant={card.integration ? 'outline' : 'primary'}
+                  variant="outline"
                   size="sm"
                   className="w-full"
                   loading={connect.isPending && connect.variables === card.provider}
@@ -253,7 +273,7 @@ export function IntegrationsPage() {
           <Field label={t('integrations.webhookSecret')} value={secret?.secret ?? ''} />
           <pre
             dir="ltr"
-            className="overflow-x-auto rounded-lg bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-[var(--color-ink-inverted)]"
+            className="overflow-x-auto rounded-[var(--radius-control)] bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-[var(--color-ink-inverted)]"
           >
 {`curl -X POST '${secret?.url ?? ''}' \\
   -H 'Content-Type: application/json' \\
@@ -275,7 +295,7 @@ function Field({ label, value }: { label: string; value: string }) {
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
         >
           {value}
         </code>
@@ -299,7 +319,7 @@ function CopyButton({ value }: { value: string }) {
         setTimeout(() => setCopied(false), 1800)
       }}
       className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)]',
+        'grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--color-border)]',
         copied ? 'text-[var(--color-status-won)]' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
       )}
     >
@@ -431,7 +451,7 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
           {headers.map((header) => (
             <div key={header} className="flex items-center gap-3">
-              <code className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]">
+              <code className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]">
                 {header}
               </code>
               <Select

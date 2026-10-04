@@ -11,13 +11,15 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'مهام اليوم' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'ملخص المسار' })).toBeVisible()
 
-    // The questions a rep opens the app to answer.
-    for (const label of ['عميل جديد اليوم', 'متابعة اليوم', 'متابعة متأخرة', 'عملاء Hot', 'مواعيد']) {
-      await expect(page.getByText(label, { exact: true })).toBeVisible()
+    // The questions a rep opens the app to answer. Bound to the tiles rather
+    // than to the words: the rebuilt dashboard says "مواعيد" in the KPI row,
+    // in the funnel and in the platform legend, all three correctly.
+    for (const key of ['new', 'due', 'overdue', 'awaiting']) {
+      await expect(page.getByTestId(`today-${key}`)).toBeVisible()
     }
 
-    for (const label of ['إجمالي العملاء', 'مؤهلون', 'صفقات مكسوبة', 'نسبة التحويل']) {
-      await expect(page.getByText(label, { exact: true })).toBeVisible()
+    for (const key of ['total', 'qualified', 'hot', 'appointments', 'won']) {
+      await expect(page.getByTestId(`kpi-${key}`)).toBeVisible()
     }
   })
 

@@ -74,7 +74,7 @@ test.describe('Qualification', () => {
     await page.goto('/leads')
 
     // rep1 does not own this lead, so it is not in their list at all.
-    await page.getByPlaceholder('بحث…').fill(LEADS.qualify)
+    await page.getByTestId('lead-search').fill(LEADS.qualify)
     await expect(page.getByRole('link', { name: LEADS.qualify })).toHaveCount(0)
   })
 })

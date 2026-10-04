@@ -35,6 +35,52 @@ export function formatRelative(iso: string | null | undefined, lang = 'ar'): str
   return formatDistanceToNowStrict(date, { addSuffix: true, locale })
 }
 
+/**
+ * When something last happened, as a label that stands on its own.
+ *
+ * `formatRelative` renders today as a bare clock, which is right inside a
+ * timeline where the day is already established and wrong in a column headed
+ * "last lead" — "22:56" there reads as a duration, a count, or nothing at all.
+ */
+export function formatLastSeen(iso: string | null | undefined, lang = 'ar'): string {
+  if (!iso) return '—'
+
+  const date = parseISO(iso)
+
+  if (isToday(date)) {
+    return `${lang.startsWith('ar') ? 'اليوم' : 'Today'} ${format(date, 'HH:mm')}`
+  }
+
+  return formatRelative(iso, lang)
+}
+
+/** Just the clock, for pairing with a relative label that carries the day. */
+export function formatClock(iso: string | null | undefined): string {
+  return iso ? format(parseISO(iso), 'HH:mm') : '—'
+}
+
+/**
+ * A due time that says whether it has passed.
+ *
+ * `formatRelative` renders anything due today as a bare clock time, so an
+ * overdue follow-up read as "23:53" — a number, with no hint that it is late.
+ * On a work queue, late is the only thing that matters.
+ */
+export function formatDue(
+  iso: string | null | undefined,
+  lang = 'ar',
+  overdue = false,
+): string {
+  if (!iso) return '—'
+
+  if (!overdue) return formatRelative(iso, lang)
+
+  return formatDistanceToNowStrict(parseISO(iso), {
+    addSuffix: true,
+    locale: resolveLocale(lang),
+  })
+}
+
 /** Money with the tenant's currency, Latin numerals in both locales. */
 export function formatCurrency(
   value: number | null | undefined,

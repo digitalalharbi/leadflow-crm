@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
 import type {
   FollowUp, Lead, LeadActivity, LeadListItem, LeadNote, LeadStatus,
-  LeadTemperature, PaginationMeta, Project, Ref,
+  LeadTemperature, PaginationMeta, Project, ProjectMetrics, Ref,
 } from '@/types/api'
 
 export interface LeadFilters {
@@ -14,6 +14,9 @@ export interface LeadFilters {
   date_from?: string
   date_to?: string
   overdue?: boolean
+  awaiting_contact?: boolean
+  replied?: boolean
+  campaign_name?: string
   follow_up?: string
   sort?: string
   direction?: 'asc' | 'desc'
@@ -77,6 +80,11 @@ export function logContact(id: string, channel: 'call' | 'whatsapp' | 'email' | 
 
 export function fetchProjects() {
   return apiGet<{ projects: Project[] }>('/projects').then((r) => r.projects)
+}
+
+/** Projects with the funnel metrics their cards are built from. */
+export function fetchProjectsWithMetrics() {
+  return apiGet<{ projects: Project[]; metrics: ProjectMetrics[] }>('/projects')
 }
 
 export function fetchAssignableUsers() {

@@ -36,8 +36,26 @@ export default {
     dashboard: 'Dashboard', leads: 'Leads', pipeline: 'Pipeline', followUps: 'Follow-ups',
     projects: 'Projects', reports: 'Reports', integrations: 'Lead sources', users: 'Team',
     settings: 'Settings', superAdmin: 'Platform', notifications: 'Notifications', profile: 'Profile',
+    platformConsole: 'Platform console',
   },
   dashboard: {
+    greeting: 'Welcome{{name}}',
+    lastDays: 'Last {{count}} days',
+    allProjects: 'All projects',
+    allOwners: 'All owners',
+    vsPrevious: 'vs the previous period',
+    funnelHint: 'Conversion between each stage',
+    platformsTitle: 'Platform performance',
+    platformsHint: 'Where leads come from, and which convert',
+    qualityTitle: 'Lead interest',
+    qualityHint: 'Open leads only',
+    responseTitle: 'Response speed',
+    responseHint: 'How long the team takes to answer a new lead',
+    noLeadsYet: 'No data in this period',
+    noOpenLeads: 'No open leads',
+    viewReports: 'Reports',
+    analytics: 'Analytics',
+
     awaitingContact: 'Not contacted',
     awaitingContactList: 'Nobody has answered these in {{minutes}} minutes',
     noAwaitingContact: 'Every new lead has been contacted.',
@@ -59,6 +77,7 @@ export default {
     leadSource: 'Connect a lead source', firstLead: 'Receive your first lead', dismiss: 'Dismiss',
   },
   leads: {
+    searchPlaceholder: 'Search by name, phone or email…',
     title: 'Leads', subtitle: 'Every lead in one place', addLead: 'Add lead',
     name: 'Name', phone: 'Phone', email: 'Email', city: 'City', project: 'Project',
     platform: 'Platform', source: 'Source', campaign: 'Campaign', adset: 'Ad set',
@@ -120,6 +139,7 @@ export default {
     webhook: 'Webhook', import: 'Import', manual: 'Manual', other: 'Other',
   },
   pipeline: {
+    noFollowUp: 'No follow-up',
     title: 'Pipeline', subtitle: 'Drag a lead to move it between stages',
     moveError: 'Could not move that lead. It has been put back.',
     empty: 'No leads in this stage', showing: 'Showing {{shown}} of {{total}}',
@@ -140,6 +160,11 @@ export default {
     emptyTitle: 'No projects yet', emptyBody: 'Add your first project so leads can be linked to it.',
   },
   reports: {
+    tabs: { overview: 'Overview', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons' },
+    teamHint: 'Measurements per owner — not a ranking of people',
+    lostHint: 'Largest reason first — that is the one to fix',
+    noLost: 'No lost deals in this period',
+
     title: 'Reports', subtitle: 'How your sources and your team are performing',
     byPlatform: 'By platform', byCampaign: 'By campaign', byProject: 'By project',
     bySalesRep: 'By sales rep', byStatus: 'By stage', byLostReason: 'By lost reason',
@@ -203,6 +228,12 @@ export default {
   },
 
   campaignQuality: {
+    needMoreCampaigns: 'At least two campaigns are needed to compare.',
+    matrixTitle: 'Volume against quality',
+    matrixHint: 'One circle per campaign, sized by sales. Top right: high volume, high quality.',
+    axisVolume: 'Lead volume →',
+    axisQuality: '↑ Qualification rate',
+
     title: 'Campaign quality', subtitle: 'Which campaigns bring buyers, not just numbers',
     platform: 'Platform', campaign: 'Campaign', leads: 'Leads', contacted: 'Contacted',
     replied: 'Replied', qualified: 'Qualified', hot: 'Hot', appointments: 'Viewings', won: 'Sold',
@@ -216,7 +247,22 @@ export default {
 
   appearance: { label: 'Appearance', system: 'Match device', light: 'Light', dark: 'Dark' },
 
+  brand: { tagline: 'Turn interest into opportunity', subtext: 'Leads, qualification and follow-up in one place.' },
+
+  funnel: { replied: 'Replied', total: 'All leads', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewings', won: 'Sold' },
+
+  response: {
+    median: 'Median time to first contact',
+    average: 'Average',
+    under_5: 'Under 5 min',
+    under_15: '5 – 15 min',
+    under_30: '15 – 30 min',
+    over_30: 'Over 30 min',
+    uncontacted: '{{count}} leads have not been contacted at all — not counted above.',
+  },
+
   integrations: {
+    lastSync: 'Last sync',
     title: 'Lead sources', subtitle: 'Connect your campaigns and forms so leads arrive automatically',
     connected: 'Connected', notConnected: 'Not connected',
     configurationRequired: 'Configuration required', error: 'Error',
@@ -251,6 +297,13 @@ export default {
   },
   roles: { admin: 'Admin', manager: 'Sales manager', sales: 'Sales rep', super_admin: 'Platform admin' },
   settings: {
+    leads: 'Leads',
+    scoring: 'Qualification & scoring',
+    generalHint: 'Language, currency, timezone and how leads are assigned',
+    scoringHint: 'What makes a lead hot, and how long before it counts as neglected',
+    firstContactTarget: 'First-contact target (minutes)',
+    firstContactHint: 'After this a lead appears in “not contacted”',
+
     title: 'Settings', subtitle: 'Your branding and how your team works',
     branding: 'Branding', general: 'General', lostReasons: 'Lost reasons',
     customFields: 'Custom fields', subscription: 'Subscription', security: 'Security',
@@ -279,6 +332,43 @@ export default {
     trialing: 'On trial', totalUsers: 'Users', totalLeads: 'Leads',
     leadsLast30: 'Leads last 30 days', created: 'Customer created.',
     webhookReady: 'Lead intake endpoint is ready',
+
+    tenant: 'Tenant',
+    subscription: 'Subscription',
+    usage: 'Activity (30d)',
+    size: 'Size',
+    suspended: 'Suspended',
+    byPlan: 'Plan mix',
+    searchPlaceholder: 'Search by company or subdomain',
+    allSubscriptions: 'All subscriptions',
+    tenantCount: '{{count}} tenants',
+    noMatches: 'No matches',
+    noMatchesBody: 'Try a different search or subscription status.',
+    ofTotal: 'of {{total}}',
+    ofTotalSuspended: 'of {{total}} · {{suspended}} suspended',
+    endingSoon: '{{count}} ending within 7 days',
+    noneEndingSoon: 'None ending this week',
+    acrossTenants: 'across {{count}} tenants',
+    ofAllTime: 'of {{total}} all time',
+    trialEnds: 'ends {{date}}',
+    trialEndsLabel: 'Trial ends',
+    lastLead: 'last lead {{when}}',
+    noLeadsYet: 'No leads yet',
+    usersCount: '{{count}} users',
+    leadsCount: '{{count}} leads',
+    createdOn: 'Created {{date}}',
+    tenantUsers: 'Users in this tenant',
+    neverLoggedIn: 'Never',
+    suspendTitle: 'Suspend account',
+    suspendHint: 'Ends every user session immediately and blocks sign-in.',
+    activateTitle: 'Reactivate account',
+    activateHint: 'Restores sign-in for every user in this tenant.',
+    status: {
+      trialing: 'Trial',
+      active: 'Active',
+      past_due: 'Past due',
+      cancelled: 'Cancelled',
+    },
   },
   notifications: {
     title: 'Notifications', markAllRead: 'Mark all read', empty: 'No notifications.',

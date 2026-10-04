@@ -102,6 +102,46 @@ class SuperAdminTest extends TestCase
         $this->assertSame(2, $stats['leads']);
     }
 
+    /**
+     * Lifetime size and recent activity are different questions, and the list
+     * has to answer both: a tenant with a thousand leads and nothing this month
+     * is the one the operator needs to see.
+     */
+    public function test_the_tenant_list_separates_lifetime_size_from_recent_activity(): void
+    {
+        $alpha = $this->provisionTenant('Alpha');
+
+        $this->asTenant($alpha['tenant'], function () {
+            Lead::create(['full_name' => 'Recent', 'phone_normalized' => '+966500000001']);
+
+            Lead::create(['full_name' => 'Old', 'phone_normalized' => '+966500000002'])
+                ->forceFill(['created_at' => now()->subDays(90)])->saveQuietly();
+        });
+
+        $row = collect(
+            $this->actingAs($this->owner)->getJson('/api/v1/super-admin/tenants')->assertOk()->json('data')
+        )->firstWhere('slug', $alpha['tenant']->slug);
+
+        $this->assertSame(2, $row['leads_count']);
+        $this->assertSame(1, $row['leads_last_30_days']);
+        $this->assertNotNull($row['last_lead_at']);
+    }
+
+    /** A trial that ends next week is the only subscription figure worth a badge. */
+    public function test_stats_count_trials_about_to_end(): void
+    {
+        $soon = $this->provisionTenant('Soon');
+        $soon['tenant']->update(['subscription_status' => 'trialing', 'trial_ends_at' => now()->addDays(3)]);
+
+        $later = $this->provisionTenant('Later');
+        $later['tenant']->update(['subscription_status' => 'trialing', 'trial_ends_at' => now()->addDays(40)]);
+
+        $stats = $this->actingAs($this->owner)->getJson('/api/v1/super-admin/stats')->assertOk()->json('data');
+
+        $this->assertSame(1, $stats['trials_ending_soon']);
+        $this->assertSame(0, $stats['suspended']);
+    }
+
     public function test_suspending_a_tenant_revokes_its_users_sessions(): void
     {
         $t = $this->provisionTenant('Suspend Me');

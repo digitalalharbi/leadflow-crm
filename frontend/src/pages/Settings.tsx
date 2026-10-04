@@ -23,7 +23,7 @@ interface SettingsResponse {
   custom_fields: CustomField[]
 }
 
-type Tab = 'branding' | 'general' | 'lostReasons' | 'customFields' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'subscription'
 
 
 export function SettingsPage() {
@@ -34,7 +34,7 @@ export function SettingsPage() {
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
-  const [tab, setTab] = useState<Tab>('branding')
+  const [tab, setTab] = useState<Tab>('general')
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['settings'],
@@ -43,7 +43,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['branding', 'general', 'lostReasons', 'customFields', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -59,17 +59,22 @@ export function SettingsPage() {
     <>
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
-      <div className="scroll-x mb-4 flex gap-1">
+      {/* A settings page is navigated, not scrolled: the sections are named
+          and switched rather than stacked into one long column. */}
+      <div className="scroll-x mb-4 flex gap-1 rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] p-1">
         {tabs.map((key) => (
           <button
             key={key}
             type="button"
+            data-testid={`settings-tab-${key}`}
+            aria-current={tab === key}
             onClick={() => setTab(key)}
             className={cn(
-              'rounded-lg px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
+              'rounded-[calc(var(--radius-control)-0.125rem)] px-3 py-1.5',
+              'text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
               tab === key
-                ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
-                : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
+                ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-card)]'
+                : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]',
             )}
           >
             {t(`settings.${key}`)}
@@ -95,6 +100,7 @@ export function SettingsPage() {
           {tab === 'general' && canManage && (
             <GeneralForm
               settings={data.settings}
+              section="general"
               onSaved={() => {
                 void queryClient.invalidateQueries({ queryKey: ['settings'] })
                 toast(t('settings.saved'), 'success')
@@ -102,8 +108,24 @@ export function SettingsPage() {
             />
           )}
 
-          {tab === 'lostReasons' && canManage && <LostReasonsPanel reasons={data.lost_reasons} />}
-          {tab === 'customFields' && canManage && <CustomFieldsPanel fields={data.custom_fields} />}
+          {tab === 'scoring' && canManage && (
+            <GeneralForm
+              settings={data.settings}
+              section="scoring"
+              onSaved={() => {
+                void queryClient.invalidateQueries({ queryKey: ['settings'] })
+                toast(t('settings.saved'), 'success')
+              }}
+            />
+          )}
+
+          {/* Lead settings: the two lists that shape how leads are recorded. */}
+          {tab === 'leads' && canManage && (
+            <div className="space-y-4">
+              <LostReasonsPanel reasons={data.lost_reasons} />
+              <CustomFieldsPanel fields={data.custom_fields} />
+            </div>
+          )}
 
           {tab === 'subscription' && (
             <Card>
@@ -270,7 +292,7 @@ function ColorInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
-          className="size-10 shrink-0 cursor-pointer rounded-lg border border-[var(--color-border-strong)] bg-transparent p-1"
+          className="size-10 shrink-0 cursor-pointer rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-transparent p-1"
         />
         <Input
           dir="ltr"
@@ -283,7 +305,20 @@ function ColorInput({
   )
 }
 
-function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved: () => void }) {
+/**
+ * Workspace basics and scoring share a form because they share one endpoint —
+ * splitting them into two requests would let a half-saved workspace end up
+ * with a currency from one submit and a threshold from another.
+ */
+function GeneralForm({
+  settings,
+  section,
+  onSaved,
+}: {
+  settings: TenantSettings
+  section: 'general' | 'scoring'
+  onSaved: () => void
+}) {
   const { t } = useTranslation()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
@@ -296,6 +331,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
     assignment_mode: settings.assignment_mode,
     score_warm_threshold: settings.score_warm_threshold,
     score_hot_threshold: settings.score_hot_threshold,
+    first_contact_target_minutes: settings.first_contact_target_minutes ?? 30,
     whatsapp_template: settings.whatsapp_template ?? '',
   })
 
@@ -307,7 +343,10 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
 
   return (
     <Card>
-      <CardHeader title={t('settings.general')} />
+      <CardHeader
+        title={t(section === 'general' ? 'settings.general' : 'settings.scoring')}
+        description={t(section === 'general' ? 'settings.generalHint' : 'settings.scoringHint')}
+      />
       <CardBody>
         <form
           onSubmit={(e) => {
@@ -316,6 +355,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
           }}
           className="space-y-4"
         >
+          {section === 'general' && (
           <div className="grid gap-4 sm:grid-cols-3">
             <Select
               label={t('settings.language')}
@@ -339,60 +379,83 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               onChange={(e) => setForm((prev) => ({ ...prev, default_country_code: e.target.value }))}
             />
           </div>
+          )}
 
           {/*
             The timezone drives how every date in the app is read. It was
             settable through the API but had no control here, so a tenant outside
             Riyadh could not correct it without a support request.
           */}
-          <Select
-            label={t('settings.timezone')}
-            value={form.timezone}
-            onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
-          >
-            {TIMEZONES.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </Select>
+          {section === 'general' && (
+            <Select
+              label={t('settings.timezone')}
+              value={form.timezone}
+              onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
+            >
+              {TIMEZONES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </Select>
+          )}
 
-          <Select
-            label={t('settings.assignmentMode')}
-            hint={t('settings.assignmentHint')}
-            value={form.assignment_mode}
-            onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
-          >
-            <option value="manual">{t('settings.manual')}</option>
-            <option value="round_robin">{t('settings.roundRobin')}</option>
-          </Select>
+          {section === 'general' ? (
+            <Select
+              label={t('settings.assignmentMode')}
+              hint={t('settings.assignmentHint')}
+              value={form.assignment_mode}
+              onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
+            >
+              <option value="manual">{t('settings.manual')}</option>
+              <option value="round_robin">{t('settings.roundRobin')}</option>
+            </Select>
+          ) : (
+            <>
+              {/*
+                The thresholds decide what "hot" means in this workspace, which
+                is the number a manager sorts by — it belongs with scoring, not
+                buried under currency and timezone.
+              */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={99}
+                  label={t('settings.warmThreshold')}
+                  value={form.score_warm_threshold}
+                  onChange={(e) => setForm((prev) => ({ ...prev, score_warm_threshold: Number(e.target.value) }))}
+                />
+                <Input
+                  type="number"
+                  min={2}
+                  max={100}
+                  label={t('settings.hotThreshold')}
+                  value={form.score_hot_threshold}
+                  onChange={(e) => setForm((prev) => ({ ...prev, score_hot_threshold: Number(e.target.value) }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  max={10_080}
+                  label={t('settings.firstContactTarget')}
+                  hint={t('settings.firstContactHint')}
+                  value={form.first_contact_target_minutes}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, first_contact_target_minutes: Number(e.target.value) }))
+                  }
+                />
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              type="number"
-              min={1}
-              max={99}
-              label={t('settings.warmThreshold')}
-              value={form.score_warm_threshold}
-              onChange={(e) => setForm((prev) => ({ ...prev, score_warm_threshold: Number(e.target.value) }))}
-            />
-            <Input
-              type="number"
-              min={2}
-              max={100}
-              label={t('settings.hotThreshold')}
-              value={form.score_hot_threshold}
-              onChange={(e) => setForm((prev) => ({ ...prev, score_hot_threshold: Number(e.target.value) }))}
-            />
-          </div>
-
-          <Textarea
-            label={t('settings.whatsappTemplate')}
-            hint={t('settings.whatsappHint')}
-            value={form.whatsapp_template}
-            onChange={(e) => setForm((prev) => ({ ...prev, whatsapp_template: e.target.value }))}
-            rows={3}
-          />
+              <Textarea
+                label={t('settings.whatsappTemplate')}
+                hint={t('settings.whatsappHint')}
+                value={form.whatsapp_template}
+                onChange={(e) => setForm((prev) => ({ ...prev, whatsapp_template: e.target.value }))}
+                rows={3}
+              />
+            </>
+          )}
 
           <div className="flex justify-end">
             <Button type="submit" loading={mutation.isPending}>{t('common.save')}</Button>
@@ -514,7 +577,7 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
                 <li key={field.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate text-[0.875rem] font-medium">{field.label}</p>
-                    <p className="text-[0.75rem] text-[var(--color-ink-subtle)]" dir="ltr">{field.key}</p>
+                    <p className="text-[0.75rem] text-[var(--color-ink-subtle)]"><bdi dir="ltr">{field.key}</bdi></p>
                   </div>
                   <Badge>{t(`settings.type${field.type[0].toUpperCase()}${field.type.slice(1)}`, { defaultValue: field.type })}</Badge>
                 </li>

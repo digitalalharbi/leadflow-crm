@@ -63,7 +63,10 @@ export default defineConfig({
   webServer: process.env.E2E_NO_SERVER
     ? undefined
     : {
-        command: 'npm run dev -- --port 5173',
+        // Bound explicitly: the base URL above is 127.0.0.1, and Vite's default
+        // host can resolve to ::1 only, which makes the whole suite fail with
+        // ERR_CONNECTION_REFUSED on a machine where that happens.
+        command: 'npm run dev -- --port 5173 --host 127.0.0.1',
         url: BASE_URL,
         reuseExistingServer: true,
         timeout: 60_000,

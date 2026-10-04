@@ -25,6 +25,21 @@ export default defineConfig({
       },
     },
   },
+  /*
+   * The same proxy for `vite preview`, so a production build can be driven
+   * against the local API exactly as the dev server is. Useful for checking the
+   * built bundle, and for running the E2E suite on a machine where the dev
+   * server's memory footprint is the thing that fails first.
+   */
+  preview: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,

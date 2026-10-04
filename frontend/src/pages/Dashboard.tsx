@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { fetchCampaignQuality } from '@/features/conversations'
-import { useAuth } from '@/stores/auth'
+import { can, useAuth } from '@/stores/auth'
 import { useApiError } from '@/hooks/useApiError'
 import { formatNumber, formatRelative } from '@/lib/format'
 import {
@@ -54,11 +54,19 @@ export function DashboardPage() {
     queryFn: () => apiGet<DashboardData>('/dashboard', filters),
   })
 
+  /*
+   * Campaign performance is reports-level data, and the endpoint enforces that.
+   * Asking for it anyway on a rep's dashboard spent a 403 on every load and
+   * then drew three cards and a link to a page they cannot open.
+   */
+  const canViewReports = can.viewReports(user)
+
   // The campaign and platform sections share one request — the same figures
   // answer both questions, and two endpoints would risk them disagreeing.
   const { data: campaigns, isLoading: campaignsLoading } = useQuery({
     queryKey: ['dashboard-campaigns', filters],
     queryFn: () => fetchCampaignQuality(filters),
+    enabled: canViewReports,
   })
 
   const today = new Date().toISOString().slice(0, 10)
@@ -201,48 +209,54 @@ export function DashboardPage() {
               <ConversionFunnel stages={data.funnel} />
             </ChartCard>
 
-            <ChartCard
-              title={t('campaignQuality.title')}
-              description={t('campaignQuality.subtitle')}
-              height={290}
-              loading={campaignsLoading}
-              empty={(campaigns?.rows.length ?? 0) === 0}
-              emptyMessage={t('campaignQuality.empty')}
-              action={
-                <Link to="/reports" className="t-caption hover:text-[var(--brand)]">
-                  {t('dashboard.viewReports')}
-                </Link>
-              }
-              testId="campaign-card"
-            >
-              <CampaignQualityChart rows={campaigns?.rows ?? []} />
-            </ChartCard>
+            {canViewReports && (
+              <ChartCard
+                title={t('campaignQuality.title')}
+                description={t('campaignQuality.subtitle')}
+                height={290}
+                loading={campaignsLoading}
+                empty={(campaigns?.rows.length ?? 0) === 0}
+                emptyMessage={t('campaignQuality.empty')}
+                action={
+                  <Link to="/reports" className="t-caption hover:text-[var(--brand)]">
+                    {t('dashboard.viewReports')}
+                  </Link>
+                }
+                testId="campaign-card"
+              >
+                <CampaignQualityChart rows={campaigns?.rows ?? []} />
+              </ChartCard>
+            )}
           </section>
 
-          <ChartCard
-            title={t('campaignQuality.matrixTitle')}
-            description={t('campaignQuality.matrixHint')}
-            height={270}
-            loading={campaignsLoading}
-            empty={(campaigns?.rows.length ?? 0) < 2}
-            emptyMessage={t('campaignQuality.needMoreCampaigns')}
-            testId="matrix-card"
-          >
-            <CampaignMatrix rows={campaigns?.rows ?? []} />
-          </ChartCard>
+          {canViewReports && (
+            <ChartCard
+              title={t('campaignQuality.matrixTitle')}
+              description={t('campaignQuality.matrixHint')}
+              height={270}
+              loading={campaignsLoading}
+              empty={(campaigns?.rows.length ?? 0) < 2}
+              emptyMessage={t('campaignQuality.needMoreCampaigns')}
+              testId="matrix-card"
+            >
+              <CampaignMatrix rows={campaigns?.rows ?? []} />
+            </ChartCard>
+          )}
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <ChartCard
-              title={t('dashboard.platformsTitle')}
-              description={t('dashboard.platformsHint')}
-              height={290}
-              loading={campaignsLoading}
-              empty={(campaigns?.rows.length ?? 0) === 0}
-              emptyMessage={t('campaignQuality.empty')}
-              testId="platforms-card"
-            >
-              <PlatformPerformanceChart rows={campaigns?.rows ?? []} />
-            </ChartCard>
+            {canViewReports && (
+              <ChartCard
+                title={t('dashboard.platformsTitle')}
+                description={t('dashboard.platformsHint')}
+                height={290}
+                loading={campaignsLoading}
+                empty={(campaigns?.rows.length ?? 0) === 0}
+                emptyMessage={t('campaignQuality.empty')}
+                testId="platforms-card"
+              >
+                <PlatformPerformanceChart rows={campaigns?.rows ?? []} />
+              </ChartCard>
+            )}
 
             <div className="grid gap-4">
               <ChartCard

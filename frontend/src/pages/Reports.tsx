@@ -306,7 +306,10 @@ function OverviewTab({
 
       {rates && (
         <Card>
-          <div className="grid divide-y divide-[var(--color-line)] sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-5 [&>div:not(:last-child)]:sm:border-e [&>div]:sm:border-[var(--color-line)]">
+          <div
+            data-testid="report-rates"
+            className="grid divide-y divide-[var(--color-line)] sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-5 [&>div:not(:last-child)]:sm:border-e [&>div]:sm:border-[var(--color-line)]"
+          >
             {([
               ['contact_rate', 'campaignQuality.contactRate'],
               ['reply_rate', 'campaignQuality.replyRate'],
@@ -434,7 +437,7 @@ function CampaignTable({ rows, loading }: { rows: Array<Record<string, never>> |
   const list = rows as Array<Record<string, string | number>>
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" data-testid="campaign-table">
       <div className="border-b border-[var(--color-line)] px-5 py-3">
         <h2 className="t-card-title">{t('reports.byCampaign')}</h2>
       </div>

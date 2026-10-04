@@ -51,7 +51,7 @@ test.describe('Lead filters', () => {
   test('the search box is a chip too, so a stale search is visible', async ({ page }) => {
     await page.getByTestId('lead-search').fill('لا-أحد-بهذا-الاسم')
 
-    await expect(page.getByText('لا نتائج مطابقة').or(page.getByText('لا يوجد عملاء محتملون'))).toBeVisible()
+    await expect(page.getByText('لا توجد نتائج مطابقة للتصفية الحالية.')).toBeVisible()
 
     await page.getByTestId('lead-search').fill('')
     await waitForLeadsTable(page)

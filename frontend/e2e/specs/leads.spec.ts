@@ -14,9 +14,14 @@ test.describe('Leads list', () => {
 
     await expect(page.locator('table tbody tr').first()).toBeVisible()
 
-    for (const header of ['الاسم', 'الجوال', 'المرحلة']) {
+    // The redesign merged phone into the identity column — a name and a number
+    // are one fact about one person, and two columns made the eye cross the
+    // table to assemble it. The number is still there, under the name.
+    for (const header of ['الاسم', 'المصدر', 'المرحلة']) {
       await expect(page.getByRole('columnheader', { name: header })).toBeVisible()
     }
+
+    await expect(page.locator('table tbody tr').first()).toContainText('+9665')
   })
 
   test('search finds a lead by name', async ({ page }) => {
@@ -49,7 +54,10 @@ test.describe('Leads list', () => {
 
     const before = await page.locator('table tbody tr').count()
 
-    await page.getByLabel('المرحلة').selectOption('won')
+    // The controls live behind the filter toggle now; the chips are what stays
+    // on screen once something is applied.
+    await page.getByTestId('toggle-filters').click()
+    await page.getByTestId('filter-status').selectOption('won')
     await waitForLeadsTable(page)
 
     await expect(async () => {
@@ -65,15 +73,16 @@ test.describe('Leads list', () => {
   test('filters combine and can be cleared', async ({ page }) => {
     await gotoLeads(page)
 
-    await page.getByLabel('المرحلة').selectOption('new')
-    await page.getByLabel('الاهتمام').selectOption('hot')
+    await page.getByTestId('toggle-filters').click()
+    await page.getByTestId('filter-status').selectOption('new')
+    await page.getByTestId('filter-temperature').selectOption('hot')
     await waitForLeadsTable(page)
 
-    await page.getByRole('button', { name: 'مسح التصفية' }).click()
+    await page.getByTestId('clear-filters').click()
     await waitForLeadsTable(page)
 
-    await expect(page.getByLabel('المرحلة')).toHaveValue('')
-    await expect(page.getByLabel('الاهتمام')).toHaveValue('')
+    await expect(page.getByTestId('filter-status')).toHaveValue('')
+    await expect(page.getByTestId('filter-temperature')).toHaveValue('')
   })
 
   test('pagination moves between pages', async ({ page }) => {

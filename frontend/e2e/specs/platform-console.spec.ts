@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { ALPHA, BETA } from '../fixtures/data'
+import { ALPHA, BETA, PASSWORD } from '../fixtures/data'
 import { authenticateAs } from '../fixtures/pages'
 import { apiLogin } from '../fixtures/api'
+import { artisan, resetFixtures } from '../fixtures/seed'
 
-const OWNER = 'owner@example.com'
+// The platform owner is not part of the tenant fixtures, so this spec makes
+// its own — the demo seeder's owner has a different password.
+const OWNER = 'owner@e2e-console.test'
 
 /**
  * The SaaS owner's console.
@@ -15,6 +18,11 @@ const OWNER = 'owner@example.com'
  * than only how many rows exist.
  */
 test.describe('Platform console', () => {
+  test.beforeAll(() => {
+    resetFixtures()
+    artisan(['leadflow:create-super-admin', `--email=${OWNER}`, `--password=${PASSWORD}`])
+  })
+
   test.beforeEach(async ({ page }) => {
     await authenticateAs(page, OWNER)
     await page.goto('/platform')

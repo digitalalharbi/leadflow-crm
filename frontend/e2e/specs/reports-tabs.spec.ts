@@ -65,8 +65,9 @@ test.describe('Reports', () => {
   test('the team report measures people without ranking them', async ({ page }) => {
     await page.getByTestId('tab-team').click()
 
-    // Every rep who owns a lead appears.
-    await expect(page.getByText(ALPHA.rep1.name)).toBeVisible()
+    // Every rep who owns a lead appears. Scoped to the table: the name is also
+    // one of the owner filter's options.
+    await expect(page.getByRole('cell', { name: ALPHA.rep1.name })).toBeVisible()
 
     // And deliberately no league position: the report is measurements, not a
     // scoreboard, and a rank column is how that turns into one.

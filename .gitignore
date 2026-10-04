@@ -51,3 +51,5 @@ Thumbs.db
 
 # Local tooling
 /.claude
+/artifacts
+/frontend/e2e/.results-visual

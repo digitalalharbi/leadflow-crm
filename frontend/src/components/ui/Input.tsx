@@ -54,9 +54,42 @@ export function Input({
   const fieldId = id ?? generated
   const errorId = `${fieldId}-error`
 
-  // Date/time pickers draw their own format hint; RTL reverses it into gibberish.
   const isDateLike =
     props.type === 'date' || props.type === 'datetime-local' || props.type === 'time'
+
+  /*
+   * An empty date field draws its own format hint, and Chromium lays that hint
+   * out as one unshaped left-to-right run per segment — so in Arabic
+   * "سنة/شهر/يوم" renders as "موي/رهش/ةنس": letters disconnected and the
+   * segments in reverse. Neither `dir` nor `lang` nor `direction: ltr` reaches
+   * it, because it lives in the field's shadow tree.
+   *
+   * So the hint is hidden while the field is empty and ours is drawn over it.
+   * A filled field is digits and renders correctly, and the native picker —
+   * the only reason to use `type="date"` rather than a text box — is untouched.
+   */
+  const placeholder = props.placeholder ?? props['aria-label']
+  const showDateHint = isDateLike && !props.value && Boolean(placeholder)
+
+  const field = (
+    <input
+      id={fieldId}
+      dir={props.dir ?? (isDateLike ? 'ltr' : undefined)}
+      data-empty={showDateHint ? '' : undefined}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? errorId : undefined}
+      className={cn(
+        fieldBase,
+        'h-10',
+        error
+          ? 'border-[var(--color-status-lost)]'
+          : 'border-[var(--color-border)] focus:border-[var(--brand)]',
+        className,
+      )}
+      {...props}
+      placeholder={isDateLike ? undefined : props.placeholder}
+    />
+  )
 
   return (
     <div className={containerClassName}>
@@ -65,21 +98,19 @@ export function Input({
           {label}
         </Label>
       )}
-      <input
-        id={fieldId}
-        dir={props.dir ?? (isDateLike ? 'ltr' : undefined)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        className={cn(
-          fieldBase,
-          'h-10',
-          error
-            ? 'border-[var(--color-status-lost)]'
-            : 'border-[var(--color-border)] focus:border-[var(--brand)]',
-          className,
-        )}
-        {...props}
-      />
+      {showDateHint ? (
+        <div className="relative">
+          {field}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-sm text-[var(--color-ink-subtle)]"
+          >
+            {placeholder}
+          </span>
+        </div>
+      ) : (
+        field
+      )}
       {error && <ErrorText id={errorId}>{error}</ErrorText>}
     </div>
   )

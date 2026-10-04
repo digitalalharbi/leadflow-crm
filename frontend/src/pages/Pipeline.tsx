@@ -156,12 +156,19 @@ export function PipelinePage() {
       {isLoading || !data ? (
         <div className="scroll-x flex gap-3 pb-3" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[28rem] w-[17rem] shrink-0" />
+            <Skeleton key={i} className="h-[28rem] w-[15.5rem] shrink-0" />
           ))}
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="scroll-x flex gap-3 pb-4">
+          {/*
+            On a phone the board is swiped one stage at a time, so it snaps:
+            without it a swipe ends wherever the finger left off and the screen
+            shows two half-columns, which reads as a broken layout rather than
+            as "there is more to the right". Above `sm` the board scrolls
+            freely, because there the point is to see several stages at once.
+          */}
+          <div className="scroll-x flex gap-3 pb-4 max-sm:snap-x max-sm:snap-mandatory">
             {data.columns.map((column) => (
               <PipelineColumn key={column.status} column={column} />
             ))}
@@ -234,6 +241,7 @@ function PipelineColumn({ column }: { column: Column }) {
         // Narrower than before: six columns at 17rem forced a scroll on a
         // 1440px screen, which defeats the one thing a board is for.
         'flex w-[15.5rem] shrink-0 flex-col rounded-[var(--radius-card)] border',
+        'max-sm:w-[min(19rem,82vw)] max-sm:snap-start',
         'bg-[var(--color-surface-muted)] transition-colors',
         isOver
           ? 'border-[var(--brand)] bg-[var(--brand-soft)]'

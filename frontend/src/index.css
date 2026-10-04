@@ -637,6 +637,17 @@
     background: transparent;
   }
 
+  /*
+   * The empty date field's own format hint — see the comment in Input.tsx.
+   * Hidden rather than recoloured, so the field keeps its height and its
+   * native picker while our readable hint is drawn over it.
+   */
+  input[type='date'][data-empty]::-webkit-datetime-edit,
+  input[type='datetime-local'][data-empty]::-webkit-datetime-edit,
+  input[type='time'][data-empty]::-webkit-datetime-edit {
+    opacity: 0;
+  }
+
   /* Press feedback. Two pixels of travel is the difference between a button
      that responds and one that merely changes colour. */
   .pressable {

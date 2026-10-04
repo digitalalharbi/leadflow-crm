@@ -220,6 +220,10 @@ export function Topbar() {
             type="button"
             onClick={toggle}
             data-testid="account-menu"
+            /* The name is the label on a wide screen and hidden on a phone, where
+               the avatar beside it is decorative — so below `sm` this button had
+               no accessible name at all. */
+            aria-label={user?.name ?? t('nav.profile')}
             className="flex items-center gap-2 rounded-[var(--radius-control)] p-1 ps-2 hover:bg-[var(--color-surface-sunken)]"
           >
             <span className="hidden text-[0.8125rem] font-medium sm:block">{user?.name}</span>

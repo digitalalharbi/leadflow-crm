@@ -81,6 +81,7 @@ export function Sidebar() {
 
           <button
             type="button"
+            aria-label={t('common.close')}
             className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >

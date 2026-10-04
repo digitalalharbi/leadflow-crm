@@ -47,6 +47,13 @@ without re-reading the diff.
 | **Reports**: five tabs, one filter set, lost-reason bars, sales-team table | `frontend/src/pages/Reports.tsx`, `charts/LostReasonsChart.tsx` |
 | Sales-team report API (measurements, not a ranking) | `backend/.../SalesPerformanceController::salesTeam` |
 | **Pipeline** card slimmed to what decides the next move | `frontend/src/pages/Pipeline.tsx` |
+| **Follow-ups** as a work queue, due-time block leading each row | `frontend/src/pages/FollowUps.tsx` |
+| **Projects** as business units with funnel metrics | `frontend/src/pages/Projects.tsx`, `ProjectController::index` |
+| **Integrations** hub with provider marks of our own | `frontend/src/pages/Integrations.tsx`, `components/integrations/ProviderMark.tsx` |
+| **Users** identified in one cell, measured by outcome | `frontend/src/pages/Users.tsx` |
+| **Settings** split into five sections by what is configured | `frontend/src/pages/Settings.tsx` |
+| **Platform console** on its own chrome, with subscription + usage | `frontend/src/pages/Platform.tsx`, `AppShell.tsx`, `index.css` |
+| Icon set drawn from the mark (favicon, pinned tab, touch icon) | `frontend/public/` |
 
 ## Remaining
 
@@ -55,18 +62,18 @@ tokens is not enough. Open each in the browser and look at it.
 
 - [x] Leads
 - [x] Lead Detail
-- [x] Pipeline — card done; column headers and the mobile board still to review
-- [ ] Follow-ups
-- [ ] Projects
+- [x] Pipeline
+- [x] Follow-ups
+- [x] Projects
 - [x] Reports (tabs: overview / campaigns / platforms / sales team / lost reasons)
-- [ ] Integrations
-- [ ] Users
-- [ ] Settings (split into sections, not one long page)
-- [ ] Super Admin
+- [x] Integrations
+- [x] Users
+- [x] Settings (split into sections, not one long page)
+- [x] Super Admin — own chrome, subscription + 30-day usage, tenant panel
 
 Then:
 
-- [ ] Favicon from the brand mark; tenant favicon still overrides
+- [x] Favicon from the brand mark; tenant favicon still overrides
 - [ ] Mobile review, per page, at 375px
 - [ ] RTL review, per page
 - [ ] Dark mode review, per page
@@ -96,7 +103,7 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 ## Test baseline
 
-**334 backend · 35 frontend unit · 91 Playwright.** None of these may regress.
+**336 backend · 39 frontend unit · 91 Playwright.** None of these may regress.
 
 ## Visual bugs found and fixed so far
 
@@ -118,3 +125,12 @@ the reason the brief asks for the browser pass.
 6. Campaign bubbles in the matrix all clustered, because demo campaigns were
    assigned at random and so converted identically. Campaigns now carry a
    quality weight and are picked by how far the lead got.
+7. An email or a slug set under an Arabic name carried `dir="ltr"` on the block
+   itself, which moves the block's *alignment* to the far side as well as its
+   character order — so every such pair sat ragged. The Latin run is isolated
+   with `<bdi>` instead. Hit Users, Platform, Settings and Reports.
+8. The title and favicon were only written when a tenant had branding of their
+   own, so a branded customer's identity survived into the next session's tab.
+   Both are now written on every change, falling back to the platform's.
+9. `public/icons.svg` — a sheet of unrelated social-network marks from the Vite
+   scaffold — had been shipping to production since the first commit.

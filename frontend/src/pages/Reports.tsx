@@ -315,7 +315,7 @@ function OverviewTab({
               ['win_rate', 'campaignQuality.winRate'],
             ] as const).map(([key, label]) => (
               <div key={key} className="px-5 py-4">
-                <p className="t-metric-sm" dir="ltr">{rates[key]}%</p>
+                <p className="t-metric-sm"><bdi dir="ltr">{rates[key]}%</bdi></p>
                 <p className="t-caption mt-0.5">{t(label)}</p>
               </div>
             ))}

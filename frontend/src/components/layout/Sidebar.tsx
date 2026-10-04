@@ -89,6 +89,17 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+          {/*
+           * The console says so in words as well as in colour. Colour alone is
+           * the kind of cue that stops working on the day it matters — a tired
+           * operator, a projector, a screenshot pasted into a ticket.
+           */}
+          {isSuperAdmin && (
+            <p className="label-caps px-3 pb-2 text-[var(--color-ink-subtle)]">
+              {t('nav.platformConsole')}
+            </p>
+          )}
+
           {items
             .filter((item) => item.visible)
             .map(({ to, labelKey, Icon, badge }) => (

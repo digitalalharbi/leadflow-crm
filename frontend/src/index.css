@@ -370,6 +370,56 @@
   }
 
   /*
+   * Platform console chrome.
+   *
+   * The SaaS owner's console and a customer's workspace run the same shell, and
+   * confusing the two is the most expensive mistake available in this product —
+   * suspending an account believing you are editing your own. So the chrome
+   * changes material entirely: the navigation and the top bar sit on ink in
+   * both themes, which no tenant workspace ever does.
+   *
+   * It is done by re-pointing surface tokens inside the chrome rather than by
+   * restyling its children, so every control keeps its own rules and simply
+   * resolves them against a dark surface.
+   */
+  [data-console='platform'] .app-sidebar,
+  [data-console='platform'] > div > header {
+    /*
+     * Deliberately below the page in BOTH themes: in light mode that is an
+     * unmissable change of material, and in dark mode — where the workspace
+     * sidebar is lighter than the page — it is the opposite relationship, so
+     * the console never resolves to the same picture as a workspace.
+     */
+    --color-surface: #060b14;
+    --color-surface-raised: #121a28;
+    --color-surface-muted: #0b1220;
+    --color-surface-sunken: #161f2e;
+    --color-border: color-mix(in srgb, #ffffff 14%, transparent);
+    --color-line: color-mix(in srgb, #ffffff 9%, transparent);
+    --color-ink: #eceff4;
+    --color-ink-muted: #9aa5b8;
+    --color-ink-subtle: #6b7688;
+    --color-ink-inverted: #060b14;
+    --brand-soft: color-mix(in srgb, var(--brand) 22%, #060b14);
+    color: var(--color-ink);
+  }
+
+  [data-console='platform'] .app-sidebar {
+    background: var(--color-surface);
+    /* A live edge of the platform's own colour, so the boundary is read as
+       intentional rather than as a sidebar that failed to paint. */
+    box-shadow: inset -1px 0 0 0 var(--brand);
+  }
+
+  [dir='rtl'] [data-console='platform'] .app-sidebar {
+    box-shadow: inset 1px 0 0 0 var(--brand);
+  }
+
+  [data-console='platform'] > div > header {
+    background-color: color-mix(in srgb, #060b14 86%, transparent);
+  }
+
+  /*
    * Frosted chrome for anything that floats over content. The fallback matters:
    * without backdrop-filter a translucent bar becomes unreadable text on top of
    * whatever is scrolling underneath.

@@ -575,7 +575,7 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
                 <li key={field.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate text-[0.875rem] font-medium">{field.label}</p>
-                    <p className="text-[0.75rem] text-[var(--color-ink-subtle)]" dir="ltr">{field.key}</p>
+                    <p className="text-[0.75rem] text-[var(--color-ink-subtle)]"><bdi dir="ltr">{field.key}</bdi></p>
                   </div>
                   <Badge>{t(`settings.type${field.type[0].toUpperCase()}${field.type.slice(1)}`, { defaultValue: field.type })}</Badge>
                 </li>

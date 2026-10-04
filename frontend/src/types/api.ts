@@ -413,6 +413,9 @@ export interface TenantSummary {
   is_active: boolean
   users_count: number | null
   leads_count: number | null
+  /** Inbound over the last 30 days — size tells you nothing about activity. */
+  leads_last_30_days: number | null
+  last_lead_at: string | null
   created_at: string
 }
 

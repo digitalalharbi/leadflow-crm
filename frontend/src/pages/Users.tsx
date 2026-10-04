@@ -165,8 +165,11 @@ export function UsersPage() {
                           <span className="t-caption ms-2 font-normal">({t('nav.profile')})</span>
                         )}
                       </span>
-                      <span className="t-caption block truncate text-[0.75rem]" dir="ltr">
-                        {user.email}
+                      {/* The email keeps Latin order but not Latin
+                          alignment — `dir` on the block itself would pull it to
+                          the far side and leave a ragged gap under the name. */}
+                      <span className="t-caption block truncate text-[0.75rem]">
+                        <bdi dir="ltr">{user.email}</bdi>
                       </span>
                     </Td>
                     <Td>{t(`roles.${user.role}`)}</Td>

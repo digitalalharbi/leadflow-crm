@@ -110,8 +110,19 @@ jobs:
           if [ -z "$VPS_HOST" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::notice title=Deployment skipped::VPS secrets are not configured. See EXTERNAL_SETUP.md."
+            {
+              echo "## ⚠️ Nothing was deployed"
+              echo ""
+              echo "Every test passed, but \`VPS_HOST\` is not set, so the deploy steps were"
+              echo "skipped and **production is still running the previous build**."
+              echo ""
+              echo "This job is green because the code is good, not because it shipped."
+              echo ""
+              echo "Run \`./scripts/check-deploy-readiness.sh\` to see exactly what is missing."
+            } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "### Deploying to production" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Set up the SSH key

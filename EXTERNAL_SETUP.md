@@ -5,6 +5,22 @@ the product: the application, its tests and its deployment pipeline are complete
 and working without any of it. Each item below says exactly what changes once it
 is filled in.
 
+**Start here:**
+
+```bash
+./scripts/check-deploy-readiness.sh
+```
+
+It reports which secrets and variables exist, which are missing, and the exact
+command for each — without printing any value. Run it again after each change.
+
+> **Why a green deploy job can still mean nothing shipped.** The deploy
+> workflows are deliberately written to *skip* rather than fail when the server
+> is not configured, so that pull requests are never blocked by missing
+> infrastructure. A "Deploy staging" run therefore reports success whether it
+> deployed or did nothing. Its run summary now says which happened, and the
+> script above answers it before you push.
+
 ---
 
 ## 1. GitHub — done

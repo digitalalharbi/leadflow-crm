@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
+import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { useApiError } from '@/hooks/useApiError'
 import { formatNumber, formatRelative } from '@/lib/format'
 import {
@@ -193,6 +194,13 @@ export function DashboardPage() {
               testId="kpi-won"
             />
           </section>
+
+          {/*
+            A brand-new workspace has nothing to show, so the first thing an
+            admin sees should be what to do about that. The checklist takes
+            itself off the page for good once the five steps are done.
+          */}
+          <OnboardingChecklist />
 
           {/* What has to happen today, and what is already late. */}
           <TodayStrip data={data} today={today} />

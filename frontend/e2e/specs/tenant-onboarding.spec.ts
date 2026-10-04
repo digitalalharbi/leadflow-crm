@@ -113,13 +113,14 @@ test.describe('Tenant onboarding', () => {
     await signInAs(page, adminEmail)
     await page.goto('/settings')
 
+    // Identity and workspace basics are separate sections now.
+    await page.getByTestId('settings-tab-branding').click()
     await page.getByLabel('اللون الأساسي').fill(colour)
     await page.getByLabel('بريد الدعم').fill(`support@${slug}.test`)
     await page.getByRole('button', { name: 'حفظ' }).first().click()
     await expect(page.getByText('تم الحفظ.')).toBeVisible()
 
-    await page.goto('/settings')
-    await page.getByRole('button', { name: 'عام' }).click()
+    await page.getByTestId('settings-tab-general').click()
     await page.getByLabel('العملة').fill('AED')
     await page.getByLabel('المنطقة الزمنية').selectOption('Asia/Dubai')
     await page.getByRole('button', { name: 'حفظ' }).first().click()

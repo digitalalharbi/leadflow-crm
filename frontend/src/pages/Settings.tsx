@@ -66,6 +66,8 @@ export function SettingsPage() {
           <button
             key={key}
             type="button"
+            data-testid={`settings-tab-${key}`}
+            aria-current={tab === key}
             onClick={() => setTab(key)}
             className={cn(
               'rounded-[calc(var(--radius-control)-0.125rem)] px-3 py-1.5',

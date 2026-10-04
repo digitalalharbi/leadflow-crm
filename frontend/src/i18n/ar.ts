@@ -105,6 +105,7 @@ export default {
     noLeadsYet: 'لا توجد بيانات في هذه الفترة',
     noOpenLeads: 'لا يوجد عملاء مفتوحون',
     viewReports: 'التقارير',
+    analytics: 'التحليلات',
 
     awaitingContact: 'لم يتم التواصل',
     awaitingContactList: 'لم يتم التواصل معهم خلال {{minutes}} دقيقة',

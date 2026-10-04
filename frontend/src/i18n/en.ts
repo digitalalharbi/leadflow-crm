@@ -54,6 +54,7 @@ export default {
     noLeadsYet: 'No data in this period',
     noOpenLeads: 'No open leads',
     viewReports: 'Reports',
+    analytics: 'Analytics',
 
     awaitingContact: 'Not contacted',
     awaitingContactList: 'Nobody has answered these in {{minutes}} minutes',

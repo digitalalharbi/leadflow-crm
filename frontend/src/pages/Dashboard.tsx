@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle, CalendarCheck, CalendarClock, Flame, PhoneOff, Target, UserPlus,
+  AlertTriangle, CalendarCheck, CalendarClock, ChevronDown, Flame, PhoneOff, Target, UserPlus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
@@ -11,6 +11,7 @@ import { can, useAuth } from '@/stores/auth'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDue, formatNumber } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import {
   Card, ErrorState, PageHeader, Select, Skeleton, SkeletonCards, StatusBadge, TemperatureBadge,
 } from '@/components/ui'
@@ -69,6 +70,10 @@ export function DashboardPage() {
     queryFn: () => fetchCampaignQuality(filters),
     enabled: canViewReports,
   })
+
+  // Open by default: on a wide screen the class that hides it never applies,
+  // so this only decides what a phone shows before the first tap.
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
   const today = new Date().toISOString().slice(0, 10)
   const comparison = data?.comparison ?? null
@@ -205,6 +210,31 @@ export function DashboardPage() {
           {/* What has to happen today, and what is already late. */}
           <TodayStrip data={data} today={today} />
 
+          {/*
+            The six analytics cards stack to roughly sixteen screens on a phone,
+            which buries the two lists at the bottom that a rep actually opens
+            the app for. They are the manager's half of this page, so below `sm`
+            they fold behind one tap; from `sm` up the page is unchanged.
+          */}
+          <button
+            type="button"
+            onClick={() => setAnalyticsOpen((open) => !open)}
+            aria-expanded={analyticsOpen}
+            data-testid="toggle-analytics"
+            className={cn(
+              'pressable flex w-full items-center justify-between gap-2 sm:hidden',
+              'rounded-[var(--radius-card)] border border-[var(--color-line)]',
+              'bg-[var(--color-surface)] px-4 py-3 text-[0.8125rem] font-medium',
+            )}
+          >
+            {t('dashboard.analytics')}
+            <ChevronDown
+              className={cn('size-4 transition-transform', analyticsOpen && 'rotate-180')}
+              aria-hidden
+            />
+          </button>
+
+          <div className={cn('space-y-4', !analyticsOpen && 'max-sm:hidden')}>
           <section className="grid gap-4 lg:grid-cols-2">
             <ChartCard
               title={t('dashboard.funnelTitle')}
@@ -300,6 +330,7 @@ export function DashboardPage() {
               </ChartCard>
             </div>
           </section>
+          </div>
 
           <section className="grid gap-4 lg:grid-cols-2">
             <LeadMiniList

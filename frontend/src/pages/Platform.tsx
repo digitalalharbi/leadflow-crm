@@ -228,6 +228,7 @@ export function PlatformPage() {
               className="ps-9"
               placeholder={t('superAdmin.searchPlaceholder')}
               aria-label={t('superAdmin.searchPlaceholder')}
+              data-testid="tenant-search"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)

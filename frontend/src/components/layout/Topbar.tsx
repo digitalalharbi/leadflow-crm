@@ -117,6 +117,7 @@ export function Topbar() {
             {(['system', 'light', 'dark'] as const).map((option) => (
               <DropdownItem
                 key={option}
+                testId={`appearance-${option}`}
                 onClick={() => {
                   setAppearance(option)
                   close()

@@ -138,12 +138,12 @@ test.describe('Lead assignment', () => {
 
     await signInAs(page, ALPHA.rep1.email)
     await page.goto('/leads')
-    await page.getByPlaceholder('بحث…').fill(LEADS.assign)
+    await page.getByTestId('lead-search').fill(LEADS.assign)
     await expect(page.getByRole('link', { name: LEADS.assign })).toBeVisible()
 
     await signInAs(page, ALPHA.rep2.email)
     await page.goto('/leads')
-    await page.getByPlaceholder('بحث…').fill(LEADS.assign)
+    await page.getByTestId('lead-search').fill(LEADS.assign)
     await expect(page.getByText('لا توجد نتائج مطابقة للتصفية الحالية.')).toBeVisible()
   })
 

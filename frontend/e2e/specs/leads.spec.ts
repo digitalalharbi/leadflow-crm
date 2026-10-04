@@ -21,7 +21,7 @@ test.describe('Leads list', () => {
 
   test('search finds a lead by name', async ({ page }) => {
     await gotoLeads(page)
-    await page.getByPlaceholder('بحث…').fill(LEADS.search)
+    await page.getByTestId('lead-search').fill(LEADS.search)
 
     await expect(page.getByRole('link', { name: LEADS.search })).toBeVisible()
     await expect(page.locator('table tbody tr')).toHaveCount(1)
@@ -30,14 +30,14 @@ test.describe('Leads list', () => {
   test('search finds a lead by a locally formatted phone number', async ({ page }) => {
     // Stored as +966500000001; a rep types what the customer told them.
     await gotoLeads(page)
-    await page.getByPlaceholder('بحث…').fill('0500000001')
+    await page.getByTestId('lead-search').fill('0500000001')
 
     await expect(page.getByRole('link', { name: LEADS.search })).toBeVisible()
   })
 
   test('a search with no matches explains itself', async ({ page }) => {
     await gotoLeads(page)
-    await page.getByPlaceholder('بحث…').fill('لا-يوجد-عميل-بهذا-الاسم-إطلاقاً')
+    await page.getByTestId('lead-search').fill('لا-يوجد-عميل-بهذا-الاسم-إطلاقاً')
 
     await expect(page.getByText('لا توجد نتائج مطابقة للتصفية الحالية.')).toBeVisible()
     // The filter bar and the empty state each offer a way out; assert on both.
@@ -108,7 +108,7 @@ test.describe('Leads list', () => {
 
     await expect(page.getByText('تمت إضافة العميل.')).toBeVisible()
 
-    await page.getByPlaceholder('بحث…').fill(name)
+    await page.getByTestId('lead-search').fill(name)
     await expect(page.getByRole('link', { name })).toBeVisible()
   })
 
@@ -151,7 +151,7 @@ test.describe('Leads list', () => {
     await expect(page.locator('table tbody tr')).toHaveCount(REP1_LEAD_COUNT)
 
     // And the other rep's leads are not reachable by searching for them either.
-    await page.getByPlaceholder('بحث…').fill('عميل المندوب الثاني')
+    await page.getByTestId('lead-search').fill('عميل المندوب الثاني')
     await expect(page.getByText('لا توجد نتائج مطابقة للتصفية الحالية.')).toBeVisible()
   })
 })

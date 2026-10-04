@@ -55,7 +55,7 @@ test.describe('Mobile layout', () => {
 
   test('a lead can be worked from the phone', async ({ page }) => {
     await page.goto('/leads')
-    await page.getByPlaceholder('بحث…').fill(LEADS.activity)
+    await page.getByTestId('lead-search').fill(LEADS.activity)
     await page.getByRole('link', { name: LEADS.activity }).click()
 
     // Every quick action is reachable without scrolling into the page body.

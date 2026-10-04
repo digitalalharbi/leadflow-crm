@@ -81,7 +81,7 @@ export async function waitForLeadsTable(page: Page) {
 
 export async function openLeadByName(page: Page, name: string) {
   await gotoLeads(page)
-  await page.getByPlaceholder('بحث…').fill(name)
+  await page.getByTestId('lead-search').fill(name)
   await expect(page.getByRole('link', { name })).toBeVisible()
   await page.getByRole('link', { name }).click()
   await expect(page.getByRole('heading', { name })).toBeVisible()

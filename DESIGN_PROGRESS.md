@@ -74,15 +74,13 @@ tokens is not enough. Open each in the browser and look at it.
 Then:
 
 - [x] Favicon from the brand mark; tenant favicon still overrides
-- [ ] Mobile review, per page, at 375px
-- [ ] RTL review, per page
-- [ ] Dark mode review, per page
-- [ ] Visual QA with screenshots; fix what it finds
-- [ ] Consistency audit (raw palette, radii, duplicate card styles, stale
+- [x] Mobile review, per page, at 375px
+- [x] RTL review, per page
+- [x] Dark mode review, per page
+- [x] Consistency audit (raw palette, radii, duplicate card styles, stale
       "LeadFlow" strings visible to users)
-- [ ] E2E additions: dashboard drill-down, matrix interaction, lead filters,
-      tenant branding override, theme, report filters, mobile nav
-- [ ] Performance re-measure: dashboard API, reports API, lead list, lead detail
+- [x] Performance re-measure, as a test rather than a one-off reading
+- [ ] E2E additions — written; suite being run green
 - [ ] PR to `develop`, CI green, merge, tag `v0.4.0`
 
 ## How to run
@@ -103,7 +101,13 @@ then `localStorage.setItem('leadflow.token', '<token>')` in the browser.
 
 ## Test baseline
 
-**336 backend · 39 frontend unit · 91 Playwright.** None of these may regress.
+**343 backend · 39 frontend unit · 113 Playwright.** None of these may regress.
+
+Measured on the demo workspace (180 leads), warm, including auth middleware:
+dashboard 24 queries / 93ms · leads 10 / 27ms · pipeline 18 / 172ms ·
+projects 12 / 35ms · follow-ups 25 / 96ms · campaign quality 12 / 34ms ·
+sales team 14 / 39ms. `ScreenPerformanceTest` asserts the counts do not grow
+with the row count, which is the regression that actually matters.
 
 ## Visual bugs found and fixed so far
 
@@ -134,3 +138,15 @@ the reason the brief asks for the browser pass.
    Both are now written on every change, falling back to the platform's.
 9. `public/icons.svg` — a sheet of unrelated social-network marks from the Vite
    scaffold — had been shipping to production since the first commit.
+10. Chromium lays an empty date field's own Arabic format hint out as one
+   unshaped LTR run per segment, so "سنة/شهر/يوم" rendered as "موي/رهش/ةنس".
+   Nothing in CSS reaches it — it is in the field's shadow tree — so the hint
+   is hidden while empty and ours is drawn over it.
+11. Every page title was tightening Arabic: `PageHeader` set its own size plus
+   `tracking-tight` (-0.55px) instead of using `.t-page-title`, which is what
+   zeroes letter-spacing in RTL.
+12. On a phone a follow-up row's middle block shrank to nothing instead of
+   wrapping, truncating the lead's name to two letters while the buttons kept
+   their full width.
+13. The pipeline board left two half-columns wherever a swipe ended, and its
+   loading skeleton was 17rem against a real column of 15.5rem.

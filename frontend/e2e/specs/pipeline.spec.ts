@@ -87,7 +87,7 @@ test.describe('Pipeline', () => {
 
     // 4. …and the move is on the lead's timeline.
     await page.goto('/leads')
-    await page.getByPlaceholder('بحث…').fill(LEADS.drag)
+    await page.getByTestId('lead-search').fill(LEADS.drag)
     await page.getByRole('link', { name: LEADS.drag }).click()
 
     await expect(page.getByTestId('activity-timeline').getByText(/→\s*تم التواصل/)).toBeVisible()

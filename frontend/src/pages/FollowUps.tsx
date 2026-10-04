@@ -194,7 +194,13 @@ export function FollowUpsPage() {
                     </span>
                   </div>
 
-                  <div className="min-w-0 flex-1">
+                  {/*
+                    `min-w-0 flex-1` alone let this block shrink to nothing on a
+                    phone instead of wrapping, so the name — the thing you act
+                    on — was truncated to two letters while the buttons kept
+                    their full width. A floor makes it wrap the row instead.
+                  */}
+                  <div className="min-w-[9rem] flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {followUp.lead ? (
                         <Link
@@ -226,7 +232,7 @@ export function FollowUpsPage() {
                     )}
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex shrink-0 items-center gap-1.5 max-sm:w-full max-sm:justify-end">
                     {followUp.lead?.phone && (
                       <a
                         href={`tel:${followUp.lead.phone}`}

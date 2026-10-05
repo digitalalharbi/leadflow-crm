@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
+use App\Listeners\RunAutomationRules;
 use App\Models\FollowUp;
 use App\Models\Import;
 use App\Models\Integration;
@@ -23,6 +25,7 @@ use App\Support\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -36,6 +39,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        /*
+         * One listener for every lead event. Registered on the *interface*:
+         * Laravel resolves listeners through interfaces but not through parent
+         * classes, so binding to the abstract base would catch nothing and do
+         * it silently — the hardest kind of bug to notice in an automation
+         * product. This way a new event type is wired up by implementing it.
+         */
+        Event::listen(LeadDomainEvent::class, RunAutomationRules::class);
+
         // Mass-assignment protection stays on; we also fail loudly in dev when a
         // relation is accessed without eager loading, so N+1s never reach staging.
         Model::preventLazyLoading(! $this->app->isProduction());

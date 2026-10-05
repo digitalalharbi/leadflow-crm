@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Events\Contracts\LeadDomainEvent;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -19,7 +20,7 @@ use Illuminate\Queue\SerializesModels;
  * later: "assigned by round robin", "stage changed by rule #4", "replied on
  * WhatsApp". Never put a credential or a message body in it.
  */
-abstract class LeadEvent
+abstract class LeadEvent implements LeadDomainEvent
 {
     use Dispatchable, SerializesModels;
 
@@ -37,5 +38,10 @@ abstract class LeadEvent
     public function tenantId(): int
     {
         return $this->lead->tenant_id;
+    }
+
+    public function lead(): Lead
+    {
+        return $this->lead;
     }
 }

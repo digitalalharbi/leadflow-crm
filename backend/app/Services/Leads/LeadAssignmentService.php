@@ -18,11 +18,35 @@ class LeadAssignmentService
      * Pick the next sales user for a tenant. Manual mode returns null — the lead
      * lands unassigned in the queue and a manager distributes it.
      */
+    /**
+     * The tenant's default policy for a lead arriving with nobody named on it.
+     * Honours `assignment_mode`, so a workspace that wants to triage by hand
+     * keeps doing that.
+     */
     public function pickAssignee(Tenant $tenant): ?User
     {
         $settings = $tenant->settings;
 
         if (! $settings || $settings->assignment_mode !== 'round_robin') {
+            return null;
+        }
+
+        return $this->roundRobin($tenant);
+    }
+
+    /**
+     * Round robin regardless of the tenant's default mode.
+     *
+     * An automation rule that says "assign" is an instruction, not a
+     * preference: letting `assignment_mode: manual` veto it would mean a rule
+     * the tenant wrote themselves silently does nothing, which is the worst
+     * failure an automation product has.
+     */
+    public function roundRobin(Tenant $tenant): ?User
+    {
+        $settings = $tenant->settings;
+
+        if (! $settings) {
             return null;
         }
 

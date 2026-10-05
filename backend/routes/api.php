@@ -139,6 +139,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/data-quality', DataQualityController::class);
 
             // "Does any of this actually work for us?" — the first-day question.
+            Route::get('/onboarding/checklist', [TestLeadController::class, 'checklist']);
             Route::post('/onboarding/test-lead', [TestLeadController::class, 'store']);
             Route::get('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'show']);
             Route::delete('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'destroy']);
@@ -222,7 +223,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/settings', [SettingsController::class, 'show']);
             Route::patch('/settings/branding', [SettingsController::class, 'updateBranding']);
             Route::patch('/settings', [SettingsController::class, 'updateSettings']);
-            Route::post('/settings/onboarding', [SettingsController::class, 'completeOnboardingStep']);
             Route::post('/settings/lost-reasons', [SettingsController::class, 'storeLostReason']);
             Route::patch('/settings/lost-reasons/{uuid}', [SettingsController::class, 'updateLostReason']);
             Route::post('/settings/custom-fields', [SettingsController::class, 'storeCustomField']);

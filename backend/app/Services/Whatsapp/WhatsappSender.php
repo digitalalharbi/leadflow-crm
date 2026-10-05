@@ -6,6 +6,7 @@ use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
+use App\Jobs\RetryWhatsappMessage;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Models\User;
@@ -30,6 +31,7 @@ class WhatsappSender
         private WhatsappManager $manager,
         private PhoneNormalizer $phones,
         private ActivityLogger $activities,
+        private FailureClassifier $failures,
     ) {}
 
     /**
@@ -99,6 +101,19 @@ class WhatsappSender
                 'failure_reason' => $result->failureReason,
                 'provider_payload' => $result->payload ?: null,
             ])->save();
+
+            /*
+             * Only when trying again could plausibly work. An invalid number
+             * does not become valid, and a rejected template is not approved by
+             * asking again — retrying either is how a customer receives the
+             * same message five times.
+             *
+             * The rep sees "failed" either way and can retry by hand; this is
+             * about the sends nobody is watching, which is most of them.
+             */
+            if ($this->failures->isTransient($result->failureCode)) {
+                RetryWhatsappMessage::dispatch($message->id)->delay(now()->addSeconds(30));
+            }
 
             return $message;
         }

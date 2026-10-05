@@ -201,6 +201,23 @@ class AutomationRuleController extends Controller
             // rule somebody will believe is working.
             'actions' => [$required, 'array', 'min:1', 'max:10'],
             'actions.*.type' => ['required', Rule::in(self::ACTIONS)],
+
+            /*
+             * An action also has to carry what it needs to do anything.
+             *
+             * The closed list above checks that an action *exists*; it said
+             * nothing about its parameters, and a `schedule_follow_up` with no
+             * delay — or a `change_stage` with no stage — saved cleanly and
+             * then failed every time it ran, in a trace nobody reads until
+             * somebody complains. That is the same silent-configuration bug the
+             * closed vocabulary exists to prevent, one level down.
+             */
+            'actions.*.status' => ['required_if:actions.*.type,change_stage', Rule::in(LeadStatus::values())],
+            'actions.*.by' => ['required_if:actions.*.type,adjust_score', 'integer', 'not_in:0'],
+            'actions.*.tag' => ['required_if:actions.*.type,add_tag', 'string', 'max:60'],
+            'actions.*.body' => ['required_if:actions.*.type,add_note', 'string', 'max:2000'],
+            'actions.*.audience' => ['required_if:actions.*.type,notify', Rule::in(['owner', 'managers'])],
+            'actions.*.in_hours' => ['required_if:actions.*.type,schedule_follow_up', 'integer', 'min:1', 'max:8760'],
         ]);
     }
 

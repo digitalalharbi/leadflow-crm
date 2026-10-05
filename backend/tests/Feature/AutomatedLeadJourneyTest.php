@@ -93,8 +93,9 @@ class AutomatedLeadJourneyTest extends TestCase
             $this->assertNotNull($applied, 'The matching rule did not apply.');
 
             $descriptions = collect($applied->applied_actions)->pluck('description')->implode(' | ');
-            $this->assertStringContainsString('Assigned to', $descriptions);
-            $this->assertStringContainsString('Follow-up scheduled', $descriptions);
+            // The trace is prose a manager reads, so it is in their language.
+            $this->assertStringContainsString('أُسند إلى', $descriptions);
+            $this->assertStringContainsString('حُدِّدت متابعة', $descriptions);
         });
     }
 }

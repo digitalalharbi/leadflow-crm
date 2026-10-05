@@ -111,7 +111,8 @@ class AutomationEngineTest extends TestCase
             $this->assertSame('applied', $run->outcome);
             $this->assertSame('schedule_follow_up', $run->applied_actions[0]['type']);
             $this->assertTrue($run->applied_actions[0]['ok']);
-            $this->assertStringContainsString('Follow-up scheduled', $run->applied_actions[0]['description']);
+            // Arabic, because the manager reading the trace reads Arabic.
+            $this->assertStringContainsString('حُدِّدت متابعة', $run->applied_actions[0]['description']);
         });
     }
 

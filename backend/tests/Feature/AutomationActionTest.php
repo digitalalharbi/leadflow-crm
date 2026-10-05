@@ -92,7 +92,7 @@ class AutomationActionTest extends TestCase
         $result = $this->fire($lead, ['type' => 'notify', 'audience' => 'owner']);
 
         $this->assertFalse($result['ok']);
-        $this->assertStringContainsString('no owner', strtolower($result['description']));
+        $this->assertStringContainsString('لا مسؤول', $result['description']);
         Notification::assertNothingSent();
     }
 

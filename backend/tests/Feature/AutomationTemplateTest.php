@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Automation\ActionExecutor;
 use App\Domain\Automation\RuleTemplates;
 use App\Models\AutomationRule;
+use App\Models\Lead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -71,6 +73,45 @@ class AutomationTemplateTest extends TestCase
      * somebody clicks a card messages real customers before anyone has read
      * what it does.
      */
+    /**
+     * Validation is not enough. A template can pass every check above and still
+     * do nothing when it runs: the executor read `in_minutes` while the
+     * templates and the builder both wrote `in_hours`, so every rule that
+     * scheduled a follow-up reported a failure into a trace nobody reads.
+     *
+     * This runs each template's actions for real and insists every one of them
+     * reports success. It is the only test here that would have caught it.
+     */
+    #[DataProvider('templateKeys')]
+    public function test_every_action_in_a_template_actually_works(string $key): void
+    {
+        // Somebody to assign to: "no rep available" is a correct report, not a
+        // broken action, and a workspace with no sales team is not the case
+        // this test is about.
+        $this->makeUser($this->t['tenant']);
+
+        $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create([
+            'full_name' => 'عميل القالب',
+            'phone_normalized' => '+9665009'.random_int(10000, 99999),
+            'status' => 'new',
+            'assigned_to' => $this->t['admin']->id,
+        ]));
+
+        $executor = app(ActionExecutor::class);
+
+        foreach (RuleTemplates::get($key)['actions'] as $action) {
+            $result = $this->asTenant(
+                $this->t['tenant'],
+                fn () => $executor->execute($lead->fresh(), $action),
+            );
+
+            $this->assertTrue(
+                $result['ok'],
+                "{$key}: action '{$action['type']}' reported — {$result['description']}",
+            );
+        }
+    }
+
     public function test_an_installed_template_does_not_start_running(): void
     {
         $this->actingAs($this->t['admin'])

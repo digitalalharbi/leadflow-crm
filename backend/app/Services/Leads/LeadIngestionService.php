@@ -6,6 +6,7 @@ use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
+use App\Events\LeadCreated;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
@@ -143,7 +144,19 @@ class LeadIngestionService
             $this->assignment->assign($lead, $assignee);
         }
 
-        return IngestionResult::created($lead->refresh());
+        $lead->refresh();
+
+        /*
+         * Announced after the lead is saved and assigned, never before: a rule
+         * that reads `is_assigned` must see the finished record, and a listener
+         * that fails must not be able to roll back the lead itself.
+         */
+        LeadCreated::dispatch($lead, null, [
+            'provider' => $incoming->provider->value,
+            'platform' => (string) $incoming->platform,
+        ]);
+
+        return IngestionResult::created($lead);
     }
 
     /**

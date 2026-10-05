@@ -35,7 +35,6 @@ describe('auth store', () => {
     useAuth.setState({
       user: null,
       branding: null,
-      onboarding: null,
       isSuperAdmin: false,
       status: 'idle',
     })

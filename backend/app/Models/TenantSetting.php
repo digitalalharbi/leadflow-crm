@@ -22,7 +22,6 @@ class TenantSetting extends Model
     protected function casts(): array
     {
         return [
-            'onboarding' => 'array',
             'round_robin_cursor' => 'integer',
             'score_warm_threshold' => 'integer',
             'score_hot_threshold' => 'integer',

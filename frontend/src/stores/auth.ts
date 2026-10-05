@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { apiGet, apiPost, tokenStorage } from '@/lib/api'
-import type { Branding, OnboardingState, User } from '@/types/api'
+import type { Branding, User } from '@/types/api'
 
 interface LoginResponse {
   token: string
@@ -12,7 +12,6 @@ interface LoginResponse {
 interface AuthState {
   user: User | null
   branding: Branding | null
-  onboarding: OnboardingState | null
   isSuperAdmin: boolean
   /** True outside production: enables the sales-demo helpers. */
   demoMode: boolean
@@ -22,14 +21,12 @@ interface AuthState {
   logout: () => Promise<void>
   restore: () => Promise<void>
   setBranding: (branding: Branding) => void
-  setOnboarding: (onboarding: OnboardingState) => void
   reset: () => void
 }
 
 export const useAuth = create<AuthState>((set) => ({
   user: null,
   branding: null,
-  onboarding: null,
   isSuperAdmin: false,
   demoMode: false,
   status: 'idle',
@@ -56,7 +53,7 @@ export const useAuth = create<AuthState>((set) => ({
 
     tokenStorage.clear()
     set({
-      user: null, branding: null, onboarding: null,
+      user: null, branding: null,
       isSuperAdmin: false, demoMode: false, status: 'anonymous',
     })
   },
@@ -75,14 +72,12 @@ export const useAuth = create<AuthState>((set) => ({
         user: User
         branding: Branding | null
         is_super_admin: boolean
-        onboarding: OnboardingState | null
-        demo_mode: boolean
+              demo_mode: boolean
       }>('/auth/me')
 
       set({
         user: data.user,
         branding: data.branding,
-        onboarding: data.onboarding,
         isSuperAdmin: data.is_super_admin,
         demoMode: data.demo_mode,
         status: 'authenticated',
@@ -94,11 +89,10 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   setBranding: (branding) => set({ branding }),
-  setOnboarding: (onboarding) => set({ onboarding }),
   reset: () => {
     tokenStorage.clear()
     set({
-      user: null, branding: null, onboarding: null,
+      user: null, branding: null,
       isSuperAdmin: false, demoMode: false, status: 'anonymous',
     })
   },

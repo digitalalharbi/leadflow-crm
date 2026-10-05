@@ -39,6 +39,14 @@ class FollowUpController extends Controller
             'overdue' => $query->overdue()->orderBy('due_at'),
             'upcoming' => $query->upcoming()->orderBy('due_at'),
             'completed' => $query->where('status', FollowUp::COMPLETED)->orderByDesc('completed_at'),
+            /*
+             * Steps that were never carried out: cancelled, or belonging to a
+             * lead that closed while the step was still open. Separate from
+             * "overdue", which is work still waiting — this is work that will
+             * never happen now, and a manager counting missed calls wants the
+             * second number, not the first.
+             */
+            'missed' => $query->where('status', FollowUp::CANCELLED)->orderByDesc('due_at'),
             'all' => $query->orderBy('due_at'),
             default => $query->dueToday()->orderBy('due_at'),
         };

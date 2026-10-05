@@ -1,67 +1,80 @@
-# Next session — resume here
+# Next session — مهتم
 
-Branch: `feature/mahtam-brand-analytics`
-Last commit: `5548a47` — "feat: pipeline cards carry only what decides the next move"
-Base: `develop`. **Do not tag, merge, or cut a beta.** `v0.4.0` ships only when
-the whole scope in `DESIGN_PROGRESS.md` is done.
+Updated 2026-10-05. Written at a usage-limit stop, so it records state rather
+than conclusions.
 
-Read `DESIGN_PROGRESS.md` first — it holds the decisions that should not be
-revisited (brand colour, mark, chart-palette independence, Arabic typography
-rules). Do not re-derive them.
+## Exact state
 
-## Start here
+| Branch / PR | State |
+|---|---|
+| `develop` | #15–#19, **#21** merged. Automation engine + rules API are in. |
+| PR #20 `feature/next-best-action` | **Open, green before the last push.** Conflicted twice with `develop` on `backend/routes/api.php`; both resolved by keeping both additive route groups. Last push adds the second merge commit — **re-check CI, then squash-merge.** |
+| PR #22 (to open) `feature/sales-workspace` | Pushed, **PR not yet opened.** Branches from `feature/next-best-action`, so open it against `develop` only after #20 merges. |
 
-**Pipeline — finish it.** The lead card is done. Still to do:
-- Column headers: stage name + count, with the stage colour from
-  `STATUS_COLOR` in `components/charts/palette.ts`.
-- The board at 375px: it should scroll horizontally, not stack.
+Backend suite on the merged `feature/next-best-action`: **433 passed, 1588
+assertions.** Frontend typecheck and lint clean on `feature/sales-workspace`.
 
-## Then, in order
+## Two findings from looking at /work in a browser
 
-1. **Follow-ups** — a daily work queue. Tabs: today / upcoming / overdue /
-   completed. Highlight late without flooding the page red. Quick complete and
-   outcome should be one interaction.
-2. **Projects** — not CRUD cards. Each project is a business unit: leads,
-   qualified, qualification rate, appointments, won, plus a mini conversion
-   visualisation. Reuse `DistributionBar` or `ConversionFunnel` rather than
-   inventing a chart.
-3. **Integrations** — provider cards with status (connected / needs setup /
-   error) and last sync. The WhatsApp card already exists and is good; the
-   others are a tile grid that needs the same treatment.
-4. **Users** — system-user management, not HR: name, role, assigned leads,
-   qualified, won, status. `/reports/sales-team` already returns per-user
-   counts and can feed it.
-5. **Settings** — split the single long page into sections: general, branding,
-   lead settings, scoring, notifications, integrations.
-6. **Super Admin** — platform console; keep it visually distinct from a tenant
-   workspace.
+Tests were green for both. Only opening the page showed them.
 
-## Then the passes
+### 1. Fixed — arrival time rendered as a bare clock
 
-- **Favicon** from the brand mark (`components/brand/BrandMark.tsx`), with the
-  tenant's favicon still overriding. `useBrandingTheme` already swaps the link
-  element — the default needs to become the Mahtam mark rather than Vite's.
-- Mobile (375px), RTL and dark review, per page.
-- Visual QA with Playwright screenshots into `artifacts/visual-review/`.
-- Consistency audit: raw palette classes, radii, duplicate card styles, stale
-  user-visible "LeadFlow" strings.
-- E2E additions: dashboard drill-down, matrix interaction, lead filters, tenant
-  branding override, theme toggle, report filters, mobile nav.
-- Performance re-measure (`php artisan leadflow:measure`), then PR, CI, merge,
-  tag `v0.4.0`.
+The card read "وصل 13:30", which in a sentence beginning "arrived" reads as a
+duration or a count. `formatLastSeen` exists in `frontend/src/lib/format.ts`
+for exactly this and documents the trap in its own comment; `Work.tsx` now
+uses it instead of `formatRelative`.
 
-## Running it
+### 2. Open — the reason and the status badge contradict each other
 
-```bash
-cd backend && php artisan serve --port=8000
-cd frontend && npm run dev -- --port 5173
-```
+On `/work` the card showed the badge **"تم التواصل"** (contacted) directly
+above the reason **"عميل جديد. تبقّى 29 دقيقة على هدف أول تواصل."** (new lead).
+A rep who sees that trusts neither.
 
-Demo tenant `rawasi` has the rich data. To view a page without the login form:
+Cause, confirmed in the database: the E2E fixture lead has
+`status = contacted` with `first_contact_at = NULL` — a state the real
+`logContact` flow cannot produce, because it sets both. The badge reads
+`status`; `NextBestAction` reads `first_contact_at`. Each is correct about the
+field it reads.
 
-```bash
-php artisan tinker --execute="echo App\Models\User::where('email','admin@rawasi.test')->first()->createToken('preview')->plainTextToken;"
-```
+Two separate things to fix, and they are not the same fix:
 
-then in the browser console:
-`localStorage.setItem('leadflow.token', '<token>')`
+- **`database/seeders/E2ESeeder.php`** creates the impossible state. E2E is
+  therefore asserting behaviour against data production cannot produce.
+- **`backend/app/Domain/Leads/NextBestAction.php`** should not be *able* to
+  contradict the badge. Treat a lead as uncontacted only when
+  `first_contact_at` is null **and** the status is still `new`. Then the two
+  cannot disagree regardless of what any seeder writes.
+
+Do the second one even after fixing the seeder. Fixing only the fixture hides
+the class of bug rather than closing it.
+
+### 3. Open — Arabic plural agreement in counts
+
+`work.remaining` renders "بقي 33 عميل في قائمتك". Arabic tamyiz wants
+**عميلًا** for 11–99. i18next plural categories for `ar` are not wired for
+these keys. Affects the new `work.*` strings and is worth a sweep of the
+existing count strings at the same time.
+
+## Then continue the Gap Matrix
+
+P1 remaining: offline conversions, cost-per-qualified-lead / ROAS (blocked on
+ad-spend ingestion), integration health centre, realtime, data-quality
+dashboard, global search / command palette, onboarding wizard + test lead.
+P2: AI assist, calendar sync, extended providers.
+
+A rules-builder UI on top of the #21 API is the natural next frontend piece —
+`GET /automation/schema` exists precisely so the builder cannot offer anything
+the API would refuse.
+
+## Still blocked on you (unchanged)
+
+Deployment cannot proceed past this point without:
+
+1. **Server IP** and the **SSH user** to deploy as.
+2. A **deploy SSH key you generate** — do not paste the private key into the
+   chat; add it to the server's `authorized_keys` and to the GitHub secret.
+3. The five GitHub Actions secrets named in `EXTERNAL_SETUP.md`.
+
+Nothing else is waiting on external input. `scripts/check-deploy-readiness.sh`
+prints which are missing by name and never prints a value.

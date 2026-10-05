@@ -19,7 +19,7 @@ class AutomationRule extends Model
     use BelongsToTenant, HasUuid, SoftDeletes;
 
     protected $fillable = [
-        'name', 'trigger', 'is_enabled', 'priority',
+        'name', 'trigger', 'template_key', 'is_enabled', 'priority',
         'stops_processing', 'conditions', 'actions', 'created_by',
     ];
 

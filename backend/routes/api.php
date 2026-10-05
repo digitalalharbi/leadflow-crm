@@ -134,6 +134,8 @@ Route::prefix('v1')->group(function () {
 
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);
+            Route::get('/automation/templates', [AutomationRuleController::class, 'templates']);
+            Route::post('/automation/templates/{key}', [AutomationRuleController::class, 'installTemplate']);
             Route::get('/automation/rules', [AutomationRuleController::class, 'index']);
             Route::post('/automation/rules', [AutomationRuleController::class, 'store']);
             Route::patch('/automation/rules/{uuid}', [AutomationRuleController::class, 'update']);

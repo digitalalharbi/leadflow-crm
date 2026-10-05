@@ -4,9 +4,11 @@ namespace App\Domain\Automation;
 
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
+use App\Enums\Role;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
+use App\Notifications\AutomationNotification;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Services\Leads\LeadScoringService;
@@ -47,6 +49,8 @@ class ActionExecutor
                 'add_tag' => $this->addTag($lead, $action),
                 'schedule_follow_up' => $this->scheduleFollowUp($lead, $action),
                 'add_note' => $this->addNote($lead, $action),
+                'notify' => $this->notify($lead, $action),
+                'stop_follow_ups' => $this->stopFollowUps($lead),
                 default => ['ok' => false, 'description' => "Unknown action '{$type}' — nothing was done."],
             };
         } catch (\Throwable $e) {
@@ -176,5 +180,64 @@ class ActionExecutor
         $this->activities->log($lead, ActivityType::NoteAdded, null, $body, ['by' => 'automation']);
 
         return ['ok' => true, 'description' => 'Note added.'];
+    }
+
+    /**
+     * Tells a person, not a channel.
+     *
+     * "owner" is the rep carrying the lead and "managers" is everyone who can
+     * see the whole workspace. A rule that notifies an unassigned lead's owner
+     * reports that it could not rather than silently notifying nobody — the
+     * failure mode this is guarding against is a workspace believing it is
+     * being alerted when it is not.
+     */
+    private function notify(Lead $lead, array $action): array
+    {
+        $audience = (string) ($action['audience'] ?? 'owner');
+        $message = trim((string) ($action['message'] ?? ''))
+            ?: "يحتاج {$lead->full_name} إلى متابعة.";
+        $ruleName = (string) ($action['rule_name'] ?? 'قاعدة تلقائية');
+
+        $recipients = match ($audience) {
+            'managers' => User::where('tenant_id', $lead->tenant_id)
+                ->whereIn('role', [Role::Admin->value, Role::Manager->value])
+                ->where('is_active', true)
+                ->get(),
+            default => $lead->assigned_to
+                ? User::where('id', $lead->assigned_to)->where('is_active', true)->get()
+                : collect(),
+        };
+
+        if ($recipients->isEmpty()) {
+            return ['ok' => false, 'description' => $audience === 'owner'
+                ? 'No notification sent: the lead has no owner.'
+                : 'No notification sent: nobody in that audience is active.'];
+        }
+
+        foreach ($recipients as $recipient) {
+            $recipient->notify(new AutomationNotification($lead, $message, $ruleName));
+        }
+
+        return ['ok' => true, 'description' => 'Notified '.$recipients->count().' '.
+            ($audience === 'managers' ? 'manager(s).' : 'owner.')];
+    }
+
+    /**
+     * Closes the open steps on a lead that is finished.
+     *
+     * The action exists because the alternative is a workspace whose reps are
+     * reminded for weeks to chase customers who already bought or already said
+     * no. Nothing else in the product cancels a step automatically, so a rule
+     * is the only way a workspace can express "stop".
+     */
+    private function stopFollowUps(Lead $lead): array
+    {
+        $cancelled = FollowUp::where('lead_id', $lead->id)
+            ->where('status', FollowUp::PENDING)
+            ->update(['status' => FollowUp::CANCELLED]);
+
+        return $cancelled === 0
+            ? ['ok' => true, 'description' => 'No open follow-ups to stop.']
+            : ['ok' => true, 'description' => "Stopped {$cancelled} open follow-up(s)."];
     }
 }

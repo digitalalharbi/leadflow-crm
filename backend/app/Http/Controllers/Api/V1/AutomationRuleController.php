@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Automation\ConditionEvaluator;
+use App\Domain\Automation\RuleTemplates;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationRule;
@@ -46,7 +47,7 @@ class AutomationRuleController extends Controller
 
     private const ACTIONS = [
         'assign', 'change_stage', 'adjust_score', 'add_tag',
-        'schedule_follow_up', 'add_note',
+        'schedule_follow_up', 'add_note', 'notify', 'stop_follow_ups',
     ];
 
     public function index(Request $request)
@@ -183,7 +184,15 @@ class AutomationRuleController extends Controller
             'priority' => ['sometimes', 'integer', 'min:1', 'max:1000'],
             'stops_processing' => ['sometimes', 'boolean'],
 
-            'conditions' => [$required, 'array', 'max:20'],
+            /*
+             * `present`, not `required`: Laravel's `required` rejects an empty
+             * array, which made "when a lead is won, stop chasing it" — a rule
+             * with a trigger and no conditions — impossible to create. That is
+             * the simplest and most useful kind of rule there is. The field
+             * must still be sent, so a client that forgets it is corrected
+             * rather than silently given a rule that fires on everything.
+             */
+            'conditions' => $partial ? ['sometimes', 'array', 'max:20'] : ['present', 'array', 'max:20'],
             'conditions.*.field' => ['required', Rule::in(self::FIELDS)],
             'conditions.*.operator' => ['required', Rule::in(self::OPERATORS)],
             'conditions.*.value' => ['nullable'],
@@ -211,5 +220,72 @@ class AutomationRuleController extends Controller
             'runs_count' => $rule->runs_count ?? null,
             'created_at' => $rule->created_at?->toIso8601String(),
         ];
+    }
+
+    /** The starting points, with what each one would do spelled out. */
+    public function templates()
+    {
+        $this->authorize('viewAny', AutomationRule::class);
+
+        $installed = AutomationRule::query()->pluck('template_key')->filter()->all();
+
+        return ApiResponse::success([
+            'templates' => array_map(fn (array $template) => $template + [
+                'installed' => in_array($template['key'], $installed, true),
+            ], RuleTemplates::all()),
+        ]);
+    }
+
+    /**
+     * Installs a template as an ordinary rule.
+     *
+     * It is created disabled. A rule that starts running the moment somebody
+     * clicks a card in a gallery is a rule that messages real customers before
+     * anyone has read what it does — the workspace turns it on once it has
+     * looked, which is also when `preview` is useful.
+     */
+    public function installTemplate(Request $request, string $key)
+    {
+        $this->authorize('create', AutomationRule::class);
+
+        if (! RuleTemplates::has($key)) {
+            return ApiResponse::error('لا يوجد قالب بهذا الاسم.', status: 404);
+        }
+
+        $template = RuleTemplates::get($key);
+
+        $existing = AutomationRule::where('template_key', $key)->first();
+
+        if ($existing) {
+            return ApiResponse::error('هذا القالب مُضاف بالفعل.', status: 422);
+        }
+
+        $rule = AutomationRule::create([
+            'name' => $template['name'],
+            'trigger' => $template['trigger'],
+            'priority' => $template['priority'],
+            'conditions' => $template['conditions'],
+            'actions' => $this->stampRuleName($template['actions'], $template['name']),
+            'is_enabled' => false,
+            'template_key' => $key,
+            'created_by' => $request->user()->id,
+        ]);
+
+        return ApiResponse::success(['rule' => $this->present($rule)], status: 201);
+    }
+
+    /**
+     * Notifications carry the rule's name so a recipient can find what sent it.
+     * Stamped at install rather than read at send time, so renaming a rule does
+     * not rewrite the history of messages already delivered under the old name.
+     */
+    private function stampRuleName(array $actions, string $ruleName): array
+    {
+        return array_map(
+            fn (array $action) => ($action['type'] ?? '') === 'notify'
+                ? $action + ['rule_name' => $ruleName]
+                : $action,
+            $actions,
+        );
     }
 }

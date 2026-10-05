@@ -61,8 +61,14 @@ class FollowUpTest extends TestCase
 
     public function test_buckets_separate_overdue_today_and_upcoming(): void
     {
+        // Pinned to mid-morning. "Later today" written as `now()->addHours(2)`
+        // lands tomorrow whenever the suite runs after 22:00, which moved that
+        // follow-up into "upcoming" and failed this test for two hours of every
+        // day — on CI, at 23:43 UTC, for a commit that touched no PHP at all.
+        $this->travelTo(now()->startOfDay()->addHours(9));
+
         $this->makeFollowUp(now()->subDays(2));
-        $this->makeFollowUp(now()->addHours(2));   // later today, whatever hour it is
+        $this->makeFollowUp(now()->addHours(2));   // genuinely later the same day
         $this->makeFollowUp(now()->addDays(3));
 
         $counts = $this->actingAs($this->t['admin'])->getJson('/api/v1/follow-ups/counts')->json('data');
@@ -77,6 +83,10 @@ class FollowUpTest extends TestCase
 
     public function test_the_three_buckets_are_disjoint_and_cover_everything(): void
     {
+        // Pinned for the same reason as the test above: both ends of "today" have
+        // to stay inside it, and -2h/+2h only do that away from midnight.
+        $this->travelTo(now()->startOfDay()->addHours(9));
+
         // A follow-up due earlier today is overdue, not "today" — otherwise it is
         // counted twice and the figures stop matching the work.
         $this->makeFollowUp(now()->subHours(2));          // earlier today

@@ -43,6 +43,45 @@ class WorkQueueTest extends TestCase
         });
     }
 
+    /**
+     * Skipping has to actually move on. Without the server honouring `skip`,
+     * the screen re-serves the lead the rep just passed over and the button
+     * looks broken while behaving exactly as written.
+     */
+    public function test_a_skipped_lead_is_not_offered_again(): void
+    {
+        $first = $this->lead(['score' => 90], ageMinutes: 300);
+        $second = $this->lead(['score' => 10], ageMinutes: 200);
+
+        $top = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/work/next')->assertOk()->json('data.lead.id');
+
+        $next = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/work/next?skip[]='.$top)->assertOk()->json('data.lead.id');
+
+        $this->assertNotSame($top, $next);
+        $this->assertContains($next, [$first->uuid, $second->uuid]);
+
+        // Skipping every candidate empties the queue rather than looping.
+        $empty = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/work/next?skip[]='.$first->uuid.'&skip[]='.$second->uuid)
+            ->assertOk()->json('data');
+
+        $this->assertNull($empty['lead']);
+    }
+
+    /** A skip list is client-supplied, so it is filtered before it reaches SQL. */
+    public function test_a_malformed_skip_list_is_ignored_rather_than_failing(): void
+    {
+        $lead = $this->lead(['score' => 50], ageMinutes: 300);
+
+        $body = $this->actingAs($this->t['admin'])
+            ->getJson("/api/v1/work/next?skip[]=' or 1=1 --&skip[]=12345")
+            ->assertOk()->json('data');
+
+        $this->assertSame($lead->uuid, $body['lead']['id']);
+    }
+
     public function test_an_empty_queue_says_so_rather_than_erroring(): void
     {
         $body = $this->actingAs($this->t['admin'])

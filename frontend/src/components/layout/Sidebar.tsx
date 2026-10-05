@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Plug, Settings,
-  ShieldCheck, Users2, CalendarClock, Contact2, X,
+  ShieldCheck, Target, Users2, CalendarClock, Contact2, X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -40,6 +40,12 @@ export function Sidebar() {
     ? [{ to: '/platform', labelKey: 'nav.superAdmin', Icon: ShieldCheck, visible: true }]
     : [
         { to: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard, visible: true },
+        /*
+         * Directly under the dashboard, above the lead list. A rep who opens
+         * the list first starts by choosing; this screen is the one that tells
+         * them, so it comes first.
+         */
+        { to: '/work', labelKey: 'nav.work', Icon: Target, visible: true },
         { to: '/leads', labelKey: 'nav.leads', Icon: Contact2, visible: true },
         { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3, visible: true },
         {

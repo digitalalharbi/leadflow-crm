@@ -24,10 +24,14 @@ export const PRIMARY = 'var(--brand)'
 export const STATUS_COLOR: Record<string, string> = {
   new: 'var(--color-status-new)',
   contacted: 'var(--color-status-contacted)',
+  replied: 'var(--color-status-replied)',
   qualified: 'var(--color-status-qualified)',
   appointment: 'var(--color-status-appointment)',
+  negotiation: 'var(--color-status-negotiation)',
   won: 'var(--color-status-won)',
   lost: 'var(--color-status-lost)',
+  invalid: 'var(--color-status-invalid)',
+  no_response: 'var(--color-status-no_response)',
 }
 
 export const TEMPERATURE_COLOR: Record<string, string> = {

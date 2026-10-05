@@ -15,7 +15,16 @@ export interface PaginationMeta {
   to: number | null
 }
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'appointment' | 'won' | 'lost'
+/*
+ * The pipeline stages, then the two outcomes a lead exits through. `invalid`
+ * and `no_response` are deliberately not board columns: nothing is waiting in
+ * them, so offering them as a drop target would invite someone to treat an exit
+ * as progress.
+ */
+export type LeadStatus =
+  | 'new' | 'contacted' | 'replied' | 'qualified' | 'appointment' | 'negotiation'
+  | 'won' | 'lost'
+  | 'invalid' | 'no_response'
 export type LeadTemperature = 'hot' | 'warm' | 'cold'
 export type UserRole = 'super_admin' | 'admin' | 'manager' | 'sales'
 

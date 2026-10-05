@@ -53,3 +53,6 @@ Thumbs.db
 /.claude
 /artifacts
 /frontend/e2e/.results-visual
+
+# Written inside the image at build time; never from the host.
+.release

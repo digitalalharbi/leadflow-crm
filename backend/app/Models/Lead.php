@@ -112,6 +112,11 @@ class Lead extends Model
         return $this->hasMany(FollowUp::class);
     }
 
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class)->orderBy('scheduled_at');
+    }
+
     public function sourceEvents(): HasMany
     {
         return $this->hasMany(LeadSourceEvent::class)->latest('received_at');

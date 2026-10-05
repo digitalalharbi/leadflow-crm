@@ -98,7 +98,7 @@ class AutomationEngine
             $rule,
             $event,
             $failed ? 'failed' : 'applied',
-            $failed ? 'One or more actions did not complete.' : null,
+            $failed ? 'لم يكتمل تنفيذ إجراء واحد أو أكثر.' : null,
             $applied,
             $correlation,
             $startedAt,

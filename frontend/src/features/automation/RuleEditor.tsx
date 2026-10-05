@@ -19,6 +19,30 @@ import type { AutomationRule, AutomationSchema, RuleAction, RuleCondition } from
  * text box next to "between" is a question with no right answer.
  */
 
+/**
+ * What each action needs in order to do anything, seeded when it is chosen.
+ *
+ * The detail inputs below *display* a sensible default, but a displayed default
+ * is not a stored one: a rule saved without touching the select would carry no
+ * audience and no stage at all. The API now refuses that outright rather than
+ * saving a rule that fails on every run, so the editor has to put the value in
+ * the rule when the action is picked — not when somebody happens to change it.
+ */
+const ACTION_DEFAULTS: Record<string, Record<string, unknown>> = {
+  assign: { strategy: 'round_robin' },
+  change_stage: { status: 'contacted' },
+  adjust_score: { by: 10 },
+  schedule_follow_up: { in_hours: 24 },
+  add_tag: { tag: '' },
+  add_note: { body: '' },
+  notify: { audience: 'owner', message: '' },
+  stop_follow_ups: {},
+}
+
+function withDefaults(type: string): RuleAction {
+  return { type, ...ACTION_DEFAULTS[type] }
+}
+
 /** Operators that need no value at all. */
 const VALUELESS = new Set(['exists', 'not_exists'])
 
@@ -40,14 +64,26 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const [trigger, setTrigger] = useState(rule?.trigger ?? schema.triggers[0])
   const [priority, setPriority] = useState(String(rule?.priority ?? 100))
   const [conditions, setConditions] = useState<RuleCondition[]>(rule?.conditions ?? [])
-  const [actions, setActions] = useState<RuleAction[]>(rule?.actions ?? [{ type: schema.actions[0] }])
+  const [actions, setActions] = useState<RuleAction[]>(
+    rule?.actions ?? [withDefaults(schema.actions[0])],
+  )
 
   function patchCondition(index: number, patch: Partial<RuleCondition>) {
     setConditions((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
   }
 
   function patchAction(index: number, patch: Partial<RuleAction>) {
-    setActions((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)))
+    setActions((prev) =>
+      prev.map((action, i) => {
+        if (i !== index) return action
+
+        // Changing the action replaces it rather than merging, so a stage left
+        // over from "change_stage" does not ride along inside a "notify".
+        return typeof patch.type === 'string' && patch.type !== action.type
+          ? withDefaults(patch.type)
+          : { ...action, ...patch }
+      }),
+    )
   }
 
   function submit() {
@@ -198,7 +234,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
               variant="ghost"
               icon={<Plus className="size-4" aria-hidden />}
               data-testid="add-action"
-              onClick={() => setActions((prev) => [...prev, { type: schema.actions[0] }])}
+              onClick={() => setActions((prev) => [...prev, withDefaults(schema.actions[0])])}
             >
               {t('automation.addAction')}
             </Button>

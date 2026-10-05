@@ -21,6 +21,7 @@ import {
 } from '@/components/ui'
 import type { LeadStatus, LeadTemperature } from '@/types/api'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
+import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
 import { platformColor } from '@/components/charts'
 import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
@@ -477,6 +478,19 @@ export function LeadDetailPage() {
           <Card>
             <CardHeader title={t('leads.timeline_')} />
             <LeadTimeline activities={activities} />
+          </Card>
+
+          {/*
+            Below the human timeline, not inside it. What a rep did and what a
+            rule did are different kinds of fact, and interleaving them makes
+            the automation look like somebody's work.
+          */}
+          <Card>
+            <CardHeader
+              title={t('automation.trace.title')}
+              description={t('automation.trace.description')}
+            />
+            <AutomationTrace leadId={lead.id} />
           </Card>
         </div>
 

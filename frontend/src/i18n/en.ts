@@ -104,6 +104,17 @@ export default {
     },
   },
   automation: {
+    trace: {
+      title: 'What automation did',
+      description: 'Every rule considered for this lead, and why it applied or did not.',
+      empty: 'No rule has acted on this lead yet.',
+      deletedRule: 'Deleted rule',
+      outcome: {
+        applied: 'Applied',
+        skipped: 'Did not apply',
+        failed: 'Failed',
+      },
+    },
     title: 'Automation',
     subtitle: 'Let the system act instead of someone remembering',
     newRule: 'New rule',

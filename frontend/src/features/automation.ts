@@ -60,14 +60,28 @@ export interface RulePreview {
   examples: { id: string; full_name: string; status: string | null }[]
 }
 
+export interface AppliedAction {
+  ok: boolean
+  type: string
+  description: string
+}
+
 export interface AutomationRun {
-  id: string
-  rule: string | null
+  id: number
+  rule: { id: string; name: string } | null
   trigger: string
   outcome: 'applied' | 'skipped' | 'failed'
   reason: string | null
-  applied_actions: string[]
-  created_at: string
+  /**
+   * What each action did, as the executor reported it. Objects, not strings:
+   * the backend returns `{ok, type, description}` so the trace can show the
+   * prose and still mark a step that failed. A declared `string[]` here type
+   * checked perfectly and crashed the component at runtime.
+   */
+  applied_actions: AppliedAction[] | null
+  correlation_id: string | null
+  duration_ms: number | null
+  created_at: string | null
 }
 
 export function fetchSchema() {

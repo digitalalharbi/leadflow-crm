@@ -18,9 +18,14 @@ use Illuminate\Support\Carbon;
  * Carries out what a rule decided.
  *
  * Each action returns a short, human sentence describing what it did, and that
- * sentence is what the trace shows — "assigned to نورة الشمري", not
+ * sentence is what the trace shows — "أُسند إلى نورة الشمري", not
  * `{"action":"assign","user_id":42}`. The person reading a trace is usually a
  * manager asking why a customer got a message, so the record has to be prose.
+ *
+ * In Arabic, because that is the language of the product and of the person
+ * reading it. These strings went out in English first and looked perfectly
+ * reasonable in a test assertion; on the lead screen, under an Arabic heading,
+ * "Score 38 → 53." is the sentence a Saudi sales manager is left to interpret.
  *
  * An action that cannot be carried out is reported, not thrown: one broken
  * action must not abandon the rest of the rule, and must never lose the lead.
@@ -51,11 +56,11 @@ class ActionExecutor
                 'add_note' => $this->addNote($lead, $action),
                 'notify' => $this->notify($lead, $action),
                 'stop_follow_ups' => $this->stopFollowUps($lead),
-                default => ['ok' => false, 'description' => "Unknown action '{$type}' — nothing was done."],
+                default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
         } catch (\Throwable $e) {
             // The message, never the trace: a rule's failure is shown in the UI.
-            return ['ok' => false, 'description' => "Action '{$type}' failed: ".$e->getMessage()];
+            return ['ok' => false, 'description' => "فشل الإجراء '{$type}': ".$e->getMessage()];
         }
     }
 
@@ -69,18 +74,18 @@ class ActionExecutor
         };
 
         if (! $user) {
-            return ['ok' => false, 'description' => 'No eligible salesperson was available to assign.'];
+            return ['ok' => false, 'description' => 'لا يوجد مندوب متاح للإسناد.'];
         }
 
         // Never reassign a lead someone is already working: automation that
         // moves work out from under a rep is worse than no automation.
         if ($lead->assigned_to !== null) {
-            return ['ok' => true, 'description' => "Already assigned to {$lead->assignee?->name}; left alone."];
+            return ['ok' => true, 'description' => "العميل مُسند بالفعل إلى {$lead->assignee?->name} — لم يُغيَّر."];
         }
 
         $this->assignment->assign($lead, $user, null, true);
 
-        return ['ok' => true, 'description' => "Assigned to {$user->name}."];
+        return ['ok' => true, 'description' => "أُسند إلى {$user->name}."];
     }
 
     private function changeStage(Lead $lead, array $action): array
@@ -88,11 +93,11 @@ class ActionExecutor
         $to = LeadStatus::tryFrom((string) ($action['status'] ?? ''));
 
         if (! $to) {
-            return ['ok' => false, 'description' => 'That stage does not exist.'];
+            return ['ok' => false, 'description' => 'هذه المرحلة غير موجودة.'];
         }
 
         if ($lead->status === $to) {
-            return ['ok' => true, 'description' => "Already at {$to->value}."];
+            return ['ok' => true, 'description' => "العميل في مرحلة {$to->value} أصلًا."];
         }
 
         $from = $lead->status;
@@ -101,7 +106,7 @@ class ActionExecutor
             "من {$from->value} إلى {$to->value}",
             ['from' => $from->value, 'to' => $to->value, 'by' => 'automation']);
 
-        return ['ok' => true, 'description' => "Stage moved from {$from->value} to {$to->value}."];
+        return ['ok' => true, 'description' => "نُقل من {$from->value} إلى {$to->value}."];
     }
 
     private function adjustScore(Lead $lead, array $action): array
@@ -109,7 +114,7 @@ class ActionExecutor
         $by = (int) ($action['by'] ?? 0);
 
         if ($by === 0) {
-            return ['ok' => false, 'description' => 'No score change was specified.'];
+            return ['ok' => false, 'description' => 'لم يُحدَّد مقدار التغيير في التقييم.'];
         }
 
         // Clamped, so a rule cannot drive a lead to 900 or below zero.
@@ -119,7 +124,7 @@ class ActionExecutor
         $lead->forceFill(['score' => $after])->save();
         $this->scoring->apply($lead);
 
-        return ['ok' => true, 'description' => "Score {$before} → {$after}."];
+        return ['ok' => true, 'description' => "التقييم {$before} ← {$after}."];
     }
 
     private function addTag(Lead $lead, array $action): array
@@ -127,21 +132,31 @@ class ActionExecutor
         $tag = trim((string) ($action['tag'] ?? ''));
 
         if ($tag === '') {
-            return ['ok' => false, 'description' => 'No tag was specified.'];
+            return ['ok' => false, 'description' => 'لم يُحدَّد وسم.'];
         }
 
         $this->activities->log($lead, ActivityType::NoteAdded, null,
             "وسم آلي: {$tag}", ['tag' => $tag, 'by' => 'automation']);
 
-        return ['ok' => true, 'description' => "Tagged '{$tag}'."];
+        return ['ok' => true, 'description' => "أُضيف الوسم '{$tag}'."];
     }
 
     private function scheduleFollowUp(Lead $lead, array $action): array
     {
-        $minutes = (int) ($action['in_minutes'] ?? 0);
+        /*
+         * Hours or minutes. The builder and the templates both speak in hours,
+         * because a manager thinks "follow up in two days", not "in 2880
+         * minutes" — and for a while they wrote `in_hours` while this read only
+         * `in_minutes`, so every rule that scheduled a follow-up reported a
+         * failure nobody was looking at. Both are accepted now, and the
+         * validator refuses a rule carrying neither, so the mismatch cannot
+         * come back as silence.
+         */
+        $minutes = (int) ($action['in_minutes'] ?? 0)
+            + (int) ($action['in_hours'] ?? 0) * 60;
 
         if ($minutes <= 0) {
-            return ['ok' => false, 'description' => 'A follow-up needs a positive delay.'];
+            return ['ok' => false, 'description' => 'المتابعة تحتاج مهلة أكبر من صفر.'];
         }
 
         // One pending automated follow-up at a time: a rule that fires on every
@@ -151,7 +166,7 @@ class ActionExecutor
             ->exists();
 
         if ($existing) {
-            return ['ok' => true, 'description' => 'A follow-up is already pending; no second one created.'];
+            return ['ok' => true, 'description' => 'توجد متابعة مفتوحة بالفعل — لم تُنشأ ثانية.'];
         }
 
         $due = Carbon::now()->addMinutes($minutes);
@@ -166,7 +181,7 @@ class ActionExecutor
 
         $lead->forceFill(['next_follow_up_at' => $due])->save();
 
-        return ['ok' => true, 'description' => 'Follow-up scheduled for '.$due->toDayDateTimeString().'.'];
+        return ['ok' => true, 'description' => 'حُدِّدت متابعة في '.$due->toDayDateTimeString().'.'];
     }
 
     private function addNote(Lead $lead, array $action): array
@@ -174,12 +189,12 @@ class ActionExecutor
         $body = trim((string) ($action['body'] ?? ''));
 
         if ($body === '') {
-            return ['ok' => false, 'description' => 'An empty note was not added.'];
+            return ['ok' => false, 'description' => 'الملاحظة فارغة — لم تُضَف.'];
         }
 
         $this->activities->log($lead, ActivityType::NoteAdded, null, $body, ['by' => 'automation']);
 
-        return ['ok' => true, 'description' => 'Note added.'];
+        return ['ok' => true, 'description' => 'أُضيفت ملاحظة.'];
     }
 
     /**
@@ -210,16 +225,17 @@ class ActionExecutor
 
         if ($recipients->isEmpty()) {
             return ['ok' => false, 'description' => $audience === 'owner'
-                ? 'No notification sent: the lead has no owner.'
-                : 'No notification sent: nobody in that audience is active.'];
+                ? 'لم يُرسل تنبيه: لا مسؤول على هذا العميل.'
+                : 'لم يُرسل تنبيه: لا أحد نشط في هذه الفئة.'];
         }
 
         foreach ($recipients as $recipient) {
             $recipient->notify(new AutomationNotification($lead, $message, $ruleName));
         }
 
-        return ['ok' => true, 'description' => 'Notified '.$recipients->count().' '.
-            ($audience === 'managers' ? 'manager(s).' : 'owner.')];
+        return ['ok' => true, 'description' => $audience === 'managers'
+            ? 'أُرسل تنبيه إلى '.$recipients->count().' من الإدارة.'
+            : 'أُرسل تنبيه إلى مسؤول العميل.'];
     }
 
     /**
@@ -237,7 +253,7 @@ class ActionExecutor
             ->update(['status' => FollowUp::CANCELLED]);
 
         return $cancelled === 0
-            ? ['ok' => true, 'description' => 'No open follow-ups to stop.']
-            : ['ok' => true, 'description' => "Stopped {$cancelled} open follow-up(s)."];
+            ? ['ok' => true, 'description' => 'لا توجد متابعات مفتوحة لإيقافها.']
+            : ['ok' => true, 'description' => "أُوقفت {$cancelled} متابعة مفتوحة."];
     }
 }

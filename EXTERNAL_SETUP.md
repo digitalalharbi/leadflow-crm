@@ -50,6 +50,23 @@ deploy step with a notice. Nothing fails; nothing is deployed.
 
 Ubuntu 22.04 or 24.04, 4 GB RAM minimum (8 GB if staging and production share it).
 
+**One command, on the server, as root:**
+
+```bash
+bash scripts/provision-server.sh <github-owner>
+```
+
+It creates the deploy user, installs Docker, lays out `/var/www/leads-crm`,
+clones both environments at the right branch, hardens SSH and opens the
+firewall. It is safe to re-run, and it refuses to reload `sshd` if the config
+it just wrote is invalid — so a mistake cannot lock you out.
+
+It writes no secret. It ends by naming the two things only you can supply: the
+deploy key's public half, and the env files.
+
+<details>
+<summary>The same steps by hand</summary>
+
 ```bash
 # As root, once
 adduser --disabled-password --gecos "" deploy
@@ -73,6 +90,8 @@ systemctl reload ssh
 
 ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
 ```
+
+</details>
 
 Then clone the repository into each directory and create its env file:
 

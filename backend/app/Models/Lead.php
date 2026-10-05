@@ -7,6 +7,7 @@ use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
+use App\Models\Scopes\ExcludesTestLeads;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,8 @@ class Lead extends Model
      */
     protected static function booted(): void
     {
+        static::addGlobalScope(new ExcludesTestLeads);
+
         static::saving(function (self $lead) {
             if ($lead->first_contact_at === null && $lead->status?->impliesContactWasMade()) {
                 $lead->first_contact_at = now();
@@ -51,7 +54,7 @@ class Lead extends Model
         'platform', 'source',
         'campaign_name', 'campaign_id', 'adset_name', 'adset_id',
         'ad_name', 'ad_id', 'form_name', 'form_id',
-        'status', 'temperature', 'score',
+        'status', 'is_test', 'temperature', 'score',
         'qualification_status', 'qualified_at', 'appointment_interest',
         'budget_min', 'budget_max',
         'purchase_purpose', 'payment_method', 'financing_status',
@@ -95,6 +98,12 @@ class Lead extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /** The one screen that shows the lead created to prove the setup works. */
+    public function scopeWithTestLeads($query)
+    {
+        return $query->withoutGlobalScope(ExcludesTestLeads::class);
     }
 
     public function creator(): BelongsTo

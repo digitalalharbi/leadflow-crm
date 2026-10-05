@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
+use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
@@ -136,6 +137,11 @@ Route::prefix('v1')->group(function () {
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);
             Route::get('/data-quality', DataQualityController::class);
+
+            // "Does any of this actually work for us?" — the first-day question.
+            Route::post('/onboarding/test-lead', [TestLeadController::class, 'store']);
+            Route::get('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'show']);
+            Route::delete('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'destroy']);
             Route::get('/automation/templates', [AutomationRuleController::class, 'templates']);
             Route::post('/automation/templates/{key}', [AutomationRuleController::class, 'installTemplate']);
             Route::get('/automation/rules', [AutomationRuleController::class, 'index']);

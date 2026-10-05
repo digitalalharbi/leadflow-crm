@@ -55,11 +55,31 @@ export function WorkPage() {
   /** Leads the rep passed over in this sitting, so the queue moves on. */
   const [skipped, setSkipped] = useState<string[]>([])
 
-  const summary = useQuery({ queryKey: ['work-summary'], queryFn: fetchWorkSummary })
+  /*
+   * The queue moves while a rep is looking at it: colleagues work leads, new
+   * ones arrive, the SLA sweep escalates. Polling rather than a socket — this
+   * is a number in a corner, not a chat window, and a minute of staleness is
+   * invisible where a websocket server in the deploy is not.
+   *
+   * TanStack pauses this while the tab is hidden, so a rep with the screen open
+   * all day costs one request a minute only while they are looking at it.
+   */
+  const summary = useQuery({
+    queryKey: ['work-summary'],
+    queryFn: fetchWorkSummary,
+    refetchInterval: 60_000,
+  })
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['work-next', skipped],
     queryFn: () => fetchNextInQueue(skipped),
+    /*
+     * Not polled. The card is what the rep is about to act on, and swapping it
+     * underneath them mid-dial is how somebody calls the wrong person. It
+     * changes when they record an outcome, which is the only moment they are
+     * not holding a phone.
+     */
+    refetchOnWindowFocus: false,
   })
 
   const lead = data?.lead

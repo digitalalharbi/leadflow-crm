@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
@@ -136,6 +137,7 @@ Route::prefix('v1')->group(function () {
 
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);
+            Route::get('/search', SearchController::class);
             Route::get('/data-quality', DataQualityController::class);
 
             // "Does any of this actually work for us?" — the first-day question.

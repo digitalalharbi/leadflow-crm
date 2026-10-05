@@ -74,6 +74,14 @@
    */
   --color-status-new: #4f7cff;
   --color-status-contacted: #8b73f5;
+  /* Replied sits between contacted and qualified, so it reads as a step along
+     the same path rather than a new kind of thing. */
+  --color-status-replied: #6d8df7;
+  --color-status-negotiation: #d4a017;
+  /* The two exits are grey on purpose: they are not progress, and colouring
+     them like a stage would put them in the same visual family as one. */
+  --color-status-invalid: #7c8698;
+  --color-status-no_response: #98a2b3;
   --color-status-qualified: #12a594;
   --color-status-appointment: #e0922f;
   --color-status-won: #16a34a;
@@ -195,6 +203,10 @@
    */
   --color-status-new: #7d9dff;
   --color-status-contacted: #a996ff;
+  --color-status-replied: #8fa8ff;
+  --color-status-negotiation: #e3b445;
+  --color-status-invalid: #8a93a5;
+  --color-status-no_response: #9aa5b8;
   --color-status-qualified: #2bc4b0;
   --color-status-appointment: #edab51;
   --color-status-won: #44c77a;

@@ -22,10 +22,14 @@ function toneFor(variable: string): string {
 const statusTone: Record<LeadStatus, string> = {
   new: toneFor('--color-status-new'),
   contacted: toneFor('--color-status-contacted'),
+  replied: toneFor('--color-status-replied'),
   qualified: toneFor('--color-status-qualified'),
   appointment: toneFor('--color-status-appointment'),
+  negotiation: toneFor('--color-status-negotiation'),
   won: toneFor('--color-status-won'),
   lost: toneFor('--color-status-lost'),
+  invalid: toneFor('--color-status-invalid'),
+  no_response: toneFor('--color-status-no_response'),
 }
 
 const tempTone: Record<LeadTemperature, string> = {

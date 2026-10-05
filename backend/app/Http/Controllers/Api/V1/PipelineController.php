@@ -55,7 +55,10 @@ class PipelineController extends Controller
             ->get()
             ->groupBy(fn (Lead $lead) => $lead->status->value);
 
-        $columns = collect(LeadStatus::cases())->map(fn (LeadStatus $status) => [
+        // Stages only. "Invalid" and "no response" are outcomes a lead exits
+        // through, not places work waits — a column for either would invite
+        // someone to drag a lead into it as though that were progress.
+        $columns = collect(LeadStatus::pipeline())->map(fn (LeadStatus $status) => [
             'status' => $status->value,
             'position' => $status->position(),
             'total' => (int) ($totals[$status->value] ?? 0),

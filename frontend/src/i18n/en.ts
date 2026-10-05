@@ -103,8 +103,9 @@ export default {
     createdSuccess: 'Lead added.',
   },
   status: {
-    new: 'New', contacted: 'Contacted', qualified: 'Qualified',
-    appointment: 'Appointment', won: 'Won', lost: 'Lost',
+    new: 'New', contacted: 'Contacted', replied: 'Replied', qualified: 'Qualified',
+    appointment: 'Appointment', negotiation: 'Negotiating', won: 'Won', lost: 'Lost',
+    invalid: 'Invalid', no_response: 'No response',
   },
   activity: {
     whatsapp_sent: 'WhatsApp message sent',

@@ -26,13 +26,22 @@ interface Column {
   leads: LeadListItem[]
 }
 
+/*
+ * Every status, including the two the board never shows: the API decides which
+ * stages are columns, and a map that only covered today's columns would break
+ * silently the day that changes. The compiler enforces completeness here.
+ */
 const COLUMN_ACCENT: Record<LeadStatus, string> = {
   new: 'bg-[var(--color-status-new)]',
   contacted: 'bg-[var(--color-status-contacted)]',
+  replied: 'bg-[var(--color-status-replied)]',
   qualified: 'bg-[var(--color-status-qualified)]',
   appointment: 'bg-[var(--color-status-appointment)]',
+  negotiation: 'bg-[var(--color-status-negotiation)]',
   won: 'bg-[var(--color-status-won)]',
   lost: 'bg-[var(--color-status-lost)]',
+  invalid: 'bg-[var(--color-status-invalid)]',
+  no_response: 'bg-[var(--color-status-no_response)]',
 }
 
 export function PipelinePage() {

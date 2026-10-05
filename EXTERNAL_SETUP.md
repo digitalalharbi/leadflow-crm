@@ -142,6 +142,38 @@ gh variable set PRODUCTION_DOMAIN --body "app.example.com"
 
 ---
 
+### 2.4 No domain yet?
+
+The deploy works on a bare IP, with one limitation stated plainly: there is no
+TLS, because no public certificate authority issues for an IP address. Bearer
+tokens and session cookies therefore cross the network in clear text. Use it to
+get a deployment working and to demo — not for real customer data.
+
+On the server:
+
+```bash
+cp docker/nginx/edge-ip.conf.example /etc/nginx/sites-available/leadflow
+ln -s /etc/nginx/sites-available/leadflow /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl reload nginx
+```
+
+In `.env.staging`, point everything at the IP and drop the scheme to http:
+
+```
+APP_SCHEME=http
+STAGING_DOMAIN=203.0.113.10
+STAGING_API_DOMAIN=203.0.113.10
+```
+
+One origin serves both: `/` is the app, `/api` is the API. When a domain
+arrives, switch to `edge.conf.example`, remove `APP_SCHEME`, and redeploy —
+nothing else changes.
+
+Production has no equivalent mode on purpose.
+
+---
+
 ## 3. Domain and DNS
 
 **Until these exist:** the app runs on IP or localhost; subdomain tenant

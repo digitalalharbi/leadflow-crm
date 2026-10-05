@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Plug, Settings,
-  ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, X,
+  ShieldAlert, ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -63,6 +63,7 @@ export function Sidebar() {
          */
         { to: '/automation', labelKey: 'nav.automation', Icon: Workflow, visible: can.seeAllLeads(user) },
         { to: '/reports', labelKey: 'nav.reports', Icon: BarChart3, visible: can.viewReports(user) },
+        { to: '/data-quality', labelKey: 'nav.dataQuality', Icon: ShieldAlert, visible: can.viewReports(user) },
         { to: '/integrations', labelKey: 'nav.integrations', Icon: Plug, visible: can.manageIntegrations(user) },
         { to: '/users', labelKey: 'nav.users', Icon: Users2, visible: can.seeAllLeads(user) },
         { to: '/settings', labelKey: 'nav.settings', Icon: Settings, visible: true },

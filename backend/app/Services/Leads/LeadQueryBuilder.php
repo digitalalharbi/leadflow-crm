@@ -126,6 +126,42 @@ class LeadQueryBuilder
                     ->where('status', LeadStatus::New->value)
                     ->where('leads.created_at', '<=', now()->subMinutes($minutes));
             })
+            /*
+             * The drill-down behind the data quality screen. One parameter
+             * rather than six, so a number on that screen opens exactly the
+             * rows it counted — a count whose list disagrees with it is worse
+             * than no count, because somebody will trust one of the two.
+             */
+            ->when($request->filled('data_issue'), fn ($q) => match ($request->input('data_issue')) {
+                'unreachable_phones' => $q->whereNull('phone_normalized')
+                    ->where('status', '!=', LeadStatus::Invalid->value),
+                // By email: a duplicate phone cannot be inserted at all.
+                'duplicates' => $q->whereNotNull('email')->where('email', '!=', '')
+                    ->whereIn('email', function ($sub) {
+                        $sub->from('leads')
+                            ->select('email')
+                            ->whereNull('deleted_at')
+                            ->whereNotNull('email')
+                            ->groupBy('tenant_id', 'email')
+                            ->havingRaw('count(*) > 1');
+                    }),
+                'missing_attribution' => $q->whereNull('platform')->whereNull('source'),
+                /*
+                 * Open *and* unassigned. The plain `unassigned` filter means
+                 * something looser, and the data quality count means this — two
+                 * numbers that disagree about the same word is how a dashboard
+                 * stops being believed.
+                 */
+                'unassigned' => $q->whereNull('assigned_to')
+                    ->whereIn('status', LeadStatus::openValues()),
+                'missing_campaign' => $q->whereNotNull('platform')
+                    ->whereNull('campaign_name')->whereNull('campaign_id'),
+                'stale' => $q->whereIn('status', LeadStatus::openValues())
+                    ->where('leads.created_at', '<', now()->subDays(14))
+                    ->where(fn ($inner) => $inner->whereNull('last_contact_at')
+                        ->orWhere('last_contact_at', '<', now()->subDays(14))),
+                default => $q,
+            })
             ->when($request->filled('follow_up'), function ($q) use ($request) {
                 return match ($request->input('follow_up')) {
                     'today' => $q->whereBetween('next_follow_up_at', [now()->startOfDay(), now()->endOfDay()]),

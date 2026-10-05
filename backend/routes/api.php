@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -134,6 +135,7 @@ Route::prefix('v1')->group(function () {
 
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);
+            Route::get('/data-quality', DataQualityController::class);
             Route::get('/automation/templates', [AutomationRuleController::class, 'templates']);
             Route::post('/automation/templates/{key}', [AutomationRuleController::class, 'installTemplate']);
             Route::get('/automation/rules', [AutomationRuleController::class, 'index']);

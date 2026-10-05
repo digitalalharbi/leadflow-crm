@@ -48,6 +48,14 @@ export function LeadsPage() {
       date_from: searchParams.get('date_from') ?? undefined,
       date_to: searchParams.get('date_to') ?? undefined,
       overdue: searchParams.get('overdue') === '1' || undefined,
+      /*
+       * The drill-down from the data quality screen. Without this the URL
+       * carries the filter, the list ignores it, and the page shows every lead
+       * under a heading that promised ten — the count and its list disagreeing
+       * in the one place a manager went looking for the difference.
+       */
+      data_issue: searchParams.get('data_issue') ?? undefined,
+      unassigned: searchParams.get('unassigned') === 'true' || undefined,
     }
   })
 
@@ -78,7 +86,9 @@ export function LeadsPage() {
     Boolean(filters.project_id) ||
     Boolean(filters.assigned_to) ||
     Boolean(filters.follow_up) ||
-    Boolean(filters.overdue)
+    Boolean(filters.overdue) ||
+    Boolean(filters.data_issue) ||
+    Boolean(filters.unassigned)
 
   function resetFilters() {
     setSearch('')

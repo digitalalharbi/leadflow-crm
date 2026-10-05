@@ -54,6 +54,14 @@ export function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dashboard', filters],
     queryFn: () => apiGet<DashboardData>('/dashboard', filters),
+    /*
+     * Two minutes. This is the screen left open on a wall or a second monitor,
+     * and the whole point of it is that nobody has to go and ask. Slower than
+     * the work queue because a funnel does not change by the minute, and
+     * because this is the most expensive query in the product — every manager
+     * polling it at thirty seconds would be the first thing to fall over.
+     */
+    refetchInterval: 120_000,
   })
 
   /*

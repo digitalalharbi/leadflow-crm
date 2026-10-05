@@ -33,8 +33,10 @@ export interface NextInQueue {
   remaining: number
 }
 
-export function fetchNextInQueue() {
-  return apiGet<NextInQueue>('/work/next')
+/** `skip` carries the leads passed over in this sitting, so "skip" actually
+ *  moves on instead of re-serving the same lead. */
+export function fetchNextInQueue(skip: string[] = []) {
+  return apiGet<NextInQueue>('/work/next', skip.length ? { skip } : undefined)
 }
 
 export interface WorkSummary {

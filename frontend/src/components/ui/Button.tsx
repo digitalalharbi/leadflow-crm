@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -40,6 +40,12 @@ const sizes: Record<Size, string> = {
   icon: 'size-9',
 }
 
+const base = [
+  'pressable inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
+  'rounded-[var(--radius-control)]',
+  'disabled:pointer-events-none disabled:opacity-45',
+].join(' ')
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   size?: Size
@@ -64,18 +70,49 @@ export function Button({
       // never jumps while a request is in flight.
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(
-        'pressable inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
-        'rounded-[var(--radius-control)]',
-        'disabled:pointer-events-none disabled:opacity-45',
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      className={cn(base, variants[variant], sizes[size], className)}
       {...props}
     >
       {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : icon}
       {size !== 'icon' && children}
     </button>
+  )
+}
+
+/**
+ * The button's own classes, for the one case neither Button nor ButtonLink
+ * covers: internal navigation, which belongs to the router's <Link> so the app
+ * does not reload. Exported rather than copied so a change to the button's look
+ * reaches those links too.
+ */
+export function buttonClasses(variant: Variant = 'primary', size: Size = 'md', className?: string) {
+  return cn(base, variants[variant], sizes[size], className)
+}
+
+/**
+ * A link that looks like a button, for the cases where the action really is
+ * navigation the browser must handle itself — `tel:` and `https://wa.me/…`
+ * among them. A <button> with an onClick cannot open those; a styled <a> can,
+ * and keeps the keyboard and long-press behaviour the platform already gives
+ * links. It shares `base`, `variants` and `sizes` with Button rather than
+ * restating them, so the two cannot drift apart.
+ */
+export function ButtonLink({
+  variant = 'primary',
+  size = 'md',
+  icon,
+  className,
+  children,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement> & {
+  variant?: Variant
+  size?: Size
+  icon?: ReactNode
+}) {
+  return (
+    <a className={cn(base, variants[variant], sizes[size], className)} {...props}>
+      {icon}
+      {size !== 'icon' && children}
+    </a>
   )
 }

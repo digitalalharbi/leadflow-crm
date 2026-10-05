@@ -36,11 +36,25 @@ class WorkQueueController extends Controller
 
         $target = (int) ($request->user()->tenant?->settings?->first_contact_target_minutes ?? 30);
 
+        /*
+         * Leads the rep passed over in this sitting. Held by the client rather
+         * than the server on purpose: skipping is "not me, not now", not a
+         * decision about the lead, so it must not outlive the sitting or affect
+         * anybody else's queue. The window below is widened by however many
+         * were skipped, so a rep who skips several still reaches new ones.
+         */
+        $skipped = collect($request->input('skip', []))
+            ->filter(fn ($id) => is_string($id) && preg_match('/^[0-9a-f-]{36}$/', $id) === 1)
+            ->take(50)
+            ->values()
+            ->all();
+
         $candidates = $this->openLeadsFor($request)
+            ->when($skipped !== [], fn ($q) => $q->whereNotIn('uuid', $skipped))
             ->orderByRaw('first_contact_at is not null')  // never-contacted first
             ->orderBy('next_follow_up_at')
             ->orderByDesc('score')
-            ->limit(50)
+            ->limit(50 + count($skipped))
             ->get();
 
         $ranked = $candidates

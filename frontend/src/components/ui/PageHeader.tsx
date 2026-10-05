@@ -18,7 +18,11 @@ export function PageHeader({
           cursive joins. Every page's title was carrying -0.55px of it.
         */}
         <h1 className="t-page-title" data-testid="page-title">{title}</h1>
-        {subtitle && <p className="t-caption mt-1">{subtitle}</p>}
+        {subtitle && (
+          <p className="t-caption mt-1" data-testid="page-subtitle">
+            {subtitle}
+          </p>
+        )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

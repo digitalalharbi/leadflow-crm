@@ -130,6 +130,7 @@ Route::prefix('v1')->group(function () {
             // The rep's work queue
             Route::get('/work/next', [WorkQueueController::class, 'next']);
             Route::get('/work/summary', [WorkQueueController::class, 'summary']);
+            Route::post('/work/outcome', [WorkQueueController::class, 'outcome']);
 
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);

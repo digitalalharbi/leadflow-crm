@@ -76,6 +76,7 @@ export default {
   },
   nav: {
     dashboard: 'الرئيسية',
+    work: 'اعمل الآن',
     leads: 'العملاء المحتملون',
     pipeline: 'مسار البيع',
     followUps: 'المتابعات',
@@ -88,6 +89,83 @@ export default {
     platformConsole: 'منصة مهتم',
     notifications: 'الإشعارات',
     profile: 'الملف الشخصي',
+  },
+  work: {
+    title: 'اعمل الآن',
+    subtitle: 'عميل واحد في كل مرة، بالترتيب الذي يستحقه',
+    /*
+     * Arabic counts six ways, not two. "33 عميل" is what a translation table
+     * built for English produces, and it reads to an Arabic speaker the way
+     * "33 lead" reads in English — understandable, and obviously written by
+     * someone who was not paying attention. i18next picks the category from
+     * `count` via Intl.PluralRules; the tamyiz changes with it.
+     */
+    remaining_zero: 'لا عملاء في قائمتك',
+    remaining_one: 'بقي عميل واحد في قائمتك',
+    remaining_two: 'بقي عميلان في قائمتك',
+    remaining_few: 'بقي {{count}} عملاء في قائمتك',
+    remaining_many: 'بقي {{count}} عميلًا في قائمتك',
+    remaining_other: 'بقي {{count}} عميل في قائمتك',
+    logged: 'تم تسجيل المحاولة، والتالي جاهز',
+    arrived: 'وصل {{when}}',
+    overdueBy_one: 'متأخر دقيقة واحدة',
+    overdueBy_two: 'متأخر دقيقتين',
+    overdueBy_few: 'متأخر {{count}} دقائق',
+    overdueBy_many: 'متأخر {{count}} دقيقة',
+    overdueBy_other: 'متأخر {{count}} دقيقة',
+    noteLabel: 'ملاحظة',
+    noteHint: 'اختياري — تُسجَّل مع المحاولة',
+    stats: {
+      uncontacted: 'لم يُتواصل معهم',
+      overdueFirstContact: 'تجاوزوا مهلة أول تواصل',
+      overdueFollowUps: 'متابعات متأخرة',
+      hot: 'عملاء ساخنون',
+    },
+    urgency: {
+      critical: 'الآن',
+      high: 'عاجل',
+      medium: 'اليوم',
+      low: 'لاحقًا',
+      none: 'لا شيء',
+    },
+    action: {
+      call_now: 'اتصل الآن',
+      reply_now: 'رد على العميل',
+      follow_up: 'تابع العميل',
+      book_meeting: 'احجز موعدًا',
+      schedule_follow_up: 'حدِّد متابعة',
+      assign: 'أسنِد العميل',
+      wait: 'انتظر',
+      none: 'لا إجراء',
+    },
+    outcomePrompt: 'ماذا حدث؟',
+    outcome: {
+      interested: 'مهتم',
+      call_later: 'أعاود الاتصال',
+      no_answer: 'لم يرد',
+      meeting_booked: 'حجز موعد',
+      won: 'تم البيع',
+      lost: 'خسارة',
+    },
+    recorded: {
+      interested: 'سُجِّل الاهتمام، وحُدِّدت متابعة بعد يومين',
+      call_later: 'سنذكّرك بالاتصال غدًا',
+      no_answer: 'سُجِّلت المحاولة، وسنذكّرك بعد ثلاث ساعات',
+      meeting_booked: 'تم حجز الموعد ونُقل العميل إلى مرحلة الموعد',
+      won: 'مبروك — أُغلق العميل كصفقة ناجحة',
+      lost: 'سُجِّلت الخسارة وأُوقفت المتابعات',
+    },
+    buttons: {
+      call: 'اتصال',
+      whatsapp: 'واتساب',
+      noAnswer: 'لم يرد',
+      openLead: 'فتح الملف',
+      skip: 'تخطَّ',
+    },
+    empty: {
+      title: 'لا شيء ينتظرك',
+      description: 'كل العملاء في قائمتك تم التعامل معهم. سيظهر العميل التالي هنا لحظة وصوله.',
+    },
   },
   dashboard: {
     greeting: 'مرحبًا{{name}}',

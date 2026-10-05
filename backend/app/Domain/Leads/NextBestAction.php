@@ -4,6 +4,7 @@ namespace App\Domain\Leads;
 
 use App\Enums\LeadStatus;
 use App\Models\Lead;
+use App\Support\ArabicDuration;
 
 /**
  * What to do with this lead, right now, and why.
@@ -63,7 +64,7 @@ class NextBestAction
         // a cold call, and the money is already spent.
         if ($neverContacted && $minutesSinceCreated >= $target) {
             return $this->result('call_now', 'critical',
-                "لم يتم التواصل منذ {$minutesSinceCreated} دقيقة — تجاوز هدف {$target} دقيقة.",
+                'لم يتم التواصل منذ '.ArabicDuration::fromMinutes($minutesSinceCreated).' — تجاوز هدف '.ArabicDuration::fromMinutes($target).'.',
                 0);
         }
 
@@ -71,7 +72,7 @@ class NextBestAction
             $remaining = max(0, $target - $minutesSinceCreated);
 
             return $this->result('call_now', 'high',
-                "عميل جديد. تبقّى {$remaining} دقيقة على هدف أول تواصل.",
+                'عميل جديد. تبقّى '.ArabicDuration::fromMinutes($remaining).' على هدف أول تواصل.',
                 $remaining);
         }
 
@@ -88,12 +89,12 @@ class NextBestAction
 
             if ($dueIn < 0) {
                 return $this->result('follow_up', 'critical',
-                    'متابعة متأخرة بـ '.abs($dueIn).' دقيقة.', $dueIn);
+                    'متابعة متأخرة '.ArabicDuration::fromMinutes($dueIn).'.', $dueIn);
             }
 
             if ($dueIn <= 120) {
                 return $this->result('follow_up', 'high',
-                    "متابعة مستحقة خلال {$dueIn} دقيقة.", $dueIn);
+                    'متابعة مستحقة خلال '.ArabicDuration::fromMinutes($dueIn).'.', $dueIn);
             }
 
             return $this->result('wait', 'low',

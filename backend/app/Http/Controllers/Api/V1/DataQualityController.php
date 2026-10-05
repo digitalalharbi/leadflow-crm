@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
+use App\Models\ConversionExport;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Support\ApiResponse;
@@ -40,6 +41,7 @@ class DataQualityController extends Controller
             $this->unassigned(),
             $this->stale(),
             $this->missingCampaign(),
+            $this->unmatchableConversions(),
         ];
 
         return ApiResponse::success([
@@ -157,6 +159,23 @@ class DataQualityController extends Controller
             ->count();
 
         return $this->check('missing_campaign', $count, ['data_issue' => 'missing_campaign']);
+    }
+
+    /**
+     * Sales the ad platform will never learn about.
+     *
+     * The upload itself would succeed: the platform accepts a conversion with
+     * no identifier, matches it to nobody, and reports it as received. So the
+     * optimiser carries on believing every click is equally good, and nothing
+     * anywhere says otherwise. This is the only place a workspace finds out.
+     */
+    private function unmatchableConversions(): array
+    {
+        $count = ConversionExport::query()
+            ->where('status', ConversionExport::UNMATCHABLE)
+            ->count();
+
+        return $this->check('unmatchable_conversions', $count, ['data_issue' => 'unmatchable_conversions']);
     }
 
     /**

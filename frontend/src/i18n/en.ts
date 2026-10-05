@@ -121,6 +121,7 @@ export default {
       unassigned: 'Nobody assigned',
       stale: 'Neglected leads',
       missing_campaign: 'No campaign',
+      unmatchable_conversions: 'Sales that cannot be credited',
     },
     why: {
       unreachable_phones: 'Clicks you paid for that nobody can call.',
@@ -129,6 +130,7 @@ export default {
       unassigned: 'Nobody owns them, so nobody will call them.',
       stale: 'Open and untouched for a fortnight.',
       missing_campaign: 'Platform known, campaign not — the money is spent but uncredited.',
+      unmatchable_conversions: 'Won deals carrying nothing the ad platform can match — the campaign will never learn from them.',
     },
     status: {
       connected: 'Connected',
@@ -247,6 +249,26 @@ export default {
       add_note: 'Add note',
       notify: 'Send notification',
       stop_follow_ups: 'Stop follow-ups',
+    },
+  },
+  setupCheck: {
+    title: 'Setup check',
+    description: 'We send a test lead down the real pipeline and tell you what each stage did with it.',
+    run: 'Run the check',
+    remove: 'Delete the test lead',
+    removed: 'Test lead deleted',
+    rulesPending: 'Automation runs in the background — it will appear here shortly.',
+    rulesRan_one: '1 rule ran on the test lead.',
+    rulesRan_other: '{{count}} rules ran on the test lead.',
+    step: {
+      ingestion: 'Received',
+      normalization: 'Phone normalised',
+      dedup: 'Duplicate check',
+      attribution: 'Source attribution',
+      scoring: 'Scoring',
+      assignment: 'Assignment',
+      automation: 'Automation',
+      notification: 'Notification',
     },
   },
   dashboard: {

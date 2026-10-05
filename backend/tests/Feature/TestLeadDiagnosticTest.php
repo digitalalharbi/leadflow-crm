@@ -53,6 +53,9 @@ class TestLeadDiagnosticTest extends TestCase
     {
         $steps = collect($this->diagnose()['steps'])->keyBy('key');
 
+        // Local in, E.164 out: the step has to show the conversion happening,
+        // not "converted +966… to +966…", which proves nothing.
+        $this->assertStringContainsString('05', $steps['normalization']['detail']);
         $this->assertStringContainsString('+9665', $steps['normalization']['detail']);
         $this->assertStringContainsString('meta', $steps['attribution']['detail']);
         $this->assertMatchesRegularExpression('/\d+/', $steps['scoring']['detail']);
@@ -61,7 +64,10 @@ class TestLeadDiagnosticTest extends TestCase
     /** It goes through the real path, not a shortcut that proves the shortcut works. */
     public function test_the_lead_is_normalised_scored_and_assigned_like_any_other(): void
     {
+        // Auto-assignment is off by default, and the diagnostic correctly
+        // reports that. This test is about the full path, so it is turned on.
         $this->makeUser($this->t['tenant']);
+        $this->t['tenant']->settings->forceFill(['assignment_mode' => 'round_robin'])->save();
 
         $this->diagnose();
 
@@ -97,6 +103,15 @@ class TestLeadDiagnosticTest extends TestCase
         $this->assertSame(0, $list);
     }
 
+    /** Auto-assignment off is a setting, not a fault, and it says so. */
+    public function test_it_reports_honestly_when_auto_assignment_is_off(): void
+    {
+        $step = collect($this->diagnose()['steps'])->firstWhere('key', 'assignment');
+
+        $this->assertFalse($step['ok']);
+        $this->assertStringContainsString('الإسناد التلقائي متوقف', $step['detail']);
+    }
+
     /** And it does not show up as somebody's work to do, either. */
     public function test_a_test_lead_is_not_offered_to_a_rep(): void
     {
@@ -109,6 +124,12 @@ class TestLeadDiagnosticTest extends TestCase
     }
 
     /** Running it twice must not report a duplicate — the dedup step is under test. */
+    /**
+     * Two runs in the same second collided on the unique phone index and
+     * returned a 500 the first time this was written. The dedup step is one of
+     * the things under test, so the generator has to be better than a
+     * timestamp.
+     */
     public function test_running_it_twice_produces_two_independent_leads(): void
     {
         $first = $this->diagnose();

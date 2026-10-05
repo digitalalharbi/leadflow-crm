@@ -169,8 +169,34 @@ class TestLeadDiagnostic
      */
     private function unusedPhone(Tenant $tenant): string
     {
-        // 0590 000 000 range, with the tenant and the minute mixed in.
-        return '+96659'.str_pad((string) (($tenant->id * 100000 + now()->timestamp % 100000) % 10000000), 7, '0', STR_PAD_LEFT);
+        /*
+         * Local format, the way a web form actually submits it — so the
+         * normalisation step has something to do and the report can show it
+         * doing it. Handing the pipeline a number already in E.164 produced
+         * "converted +966598195624 to +966598195624", which proves nothing and
+         * reads like a bug.
+         *
+         * It must also not collide with a real customer or with a previous run.
+         * A timestamp did both only until somebody clicked twice in the same
+         * second, which returned a 500 — the unique index on (tenant, phone)
+         * doing its job. So the number is checked against what is there.
+         */
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $local = '059'.str_pad((string) random_int(0, 9_999_999), 7, '0', STR_PAD_LEFT);
+            $normalized = '+9665'.mb_substr($local, 2);
+
+            $taken = Lead::withTestLeads()
+                ->where('phone_normalized', $normalized)
+                ->exists();
+
+            if (! $taken) {
+                return $local;
+            }
+        }
+
+        // Twenty collisions in a seven-digit space means something else is
+        // wrong; failing loudly beats returning a number that will 500.
+        throw new \RuntimeException('Could not find an unused test phone number.');
     }
 
     private function step(string $key, bool $ok, string $detail): array

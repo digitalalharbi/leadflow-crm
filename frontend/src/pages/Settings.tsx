@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
+import { SetupCheck } from '@/components/onboarding/SetupCheck'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
@@ -98,14 +99,22 @@ export function SettingsPage() {
           )}
 
           {tab === 'general' && canManage && (
-            <GeneralForm
-              settings={data.settings}
-              section="general"
-              onSaved={() => {
-                void queryClient.invalidateQueries({ queryKey: ['settings'] })
-                toast(t('settings.saved'), 'success')
-              }}
-            />
+            <div className="space-y-4">
+              <GeneralForm
+                settings={data.settings}
+                section="general"
+                onSaved={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['settings'] })
+                  toast(t('settings.saved'), 'success')
+                }}
+              />
+              {/*
+                Under the general settings, because this is the thing to do
+                after changing them: the only way to find out whether the
+                workspace is actually set up is to send a lead through it.
+              */}
+              <SetupCheck />
+            </div>
           )}
 
           {tab === 'scoring' && canManage && (

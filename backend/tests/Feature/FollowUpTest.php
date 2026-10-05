@@ -249,4 +249,28 @@ class FollowUpTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('next_due_at');
     }
+
+    /**
+     * "Missed" is not "overdue". Overdue is work still waiting; missed is work
+     * that will never happen now — a step cancelled because the lead closed, or
+     * because a rule stopped chasing. A manager asking "how much are we
+     * dropping" wants the second number, and before this the two were the same
+     * list.
+     */
+    public function test_missed_follow_ups_are_separate_from_overdue_ones(): void
+    {
+        $overdue = $this->makeFollowUp(now()->subDay());
+        $missed = $this->makeFollowUp(now()->subWeek());
+        $missed->update(['status' => FollowUp::CANCELLED]);
+
+        $missedIds = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/follow-ups?bucket=missed')->assertOk()->json('data.*.id');
+
+        $overdueIds = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/follow-ups?bucket=overdue')->assertOk()->json('data.*.id');
+
+        $this->assertContains($missed->uuid, $missedIds);
+        $this->assertNotContains($overdue->uuid, $missedIds);
+        $this->assertNotContains($missed->uuid, $overdueIds);
+    }
 }

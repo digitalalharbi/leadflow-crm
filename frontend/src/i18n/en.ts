@@ -358,9 +358,10 @@ export default {
   },
   followUps: {
     title: 'Follow-ups', subtitle: 'What needs you next', overdue: 'Overdue',
-    today: 'Today', upcoming: 'Upcoming', completed: 'Completed', due: 'Due',
+    today: 'Today', upcoming: 'Upcoming', missed: 'Missed', completed: 'Completed', due: 'Due',
     note: 'Note', complete: 'Complete', outcome: 'Outcome', outcomeNote: 'Note on the call',
     emptyOverdue: 'Nothing overdue. Nice work.', emptyToday: 'Nothing due today.',
+    emptyMissed: 'No missed follow-ups — nothing was dropped.',
     emptyUpcoming: 'No upcoming follow-ups.', emptyCompleted: 'No completed follow-ups.',
     created: 'Follow-up scheduled.', completedMsg: 'Follow-up completed.',
   },

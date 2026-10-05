@@ -1,80 +1,113 @@
 # Next session — مهتم
 
-Updated 2026-10-05. Written at a usage-limit stop, so it records state rather
-than conclusions.
+Updated 2026-10-05.
 
-## Exact state
+## Where things stand
 
-| Branch / PR | State |
+`develop` carries PRs #15–#27. Nothing is on `main`.
+
+| Area | State |
 |---|---|
-| `develop` | #15–#19, **#21** merged. Automation engine + rules API are in. |
-| PR #20 `feature/next-best-action` | **Open, green before the last push.** Conflicted twice with `develop` on `backend/routes/api.php`; both resolved by keeping both additive route groups. Last push adds the second merge commit — **re-check CI, then squash-merge.** |
-| PR #22 (to open) `feature/sales-workspace` | Pushed, **PR not yet opened.** Branches from `feature/next-best-action`, so open it against `develop` only after #20 merges. |
+| Automation engine, events, SLA sweeper | Done (#19) |
+| Rules API, closed vocabulary, policy | Done (#21) |
+| Six rule templates, `notify`, `stop_follow_ups` | Done (#24) |
+| Rules screen: gallery, builder, preview | Done (#25) |
+| Next Best Action + work queue API | Done (#20) |
+| "اعمل الآن": one-press outcome loop, shortcuts | Done (#23) |
+| Contact-state invariant (3 levels) | Done (#22) |
+| Data quality centre + drill-down | Done (#26) |
+| Automation trace on the lead page | Done (#27) |
+| Missed follow-ups bucket | This branch |
 
-Backend suite on the merged `feature/next-best-action`: **433 passed, 1588
-assertions.** Frontend typecheck and lint clean on `feature/sales-workspace`.
+Suites at the time of writing: **509 backend**, **62 frontend**, **~100 E2E**.
+Typecheck and lint clean.
 
-## Two findings from looking at /work in a browser
+## Open, and worth doing next
 
-Tests were green for both. Only opening the page showed them.
+### P1, in the order I would take them
 
-### 1. Fixed — arrival time rendered as a bare clock
+1. **Offline conversions** — adapters for Meta / Google / TikTok / Snapchat.
+   Build the adapter and the queue; send nothing until real credentials exist.
+2. **Cost per qualified lead and ROAS** — blocked on ad-spend ingestion, which
+   is the same credentials problem as above.
+3. **Realtime** — new lead, reply, assignment, stage change. Everything polls
+   today; the work screen in particular would feel different.
+4. **Global search / command palette.**
+5. **Onboarding wizard + traceable test lead** (spec items 24 and 25). The
+   trace from #27 is the hard half and it already exists.
+6. **Daily manager digest** (item 18). The numbers all exist; this is
+   assembling and scheduling them.
 
-The card read "وصل 13:30", which in a sentence beginning "arrived" reads as a
-duration or a count. `formatLastSeen` exists in `frontend/src/lib/format.ts`
-for exactly this and documents the trap in its own comment; `Work.tsx` now
-uses it instead of `formatRelative`.
+### P2
 
-### 2. Open — the reason and the status badge contradict each other
+AI assist, calendar sync, extended providers.
 
-On `/work` the card showed the badge **"تم التواصل"** (contacted) directly
-above the reason **"عميل جديد. تبقّى 29 دقيقة على هدف أول تواصل."** (new lead).
-A rep who sees that trusts neither.
+### Deliberately not done
 
-Cause, confirmed in the database: the E2E fixture lead has
-`status = contacted` with `first_contact_at = NULL` — a state the real
-`logContact` flow cannot produce, because it sets both. The badge reads
-`status`; `NextBestAction` reads `first_contact_at`. Each is correct about the
-field it reads.
+**Delay and branch in automation rules** (part of spec item 5). A delay means a
+scheduled job per rule step with its own retry and cancellation semantics —
+"wait 3 days then message, unless the lead replied" needs the *unless*, or it
+becomes the thing that messages customers after they have already bought. It is
+a day's work done properly and a liability done quickly.
 
-Two separate things to fix, and they are not the same fix:
+**Draft/Published** is implemented as enable/disable, which is the same control
+under a different word. Say so rather than adding a second flag.
 
-- **`database/seeders/E2ESeeder.php`** creates the impossible state. E2E is
-  therefore asserting behaviour against data production cannot produce.
-- **`backend/app/Domain/Leads/NextBestAction.php`** should not be *able* to
-  contradict the badge. Treat a lead as uncontacted only when
-  `first_contact_at` is null **and** the status is still `new`. Then the two
-  cannot disagree regardless of what any seeder writes.
+## Three things to be careful of
 
-Do the second one even after fixing the seeder. Fixing only the fixture hides
-the class of bug rather than closing it.
+### A test failed once and I could not reproduce it
 
-### 3. Open — Arabic plural agreement in counts
+During #24 a single unnamed test failed in a run that took 97 seconds against a
+normal 35. Nine subsequent runs, including randomised order, were clean. It
+smells like something time-sensitive — there is precedent in this repo
+(`FollowUpTest` used to fail for two hours a day). If it reappears, capture the
+name before rerunning.
 
-`work.remaining` renders "بقي 33 عميل في قائمتك". Arabic tamyiz wants
-**عميلًا** for 11–99. i18next plural categories for `ar` are not wired for
-these keys. Affects the new `work.*` strings and is worth a sweep of the
-existing count strings at the same time.
+### A soft-deleted lead blocks its phone number forever
 
-## Then continue the Gap Matrix
+`leads_tenant_phone_unique` is a plain unique index on `(tenant_id,
+phone_normalized)`, not a partial one. A soft-deleted lead keeps occupying it,
+so the same person can never be re-added after deletion — they would hit a
+constraint violation rather than a duplicate warning. Worth a partial unique
+index `where deleted_at is null`, with a deliberate decision about what
+re-adding a deleted lead should do.
 
-P1 remaining: offline conversions, cost-per-qualified-lead / ROAS (blocked on
-ad-spend ingestion), integration health centre, realtime, data-quality
-dashboard, global search / command palette, onboarding wizard + test lead.
-P2: AI assist, calendar sync, extended providers.
+### Any sentence with two numbers in it is a plural bug
 
-A rules-builder UI on top of the #21 API is the natural next frontend piece —
-`GET /automation/schema` exists precisely so the builder cannot offer anything
-the API would refuse.
+i18next picks its plural category from a single `count`, so a string holding two
+counts silently skips pluralisation entirely — no warning, no fallback, just
+slightly wrong Arabic. It happened three times in one day:
+`{{conditions}} شرط · {{actions}} إجراء`, `تنطبق على {{count}} من آخر {{sampled}}`,
+and `بقي {{count}} عميل`. Split them into two keys and join. `plurals.test.ts`
+pins 19 cases.
 
-## Still blocked on you (unchanged)
+## Still blocked on you
 
 Deployment cannot proceed past this point without:
 
 1. **Server IP** and the **SSH user** to deploy as.
 2. A **deploy SSH key you generate** — do not paste the private key into the
-   chat; add it to the server's `authorized_keys` and to the GitHub secret.
+   chat; add the public half to the server's `authorized_keys` and the private
+   half to the GitHub secret yourself.
 3. The five GitHub Actions secrets named in `EXTERNAL_SETUP.md`.
 
-Nothing else is waiting on external input. `scripts/check-deploy-readiness.sh`
-prints which are missing by name and never prints a value.
+For the advertising integrations, separately: real API credentials for Meta,
+Google, TikTok or Snapchat. The adapters can be written and tested without
+them; nothing will be sent to a live ad account until you provide them.
+
+`scripts/check-deploy-readiness.sh` prints which secrets are missing by name and
+never prints a value.
+
+## One local gotcha
+
+Another project on this machine serves ports 5173 and 5174, and Playwright's
+`reuseExistingServer: true` will happily run the whole suite against it — every
+spec fails with a baffling `page-title not found`. Run E2E with an explicit free
+port:
+
+```
+E2E_NO_SERVER=1 E2E_BASE_URL=http://127.0.0.1:5301 npx playwright test
+```
+
+with `npm run dev -- --port 5301 --host 127.0.0.1 --strictPort` alongside. The
+`--host` matters: Vite binds IPv6-only otherwise and Playwright cannot reach it.

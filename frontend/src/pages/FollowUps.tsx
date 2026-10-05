@@ -14,9 +14,14 @@ import {
 import type { FollowUp, FollowUpOutcome, PaginationMeta } from '@/types/api'
 import { cn } from '@/lib/cn'
 
-type Bucket = 'overdue' | 'today' | 'upcoming' | 'completed'
+type Bucket = 'overdue' | 'today' | 'upcoming' | 'missed' | 'completed'
 
-const BUCKETS: Bucket[] = ['overdue', 'today', 'upcoming', 'completed']
+/*
+ * "Missed" sits between the work still waiting and the work that got done: it
+ * is the work that will never happen now, which is the number a manager asking
+ * "how much are we dropping" actually wants.
+ */
+const BUCKETS: Bucket[] = ['overdue', 'today', 'upcoming', 'missed', 'completed']
 
 const OUTCOMES: FollowUpOutcome[] = [
   'replied', 'no_answer', 'interested', 'not_interested', 'callback', 'appointment',
@@ -101,12 +106,13 @@ export function FollowUpsPage() {
 
   const followUps = data?.data ?? []
 
-  const emptyText = {
+  const emptyText: Record<Bucket, string> = {
     overdue: t('followUps.emptyOverdue'),
     today: t('followUps.emptyToday'),
     upcoming: t('followUps.emptyUpcoming'),
+    missed: t('followUps.emptyMissed'),
     completed: t('followUps.emptyCompleted'),
-  }[bucket]
+  }
 
   const badge = (key: Bucket) =>
     key === 'overdue' ? counts?.overdue : key === 'today' ? counts?.today : key === 'upcoming' ? counts?.upcoming : undefined
@@ -156,7 +162,7 @@ export function FollowUpsPage() {
         ) : isLoading ? (
           <SkeletonTable rows={6} cols={4} />
         ) : followUps.length === 0 ? (
-          <EmptyState icon={<CalendarCheck className="size-6" />} title={emptyText} />
+          <EmptyState icon={<CalendarCheck className="size-6" />} title={emptyText[bucket]} />
         ) : (
           <>
             <ul className="divide-y divide-[var(--color-line)]">

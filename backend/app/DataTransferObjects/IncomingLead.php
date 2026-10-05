@@ -31,6 +31,17 @@ class IncomingLead
         public readonly ?string $formName = null,
         public readonly ?string $formId = null,
         public readonly ?string $providerLeadId = null,
+        /*
+         * The platform's own id for the click. It is what lets a sale be
+         * credited back to the ad that produced it — campaign and ad names tell
+         * a human which campaign a lead came from and tell Meta nothing.
+         */
+        public readonly ?string $clickId = null,
+        public readonly ?string $utmSource = null,
+        public readonly ?string $utmMedium = null,
+        public readonly ?string $utmCampaign = null,
+        public readonly ?string $utmTerm = null,
+        public readonly ?string $utmContent = null,
         public readonly ?int $projectId = null,
         public readonly ?int $assignedTo = null,
         public readonly ?string $purchasePurpose = null,
@@ -84,6 +95,22 @@ class IncomingLead
             formName: Arr::get($data, 'form_name'),
             formId: Arr::get($data, 'form_id'),
             providerLeadId: Arr::get($data, 'provider_lead_id'),
+            /*
+             * Each platform names its click id differently, and a landing page
+             * that forwards one usually forwards it under the platform's own
+             * name. Accepting all four costs nothing and is the difference
+             * between a sale that can be credited and one that cannot.
+             */
+            clickId: Arr::get($data, 'click_id')
+                ?? Arr::get($data, 'gclid')
+                ?? Arr::get($data, 'fbclid')
+                ?? Arr::get($data, 'ttclid')
+                ?? Arr::get($data, 'sccid'),
+            utmSource: Arr::get($data, 'utm_source'),
+            utmMedium: Arr::get($data, 'utm_medium'),
+            utmCampaign: Arr::get($data, 'utm_campaign'),
+            utmTerm: Arr::get($data, 'utm_term'),
+            utmContent: Arr::get($data, 'utm_content'),
             projectId: Arr::get($data, 'project_id'),
             assignedTo: Arr::get($data, 'assigned_to'),
             purchasePurpose: Arr::get($data, 'purchase_purpose'),

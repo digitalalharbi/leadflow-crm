@@ -51,6 +51,7 @@ class Lead extends Model
         'platform', 'source',
         'campaign_name', 'campaign_id', 'adset_name', 'adset_id',
         'ad_name', 'ad_id', 'form_name', 'form_id',
+        'click_id', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
         'status', 'temperature', 'score',
         'qualification_status', 'qualified_at', 'appointment_interest',
         'budget_min', 'budget_max',

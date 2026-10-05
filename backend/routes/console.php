@@ -14,4 +14,12 @@ Schedule::command('leadflow:follow-up-reminders')->hourly()->withoutOverlapping(
 Schedule::command('leadflow:sweep-sla')->everyFiveMinutes()->withoutOverlapping();
 
 // Horizon metrics snapshot for the queue dashboard.
+/*
+ * Conversions go up every fifteen minutes rather than instantly. Ad platforms
+ * do not optimise on the minute, and batching means a workspace that connects
+ * its ad account mid-afternoon gets the whole backlog in one pass instead of a
+ * retry storm.
+ */
+Schedule::command('leadflow:sweep-conversions')->everyFifteenMinutes()->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();

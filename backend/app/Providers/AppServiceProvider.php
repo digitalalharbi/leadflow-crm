@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
+use App\Listeners\RecordConversionOutcome;
 use App\Listeners\RunAutomationRules;
 use App\Models\AutomationRule;
 use App\Models\FollowUp;
@@ -49,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
          * product. This way a new event type is wired up by implementing it.
          */
         Event::listen(LeadDomainEvent::class, RunAutomationRules::class);
+        Event::listen(LeadDomainEvent::class, RecordConversionOutcome::class);
 
         // Mass-assignment protection stays on; we also fail loudly in dev when a
         // relation is accessed without eager loading, so N+1s never reach staging.

@@ -191,6 +191,7 @@ export default {
       unassigned: 'بلا مسؤول',
       stale: 'عملاء مهملون',
       missing_campaign: 'بلا حملة',
+      unmatchable_conversions: 'مبيعات لا يمكن إسنادها',
     },
     why: {
       unreachable_phones: 'نقرات دُفع ثمنها ولا يمكن لأحد الاتصال بها.',
@@ -199,6 +200,7 @@ export default {
       unassigned: 'لا أحد مسؤول عنها، ولن يتصل بها أحد.',
       stale: 'مفتوحة ولم يلمسها أحد منذ أسبوعين.',
       missing_campaign: 'المنصة معروفة والحملة لا — المبلغ مصروف دون أن يُنسب.',
+      unmatchable_conversions: 'صفقات ناجحة لا تحمل ما يتعرّف به الإعلان عليها — لن تتعلّم منها الحملة.',
     },
     status: {
       connected: 'متصل',

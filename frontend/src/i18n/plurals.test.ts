@@ -39,6 +39,39 @@ describe('Arabic plural categories', () => {
     }
   })
 
+  /*
+   * The bug this pins: a key holding two counts. i18next picks its plural
+   * category from a single `count`, so "{{conditions}} شرط · {{actions}} إجراء"
+   * silently skipped pluralisation entirely and shipped "0 شرط · 3 إجراء" to
+   * the rules list. Counted separately, both read correctly.
+   */
+  it.each([
+    [0, 'بلا شروط'],
+    [1, 'شرط واحد'],
+    [2, 'شرطان'],
+    [3, '3 شروط'],
+    [15, '15 شرطًا'],
+  ])('counts rule conditions: %i', (count, expected) => {
+    expect(i18n.t('automation.conditionCount', { count })).toBe(expected)
+  })
+
+  it.each([
+    [0, 'بلا إجراءات'],
+    [1, 'إجراء واحد'],
+    [2, 'إجراءان'],
+    [3, '3 إجراءات'],
+    [12, '12 إجراءً'],
+  ])('counts rule actions: %i', (count, expected) => {
+    expect(i18n.t('automation.actionCount', { count })).toBe(expected)
+  })
+
+  it('counts the leads a rule preview matched', () => {
+    expect(i18n.t('automation.previewMatched', { count: 0 })).toBe('لا تنطبق على أي عميل')
+    expect(i18n.t('automation.previewMatched', { count: 1 })).toBe('تنطبق على عميل واحد')
+    expect(i18n.t('automation.previewMatched', { count: 43 })).toBe('تنطبق على 43 عميلًا')
+    expect(i18n.t('automation.previewSampled', { count: 43 })).toBe('من آخر 43 عميلًا')
+  })
+
   it('counts minutes in Arabic too', () => {
     expect(i18n.t('work.overdueBy', { count: 1 })).toBe('متأخر دقيقة واحدة')
     expect(i18n.t('work.overdueBy', { count: 2 })).toBe('متأخر دقيقتين')

@@ -121,6 +121,7 @@ export default {
       unassigned: 'Nobody assigned',
       stale: 'Neglected leads',
       missing_campaign: 'No campaign',
+      unmatchable_conversions: 'Sales that cannot be credited',
     },
     why: {
       unreachable_phones: 'Clicks you paid for that nobody can call.',
@@ -129,6 +130,7 @@ export default {
       unassigned: 'Nobody owns them, so nobody will call them.',
       stale: 'Open and untouched for a fortnight.',
       missing_campaign: 'Platform known, campaign not — the money is spent but uncredited.',
+      unmatchable_conversions: 'Won deals carrying nothing the ad platform can match — the campaign will never learn from them.',
     },
     status: {
       connected: 'Connected',

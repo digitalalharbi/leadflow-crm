@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ConversionExport;
 use App\Models\Lead;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -153,6 +154,30 @@ class DataQualityTest extends TestCase
 
         $this->assertSame(1, $this->checks()['stale']['count']);
         $this->assertCountMatchesList('stale');
+    }
+
+    /**
+     * A won deal with nothing the platform can match on. The upload would
+     * succeed and teach the optimiser nothing; this screen is where a
+     * workspace finds out that happened.
+     */
+    public function test_a_sale_that_cannot_be_credited_is_counted_and_listed(): void
+    {
+        $lead = $this->lead([
+            'phone_normalized' => null, 'email' => null,
+            'click_id' => null, 'provider_lead_id' => null,
+        ]);
+
+        $this->asTenant($this->t['tenant'], fn () => ConversionExport::create([
+            'lead_id' => $lead->id,
+            'platform' => 'meta',
+            'event' => 'won',
+            'occurred_at' => now(),
+            'status' => ConversionExport::UNMATCHABLE,
+        ]));
+
+        $this->assertSame(1, $this->checks()['unmatchable_conversions']['count']);
+        $this->assertCountMatchesList('unmatchable_conversions');
     }
 
     public function test_a_clean_workspace_reports_nothing_to_fix(): void

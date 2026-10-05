@@ -3,6 +3,7 @@
 namespace App\Services\Leads;
 
 use App\Enums\LeadStatus;
+use App\Models\ConversionExport;
 use App\Models\Lead;
 use App\Models\User;
 use App\Support\Uuid;
@@ -154,6 +155,12 @@ class LeadQueryBuilder
                  */
                 'unassigned' => $q->whereNull('assigned_to')
                     ->whereIn('status', LeadStatus::openValues()),
+                // The leads behind a sale no ad platform can be told about.
+                'unmatchable_conversions' => $q->whereIn('id', function ($sub) {
+                    $sub->from('conversion_exports')
+                        ->select('lead_id')
+                        ->where('status', ConversionExport::UNMATCHABLE);
+                }),
                 'missing_campaign' => $q->whereNotNull('platform')
                     ->whereNull('campaign_name')->whereNull('campaign_id'),
                 'stale' => $q->whereIn('status', LeadStatus::openValues())

@@ -109,6 +109,12 @@ class LeadIngestionService
             'ad_id' => $incoming->adId,
             'form_name' => $incoming->formName,
             'form_id' => $incoming->formId,
+            'click_id' => $incoming->clickId,
+            'utm_source' => $incoming->utmSource,
+            'utm_medium' => $incoming->utmMedium,
+            'utm_campaign' => $incoming->utmCampaign,
+            'utm_term' => $incoming->utmTerm,
+            'utm_content' => $incoming->utmContent,
             'status' => LeadStatus::New,
             // Resolved under the tenant scope: an id belonging to another tenant
             // simply is not there, so it lands as null instead of leaking.

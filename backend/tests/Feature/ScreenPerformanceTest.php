@@ -102,6 +102,35 @@ class ScreenPerformanceTest extends TestCase
         $this->assertLessThan(30, $queries, "The filtered dashboard issued {$queries} queries.");
     }
 
+    /**
+     * The queue ranks in PHP, which only stays honest if the candidate window
+     * is one query. A relation read inside the ranking loop would be fifty.
+     */
+    public function test_the_work_queue_costs_the_same_with_five_leads_or_fifty(): void
+    {
+        $t = $this->provisionTenant('Queue Perf');
+
+        $this->asTenant($t['tenant'], fn () => $this->makeLeads(5));
+
+        $small = $this->countQueries(fn () => $this->actingAs($t['admin'])
+            ->getJson('/api/v1/work/next')->assertOk());
+
+        $this->asTenant($t['tenant'], fn () => $this->makeLeads(45, from: 5));
+
+        $large = $this->countQueries(fn () => $this->actingAs($t['admin'])
+            ->getJson('/api/v1/work/next')->assertOk());
+
+        /*
+         * Not equality: with five leads the queue can come back empty and skip
+         * loading a result at all, so a fuller workspace can legitimately cost a
+         * query or two more. What must not happen is the count following the
+         * row count, which is what a relation read inside the ranking loop
+         * would do — fifty leads would mean fifty queries, not two.
+         */
+        $this->assertLessThanOrEqual($small + 2, $large,
+            "The work queue went from {$small} to {$large} queries for ten times the leads.");
+    }
+
     private function makeProjects(int $count, int $from = 0): void
     {
         for ($i = $from; $i < $from + $count; $i++) {

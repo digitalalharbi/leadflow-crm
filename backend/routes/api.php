@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
+use App\Http\Controllers\Api\V1\WorkQueueController;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -125,6 +126,10 @@ Route::prefix('v1')->group(function () {
             Route::patch('/follow-ups/{uuid}', [FollowUpController::class, 'update']);
             Route::post('/follow-ups/{uuid}/complete', [FollowUpController::class, 'complete']);
             Route::delete('/follow-ups/{uuid}', [FollowUpController::class, 'destroy']);
+
+            // The rep's work queue
+            Route::get('/work/next', [WorkQueueController::class, 'next']);
+            Route::get('/work/summary', [WorkQueueController::class, 'summary']);
 
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);

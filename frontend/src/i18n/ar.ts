@@ -364,6 +364,12 @@ export default {
       notification: 'التنبيه',
     },
   },
+  search: {
+    open: 'بحث',
+    title: 'بحث سريع',
+    placeholder: 'اسم، رقم جوال، مشروع…',
+    nothing: 'لا نتائج.',
+  },
   dashboard: {
     greeting: 'مرحبًا{{name}}',
     lastDays: 'آخر {{count}} يوم',

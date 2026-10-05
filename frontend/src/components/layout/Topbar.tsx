@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, Check, Globe, LogOut, Menu, Monitor, Moon, Sun, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { CommandPalette } from '@/components/layout/CommandPalette'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -91,6 +92,12 @@ export function Topbar() {
           </>
         )}
       </Dropdown>
+
+      {/*
+        Before the appearance toggle, because it is the only control here that
+        anybody uses more than once a day — and it answers to ⌘K anyway.
+      */}
+      <CommandPalette />
 
       {/* Appearance */}
       <Dropdown

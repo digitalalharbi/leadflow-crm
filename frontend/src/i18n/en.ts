@@ -271,6 +271,12 @@ export default {
       notification: 'Notification',
     },
   },
+  search: {
+    open: 'Search',
+    title: 'Quick search',
+    placeholder: 'Name, phone number, project…',
+    nothing: 'No results.',
+  },
   dashboard: {
     greeting: 'Welcome{{name}}',
     lastDays: 'Last {{count}} days',

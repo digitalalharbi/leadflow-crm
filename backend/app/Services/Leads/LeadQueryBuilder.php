@@ -34,7 +34,13 @@ class LeadQueryBuilder
         return $query;
     }
 
-    private function applySearch(Builder $query, string $term): void
+    /**
+     * Public so the global search uses the same definition the leads list
+     * does. Two places that both "search leads" and disagree about what a
+     * phone number matches is the kind of thing somebody discovers while a
+     * customer is on the line.
+     */
+    public function applySearch(Builder $query, string $term): void
     {
         $term = trim($term);
 

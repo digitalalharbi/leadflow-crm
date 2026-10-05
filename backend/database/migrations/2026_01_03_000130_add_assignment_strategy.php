@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -24,7 +25,7 @@ return new class extends Migration
         // Workload is the better default for anyone who had already opted into
         // automatic distribution: they asked not to think about it, and taking
         // turns is the version of that which still lets a backlog build.
-        \Illuminate\Support\Facades\DB::table('tenant_settings')
+        DB::table('tenant_settings')
             ->where('assignment_mode', 'round_robin')
             ->update(['assignment_strategy' => 'workload']);
     }

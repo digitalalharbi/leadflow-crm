@@ -85,6 +85,15 @@ enum LeadStatus: string
         ], true);
     }
 
+    /** @return array<int, string> the statuses of a lead still being worked */
+    public static function openValues(): array
+    {
+        return array_values(array_map(
+            fn (self $s) => $s->value,
+            array_filter(self::cases(), fn (self $s) => $s->isOpen()),
+        ));
+    }
+
     /** The lead is still being worked. */
     public function isOpen(): bool
     {

@@ -19,6 +19,7 @@ const DesignSystemPage = import.meta.env.DEV
   ? lazy(() => import('@/pages/dev/DesignSystem').then((m) => ({ default: m.DesignSystemPage })))
   : () => null
 const WorkPage = lazy(() => import('@/pages/Work').then((m) => ({ default: m.WorkPage })))
+const DataQualityPage = lazy(() => import('@/pages/DataQuality').then((m) => ({ default: m.DataQualityPage })))
 const LeadsPage = lazy(() => import('@/pages/Leads').then((m) => ({ default: m.LeadsPage })))
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetail').then((m) => ({ default: m.LeadDetailPage })))
 const PipelinePage = lazy(() => import('@/pages/Pipeline').then((m) => ({ default: m.PipelinePage })))
@@ -115,6 +116,7 @@ export function App() {
               <Suspense fallback={<PageFallback />}>
                 <Routes>
                   <Route path="/work" element={<WorkPage />} />
+                  <Route path="/data-quality" element={<DataQualityPage />} />
                   <Route path="/leads" element={<LeadsPage />} />
                   <Route path="/leads/:id" element={<LeadDetailPage />} />
                   <Route path="/pipeline" element={<PipelinePage />} />

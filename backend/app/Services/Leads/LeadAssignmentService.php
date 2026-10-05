@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Domain\Leads\WorkloadBalancer;
 use App\Enums\ActivityType;
 use App\Enums\Role;
 use App\Models\Lead;
@@ -12,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class LeadAssignmentService
 {
-    public function __construct(private ActivityLogger $activities) {}
+    public function __construct(
+        private ActivityLogger $activities,
+        private WorkloadBalancer $workload,
+    ) {}
 
     /**
      * Pick the next sales user for a tenant. Manual mode returns null — the lead
@@ -31,7 +35,21 @@ class LeadAssignmentService
             return null;
         }
 
-        return $this->roundRobin($tenant);
+        return $this->byStrategy($tenant);
+    }
+
+    /**
+     * The workspace's chosen strategy, used wherever a lead needs an owner and
+     * no particular person was named.
+     */
+    public function byStrategy(Tenant $tenant): ?User
+    {
+        return match ($tenant->settings?->assignment_strategy) {
+            'round_robin' => $this->roundRobin($tenant),
+            // Workload is the default: taking turns lets one rep's backlog grow
+            // while another sits idle, and keeps feeding leads to someone away.
+            default => $this->workload->pick($tenant) ?? $this->roundRobin($tenant),
+        };
     }
 
     /**

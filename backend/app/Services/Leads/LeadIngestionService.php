@@ -4,6 +4,7 @@ namespace App\Services\Leads;
 
 use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
+use App\Domain\Leads\DuplicateMatcher;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadCreated;
@@ -32,6 +33,7 @@ class LeadIngestionService
         private LeadAssignmentService $assignment,
         private ActivityLogger $activities,
         private TenantContext $context,
+        private DuplicateMatcher $duplicates,
     ) {}
 
     public function ingest(Tenant $tenant, IncomingLead $incoming): IngestionResult
@@ -48,9 +50,10 @@ class LeadIngestionService
             }
 
             return DB::transaction(function () use ($tenant, $incoming, $normalizedPhone, $settings) {
-                $existing = $normalizedPhone
-                    ? Lead::withTrashed()->where('phone_normalized', $normalizedPhone)->lockForUpdate()->first()
-                    : null;
+                // Phone alone missed the same person arriving from a second
+                // platform with a different number on the form. See
+                // DuplicateMatcher for why the order of signals matters.
+                $existing = $this->duplicates->find($incoming, $normalizedPhone);
 
                 if ($existing) {
                     return $this->reEngage($existing, $incoming, $normalizedPhone);

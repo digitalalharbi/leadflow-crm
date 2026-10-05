@@ -33,8 +33,10 @@ export interface NextInQueue {
   remaining: number
 }
 
-export function fetchNextInQueue() {
-  return apiGet<NextInQueue>('/work/next')
+/** `skip` carries the leads passed over in this sitting, so "skip" actually
+ *  moves on instead of re-serving the same lead. */
+export function fetchNextInQueue(skip: string[] = []) {
+  return apiGet<NextInQueue>('/work/next', skip.length ? { skip } : undefined)
 }
 
 export interface WorkSummary {
@@ -55,4 +57,37 @@ export function logContact(
   payload: { channel: string; outcome?: string; note?: string; next_due_at?: string | null },
 ) {
   return apiPost<{ lead: LeadListItem }>(`/leads/${leadId}/contact`, payload)
+}
+
+/**
+ * What a rep can say happened, in the order they appear on the card.
+ *
+ * The list is short on purpose. Every extra button is a decision taken between
+ * hanging up and dialling again, and the whole screen exists to remove those.
+ */
+export const OUTCOMES = [
+  'interested',
+  'call_later',
+  'no_answer',
+  'meeting_booked',
+  'won',
+  'lost',
+] as const
+
+export type Outcome = (typeof OUTCOMES)[number]
+
+export interface OutcomeResult {
+  recorded: string
+  stage_changed: boolean
+  /** The next lead, in the same response — see the controller for why. */
+  next: NextInQueue | null
+}
+
+export function recordOutcome(payload: {
+  lead_id: string
+  outcome: Outcome
+  note?: string
+  skip?: string[]
+}) {
+  return apiPost<OutcomeResult>('/work/outcome', payload)
 }

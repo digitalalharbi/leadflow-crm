@@ -48,16 +48,26 @@ class NextBestAction
                 'لا مسؤول على هذا العميل. أسنده قبل أن يتأخر.');
         }
 
+        /*
+         * "Never contacted" has to mean the same thing here as it does on the
+         * badge the rep is looking at. Reading the timestamp alone was enough
+         * to put "عميل جديد" directly beneath a "تم التواصل" badge on the work
+         * screen — each field was right, the pair was nonsense. The status now
+         * has to agree before this branch claims the lead is untouched.
+         */
+        $neverContacted = $lead->first_contact_at === null
+            && ! $lead->status->impliesContactWasMade();
+
         // Never contacted, past the workspace's own target. The single most
         // expensive failure in this business: an ad lead answered tomorrow is
         // a cold call, and the money is already spent.
-        if ($lead->first_contact_at === null && $minutesSinceCreated >= $target) {
+        if ($neverContacted && $minutesSinceCreated >= $target) {
             return $this->result('call_now', 'critical',
                 "لم يتم التواصل منذ {$minutesSinceCreated} دقيقة — تجاوز هدف {$target} دقيقة.",
                 0);
         }
 
-        if ($lead->first_contact_at === null) {
+        if ($neverContacted) {
             $remaining = max(0, $target - $minutesSinceCreated);
 
             return $this->result('call_now', 'high',

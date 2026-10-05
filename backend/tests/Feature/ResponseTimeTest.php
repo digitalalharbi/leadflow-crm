@@ -99,11 +99,21 @@ class ResponseTimeTest extends TestCase
 
     public function test_a_lead_already_in_progress_is_not_counted_as_neglected(): void
     {
-        // Someone moved it along without logging a contact. It is not untouched,
-        // whatever the timestamps say, and dragging it back into the panel would
-        // train people to ignore the panel.
+        /*
+         * Someone moved it along without logging a contact. It is not untouched,
+         * and dragging it back into the panel would train people to ignore the
+         * panel.
+         *
+         * This test used to force status and timestamp apart with saveQuietly,
+         * and so asserted the dashboard's behaviour against a state the product
+         * can no longer hold. Moving the lead the ordinary way now stamps the
+         * contact time with it, which is the point: the panel is right for the
+         * same reason the badge is.
+         */
         $lead = $this->lead('قيد العمل', createdMinutesAgo: 120);
-        $lead->forceFill(['status' => 'contacted'])->saveQuietly();
+        $lead->update(['status' => 'contacted']);
+
+        $this->assertNotNull($lead->fresh()->first_contact_at);
 
         $this->actingAs($this->t['admin'])
             ->getJson('/api/v1/dashboard')

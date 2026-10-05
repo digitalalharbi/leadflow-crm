@@ -335,6 +335,20 @@ class E2ESeeder extends Seeder
             'payment_method' => 'financing',
         ], $attributes));
 
+        /*
+         * A contacted lead gets a plausible contact time rather than the
+         * model's backfill of "right now". The invariant would keep the
+         * fixtures consistent either way, but a first contact stamped at the
+         * same instant as the seed makes every response-time figure in the E2E
+         * run read as zero seconds — fixtures should look like the data the
+         * screens were designed for.
+         */
+        if ($lead->status->impliesContactWasMade()) {
+            $lead->forceFill([
+                'first_contact_at' => $lead->created_at->copy()->addMinutes(12),
+            ])->saveQuietly();
+        }
+
         LeadActivity::create([
             'tenant_id' => $tenant->id,
             'lead_id' => $lead->id,

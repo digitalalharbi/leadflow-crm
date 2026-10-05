@@ -18,6 +18,32 @@ class Lead extends Model
 {
     use BelongsToTenant, HasFactory, HasUuid, SoftDeletes;
 
+    /**
+     * One invariant, enforced where nobody can route around it.
+     *
+     * A lead whose status says it was contacted but whose `first_contact_at`
+     * is null is a lead the product contradicts itself about: the badge reads
+     * the status and says "contacted", the work queue reads the timestamp and
+     * says "new lead, never touched". A rep who sees both trusts neither.
+     *
+     * Three controllers each remembered to set the timestamp by hand, and the
+     * automation engine — which can move a lead to any stage on a customer's
+     * instruction — did not. Rather than add a fourth place to remember, the
+     * rule lives on the model: any save that leaves the lead in a status that
+     * means contact happened backfills the timestamp.
+     *
+     * `now()` is an approximation when some other path skipped the timestamp,
+     * but it is a defensible one and it is never a contradiction.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $lead) {
+            if ($lead->first_contact_at === null && $lead->status?->impliesContactWasMade()) {
+                $lead->first_contact_at = now();
+            }
+        });
+    }
+
     protected $fillable = [
         'assigned_to', 'project_id',
         'first_name', 'last_name', 'full_name',

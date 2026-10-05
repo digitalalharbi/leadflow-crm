@@ -67,6 +67,24 @@ enum LeadStatus: string
         return array_values(array_filter(self::cases(), fn (self $s) => $s->isPipelineColumn()));
     }
 
+    /**
+     * Does this status mean somebody actually reached the lead?
+     *
+     * Deliberately narrow. These six cannot be true of a lead nobody has
+     * contacted — you cannot have replied, qualified or won someone you never
+     * spoke to. The others are left out on purpose: `invalid` is usually a
+     * wrong number, and `lost` or `no_response` can both be recorded against a
+     * lead nobody ever reached. Claiming a first contact for those would
+     * silently inflate every response-time metric in the product.
+     */
+    public function impliesContactWasMade(): bool
+    {
+        return in_array($this, [
+            self::Contacted, self::Replied, self::Qualified,
+            self::Appointment, self::Negotiation, self::Won,
+        ], true);
+    }
+
     /** The lead is still being worked. */
     public function isOpen(): bool
     {

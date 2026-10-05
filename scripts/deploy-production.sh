@@ -97,7 +97,7 @@ compose exec -T backend php artisan up
 
 say "Restarting workers onto the new code"
 compose exec -T backend php artisan horizon:terminate || true
-compose restart queue horizon scheduler
+compose restart horizon scheduler
 
 say "Verifying the deployed release over HTTP"
 # "Something answered" is not a deploy. A container that failed to restart

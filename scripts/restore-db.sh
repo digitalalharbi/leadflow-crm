@@ -38,13 +38,13 @@ fi
 compose() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
 
 echo "==> Stopping workers so nothing writes mid-restore"
-compose stop queue horizon scheduler || true
+compose stop horizon scheduler || true
 
 echo "==> Restoring"
 gunzip -c "$BACKUP_FILE" | compose exec -T postgres \
   psql -v ON_ERROR_STOP=1 -U "$DB_USERNAME" -d "$DB_DATABASE"
 
 echo "==> Restarting workers"
-compose up -d queue horizon scheduler
+compose up -d horizon scheduler
 
 echo "==> Restore complete"

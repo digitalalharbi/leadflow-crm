@@ -135,7 +135,7 @@ a backup.
 
 ## Zero-downtime
 
-Staging and production run php-fpm, queue, Horizon and the scheduler as separate
+Staging and production run php-fpm, Horizon and the scheduler as separate
 containers. `docker compose up -d` replaces containers one service at a time, and
 only the migration step enters maintenance mode. For a true zero-downtime
 production, run two API replicas behind the host Nginx; the compose file is

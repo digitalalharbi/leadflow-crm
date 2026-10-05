@@ -110,22 +110,6 @@ services:
       - "127.0.0.1:9080:80"
     restart: unless-stopped
 
-  queue:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      target: production
-      args:
-        APP_RELEASE: ${DEPLOY_COMMIT:-}
-    command: php artisan queue:work --tries=3 --timeout=300 --sleep=1 --max-time=3600
-    environment: *backend-env
-    volumes:
-      - production-storage:/var/www/html/storage
-    depends_on:
-      backend: { condition: service_started }
-      redis: { condition: service_healthy }
-    restart: unless-stopped
-
   horizon:
     build:
       context: .

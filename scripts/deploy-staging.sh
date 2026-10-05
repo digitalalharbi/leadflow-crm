@@ -93,7 +93,7 @@ compose exec -T backend php artisan event:cache
 
 say "Restarting workers onto the new code"
 compose exec -T backend php artisan horizon:terminate || true
-compose restart queue horizon scheduler
+compose restart horizon scheduler
 
 
 say "Verifying the deployed release over HTTP"

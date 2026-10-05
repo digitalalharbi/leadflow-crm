@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Listeners\RunAutomationRules;
+use App\Models\AutomationRule;
 use App\Models\FollowUp;
 use App\Models\Import;
 use App\Models\Integration;
@@ -13,6 +14,7 @@ use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Policies\AutomationRulePolicy;
 use App\Policies\FollowUpPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\IntegrationPolicy;
@@ -53,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
 
+        Gate::policy(AutomationRule::class, AutomationRulePolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(User::class, UserPolicy::class);

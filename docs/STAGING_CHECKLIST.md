@@ -14,7 +14,7 @@ deployed. Setting the secrets in §2 turns that step on.
 | | Verified |
 | --- | --- |
 | `deploy-staging` workflow | Runs backend, frontend and E2E suites, then deploys over SSH |
-| Docker images | `docker/php/Dockerfile` (php-fpm, queue, Horizon, scheduler), `docker/Dockerfile.frontend` (static SPA build) |
+| Docker images | `docker/php/Dockerfile` (php-fpm, Horizon, scheduler), `docker/Dockerfile.frontend` (static SPA build) |
 | Compose stack | 8 services: postgres, redis, backend, api, frontend, queue, horizon, scheduler |
 | Nginx | `api.conf` (php-fpm), `spa.conf` (SPA fallback + caching), `edge.conf.example` (TLS edge) |
 | Environment template | `.env.staging.example` — copy to `.env.staging` on the VPS |

@@ -10,9 +10,11 @@ x-backend-env: &backend-env
   APP_ENV: staging
   APP_DEBUG: "false"
   APP_KEY: ${APP_KEY:?APP_KEY is required}
-  APP_URL: https://${STAGING_API_DOMAIN:?set STAGING_API_DOMAIN}
+  # http only when the server has an IP and no certificate; see
+  # docker/nginx/edge-ip.conf.example for what that costs.
+  APP_URL: ${APP_SCHEME:-https}://${STAGING_API_DOMAIN:?set STAGING_API_DOMAIN}
   APP_CENTRAL_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN}
-  FRONTEND_URL: https://${STAGING_DOMAIN}
+  FRONTEND_URL: ${APP_SCHEME:-https}://${STAGING_DOMAIN}
   DB_CONNECTION: pgsql
   DB_HOST: postgres
   DB_PORT: 5432
@@ -24,6 +26,9 @@ x-backend-env: &backend-env
   CACHE_STORE: redis
   QUEUE_CONNECTION: redis
   SESSION_DRIVER: database
+  # Read by the health endpoint to decide whether a caller may be told which
+  # commit is serving. Empty means nobody may, which is the safe default.
+  DEPLOY_SECRET: ${DEPLOY_SECRET:-}
   LOG_CHANNEL: stderr
   LOG_LEVEL: info
   # The host Nginx terminates TLS and proxies in over the docker bridge, so the
@@ -72,6 +77,9 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
       target: production
+      args:
+        # Set by the deploy script so the image can identify itself over HTTP.
+        APP_RELEASE: ${DEPLOY_COMMIT:-}
     environment: *backend-env
     volumes:
       - staging-storage:/var/www/html/storage
@@ -97,23 +105,9 @@ services:
       dockerfile: docker/Dockerfile.frontend
       target: production
       args:
-        VITE_API_URL: https://${STAGING_API_DOMAIN}/api/v1
+        VITE_API_URL: ${APP_SCHEME:-https}://${STAGING_API_DOMAIN}/api/v1
     ports:
       - "127.0.0.1:8080:80"
-    restart: unless-stopped
-
-  queue:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      target: production
-    command: php artisan queue:work --tries=3 --timeout=300 --sleep=1 --max-time=3600
-    environment: *backend-env
-    volumes:
-      - staging-storage:/var/www/html/storage
-    depends_on:
-      backend: { condition: service_started }
-      redis: { condition: service_healthy }
     restart: unless-stopped
 
   horizon:
@@ -121,6 +115,8 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
       target: production
+      args:
+        APP_RELEASE: ${DEPLOY_COMMIT:-}
     command: php artisan horizon
     environment: *backend-env
     volumes:
@@ -136,6 +132,8 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
       target: production
+      args:
+        APP_RELEASE: ${DEPLOY_COMMIT:-}
     command: php artisan schedule:work
     environment: *backend-env
     volumes:

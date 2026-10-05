@@ -102,31 +102,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check deployment secrets
-        id: guard
+      - name: Require the deployment secrets
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          DEPLOY_PATH_SECRET: ${{ secrets.PRODUCTION_PATH }}
         run: |
-          if [ -z "$VPS_HOST" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Deployment skipped::VPS secrets are not configured. See EXTERNAL_SETUP.md."
+          # A deploy that cannot run must fail, not pass quietly. Skipping here
+          # produced a green "Deploy production" on a run that shipped nothing, and
+          # a release was tagged against it before anyone noticed.
+          MISSING=""
+          for name in VPS_HOST VPS_USER VPS_SSH_KEY DEPLOY_PATH_SECRET; do
+            [ -n "${!name}" ] || MISSING="$MISSING $name"
+          done
+
+          if [ -n "$MISSING" ]; then
+            LABEL="$(echo "$MISSING" | sed 's/DEPLOY_PATH_SECRET/PRODUCTION_PATH/')"
             {
-              echo "## ⚠️ Nothing was deployed"
+              echo "## Deployment is not configured"
               echo ""
-              echo "Every test passed, but \`VPS_HOST\` is not set, so the deploy steps were"
-              echo "skipped and **production is still running the previous build**."
+              echo "Missing repository secrets:**$LABEL**"
               echo ""
-              echo "This job is green because the code is good, not because it shipped."
+              echo "Every test passed — this is a configuration gap, not a code failure."
+              echo "Production still runs the previous build."
               echo ""
-              echo "Run \`./scripts/check-deploy-readiness.sh\` to see exactly what is missing."
+              echo "Run \`./scripts/check-deploy-readiness.sh\` for the exact commands,"
+              echo "or see \`EXTERNAL_SETUP.md\` section 2."
             } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "### Deploying to production" >> "$GITHUB_STEP_SUMMARY"
+
+            echo "::error title=Deployment not configured::Missing secrets:$LABEL — see the job summary."
+            exit 1
           fi
 
+          echo "### Deploying to production" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Set up the SSH key
-        if: steps.guard.outputs.ready == 'true'
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -134,7 +145,6 @@ jobs:
           ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy
-        if: steps.guard.outputs.ready == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -150,7 +160,6 @@ jobs:
              cd \"\$PRODUCTION_PATH\" && ./scripts/deploy-production.sh"
 
       - name: Verify production is healthy
-        if: steps.guard.outputs.ready == 'true'
         env:
           PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
         run: |

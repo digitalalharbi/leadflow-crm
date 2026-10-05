@@ -91,6 +91,11 @@ for v in STAGING_DOMAIN PRODUCTION_DOMAIN; do
 done
 
 # --- What the workflows will actually do -------------------------------------
+# --- The piece that lives on the server, not in GitHub ----------------------
+say ""
+say "${BOLD}On the server${OFF}  (not a GitHub secret — set in each .env file)"
+warn "DEPLOY_SECRET" "without it a deploy cannot prove the new build went live"
+
 say ""
 say "${BOLD}Verdict${OFF}"
 

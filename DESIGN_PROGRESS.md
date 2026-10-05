@@ -84,7 +84,13 @@ Then:
       filter chips) — 113 Playwright green
 - [x] Visual QA — `npx playwright test --config=playwright.visual.config.ts`
       writes 44 captures to `artifacts/visual-review/` (untracked)
-- [ ] PR to `develop`, CI green, merge, tag `v0.4.0`
+- [x] PR to `develop`, CI green, merge, tag `v0.4.0` — [#13](https://github.com/digitalalharbi/leadflow-crm/pull/13),
+      merged as `f053aab`, released as
+      [v0.4.0](https://github.com/digitalalharbi/leadflow-crm/releases/tag/v0.4.0)
+
+**v0.4.0 is complete.** Deployment hardening continues in
+[#14](https://github.com/digitalalharbi/leadflow-crm/pull/14); it is
+infrastructure, not design, and nothing in the list above depends on it.
 
 ## How to run
 

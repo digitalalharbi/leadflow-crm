@@ -37,7 +37,7 @@ compose exec -T backend php artisan migrate --force
 compose exec -T backend php artisan config:cache
 compose exec -T backend php artisan route:cache
 compose exec -T backend php artisan horizon:terminate || true
-compose restart queue horizon scheduler
+compose restart horizon scheduler
 
 cat <<EOF
 

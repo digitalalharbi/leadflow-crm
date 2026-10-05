@@ -16,6 +16,14 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
+     * Shared with the deploy pipeline only. It unlocks one field on the health
+     * endpoint — the commit currently serving — so a deploy can prove over HTTP
+     * that the new build is live rather than trusting that the container
+     * restarted. Empty means the field is never returned to anyone.
+     */
+    'deploy_secret' => env('DEPLOY_SECRET', ''),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------

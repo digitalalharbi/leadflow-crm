@@ -70,20 +70,6 @@ services:
       - backend
 
   # Queue worker. Separate from Horizon so a crash in one does not stop the other.
-  queue:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      target: development
-    command: php artisan queue:work --tries=3 --timeout=300 --sleep=1
-    environment: *backend-env
-    volumes:
-      - ./backend:/var/www/html
-    depends_on:
-      backend: { condition: service_started }
-      redis: { condition: service_healthy }
-    restart: unless-stopped
-
   horizon:
     build:
       context: .

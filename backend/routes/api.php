@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DemoController;
@@ -129,6 +130,15 @@ Route::prefix('v1')->group(function () {
             // The rep's work queue
             Route::get('/work/next', [WorkQueueController::class, 'next']);
             Route::get('/work/summary', [WorkQueueController::class, 'summary']);
+
+            // Automation rules — written by the workspace, not by a developer.
+            Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);
+            Route::get('/automation/rules', [AutomationRuleController::class, 'index']);
+            Route::post('/automation/rules', [AutomationRuleController::class, 'store']);
+            Route::patch('/automation/rules/{uuid}', [AutomationRuleController::class, 'update']);
+            Route::delete('/automation/rules/{uuid}', [AutomationRuleController::class, 'destroy']);
+            Route::get('/automation/rules/{uuid}/preview', [AutomationRuleController::class, 'preview']);
+            Route::get('/leads/{leadUuid}/automation-runs', [AutomationRuleController::class, 'runsForLead']);
 
             // Appointments
             Route::get('/appointments', [AppointmentController::class, 'index']);

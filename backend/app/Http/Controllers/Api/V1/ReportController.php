@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Analytics\ConversionInsights;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
@@ -47,6 +48,30 @@ class ReportController extends Controller
             'rows' => $rows,
             'totals' => $this->totals($rows),
             'available' => self::REPORTS,
+        ]);
+    }
+
+    /**
+     * Whether the things we measure actually predict a sale.
+     *
+     * Every other report measures effort — how fast the team called, what the
+     * scoring engine thought, how many leads a platform sent. None of them says
+     * whether the effort paid, and a workspace cannot act on a speed figure
+     * until it knows that speed is worth paying for.
+     *
+     * Honours the same filters as the rest of the reports, so "does speed
+     * matter" can be asked of one project or one rep rather than only of the
+     * whole workspace.
+     */
+    public function drivers(Request $request, ConversionInsights $insights)
+    {
+        $this->authorize('export', Lead::class);
+
+        $base = fn () => $this->queries->build($request, $request->user())->reorder();
+
+        return ApiResponse::success([
+            'speed' => $insights->bySpeed($base()),
+            'score' => $insights->byScore($base()),
         ]);
     }
 

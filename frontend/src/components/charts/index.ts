@@ -14,6 +14,7 @@ export { LeadFlowChart, type TimelinePoint } from './LeadFlowChart'
 export { TeamComparisonChart, type TeamRow } from './TeamComparisonChart'
 export { VelocityChart, type VelocityStep } from './VelocityChart'
 export { StackedDayChart, type DayPoint } from './StackedDayChart'
+export { ConversionDriversChart, type DriverRow } from './ConversionDriversChart'
 export {
   IngestionChart, IngestionSources,
   type IngestionDay, type IngestionSource,

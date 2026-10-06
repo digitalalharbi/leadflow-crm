@@ -284,9 +284,21 @@ class E2ESeeder extends Seeder
                  * A closed lead is backdated far enough that its whole journey
                  * still fits before now.
                  */
+                /*
+                 * Closed leads sit beyond the conversion-analysis maturity
+                 * window; open ones sit inside the thirty-day arrival window.
+                 *
+                 * «عوامل الإغلاق» only counts leads old enough to have
+                 * converted — one that arrived this morning has not been won
+                 * yet and probably has not been lost either. With every
+                 * fixture lead under three weeks old, that whole tab was
+                 * empty in the E2E run and could not be exercised at all:
+                 * the same hole the velocity chart had, and the ingestion
+                 * chart after it.
+                 */
                 $createdAt = match (true) {
-                    $won => now()->subDays(12 + ($i % 9)),
-                    $lost => now()->subDays(6 + ($i % 5)),
+                    $won => now()->subDays(40 + ($i % 9)),
+                    $lost => now()->subDays(34 + ($i % 5)),
                     default => now()->subDays($i % 21),
                 };
 

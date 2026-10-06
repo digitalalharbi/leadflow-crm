@@ -121,6 +121,27 @@ test.describe('الرسوم البيانية — charts', () => {
     }
   })
 
+  /**
+   * A ranked bar chart silently means "longer is better". That is true of
+   * every measure on the team tab except response time, where the longest bar
+   * is the worst rep — so the chart says which way it is pointing, every time,
+   * and sorts accordingly. A chart that reverses its meaning without saying so
+   * is worse than no chart: it is confidently wrong.
+   */
+  test('the team comparison says which direction is good', async ({ page }) => {
+    await page.goto('/reports')
+    await page.getByRole('button', { name: 'فريق المبيعات' }).click()
+
+    const chart = page.getByTestId('team-comparison')
+    await expect(chart).toBeVisible()
+    await expect(chart).toContainText('الأعلى أفضل')
+
+    await page.getByTestId('team-measure-avg_first_contact_seconds').click()
+
+    await expect(chart).toContainText('الأقل أفضل')
+    await expect(chart).not.toContainText('الأعلى أفضل')
+  })
+
   test('the time axis is not mirrored by the RTL page', async ({ page }) => {
     // Dates ascend left to right, like the numbers themselves. Mirrored, a
     // rising month looks like a falling one.

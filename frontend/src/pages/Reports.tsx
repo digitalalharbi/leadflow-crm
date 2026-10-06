@@ -12,6 +12,7 @@ import {
 } from '@/components/ui'
 import {
   CampaignMatrix, CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar,
+  TeamComparisonChart, type TeamRow,
   LostReasonsChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart,
   TEMPERATURE_COLOR, formatDuration,
 } from '@/components/charts'
@@ -381,6 +382,24 @@ function TeamTab({
   const timing = (performance.data as { timing?: { avg_first_contact_seconds: number | null } } | undefined)?.timing
 
   return (
+    <div className="space-y-4">
+      {/*
+        Above the table, because comparing people is what this tab is for and a
+        table is the hardest shape to compare in: reading "is نورة ahead of
+        سعد" out of seven numeric columns means holding two figures in your
+        head while your eye travels. The table stays underneath as the detail.
+      */}
+      {rows.length > 0 && (
+        <ChartCard
+          title={t('charts.team.title')}
+          description={t('charts.team.hint')}
+          height={240}
+          testId="team-comparison-card"
+        >
+          <TeamComparisonChart rows={rows as unknown as TeamRow[]} />
+        </ChartCard>
+      )}
+
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-3">
         <div>
@@ -443,6 +462,7 @@ function TeamTab({
         </TableWrap>
       )}
     </Card>
+    </div>
   )
 }
 

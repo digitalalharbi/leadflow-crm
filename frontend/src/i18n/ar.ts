@@ -121,7 +121,7 @@ export default {
       uncontacted: 'لم يُتواصل معهم',
       overdueFirstContact: 'تجاوزوا مهلة أول تواصل',
       overdueFollowUps: 'متابعات متأخرة',
-      hot: 'عملاء ساخنون',
+      hot: 'عملاء باهتمام مرتفع',
     },
     urgency: {
       critical: 'الآن',

@@ -378,7 +378,7 @@ class E2ESeeder extends Seeder
     private function seedAutomationHistory(Tenant $tenant, User $admin): void
     {
         $rule = AutomationRule::create([
-            'name' => 'عميل ساخن: أولوية قصوى',
+            'name' => 'اهتمام مرتفع: أولوية قصوى',
             'trigger' => 'lead.created',
             'is_enabled' => true,
             'priority' => 5,
@@ -406,7 +406,7 @@ class E2ESeeder extends Seeder
                 'trigger' => 'lead.created',
                 'outcome' => $outcome,
                 'reason' => $outcome === 'skipped'
-                    ? 'درجة اهتمام العميل ليست "ساخن"'
+                    ? 'اهتمام العميل ليس مرتفعًا'
                     : null,
                 'applied_actions' => $outcome === 'applied'
                     ? [['ok' => true, 'type' => 'adjust_score', 'description' => 'التقييم 60 ← 70.']]

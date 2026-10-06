@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Onboarding\SetupChecklist;
 use App\Domain\Onboarding\TestLeadDiagnostic;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationRun;
 use App\Models\Lead;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -18,6 +20,16 @@ use Illuminate\Http\Request;
  */
 class TestLeadController extends Controller
 {
+    /** What is still missing before this workspace can run on the product. */
+    public function checklist(Request $request, SetupChecklist $checklist)
+    {
+        // Readable by anyone who can see the whole workspace: a manager being
+        // told why leads are not being assigned should not need an admin.
+        $this->authorize('viewAny', User::class);
+
+        return ApiResponse::success($checklist->for($request->user()->tenant));
+    }
+
     public function store(Request $request, TestLeadDiagnostic $diagnostic)
     {
         // Running the pipeline assigns a lead to somebody and may notify them,

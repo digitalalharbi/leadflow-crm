@@ -377,6 +377,12 @@ export default {
     showChart: 'عرض الرسم',
     showTable: 'عرض الأرقام',
   },
+  search: {
+    open: 'بحث',
+    title: 'بحث سريع',
+    placeholder: 'اسم، رقم جوال، مشروع…',
+    nothing: 'لا نتائج.',
+  },
   dashboard: {
     greeting: 'مرحبًا{{name}}',
     lastDays: 'آخر {{count}} يوم',
@@ -430,6 +436,16 @@ export default {
     noOverdue: 'ممتاز، لا توجد متابعات متأخرة.',
   },
   onboarding: {
+    step: {
+      identity: 'اسم الشركة وهويتها',
+      projects: 'إضافة مشروع',
+      team: 'إضافة مندوبي مبيعات',
+      sources: 'ربط مصدر عملاء',
+      assignment: 'اختيار طريقة الإسناد',
+      sla: 'تحديد مهلة أول تواصل',
+      automation: 'تشغيل قاعدة أتمتة',
+      test_lead: 'تشغيل فحص الإعداد',
+    },
     title: 'لنجهّز نظامك',
     subtitle: 'خطوات قصيرة لتبدأ باستقبال العملاء',
     branding: 'إعداد هوية النظام',

@@ -24,6 +24,24 @@ export interface TestLeadTrace {
   automation: { rule: string | null; outcome: string; reason: string | null }[]
 }
 
+export interface ChecklistStep {
+  key: string
+  done: boolean
+  /** Where to go to finish it — never a dead end. */
+  where: string
+}
+
+export interface SetupChecklist {
+  steps: ChecklistStep[]
+  done: number
+  total: number
+  complete: boolean
+}
+
+export function fetchSetupChecklist() {
+  return apiGet<SetupChecklist>('/onboarding/checklist')
+}
+
 export function runTestLead() {
   return apiPost<TestLeadReport>('/onboarding/test-lead')
 }

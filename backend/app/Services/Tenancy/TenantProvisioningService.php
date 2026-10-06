@@ -61,7 +61,6 @@ class TenantProvisioningService
                     'default_country_code' => $data['country_code'] ?? $defaults['country_code'],
                     'assignment_mode' => $data['assignment_mode'] ?? 'manual',
                     'whatsapp_template' => 'مرحباً {{name}}، معك {{agent}} من {{company}} بخصوص اهتمامك بمشروع {{project}}.',
-                    'onboarding' => $this->initialOnboarding(),
                 ]);
 
                 // A workspace with no saved messages has a composer nobody uses.
@@ -114,17 +113,6 @@ class TenantProvisioningService
     }
 
     /** The short checklist the admin sees on first login. */
-    private function initialOnboarding(): array
-    {
-        return [
-            'branding' => true,       // provisioned above
-            'team' => false,
-            'project' => false,
-            'lead_source' => false,
-            'first_lead' => false,
-        ];
-    }
-
     public function uniqueSlug(string $candidate): string
     {
         $base = Str::slug(Str::ascii($candidate)) ?: 'tenant';

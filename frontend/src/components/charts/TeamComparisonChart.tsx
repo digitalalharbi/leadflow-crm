@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SERIES } from './palette'
 import { formatNumber } from '@/lib/format'
+import { humaniseDuration } from './duration'
 import { cn } from '@/lib/cn'
 
 export interface TeamRow {
@@ -151,11 +152,10 @@ function display(
   }
 
   if (format === 'duration') {
-    const minutes = Math.round(raw / 60)
-
-    return minutes < 60
-      ? t('charts.team.minutes', { count: minutes })
-      : t('charts.team.hours', { count: Math.round(minutes / 60) })
+    // Was its own minutes-or-hours ladder that never reached days, so a rep
+    // who took three days to call showed as "72 ساعة" here and "3 أيام" on the
+    // velocity chart. Same lead, same number, two answers.
+    return humaniseDuration(raw, t)
   }
 
   return formatNumber(raw, language)

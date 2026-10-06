@@ -19,11 +19,11 @@ import {
   Badge, Button, Card, CardBody, CardHeader, Dropdown, DropdownItem, ErrorState,
   Input, Modal, Select, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
-import type { LeadStatus, LeadTemperature } from '@/types/api'
+import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
 import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
-import { platformColor } from '@/components/charts'
+import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
 import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
 import { Conversation } from '@/components/whatsapp/Conversation'
 import { cn } from '@/lib/cn'
@@ -432,11 +432,15 @@ export function LeadDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/*
-          Ordered by what a rep does, not by what the database holds:
-          qualify, talk, note, then look back. Attribution and the contact
+          Ordered by what a rep does, not by what the database holds: see
+          where it stands, qualify, talk, note. The journey leads because it is
+          orientation rather than history — it is the only thing on the page
+          that says how long this lead has been waiting right now. Attribution and the contact
           details sit in the sidebar — read occasionally, acted on rarely.
         */}
         <div className="space-y-4 lg:col-span-2">
+          <JourneyCard lead={lead} />
+
           <QualificationCard lead={lead} />
 
           <Conversation lead={lead} />
@@ -682,6 +686,37 @@ export function LeadDetailPage() {
         <p className="text-[0.875rem]">{lead.full_name}</p>
       </Modal>
     </>
+  )
+}
+
+/**
+ * The lead's own milestones, and the gaps between them.
+ *
+ * In a ChartCard for the table view: the bars encode durations that span
+ * minutes to months, and a reader who wants the actual figures should not have
+ * to measure a bar to get them.
+ */
+function JourneyCard({ lead }: { lead: Lead }) {
+  const { t, i18n } = useTranslation()
+  const journey = buildJourney(lead, new Date())
+
+  return (
+    <ChartCard
+      title={t('charts.journey.title')}
+      description={t('charts.journey.hint')}
+      height={0}
+      testId="lead-journey-card"
+      table={{
+        head: [t('charts.journey.step'), t('charts.journey.when'), t('charts.journey.gap')],
+        rows: journey.milestones.map((milestone) => [
+          t(`charts.journey.${milestone.key}`),
+          milestone.at ? formatDateTime(milestone.at, i18n.language) : t('charts.journey.notYet'),
+          milestone.sincePrevious === null ? '—' : humaniseDuration(milestone.sincePrevious, t),
+        ]),
+      }}
+    >
+      <LeadJourney lead={lead} />
+    </ChartCard>
   )
 }
 

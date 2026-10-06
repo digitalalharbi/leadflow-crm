@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { SERIES } from './palette'
+import { humaniseHours } from './duration'
 
 export interface VelocityStep {
   step: string
@@ -43,7 +44,7 @@ export function VelocityChart({ steps }: { steps: VelocityStep[] }) {
             <div className="flex items-baseline justify-between gap-3">
               <span className="t-caption min-w-0 truncate">{t(`charts.velocity.${step.step}`)}</span>
               <span className="t-body shrink-0 font-medium tabular-nums">
-                {hours === null ? '—' : humanise(hours, t)}
+                {hours === null ? '—' : humaniseHours(hours, t)}
               </span>
             </div>
 
@@ -74,22 +75,4 @@ export function VelocityChart({ steps }: { steps: VelocityStep[] }) {
       })}
     </ul>
   )
-}
-
-/**
- * Hours up to a day, then days.
- *
- * "73 ساعة" is a number somebody has to divide before it means anything, and
- * the whole point of this chart is to be read at a glance.
- */
-function humanise(hours: number, t: ReturnType<typeof useTranslation>['t']): string {
-  if (hours < 1) {
-    return t('charts.velocity.minutes', { count: Math.max(1, Math.round(hours * 60)) })
-  }
-
-  if (hours < 24) {
-    return t('charts.velocity.hours', { count: Math.round(hours) })
-  }
-
-  return t('charts.velocity.days', { count: Math.round(hours / 24) })
 }

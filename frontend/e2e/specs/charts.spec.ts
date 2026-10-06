@@ -104,21 +104,28 @@ test.describe('الرسوم البيانية — charts', () => {
   })
 
   /**
-   * A step nobody has made says so. Showing zero there would read as
-   * "instant", which is the opposite of the truth.
+   * All three steps carry a median.
+   *
+   * This was written as `if (text.includes('nobody has passed this step'))`,
+   * which asserted nothing whenever every step had data — and the fixtures
+   * were closing leads before they were created, so two of the three steps
+   * were empty in every run and the branch never ran either. Neither half was
+   * ever tested. The empty-step rendering is now stated outright in
+   * VelocityChart.test.tsx; what belongs here is that real data arrives.
    */
-  test('a step with no leads says so rather than showing zero', async ({ page }) => {
-    const card = page.getByTestId('velocity-card')
-    const steps = card.getByTestId('velocity-steps')
+  test('every step of the velocity chart carries a median', async ({ page }) => {
+    const steps = page.getByTestId('velocity-card').getByTestId('velocity-steps')
 
     await expect(steps).toBeVisible()
 
-    const text = (await steps.innerText()) ?? ''
+    const text = await steps.innerText()
 
-    if (text.includes('لم يجتز هذه الخطوة أحد بعد')) {
-      // The empty step shows a dash, never a 0.
-      expect(text).toContain('—')
-    }
+    expect(text).not.toContain('لم يجتز هذه الخطوة أحد بعد')
+    expect(text).not.toContain('—')
+    // Minutes to first contact, hours to qualification, days to the win.
+    expect(text).toMatch(/دقيقة|دقائق/)
+    expect(text).toMatch(/ساعات|ساعة|ساعتان/)
+    expect(text).toMatch(/أيام|يوم|يومان/)
   })
 
   /**

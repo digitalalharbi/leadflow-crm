@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChartTooltip } from './ChartTooltip'
 import { SERIES } from './palette'
+import { useChartWidth } from './useChartWidth'
 
 export interface AutomationDay {
   date: string
@@ -36,6 +37,7 @@ export function AutomationActivityChart({
 }) {
   const { t, i18n } = useTranslation()
   const [hover, setHover] = useState<number | null>(null)
+  const { ref, width } = useChartWidth()
 
   const color: Record<Key, string> = {
     applied: SERIES[0],
@@ -44,7 +46,6 @@ export function AutomationActivityChart({
   }
 
   const geometry = useMemo(() => {
-    const width = 720
     const padding = { top: 10, right: 8, bottom: 20, left: 28 }
     const plotHeight = height - padding.top - padding.bottom
     const plotWidth = width - padding.left - padding.right
@@ -54,7 +55,7 @@ export function AutomationActivityChart({
     const barWidth = Math.max(2, slot - 2)
 
     return { width, padding, plotHeight, plotWidth, max, slot, barWidth }
-  }, [days, height])
+  }, [days, height, width])
 
   if (days.length === 0) {
     return null
@@ -63,7 +64,7 @@ export function AutomationActivityChart({
   const active = hover === null ? null : days[hover]
 
   return (
-    <div className="relative" dir="ltr">
+    <div className="relative" dir="ltr" ref={ref}>
       <svg
         viewBox={`0 0 ${geometry.width} ${height}`}
         className="w-full"

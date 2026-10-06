@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChartTooltip } from './ChartTooltip'
 import { SERIES } from './palette'
+import { useChartWidth } from './useChartWidth'
 import { formatNumber } from '@/lib/format'
 
 export interface TimelinePoint {
@@ -40,6 +41,7 @@ export function LeadFlowChart({
 }) {
   const { t, i18n } = useTranslation()
   const [hover, setHover] = useState<number | null>(null)
+  const { ref, width } = useChartWidth()
 
   const color: Record<Key, string> = {
     leads: SERIES[0],
@@ -48,7 +50,6 @@ export function LeadFlowChart({
   }
 
   const geometry = useMemo(() => {
-    const width = 720
     const padding = { top: 12, right: 12, bottom: 24, left: 34 }
     const plotWidth = width - padding.left - padding.right
     const plotHeight = height - padding.top - padding.bottom
@@ -65,7 +66,7 @@ export function LeadFlowChart({
       points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p[key]).toFixed(1)}`).join(' ')
 
     return { width, padding, plotWidth, plotHeight, max, x, y, path }
-  }, [points, height])
+  }, [points, height, width])
 
   if (points.length === 0) {
     return null
@@ -77,7 +78,7 @@ export function LeadFlowChart({
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => Math.round(geometry.max * fraction))
 
   return (
-    <div className="relative" dir="ltr">
+    <div className="relative" dir="ltr" ref={ref}>
       <svg
         viewBox={`0 0 ${geometry.width} ${height}`}
         className="w-full"

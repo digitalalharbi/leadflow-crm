@@ -272,6 +272,21 @@ export default {
     },
   },
   charts: {
+    team: {
+      leads: 'Leads',
+      qualified: 'Qualified',
+      won: 'Won',
+      win_rate: 'Win rate',
+      avg_first_contact_seconds: 'Speed to first contact',
+      higherIsBetter: 'Higher is better — first in the list is highest.',
+      lowerIsBetter: 'Lower is better — first in the list is fastest.',
+      minutes_one: '1 minute',
+      minutes_other: '{{count}} minutes',
+      hours_one: '1 hour',
+      hours_other: '{{count}} hours',
+      title: 'Team comparison',
+      hint: 'One measure at a time — best is always on top',
+    },
     velocity: {
       title: 'Where deals stall',
       hint: 'How long a lead waits at each step before moving — median, not mean',

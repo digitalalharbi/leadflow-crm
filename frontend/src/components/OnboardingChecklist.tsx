@@ -42,7 +42,13 @@ export function OnboardingChecklist() {
   }
 
   return (
-    <Card className="mb-5 overflow-hidden" data-testid="onboarding-checklist">
+    /*
+     * Not printed. It is a prompt to go and do something in the product, which
+     * on paper is an instruction the reader cannot follow, sitting where a
+     * figure should be. The same goes for anything else that only exists to be
+     * clicked: mark it `data-print="hide"`.
+     */
+    <Card className="mb-5 overflow-hidden" data-print="hide" data-testid="onboarding-checklist">
       <div className="flex items-start justify-between gap-3 px-5 pt-4">
         <div>
           <h2 className="text-[0.9375rem] font-semibold">{t('onboarding.title')}</h2>

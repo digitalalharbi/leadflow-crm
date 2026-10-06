@@ -732,3 +732,81 @@
     animation: fade var(--duration-base) var(--ease-out-soft);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Print.
+ *
+ * A sales manager prints the dashboard for a Sunday meeting. Without this they
+ * get the navigation, the filter controls, a dark background on good printers
+ * and — the part that actually breaks — charts with no bars in them.
+ *
+ * Browsers drop background colours when printing, by default and deliberately:
+ * it saves ink. Every bar in this product is a `background` on a div, so the
+ * tracks print and the fills do not. The chart does not look broken; it looks
+ * like a month where nothing happened.
+ * ------------------------------------------------------------------------- */
+@media print {
+  /*
+   * Light, whatever the screen was. A dark dashboard prints as a black page or,
+   * with backgrounds stripped, as white text on white.
+   */
+  :root,
+  :root[data-theme='dark'] {
+    color-scheme: light;
+    --color-bg: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-raised: #ffffff;
+    --color-surface-sunken: #f1f3f5;
+    --color-ink: #11181c;
+    --color-ink-muted: #45525b;
+    --color-ink-subtle: #5c6b73;
+    --color-line: #d7dde2;
+    --color-border: #d7dde2;
+  }
+
+  /* The chrome is navigation. On paper there is nowhere to navigate to. */
+  aside,
+  header,
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  /* The sidebar's offset goes with the sidebar. */
+  .lg\:ms-\[17rem\] {
+    margin-inline-start: 0 !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  /*
+   * The whole point. `exact` tells the browser to print the fills anyway —
+   * without it the bars are empty tracks and the chart quietly lies.
+   */
+  [data-chart-mark],
+  svg,
+  .skeleton {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* A chart split across a page break is two unreadable halves. */
+  [data-testid$='-card'],
+  [data-testid='lead-flow'],
+  [data-testid='automation-activity'],
+  article,
+  section > div > div {
+    break-inside: avoid;
+  }
+
+  /* Shadows cost ink and say nothing on paper. */
+  * {
+    box-shadow: none !important;
+  }
+
+  a[href]::after {
+    content: '';
+  }
+}

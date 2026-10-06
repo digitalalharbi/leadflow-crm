@@ -31,6 +31,7 @@ export function ChartLegend({
         const content = (
           <>
             <span
+              data-chart-mark
               className="size-2.5 shrink-0 rounded-[3px] transition-opacity"
               style={{ background: item.color, opacity: off ? 0.25 : 1 }}
               aria-hidden

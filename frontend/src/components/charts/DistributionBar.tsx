@@ -41,6 +41,7 @@ export function DistributionBar({
         {segments.map((segment) => (
           <span
             key={segment.key}
+            data-chart-mark
             className="h-full transition-[width] duration-[var(--duration-slow)] first:rounded-s-full last:rounded-e-full"
             style={{ width: `${segment.share}%`, background: segment.color }}
             title={`${segment.label}: ${segment.count}`}

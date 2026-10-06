@@ -114,6 +114,7 @@ export function TeamComparisonChart({ rows }: { rows: TeamRow[] }) {
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
                 <div
+                  data-chart-mark
                   className="h-full rounded-full"
                   style={{
                     width: `${Math.max(2, (raw / max) * 100)}%`,

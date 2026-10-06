@@ -541,7 +541,8 @@ function LeadMiniList({
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-3">
         <h2 className="t-card-title">{title}</h2>
-        <Link to={to} className="t-caption hover:text-[var(--brand)]">
+        {/* A link is not readable on paper; the list under it is. */}
+        <Link to={to} className="t-caption hover:text-[var(--brand)]" data-print="hide">
           {t('common.showMore')}
         </Link>
       </div>

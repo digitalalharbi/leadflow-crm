@@ -147,4 +147,55 @@ test.describe('الرسوم البيانية — charts', () => {
     // rising month looks like a falling one.
     await expect(page.getByTestId('lead-flow').locator('[dir="ltr"]').first()).toBeVisible()
   })
+
+  /**
+   * What a manager actually hands to a board: the page on paper.
+   *
+   * Browsers drop background colours when printing unless a stylesheet says
+   * otherwise, and a bar chart whose fills are backgrounds then prints as a row
+   * of empty grey tracks. It does not look broken on paper — it looks like a
+   * month in which nothing happened, which is worse than looking broken. So
+   * this is checked under the print medium rather than trusted.
+   */
+  test('the charts survive being printed', async ({ page }) => {
+    // The dashboard, which is the page anybody actually prints.
+    await expect(page.getByTestId('lead-flow')).toBeVisible()
+    await expect(page.locator('[data-chart-mark]').first()).toBeVisible()
+
+    await page.emulateMedia({ media: 'print' })
+
+    // The navigation is not information; on paper it is only wasted ink.
+    await expect(page.locator('aside').first()).toBeHidden()
+
+    // Neither is a prompt to go and press something. The onboarding checklist
+    // printed at the top of the dashboard for a while, where a reader would
+    // reasonably take it for a figure.
+    await expect(page.getByTestId('onboarding-checklist')).toBeHidden()
+    await expect(page.getByTestId('lead-flow-table-toggle')).toBeHidden()
+
+    // The chart itself stays.
+    await expect(page.getByTestId('lead-flow')).toBeVisible()
+
+    const marks = page.locator('[data-chart-mark]')
+    expect(await marks.count()).toBeGreaterThan(0)
+
+    const fills = await marks.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node)
+
+        return {
+          background: style.backgroundColor,
+          adjust: style.printColorAdjust || style.webkitPrintColorAdjust,
+        }
+      }),
+    )
+
+    // Every mark keeps a colour, and every mark tells the browser to keep it.
+    for (const fill of fills) {
+      expect(fill.background).not.toBe('rgba(0, 0, 0, 0)')
+      expect(fill.adjust).toBe('exact')
+    }
+
+    await page.emulateMedia({ media: 'screen' })
+  })
 })

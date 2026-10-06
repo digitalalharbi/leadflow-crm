@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "oxlint src && node scripts/check-chart-palette.mjs",
+    "lint": "oxlint src && node scripts/check-chart-palette.mjs && node scripts/check-chart-print.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

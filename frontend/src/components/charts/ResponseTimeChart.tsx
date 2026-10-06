@@ -58,6 +58,7 @@ export function ResponseTimeChart({ data }: { data: ResponseTime }) {
             <span className="h-5 min-w-0 flex-1 overflow-hidden rounded-[0.3rem] bg-[var(--color-surface-sunken)]">
               <span
                 className="block h-full rounded-[0.3rem] transition-[width] duration-[var(--duration-slow)]"
+                data-chart-mark
                 style={{
                   width: `${Math.max((bucket.count / peak) * 100, bucket.count > 0 ? 3 : 0)}%`,
                   background: tone[bucket.key],

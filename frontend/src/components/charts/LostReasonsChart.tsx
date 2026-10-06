@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { ReportRow } from '@/types/api'
+import { OTHER } from './palette'
 
 /**
  * Why deals are lost, as ranked horizontal bars.
@@ -49,10 +50,15 @@ export function LostReasonsChart({ rows }: { rows: ReportRow[] }) {
             <span className="block h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
               <span
                 className="block h-full rounded-full transition-[width] duration-[var(--duration-slow)]"
+                data-chart-mark
                 style={{
                   width: `${(row.total / peak) * 100}%`,
                   // The leading reason is the problem; the rest are context.
-                  background: index === 0 ? 'var(--color-danger)' : 'var(--chart-8)',
+                  // --chart-8 used to live here. The palette is five slots
+                  // now, and an undefined custom property is not an error —
+                  // it is simply no background, so every bar but the first
+                  // rendered empty and nothing said a word.
+                  background: index === 0 ? 'var(--color-danger)' : OTHER,
                   opacity: index === 0 ? 1 : 0.85 - index * 0.08,
                 }}
               />

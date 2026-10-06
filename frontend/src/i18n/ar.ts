@@ -364,6 +364,10 @@ export default {
       notification: 'التنبيه',
     },
   },
+  charts: {
+    showChart: 'عرض الرسم',
+    showTable: 'عرض الأرقام',
+  },
   dashboard: {
     greeting: 'مرحبًا{{name}}',
     lastDays: 'آخر {{count}} يوم',
@@ -871,6 +875,7 @@ export default {
     saved: 'تم الحفظ.',
   },
   superAdmin: {
+    otherPlans: 'خطط أخرى',
     title: 'إدارة المنصة',
     subtitle: 'عملاء المنصة واشتراكاتهم',
     tenants: 'العملاء',

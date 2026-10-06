@@ -8,7 +8,7 @@ import { useApiError } from '@/hooks/useApiError'
 import { useDebounced } from '@/hooks/useDebounced'
 import { formatDate, formatNumber, formatLastSeen, initials } from '@/lib/format'
 import { CURRENCIES, TIMEZONES } from '@/lib/locales'
-import { MetricCard, DistributionBar, SERIES } from '@/components/charts'
+import { MetricCard, DistributionBar, foldSeries } from '@/components/charts'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
   Pagination, Select, SkeletonCards, SkeletonTable, Table, TableWrap, Td, Th, Tr,
@@ -204,14 +204,24 @@ export function PlatformPage() {
           <div className="border-b border-[var(--color-line)] px-4 py-3">
             <h2 className="t-card-title">{t('superAdmin.byPlan')}</h2>
           </div>
+          {/*
+            Folded, not cycled. `SERIES[i % SERIES.length]` gave the sixth plan
+            the first plan's colour — two entities, one colour, no warning. The
+            tail is now one honest "Other" segment that still carries its total.
+          */}
           <DistributionBar
             testId="platform-plan-split"
-            segments={stats.by_plan.map((row, index) => ({
-              key: row.key,
-              label: row.key,
-              count: row.count,
-              share: Math.round((row.count / Math.max(stats.tenants, 1)) * 100),
-              color: SERIES[index % SERIES.length],
+            segments={foldSeries(stats.by_plan, {
+              key: (row) => row.key,
+              label: (row) => row.key,
+              value: (row) => row.count,
+              otherLabel: t('superAdmin.otherPlans'),
+            }).map((slice) => ({
+              key: slice.key,
+              label: slice.label,
+              count: slice.value,
+              share: Math.round((slice.value / Math.max(stats.tenants, 1)) * 100),
+              color: slice.color,
             }))}
           />
         </Card>

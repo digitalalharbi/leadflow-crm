@@ -118,14 +118,22 @@
    * every series is a tint of one hue is unreadable, and under white label the
    * brand colour belongs to the customer. Only the primary series takes it.
    */
-  --chart-1: #12a594;
-  --chart-2: #4f7cff;
-  --chart-3: #8b73f5;
-  --chart-4: #e0922f;
-  --chart-5: #16a34a;
-  --chart-6: #e85d75;
-  --chart-7: #3aa8e0;
-  --chart-8: #7c8698;
+  /*
+   * Five series, computed rather than chosen — see charts/palette.ts for the
+   * reasoning and scripts/validate-chart-palette.mjs for the proof. The hues
+   * are Okabe-Ito's, which are the standard for colour-vision safety; only
+   * their lightness is re-stepped, because Okabe-Ito was built for bright
+   * marks on white and fails WCAG 3:1 against this surface.
+   *
+   * There is no sixth. A sixth series folds into --chart-other, which is
+   * neutral on purpose: an invented hue is one nobody can tell from the five.
+   */
+  --chart-1: #007b59;
+  --chart-2: #025e94;
+  --chart-3: #bf8408;
+  --chart-4: #d875ad;
+  --chart-5: #a64906;
+  --chart-other: #6b7280;
 
   /*
    * The tenant's colour, written at runtime by useBrandingTheme. Defaults are
@@ -225,14 +233,18 @@
   --color-brand-100: #11433c;
 
   /* Series lifted the same way, so a chart keeps its separation on dark. */
-  --chart-1: #2bc4b0;
-  --chart-2: #7d9dff;
-  --chart-3: #a996ff;
-  --chart-4: #edab51;
-  --chart-5: #44c77a;
-  --chart-6: #ff8398;
-  --chart-7: #5fbcea;
-  --chart-8: #93a0b4;
+  /*
+   * Dark is stepped separately against the dark surface, not lightened from
+   * the light set: the warm hues converge as they brighten, and an automatic
+   * flip put amber and vermillion at ΔE 9.4 — two series a reader cannot tell
+   * apart with full colour vision.
+   */
+  --chart-1: #048560;
+  --chart-2: #0178bb;
+  --chart-3: #bc8207;
+  --chart-4: #b8528f;
+  --chart-5: #a63c0c;
+  --chart-other: #8a93a5;
 
   --shadow-card:
     0 0 0 0.5px color-mix(in srgb, #ffffff 7%, transparent),

@@ -1,6 +1,14 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { BarChart3, Table2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui'
 import { cn } from '@/lib/cn'
+
+/** The numbers behind the picture. */
+export interface ChartTable {
+  head: string[]
+  rows: (string | number)[][]
+}
 
 /**
  * The frame every chart in مهتم sits in.
@@ -16,6 +24,7 @@ export function ChartCard({
   action,
   legend,
   footer,
+  table,
   height = 260,
   loading = false,
   empty = false,
@@ -30,6 +39,16 @@ export function ChartCard({
   action?: ReactNode
   legend?: ReactNode
   footer?: ReactNode
+  /**
+   * Required wherever colour alone would carry meaning.
+   *
+   * It is not a nicety. The palette is allowed to be as vivid as it is because
+   * two of its slots sit below 3:1 against the surface, and that is only
+   * permitted where the reader can get the values another way. It is also the
+   * answer for anyone using a screen reader, for whom a `<svg>` of bars is
+   * nothing at all.
+   */
+  table?: ChartTable
   height?: number
   loading?: boolean
   empty?: boolean
@@ -39,6 +58,9 @@ export function ChartCard({
   className?: string
   children: ReactNode
 }) {
+  const { t } = useTranslation()
+  const [showTable, setShowTable] = useState(false)
+
   return (
     <Card className={cn('flex flex-col overflow-hidden', className)} data-testid={testId}>
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 pb-3">
@@ -46,7 +68,21 @@ export function ChartCard({
           <h3 className="t-card-title truncate">{title}</h3>
           {description && <p className="t-caption mt-0.5">{description}</p>}
         </div>
-        {action}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {action}
+          {table && !loading && !empty && (
+            <button
+              type="button"
+              onClick={() => setShowTable((previous) => !previous)}
+              aria-pressed={showTable}
+              aria-label={t(showTable ? 'charts.showChart' : 'charts.showTable')}
+              data-testid={testId ? `${testId}-table-toggle` : undefined}
+              className="pressable grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+            >
+              {showTable ? <BarChart3 className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
+            </button>
+          )}
+        </div>
       </div>
 
       {legend && <div className="px-5 pb-3">{legend}</div>}
@@ -61,6 +97,8 @@ export function ChartCard({
           <ChartSkeleton height={height} />
         ) : empty ? (
           <ChartEmpty message={emptyMessage} action={emptyAction} height={height} />
+        ) : showTable && table ? (
+          <ChartDataTable table={table} height={height} />
         ) : (
           children
         )}
@@ -68,6 +106,39 @@ export function ChartCard({
 
       {footer && <div className="border-t border-[var(--color-line)] px-5 py-3">{footer}</div>}
     </Card>
+  )
+}
+
+/** The same figures, as figures. Scrolls rather than squeezing. */
+function ChartDataTable({ table, height }: { table: ChartTable; height: number }) {
+  return (
+    <div className="overflow-auto px-3" style={{ maxHeight: height }}>
+      <table className="w-full text-[0.8125rem]">
+        <thead className="sticky top-0 bg-[var(--color-surface)]">
+          <tr className="text-start text-[var(--color-ink-muted)]">
+            {table.head.map((cell) => (
+              <th key={cell} scope="col" className="px-2 py-1.5 text-start font-medium whitespace-nowrap">
+                {cell}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, index) => (
+            <tr key={index} className="border-t border-[var(--color-line)]">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={cellIndex}
+                  className={cn('px-2 py-1.5', cellIndex > 0 && 'tabular-nums')}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

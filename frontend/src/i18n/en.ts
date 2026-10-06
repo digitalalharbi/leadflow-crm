@@ -271,6 +271,10 @@ export default {
       notification: 'Notification',
     },
   },
+  charts: {
+    showChart: 'Show chart',
+    showTable: 'Show the numbers',
+  },
   search: {
     open: 'Search',
     title: 'Quick search',
@@ -573,6 +577,7 @@ export default {
     typeBoolean: 'Yes/No', plan: 'Plan', trialEnds: 'Trial ends', saved: 'Saved.',
   },
   superAdmin: {
+    otherPlans: 'Other plans',
     title: 'Platform', subtitle: 'Your customers and their subscriptions',
     tenants: 'Customers', createTenant: 'New customer', companyName: 'Company name',
     systemName: 'System name', subdomain: 'Subdomain',

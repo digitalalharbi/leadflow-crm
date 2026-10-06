@@ -364,6 +364,10 @@ export default {
       notification: 'التنبيه',
     },
   },
+  charts: {
+    showChart: 'عرض الرسم',
+    showTable: 'عرض الأرقام',
+  },
   search: {
     open: 'بحث',
     title: 'بحث سريع',
@@ -887,6 +891,7 @@ export default {
     saved: 'تم الحفظ.',
   },
   superAdmin: {
+    otherPlans: 'خطط أخرى',
     title: 'إدارة المنصة',
     subtitle: 'عملاء المنصة واشتراكاتهم',
     tenants: 'العملاء',

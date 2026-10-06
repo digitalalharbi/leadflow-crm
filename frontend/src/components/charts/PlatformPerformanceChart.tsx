@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SERIES } from './palette'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/lib/format'
@@ -27,11 +28,19 @@ export function PlatformPerformanceChart({ rows }: { rows: CampaignQualityRow[] 
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [hovered, setHovered] = useState<string | null>(null)
 
+  /*
+   * All four from the categorical palette, which is checked as a set.
+   * "Won" used to borrow --color-success because green reads as success — and
+   * that green sat at ΔE 13.2 from the teal beside it, under the 15 floor, so
+   * "qualified" and "won" were two bars nobody could reliably separate. A
+   * status colour means a state; these four are four measures, which is a
+   * different job and a different palette.
+   */
   const colors: Record<Measure, string> = {
-    leads: 'var(--chart-2)',
-    qualified: 'var(--chart-1)',
-    appointments: 'var(--chart-4)',
-    won: 'var(--color-success)',
+    leads: SERIES[0],
+    qualified: SERIES[1],
+    appointments: SERIES[2],
+    won: SERIES[3],
   }
 
   // One row per platform, summed across its campaigns.

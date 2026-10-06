@@ -284,6 +284,7 @@ class E2ESeeder extends Seeder
                  * A closed lead is backdated far enough that its whole journey
                  * still fits before now.
                  */
+<<<<<<< HEAD
                 /*
                  * Closed leads sit beyond the conversion-analysis maturity
                  * window; open ones sit inside the thirty-day arrival window.
@@ -311,6 +312,11 @@ class E2ESeeder extends Seeder
                 $createdAt = match (true) {
                     $won => now()->subDays(($mature ? 40 : 12) + ($i % 9)),
                     $lost => now()->subDays(($mature ? 34 : 6) + ($i % 5)),
+=======
+                $createdAt = match (true) {
+                    $won => now()->subDays(12 + ($i % 9)),
+                    $lost => now()->subDays(6 + ($i % 5)),
+>>>>>>> origin/develop
                     default => now()->subDays($i % 21),
                 };
 

@@ -436,14 +436,6 @@ export interface AppNotification {
   created_at: string
 }
 
-export interface OnboardingState {
-  branding: boolean
-  team: boolean
-  project: boolean
-  lead_source: boolean
-  first_lead: boolean
-}
-
 export interface TenantSettings {
   locale: 'ar' | 'en'
   currency: string
@@ -454,7 +446,6 @@ export interface TenantSettings {
   score_hot_threshold: number
   first_contact_target_minutes: number
   whatsapp_template: string | null
-  onboarding: OnboardingState | null
 }
 
 export interface LostReason {

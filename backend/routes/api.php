@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
@@ -136,9 +137,11 @@ Route::prefix('v1')->group(function () {
 
             // Automation rules — written by the workspace, not by a developer.
             Route::get('/automation/schema', [AutomationRuleController::class, 'schema']);
+            Route::get('/search', SearchController::class);
             Route::get('/data-quality', DataQualityController::class);
 
             // "Does any of this actually work for us?" — the first-day question.
+            Route::get('/onboarding/checklist', [TestLeadController::class, 'checklist']);
             Route::post('/onboarding/test-lead', [TestLeadController::class, 'store']);
             Route::get('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'show']);
             Route::delete('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'destroy']);
@@ -222,7 +225,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/settings', [SettingsController::class, 'show']);
             Route::patch('/settings/branding', [SettingsController::class, 'updateBranding']);
             Route::patch('/settings', [SettingsController::class, 'updateSettings']);
-            Route::post('/settings/onboarding', [SettingsController::class, 'completeOnboardingStep']);
             Route::post('/settings/lost-reasons', [SettingsController::class, 'storeLostReason']);
             Route::patch('/settings/lost-reasons/{uuid}', [SettingsController::class, 'updateLostReason']);
             Route::post('/settings/custom-fields', [SettingsController::class, 'storeCustomField']);

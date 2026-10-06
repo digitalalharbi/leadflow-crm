@@ -100,7 +100,6 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
-            'onboarding' => $user->tenant?->settings?->onboarding,
             // Lets the SPA offer the sales-demo helpers. False in production, so
             // the controls simply do not exist for a real customer.
             'demo_mode' => ! app()->environment('production'),

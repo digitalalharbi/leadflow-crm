@@ -275,6 +275,12 @@ export default {
     showChart: 'Show chart',
     showTable: 'Show the numbers',
   },
+  search: {
+    open: 'Search',
+    title: 'Quick search',
+    placeholder: 'Name, phone number, project…',
+    nothing: 'No results.',
+  },
   dashboard: {
     greeting: 'Welcome{{name}}',
     lastDays: 'Last {{count}} days',
@@ -309,6 +315,16 @@ export default {
     noHotLeads: 'No hot leads right now.', noOverdue: 'Nothing overdue. Nice work.',
   },
   onboarding: {
+    step: {
+      identity: 'Company name and identity',
+      projects: 'Add a project',
+      team: 'Add sales reps',
+      sources: 'Connect a lead source',
+      assignment: 'Choose how leads are assigned',
+      sla: 'Set the first-contact target',
+      automation: 'Switch on an automation rule',
+      test_lead: 'Run the setup check',
+    },
     title: "Let's set up your workspace", subtitle: 'A few short steps to start receiving leads',
     branding: 'Set up your branding', team: 'Add your sales team', project: 'Add a project',
     leadSource: 'Connect a lead source', firstLead: 'Receive your first lead', dismiss: 'Dismiss',

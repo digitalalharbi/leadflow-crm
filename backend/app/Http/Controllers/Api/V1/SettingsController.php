@@ -32,7 +32,6 @@ class SettingsController extends Controller
                 'score_hot_threshold' => $tenant->settings?->score_hot_threshold,
                 'first_contact_target_minutes' => $tenant->settings?->first_contact_target_minutes,
                 'whatsapp_template' => $tenant->settings?->whatsapp_template,
-                'onboarding' => $tenant->settings?->onboarding,
             ],
             'subscription' => [
                 'plan' => $tenant->plan,
@@ -98,23 +97,6 @@ class SettingsController extends Controller
         $this->audit->log('tenant.settings_updated', $request->user(), $tenant, ['fields' => array_keys($data)]);
 
         return ApiResponse::success(['settings' => $tenant->settings->fresh()]);
-    }
-
-    /** Marks an onboarding checklist item done; the UI hides the card when all are. */
-    public function completeOnboardingStep(Request $request)
-    {
-        $tenant = $request->user()->tenant;
-        $this->authorize('update', $tenant);
-
-        $data = $request->validate([
-            'step' => ['required', 'in:branding,team,project,lead_source,first_lead'],
-        ]);
-
-        $onboarding = $tenant->settings->onboarding ?? [];
-        $onboarding[$data['step']] = true;
-        $tenant->settings->update(['onboarding' => $onboarding]);
-
-        return ApiResponse::success(['onboarding' => $onboarding]);
     }
 
     public function storeLostReason(Request $request)

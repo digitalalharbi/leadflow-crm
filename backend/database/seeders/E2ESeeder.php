@@ -272,39 +272,21 @@ class E2ESeeder extends Seeder
                 $lost = $status === LeadStatus::Lost->value;
 
                 /*
-                 * Arrivals are spread over three weeks rather than stamped all
-                 * at the same second.
+                 * Arrivals are spread, and the closed ones straddle two windows.
                  *
-                 * Every filler lead used to be created at the moment of
+                 * Every filler lead used to be stamped at the instant of
                  * seeding, so the thirty-day lead-flow chart was a flat line
-                 * with a single spike at the right-hand edge — a correct chart
-                 * of fixture data that looks nothing like the data the screen
-                 * was designed for, and that no reviewer could read.
+                 * with one spike at the right-hand edge — a correct chart of
+                 * fixture data that looks nothing like the data the screen was
+                 * designed for.
                  *
-                 * A closed lead is backdated far enough that its whole journey
-                 * still fits before now.
-                 */
-                /*
-                 * Closed leads sit beyond the conversion-analysis maturity
-                 * window; open ones sit inside the thirty-day arrival window.
-                 *
-                 * «عوامل الإغلاق» only counts leads old enough to have
-                 * converted — one that arrived this morning has not been won
-                 * yet and probably has not been lost either. With every
-                 * fixture lead under three weeks old, that whole tab was
-                 * empty in the E2E run and could not be exercised at all:
-                 * the same hole the velocity chart had, and the ingestion
-                 * chart after it.
-                 */
-                /*
-                 * Half the closed leads sit inside the thirty-day dashboard
-                 * window; half sit beyond the conversion-analysis maturity
-                 * window. The two screens want opposite things from the same
-                 * fixtures — the velocity chart measures what closed recently,
-                 * «عوامل الإغلاق» counts only leads old enough to have
-                 * finished — so satisfying either alone empties the other.
-                 * Aging all of them is exactly how the velocity chart went
-                 * back to showing a dash.
+                 * The closed ones then have to satisfy two screens that want
+                 * opposite things. The dashboard measures the last thirty days;
+                 * «عوامل الإغلاق» counts only leads old enough to have finished
+                 * converting. Aging all of them emptied the velocity chart, and
+                 * aging none of them emptied the conversion analysis — so half
+                 * sit in each, and each closed lead is still backdated far
+                 * enough that its whole journey fits before now.
                  */
                 $mature = intdiv($i, 6) % 2 === 1;
 

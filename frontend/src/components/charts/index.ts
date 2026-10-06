@@ -13,6 +13,11 @@ export { AutomationActivityChart, type AutomationDay } from './AutomationActivit
 export { LeadFlowChart, type TimelinePoint } from './LeadFlowChart'
 export { TeamComparisonChart, type TeamRow } from './TeamComparisonChart'
 export { VelocityChart, type VelocityStep } from './VelocityChart'
+export { StackedDayChart, type DayPoint } from './StackedDayChart'
+export {
+  IngestionChart, IngestionSources,
+  type IngestionDay, type IngestionSource,
+} from './IngestionChart'
 export { LeadJourney, buildJourney, type JourneyLead, type Milestone } from './LeadJourney'
 export { humaniseDuration, humaniseHours } from './duration'
 export * from './palette'

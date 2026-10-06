@@ -141,7 +141,7 @@ export default {
   },
   automation: {
     trace: {
-      title: 'What automation did',
+      title: 'Automation log',
       description: 'Every rule considered for this lead, and why it applied or did not.',
       empty: 'No rule has acted on this lead yet.',
       deletedRule: 'Deleted rule',
@@ -323,11 +323,11 @@ export default {
       avg_first_contact_seconds: 'Speed to first contact',
       higherIsBetter: 'Higher is better — first in the list is highest.',
       lowerIsBetter: 'Lower is better — first in the list is fastest.',
-      title: 'Team comparison',
+      title: 'Rep performance',
       hint: 'One measure at a time — best is always on top',
     },
     velocity: {
-      title: 'Where deals stall',
+      title: 'Stage timings',
       hint: 'How long a lead waits at each step before moving — median, not mean',
       to_contact: 'Arrival to first contact',
       to_qualify: 'First contact to qualified',
@@ -340,7 +340,7 @@ export default {
       sample: 'Leads',
     },
     automation: {
-      title: 'What the rules did',
+      title: 'Rule activity',
       hint: 'Every run in the last thirty days — including the ones that did not apply',
       aria: 'Daily automation rule runs, split by outcome',
       applied: 'Applied',
@@ -388,7 +388,8 @@ export default {
     analytics: 'Analytics',
 
     awaitingContact: 'Not contacted',
-    awaitingContactList: 'Nobody has answered these in {{minutes}} minutes',
+    awaitingContactList_one: 'Waiting for contact for 1 minute',
+    awaitingContactList_other: 'Waiting for contact for {{count}} minutes',
     noAwaitingContact: 'Every new lead has been contacted.',
 
     title: 'Overview', subtitle: "Your team's activity at a glance",

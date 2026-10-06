@@ -42,7 +42,7 @@ test.describe('Dashboard', () => {
 
     await page.goBack()
 
-    await page.getByRole('link', { name: /عملاء Hot/ }).click()
+    await page.getByRole('link', { name: /عملاء باهتمام مرتفع/ }).click()
     await expect(page).toHaveURL(/\/leads\?temperature\[\]=hot/)
     await expect(page.getByRole('heading', { name: 'العملاء المحتملون', level: 1 })).toBeVisible()
   })

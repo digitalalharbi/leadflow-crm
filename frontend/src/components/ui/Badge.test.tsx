@@ -25,10 +25,25 @@ describe('status and temperature badges', () => {
     }
   })
 
-  it('renders each temperature', () => {
+  /**
+   * The interest scale is Arabic, and parallel.
+   *
+   * It was Hot / Warm / Cold — three English words in an Arabic interface,
+   * sitting in a funnel list beside تم التواصل، ردوا، مؤهلون، مواعيد، مبيعات.
+   * Every other category in the product is Arabic; this one was not, and it
+   * read as an untranslated string rather than a decision.
+   */
+  it('renders each level of interest in Arabic', () => {
+    const levels: Record<string, string> = { hot: 'مرتفع', warm: 'متوسط', cold: 'منخفض' }
+
     for (const temp of ['hot', 'warm', 'cold'] as const) {
       const { unmount } = render(<TemperatureBadge temperature={temp} />)
-      expect(screen.getByText(temp === 'hot' ? 'Hot' : temp === 'warm' ? 'Warm' : 'Cold')).toBeInTheDocument()
+
+      const badge = screen.getByText(levels[temp])
+      expect(badge).toBeInTheDocument()
+      // No Latin letters: a missing key would render the key itself.
+      expect(badge.textContent).not.toMatch(/[A-Za-z]/)
+
       unmount()
     }
   })

@@ -64,7 +64,19 @@ export function MetricCard({
 
       <div className="mt-2 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className={cn('t-metric', valueTone)}>{formatNumber(value, i18n.language)}</p>
+          {/*
+            The figure is addressable on its own. The tile also carries a
+            period-over-period change, so reading the whole card's text and
+            stripping non-digits glues the two together — a test comparing
+            "39" against "87.5%" read 398750 and nobody noticed, because it
+            was comparing that number against another one just like it.
+          */}
+          <p
+            className={cn('t-metric', valueTone)}
+            data-testid={testId ? `${testId}-value` : undefined}
+          >
+            {formatNumber(value, i18n.language)}
+          </p>
 
           {change !== null && (
             <p className="mt-1.5 flex items-center gap-1" dir="ltr">

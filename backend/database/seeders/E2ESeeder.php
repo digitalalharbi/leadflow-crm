@@ -296,9 +296,21 @@ class E2ESeeder extends Seeder
                  * the same hole the velocity chart had, and the ingestion
                  * chart after it.
                  */
+                /*
+                 * Half the closed leads sit inside the thirty-day dashboard
+                 * window; half sit beyond the conversion-analysis maturity
+                 * window. The two screens want opposite things from the same
+                 * fixtures — the velocity chart measures what closed recently,
+                 * «عوامل الإغلاق» counts only leads old enough to have
+                 * finished — so satisfying either alone empties the other.
+                 * Aging all of them is exactly how the velocity chart went
+                 * back to showing a dash.
+                 */
+                $mature = intdiv($i, 6) % 2 === 1;
+
                 $createdAt = match (true) {
-                    $won => now()->subDays(40 + ($i % 9)),
-                    $lost => now()->subDays(34 + ($i % 5)),
+                    $won => now()->subDays(($mature ? 40 : 12) + ($i % 9)),
+                    $lost => now()->subDays(($mature ? 34 : 6) + ($i % 5)),
                     default => now()->subDays($i % 21),
                 };
 

@@ -260,6 +260,58 @@ class DashboardAnalytics
     }
 
     /**
+     * How long leads sit at each step before moving.
+     *
+     * The question a funnel cannot answer. A funnel says ten of forty reached
+     * an appointment; it says nothing about the ones that took three weeks to
+     * get a first call, which is the part a manager can do something about this
+     * afternoon.
+     *
+     * Median, never mean. One lead from last year that nobody closed drags a
+     * mean into uselessness — and the leads that distort it most are exactly
+     * the ones a sales floor already knows about. The median is what the middle
+     * lead actually experienced.
+     *
+     * Only leads that *made* the transition are counted. Including the ones
+     * still waiting would mix "took two days" with "has been waiting two days
+     * and may never move", and the second is a different measurement living on
+     * the funnel.
+     *
+     * @return array<int, array{step:string, median_hours:float|null, count:int}>
+     */
+    public function velocity(Builder $query): array
+    {
+        $steps = [
+            ['step' => 'to_contact', 'from' => 'leads.created_at', 'to' => 'leads.first_contact_at'],
+            ['step' => 'to_qualify', 'from' => 'leads.first_contact_at', 'to' => 'leads.qualified_at'],
+            ['step' => 'to_win', 'from' => 'leads.qualified_at', 'to' => 'leads.won_at'],
+        ];
+
+        return array_map(function (array $step) use ($query) {
+            $row = (clone $query)
+                ->whereNotNull($step['from'])
+                ->whereNotNull($step['to'])
+                // A clock that ran backwards is a data problem, not a fast rep.
+                ->whereRaw("{$step['to']} >= {$step['from']}")
+                ->selectRaw(
+                    'count(*) as total,'.
+                    ' percentile_cont(0.5) within group ('.
+                    "   order by extract(epoch from ({$step['to']} - {$step['from']}))".
+                    ' ) as median_seconds'
+                )
+                ->first();
+
+            $median = $row?->median_seconds;
+
+            return [
+                'step' => $step['step'],
+                'median_hours' => $median === null ? null : round(((float) $median) / 3600, 1),
+                'count' => (int) ($row?->total ?? 0),
+            ];
+        }, $steps);
+    }
+
+    /**
      * The window immediately before the one being viewed, of equal length.
      *
      * @return array{0: Carbon, 1: Carbon}|null

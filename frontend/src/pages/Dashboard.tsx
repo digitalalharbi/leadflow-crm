@@ -18,6 +18,7 @@ import {
 import {
   CampaignMatrix, CampaignQualityChart, ChartCard, ChartLegend, ConversionFunnel, DistributionBar,
   LeadFlowChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart, SERIES, TEMPERATURE_COLOR,
+  VelocityChart,
 } from '@/components/charts'
 import type { DashboardData, LeadListItem } from '@/types/api'
 
@@ -292,6 +293,35 @@ export function DashboardPage() {
               testId="funnel-card"
             >
               <ConversionFunnel stages={data.funnel} />
+            </ChartCard>
+
+            {/*
+              Beside the funnel, because it is the question the funnel provokes.
+              The funnel says ten of forty reached an appointment; this says the
+              ones that did waited three weeks for a first call — and that is
+              the half somebody can act on this afternoon.
+            */}
+            <ChartCard
+              title={t('charts.velocity.title')}
+              description={t('charts.velocity.hint')}
+              height={290}
+              testId="velocity-card"
+              empty={(data.velocity ?? []).every((step) => step.count === 0)}
+              emptyMessage={t('dashboard.noLeadsYet')}
+              table={{
+                head: [
+                  t('charts.velocity.step'),
+                  t('charts.velocity.median'),
+                  t('charts.velocity.sample'),
+                ],
+                rows: (data.velocity ?? []).map((step) => [
+                  t(`charts.velocity.${step.step}`),
+                  step.median_hours === null ? '—' : `${step.median_hours}h`,
+                  step.count,
+                ]),
+              }}
+            >
+              <VelocityChart steps={data.velocity ?? []} />
             </ChartCard>
 
             {canViewReports && (

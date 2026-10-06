@@ -122,6 +122,7 @@ class DashboardController extends Controller
              * whole screen agrees with itself and costs one round trip.
              */
             'funnel' => $this->analytics->funnel($base()),
+            'velocity' => $this->analytics->velocity($base()),
             /*
              * Not filtered by the date range, deliberately. A thirty-day line
              * inside a seven-day filter is a thirty-day line; cropping it to

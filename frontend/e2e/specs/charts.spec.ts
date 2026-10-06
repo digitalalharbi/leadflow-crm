@@ -92,6 +92,35 @@ test.describe('الرسوم البيانية — charts', () => {
     await expect(card).toContainText('فشلت')
   })
 
+  /**
+   * The question the funnel provokes and cannot answer: the funnel says ten of
+   * forty reached an appointment, this says how long the ten waited.
+   */
+  test('the dashboard says where deals stall', async ({ page }) => {
+    const card = page.getByTestId('velocity-card')
+
+    await expect(card).toBeVisible()
+    await expect(card).toContainText('من الوصول إلى أول تواصل')
+  })
+
+  /**
+   * A step nobody has made says so. Showing zero there would read as
+   * "instant", which is the opposite of the truth.
+   */
+  test('a step with no leads says so rather than showing zero', async ({ page }) => {
+    const card = page.getByTestId('velocity-card')
+    const steps = card.getByTestId('velocity-steps')
+
+    await expect(steps).toBeVisible()
+
+    const text = (await steps.innerText()) ?? ''
+
+    if (text.includes('لم يجتز هذه الخطوة أحد بعد')) {
+      // The empty step shows a dash, never a 0.
+      expect(text).toContain('—')
+    }
+  })
+
   test('the time axis is not mirrored by the RTL page', async ({ page }) => {
     // Dates ascend left to right, like the numbers themselves. Mirrored, a
     // rising month looks like a falling one.

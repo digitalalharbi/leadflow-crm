@@ -58,16 +58,29 @@ test.describe('Dashboard', () => {
   })
 
   test('the date filter changes what is counted', async ({ page }) => {
-    const total = page.getByRole('link', { name: /إجمالي العملاء/ })
-    const before = (await total.textContent()) ?? ''
+    // The figure, not the whole tile: the card also carries a change
+    // percentage, and stripping non-digits from the card glues them together.
+    const total = page.getByTestId('kpi-total-value')
+    const count = async () => Number(((await total.textContent()) ?? '').replace(/\D/g, ''))
 
-    // Everything is seeded "now", so narrowing to 7 days keeps them all while
-    // widening to everything cannot lose any — the filter must still re-query.
+    /*
+     * Settle before reading. Both figures used to be read with a single
+     * `textContent()` — one before the first query had landed and one straight
+     * after switching the filter — so the test was comparing whichever numbers
+     * happened to be on screen.
+     */
+    await expect.poll(count).toBeGreaterThan(0)
+    const before = await count()
+
     await page.getByLabel('التاريخ').selectOption('all')
-    await expect(total).toBeVisible()
 
-    const after = (await total.textContent()) ?? ''
-    expect(Number(after.replace(/\D/g, ''))).toBeGreaterThanOrEqual(Number(before.replace(/\D/g, '')))
+    /*
+     * Strictly greater, not "no smaller". The fixtures deliberately hold closed
+     * leads older than the default thirty-day window — «عوامل الإغلاق» needs
+     * finished journeys to compare — so widening to everything has to find
+     * them. The old assertion passed even if the filter did nothing at all.
+     */
+    await expect.poll(count).toBeGreaterThan(before)
   })
 
   test('the project filter narrows the figures', async ({ page }) => {

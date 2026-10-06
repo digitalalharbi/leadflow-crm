@@ -4,22 +4,23 @@ import { BarChart3, Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
+import { fetchDrivers, type Drivers } from '@/features/drivers'
 import { useApiError } from '@/hooks/useApiError'
-import { formatNumber } from '@/lib/format'
+import { formatDate, formatNumber } from '@/lib/format'
 import {
   Button, Card, EmptyState, ErrorState, Input, PageHeader, Select, Skeleton,
   SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import {
-  CampaignMatrix, CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar,
-  TeamComparisonChart, type TeamRow,
+  CampaignMatrix, CampaignQualityChart, ChartCard, ConversionDriversChart, ConversionFunnel,
+  DistributionBar, TeamComparisonChart, type TeamRow,
   LostReasonsChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart,
   TEMPERATURE_COLOR, formatDuration,
 } from '@/components/charts'
 import type { DashboardData, Project, Ref, ReportRow } from '@/types/api'
 import { cn } from '@/lib/cn'
 
-const TABS = ['overview', 'campaigns', 'platforms', 'team', 'lost'] as const
+const TABS = ['overview', 'campaigns', 'platforms', 'team', 'lost', 'drivers'] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -83,6 +84,17 @@ export function ReportsPage() {
         type: 'lost_reason',
       }),
     enabled: tab === 'lost',
+  })
+
+  /*
+   * The feedback half of the reports: a behaviour on one axis, the outcome on
+   * the other. It honours the same filters as the rest, so "does speed matter"
+   * can be asked of one project rather than only of the whole workspace.
+   */
+  const drivers = useQuery({
+    queryKey: ['reports-drivers', filters],
+    queryFn: () => fetchDrivers(filters),
+    enabled: tab === 'drivers',
   })
 
   // The filter options ride along with whichever query is already running.
@@ -262,7 +274,117 @@ export function ReportsPage() {
           <LostReasonsChart rows={lost.data?.rows ?? []} />
         </ChartCard>
       )}
+
+      {tab === 'drivers' && <DriversTab query={drivers} translateError={translateError} />}
     </>
+  )
+}
+
+/**
+ * Does any of it actually predict a sale?
+ *
+ * Two charts rather than one: speed and score are different claims, and a
+ * reader who finds that speed matters and the score does not needs to be able
+ * to see that, which a single combined chart would hide.
+ *
+ * Both state the cohort they were cut from. A win rate with no window is a
+ * number nobody can argue with, which is the opposite of useful.
+ */
+function DriversTab({
+  query,
+  translateError,
+}: {
+  query: ReturnType<typeof useQuery<Drivers>>
+  translateError: (error: unknown) => string
+}) {
+  const { t, i18n } = useTranslation()
+  const data = query.data
+
+  if (query.isError) {
+    return <Card><ErrorState message={translateError(query.error)} onRetry={() => void query.refetch()} /></Card>
+  }
+
+  const matured = data
+    ? t('charts.drivers.matured', { date: formatDate(data.speed.matured_before, i18n.language) })
+    : undefined
+
+  /*
+   * An empty answer here is almost always "this workspace is younger than the
+   * window", not "nothing converts". Saying only "not enough data" sends an
+   * admin looking for a fault that is not there.
+   */
+  const emptyMessage = data
+    ? t('charts.drivers.emptyYoung', { date: formatDate(data.speed.matured_before, i18n.language) })
+    : t('charts.drivers.empty')
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <ChartCard
+        title={t('charts.drivers.speedTitle')}
+        description={t('charts.drivers.speedHint')}
+        height={300}
+        loading={query.isLoading}
+        empty={Boolean(data) && data!.speed.buckets.every((bucket) => bucket.leads === 0)}
+        emptyMessage={emptyMessage}
+        testId="drivers-speed"
+        footer={
+          <div className="space-y-1">
+            <p className="t-caption">{matured}</p>
+            {/* Rows dropped for an impossible timestamp are declared, not hidden. */}
+            {data && data.speed.excluded > 0 && (
+              <p className="t-caption">
+                {t('charts.drivers.excluded', { count: data.speed.excluded })}
+              </p>
+            )}
+          </div>
+        }
+        table={
+          data && {
+            head: [t('charts.drivers.speedTitle'), t('campaignQuality.leads'), t('campaignQuality.won'), '%'],
+            rows: data.speed.buckets.map((bucket) => [
+              t(`charts.drivers.${bucket.bucket}`),
+              bucket.leads,
+              bucket.won,
+              bucket.win_rate === null ? '—' : `${bucket.win_rate}%`,
+            ]),
+          }
+        }
+      >
+        <ConversionDriversChart
+          rows={data?.speed.buckets.map((bucket) => ({ ...bucket, key: bucket.bucket })) ?? []}
+          label={(key) => t(`charts.drivers.${key}`)}
+          testId="drivers-speed-bars"
+        />
+      </ChartCard>
+
+      <ChartCard
+        title={t('charts.drivers.scoreTitle')}
+        description={t('charts.drivers.scoreHint')}
+        height={300}
+        loading={query.isLoading}
+        empty={Boolean(data) && data!.score.bands.every((band) => band.leads === 0)}
+        emptyMessage={emptyMessage}
+        testId="drivers-score"
+        footer={<p className="t-caption">{matured}</p>}
+        table={
+          data && {
+            head: [t('charts.drivers.scoreTitle'), t('campaignQuality.leads'), t('campaignQuality.won'), '%'],
+            rows: data.score.bands.map((band) => [
+              t(`charts.drivers.${band.band}`),
+              band.leads,
+              band.won,
+              band.win_rate === null ? '—' : `${band.win_rate}%`,
+            ]),
+          }
+        }
+      >
+        <ConversionDriversChart
+          rows={data?.score.bands.map((band) => ({ ...band, key: band.band })) ?? []}
+          label={(key) => t(`charts.drivers.${key}`)}
+          testId="drivers-score-bars"
+        />
+      </ChartCard>
+    </div>
   )
 }
 

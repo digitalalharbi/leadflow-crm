@@ -173,6 +173,7 @@ Route::prefix('v1')->group(function () {
 
             // Reports
             Route::get('/reports', [ReportController::class, 'index']);
+            Route::get('/reports/drivers', [ReportController::class, 'drivers']);
             Route::get('/reports/export', [ReportController::class, 'export']);
 
             /*

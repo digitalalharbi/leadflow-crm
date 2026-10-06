@@ -272,21 +272,27 @@ class E2ESeeder extends Seeder
                 $lost = $status === LeadStatus::Lost->value;
 
                 /*
-                 * Arrivals are spread over three weeks rather than stamped all
-                 * at the same second.
+                 * Arrivals are spread, and the closed ones straddle two windows.
                  *
-                 * Every filler lead used to be created at the moment of
+                 * Every filler lead used to be stamped at the instant of
                  * seeding, so the thirty-day lead-flow chart was a flat line
-                 * with a single spike at the right-hand edge — a correct chart
-                 * of fixture data that looks nothing like the data the screen
-                 * was designed for, and that no reviewer could read.
+                 * with one spike at the right-hand edge — a correct chart of
+                 * fixture data that looks nothing like the data the screen was
+                 * designed for.
                  *
-                 * A closed lead is backdated far enough that its whole journey
-                 * still fits before now.
+                 * The closed ones then have to satisfy two screens that want
+                 * opposite things. The dashboard measures the last thirty days;
+                 * «عوامل الإغلاق» counts only leads old enough to have finished
+                 * converting. Aging all of them emptied the velocity chart, and
+                 * aging none of them emptied the conversion analysis — so half
+                 * sit in each, and each closed lead is still backdated far
+                 * enough that its whole journey fits before now.
                  */
+                $mature = intdiv($i, 6) % 2 === 1;
+
                 $createdAt = match (true) {
-                    $won => now()->subDays(12 + ($i % 9)),
-                    $lost => now()->subDays(6 + ($i % 5)),
+                    $won => now()->subDays(($mature ? 40 : 12) + ($i % 9)),
+                    $lost => now()->subDays(($mature ? 34 : 6) + ($i % 5)),
                     default => now()->subDays($i % 21),
                 };
 

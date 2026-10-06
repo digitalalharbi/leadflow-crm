@@ -187,6 +187,7 @@ Route::prefix('v1')->group(function () {
 
             // Integrations (admin only, enforced by policy)
             Route::get('/integrations', [IntegrationController::class, 'index']);
+            Route::get('/integrations/ingestion', [IntegrationController::class, 'ingestion']);
             Route::post('/integrations', [IntegrationController::class, 'store']);
             // WhatsApp Business. Secrets are written here and never read back.
             Route::get('/integrations/whatsapp', [WhatsappSettingsController::class, 'show']);

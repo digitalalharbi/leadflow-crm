@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Ingestion\IngestionInsights;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IntegrationResource;
@@ -253,6 +254,29 @@ class IntegrationController extends Controller
         $this->audit->log('integration.webhook_disabled', $request->user(), $endpoint);
 
         return ApiResponse::success(null, 'Endpoint disabled.');
+    }
+
+    /**
+     * Whether leads are still arriving.
+     *
+     * The list of connected sources above this cannot answer it: a form that
+     * stopped posting eleven days ago still shows a green badge and a valid
+     * secret. The only evidence of arrival is arrivals.
+     *
+     * Readable by anyone who can see the integrations — the person who notices
+     * a quiet week is rarely the person who set the webhook up.
+     */
+    public function ingestion(Request $request, IngestionInsights $insights)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        $days = min(90, max(7, (int) $request->integer('days', 30)));
+
+        return ApiResponse::success([
+            'summary' => $insights->summary($days),
+            'daily' => $insights->daily($days),
+            'by_provider' => $insights->byProvider($days),
+        ]);
     }
 
     /** Delivery log. Payloads stay hidden unless the viewer is an admin. */

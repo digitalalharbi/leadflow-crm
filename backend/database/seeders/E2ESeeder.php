@@ -17,6 +17,7 @@ use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\LeadMessage;
+use App\Models\LeadSourceEvent;
 use App\Models\LostReason;
 use App\Models\Project;
 use App\Models\Tenant;
@@ -269,7 +270,25 @@ class E2ESeeder extends Seeder
                  */
                 $won = $status === LeadStatus::Won->value;
                 $lost = $status === LeadStatus::Lost->value;
-                $createdAt = $won ? now()->subDays(12) : ($lost ? now()->subDays(6) : now());
+
+                /*
+                 * Arrivals are spread over three weeks rather than stamped all
+                 * at the same second.
+                 *
+                 * Every filler lead used to be created at the moment of
+                 * seeding, so the thirty-day lead-flow chart was a flat line
+                 * with a single spike at the right-hand edge — a correct chart
+                 * of fixture data that looks nothing like the data the screen
+                 * was designed for, and that no reviewer could read.
+                 *
+                 * A closed lead is backdated far enough that its whole journey
+                 * still fits before now.
+                 */
+                $createdAt = match (true) {
+                    $won => now()->subDays(12 + ($i % 9)),
+                    $lost => now()->subDays(6 + ($i % 5)),
+                    default => now()->subDays($i % 21),
+                };
 
                 // Only the statuses that genuinely passed through qualification.
                 // `lost` is left out on purpose: a lead can be lost before
@@ -280,7 +299,7 @@ class E2ESeeder extends Seeder
                     LeadStatus::Qualified->value, LeadStatus::Appointment->value, LeadStatus::Won->value,
                 ], true) ? $createdAt->copy()->addHours(6) : null;
 
-                $this->lead($tenant, 'عميل تجريبي '.str_pad((string) $i, 2, '0', STR_PAD_LEFT), '+9665003'.str_pad((string) $i, 5, '0', STR_PAD_LEFT), [
+                $filler = $this->lead($tenant, 'عميل تجريبي '.str_pad((string) $i, 2, '0', STR_PAD_LEFT), '+9665003'.str_pad((string) $i, 5, '0', STR_PAD_LEFT), [
                     'assigned_to' => [$admin->id, $manager->id][$i % 2],
                     'project_id' => $projects[$i % 3]->id,
                     'status' => $status,
@@ -294,6 +313,20 @@ class E2ESeeder extends Seeder
                     'lost_at' => $lost ? $createdAt->copy()->addDays(4) : null,
                     'won_at' => $won ? $createdAt->copy()->addDays(9) : null,
                 ]);
+
+                /*
+                 * Every seventh lead arrives twice, which is roughly what a
+                 * retrying webhook looks like in production.
+                 *
+                 * Seven rather than five: the platform is picked with `$i % 5`,
+                 * so a fifth lead would put every single duplicate on Meta and
+                 * the per-source breakdown would show one source repeating and
+                 * five that never do — a pattern in the fixtures, not in the
+                 * world.
+                 */
+                if ($i % 7 === 0) {
+                    $this->duplicateArrival($tenant, $filler, 3);
+                }
             }
 
             // --- Follow-ups: exactly two per bucket, owned by the admin ------
@@ -452,7 +485,48 @@ class E2ESeeder extends Seeder
             'meta' => ['provider' => 'generic_webhook'],
         ]);
 
+        /*
+         * Every lead arrived from somewhere, so every seeded lead records the
+         * arrival.
+         *
+         * Without this the fixtures held no `lead_source_events` at all, which
+         * made the ingestion chart permanently empty in the E2E run — the same
+         * shape of hole as the velocity chart's: a screen that cannot be
+         * exercised because the data it reads is never created.
+         */
+        LeadSourceEvent::create([
+            'tenant_id' => $tenant->id,
+            'lead_id' => $lead->id,
+            'provider' => $lead->provider ?? 'generic_webhook',
+            'platform' => $lead->platform,
+            'source' => $lead->source,
+            'campaign_name' => $lead->campaign_name,
+            'was_duplicate' => false,
+            'received_at' => $lead->created_at,
+        ]);
+
         return $lead;
+    }
+
+    /**
+     * A second arrival of a lead already in the workspace.
+     *
+     * Duplicates are the normal failure of a lead form, not an exotic one: the
+     * same payload posted twice by a retrying integration. The chart plots them
+     * beside the accepted leads rather than netting them out, so the fixtures
+     * have to contain some or that half of the chart is never drawn.
+     */
+    private function duplicateArrival(Tenant $tenant, Lead $lead, int $minutesLater): void
+    {
+        LeadSourceEvent::create([
+            'tenant_id' => $tenant->id,
+            'lead_id' => $lead->id,
+            'provider' => $lead->provider ?? 'generic_webhook',
+            'platform' => $lead->platform,
+            'campaign_name' => $lead->campaign_name,
+            'was_duplicate' => true,
+            'received_at' => $lead->created_at->copy()->addMinutes($minutesLater),
+        ]);
     }
 
     /** Two overdue, two due today, two upcoming — exact, so counts can be asserted. */

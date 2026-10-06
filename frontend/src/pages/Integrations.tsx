@@ -17,6 +17,8 @@ import type { IntegrationCard } from '@/types/api'
 import { cn } from '@/lib/cn'
 import { ProviderMark } from '@/components/integrations/ProviderMark'
 import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
+import { ChartCard, IngestionChart, IngestionSources } from '@/components/charts'
+import { fetchIngestion } from '@/features/ingestion'
 
 const STATUS_LABEL = {
   connected: 'integrations.connected',
@@ -114,6 +116,16 @@ export function IntegrationsPage() {
           </>
         }
       />
+
+      {/*
+        Arrivals come first, above the list of connections.
+        The list cannot answer the question anybody actually opens this page
+        with — is anything still coming in? A form that stopped posting eleven
+        days ago still shows a green badge and a valid secret.
+      */}
+      <div className="mb-4">
+        <IngestionCard />
+      </div>
 
       {/* WhatsApp is the only integration a customer configures themselves end
           to end, so it gets a full card rather than a tile in the grid. */}
@@ -285,6 +297,74 @@ export function IntegrationsPage() {
 
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </>
+  )
+}
+
+/**
+ * Whether leads are still arriving, and how many of them are the same lead.
+ *
+ * The headline is the count and the duplicate share side by side. A rate on
+ * its own is unreadable — 50% of two events is not the same problem as 50% of
+ * four hundred — so the total is stated beside it rather than under a hover.
+ */
+function IngestionCard() {
+  const { t, i18n } = useTranslation()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['ingestion', 30],
+    queryFn: () => fetchIngestion(30),
+  })
+
+  const summary = data?.summary
+  const empty = !isLoading && (summary?.total ?? 0) === 0
+
+  return (
+    <ChartCard
+      title={t('charts.ingestion.title')}
+      description={t('charts.ingestion.hint')}
+      height={200}
+      loading={isLoading}
+      empty={empty}
+      emptyMessage={t('charts.ingestion.empty')}
+      testId="ingestion-card"
+      table={
+        data && {
+          head: [t('charts.journey.when'), t('charts.ingestion.accepted'), t('charts.ingestion.duplicates')],
+          rows: data.daily.map((day) => [day.date, day.accepted, day.duplicates]),
+        }
+      }
+      footer={
+        summary && summary.total > 0 ? (
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <span className="t-caption">
+              {t('charts.ingestion.total')}{' '}
+              <span className="tabular t-body font-medium" dir="ltr">
+                {formatNumber(summary.total, i18n.language)}
+              </span>
+            </span>
+            <span className="t-caption">
+              {t('charts.ingestion.duplicateRate')}{' '}
+              <span className="tabular t-body font-medium" dir="ltr">
+                {summary.duplicate_rate === null
+                  ? t('charts.ingestion.noRate')
+                  : `${summary.duplicate_rate}%`}
+              </span>
+            </span>
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="space-y-2">
+        <IngestionChart days={data?.daily ?? []} />
+        {data && data.by_provider.length > 0 && (
+          <div className="border-t border-[var(--color-line)] pt-3">
+            <p className="t-card-title px-5 pb-0.5">{t('charts.ingestion.sources')}</p>
+            <p className="t-caption px-5 pb-2">{t('charts.ingestion.sourcesHint')}</p>
+            <IngestionSources sources={data.by_provider} />
+          </div>
+        )}
+      </div>
+    </ChartCard>
   )
 }
 

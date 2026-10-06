@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WebhookEndpoint;
 use App\Models\WebhookLog;
 use App\Services\AuditLogger;
+use App\Services\Integrations\LeadPuller;
 use App\Services\Integrations\ProviderRegistry;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
@@ -106,6 +107,10 @@ class IntegrationController extends Controller
             return [
                 'provider' => $provider->value,
                 'required_credentials' => $driver->requiredCredentials(),
+                // Whether this source is polled or calls us. The screen needs
+                // it to decide between offering a webhook URL and offering a
+                // "sync now" button; they are not the same integration at all.
+                'pulls_leads' => $driver->pullsLeads(),
                 'status' => $this->resolveStatus($instance, $driver),
                 'integration' => $instance ? new IntegrationResource($instance) : null,
             ];
@@ -277,6 +282,39 @@ class IntegrationController extends Controller
             'daily' => $insights->daily($days),
             'by_provider' => $insights->byProvider($days),
         ]);
+    }
+
+    /**
+     * Ask this source for its leads now, rather than waiting for the poll.
+     *
+     * The button that makes a pasted access token mean something. Without it a
+     * workspace saves its credentials, sees nothing change, and has no way to
+     * tell a wrong token from a quiet afternoon until the next scheduled run —
+     * so the first thing anybody would do is paste it again.
+     */
+    public function sync(Request $request, string $uuid, LeadPuller $puller, TenantContext $context)
+    {
+        $integration = Integration::where('uuid', $uuid)->firstOrFail();
+
+        $this->authorize('update', $integration);
+
+        $tenant = $context->get();
+
+        if ($tenant === null) {
+            return ApiResponse::error('No workspace in context.', null, 422);
+        }
+
+        $result = $puller->pull($tenant, $integration->fresh());
+
+        $this->audit->log('integration.synced', $request->user(), $integration, [
+            'provider' => $integration->provider?->value,
+            'fetched' => $result['fetched'],
+        ]);
+
+        return ApiResponse::success(
+            ['result' => $result, 'integration' => new IntegrationResource($integration->fresh())],
+            $result['error'] === null ? null : 'The source could not be reached.'
+        );
     }
 
     /** Delivery log. Payloads stay hidden unless the viewer is an admin. */

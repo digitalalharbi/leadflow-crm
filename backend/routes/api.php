@@ -203,6 +203,7 @@ Route::prefix('v1')->group(function () {
 
             Route::patch('/integrations/{uuid}', [IntegrationController::class, 'update']);
             Route::delete('/integrations/{uuid}', [IntegrationController::class, 'destroy']);
+            Route::post('/integrations/{uuid}/sync', [IntegrationController::class, 'sync']);
             Route::post('/integrations/{uuid}/webhooks', [IntegrationController::class, 'createWebhook']);
             Route::post('/webhook-endpoints/{uuid}/rotate', [IntegrationController::class, 'rotateWebhookSecret']);
             Route::delete('/webhook-endpoints/{uuid}', [IntegrationController::class, 'deleteWebhook']);

@@ -38,6 +38,11 @@ class MetaLeadProvider extends AbstractLeadProvider
         ];
     }
 
+    public function pullsLeads(): bool
+    {
+        return true;
+    }
+
     public function fetch(Integration $integration): array
     {
         if (! $this->isConfigured($integration)) {

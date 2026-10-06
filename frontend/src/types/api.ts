@@ -408,8 +408,21 @@ export interface WebhookEndpoint {
 export interface IntegrationCard {
   provider: string
   required_credentials: string[]
+  /** Polled by us, rather than calling our webhook. */
+  pulls_leads: boolean
   status: Integration['status']
   integration: Integration | null
+}
+
+/** What one poll of a source actually did. */
+export interface SyncResult {
+  fetched: number
+  created: number
+  duplicates: number
+  skipped: number
+  rejected: number
+  failed: number
+  error: string | null
 }
 
 export interface TenantSummary {

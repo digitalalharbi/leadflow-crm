@@ -428,7 +428,7 @@ export function DashboardPage() {
           {data.awaiting_contact_leads.length > 0 && (
             <LeadMiniList
               title={t('dashboard.awaitingContactList', {
-                minutes: data.today.first_contact_target_minutes,
+                count: data.today.first_contact_target_minutes,
               })}
               leads={data.awaiting_contact_leads}
               emptyText={t('dashboard.noAwaitingContact')}

@@ -121,7 +121,7 @@ export default {
       uncontacted: 'لم يُتواصل معهم',
       overdueFirstContact: 'تجاوزوا مهلة أول تواصل',
       overdueFollowUps: 'متابعات متأخرة',
-      hot: 'عملاء ساخنون',
+      hot: 'عملاء باهتمام مرتفع',
     },
     urgency: {
       critical: 'الآن',
@@ -211,7 +211,7 @@ export default {
   },
   automation: {
     trace: {
-      title: 'ما فعلته الأتمتة',
+      title: 'سجل الأتمتة',
       description: 'كل قاعدة نُظر فيها لهذا العميل، ولماذا طُبِّقت أو لم تُطبَّق.',
       empty: 'لم تُطبَّق أي قاعدة على هذا العميل بعد.',
       deletedRule: 'قاعدة محذوفة',
@@ -432,11 +432,11 @@ export default {
       avg_first_contact_seconds: 'سرعة أول تواصل',
       higherIsBetter: 'الأعلى أفضل — الأول في القائمة هو الأعلى.',
       lowerIsBetter: 'الأقل أفضل — الأول في القائمة هو الأسرع.',
-      title: 'مقارنة الفريق',
+      title: 'أداء المندوبين',
       hint: 'قياس واحد في كل مرة — والأفضل دائمًا في الأعلى',
     },
     velocity: {
-      title: 'أين يتعطّل البيع',
+      title: 'زمن المراحل',
       hint: 'الوقت الذي يقضيه العميل عند كل خطوة قبل أن ينتقل — الوسيط لا المتوسط',
       to_contact: 'من الوصول إلى أول تواصل',
       to_qualify: 'من أول تواصل إلى التأهيل',
@@ -452,7 +452,7 @@ export default {
       sample: 'عدد العملاء',
     },
     automation: {
-      title: 'ما نفّذته القواعد',
+      title: 'نشاط القواعد',
       hint: 'كل تشغيل خلال الثلاثين يومًا الماضية — بما في ذلك ما لم ينطبق',
       aria: 'رسم بياني لعدد عمليات تشغيل قواعد الأتمتة يوميًا، مقسّمة حسب النتيجة',
       applied: 'طُبِّقت',
@@ -500,7 +500,18 @@ export default {
     analytics: 'التحليلات',
 
     awaitingContact: 'لم يتم التواصل',
-    awaitingContactList: 'لم يتم التواصل معهم خلال {{minutes}} دقيقة',
+    /*
+     * A heading, so a noun phrase like every other card on the dashboard —
+     * and a real plural. The threshold is configurable, so `{{count}} دقيقة`
+     * was simply wrong at 3 (دقائق) and at 10 (دقائق) and at 30 (دقيقة), and
+     * i18next cannot choose a category from a variable that is not `count`.
+     */
+    awaitingContactList_zero: 'بانتظار التواصل',
+    awaitingContactList_one: 'بانتظار التواصل منذ دقيقة',
+    awaitingContactList_two: 'بانتظار التواصل منذ دقيقتين',
+    awaitingContactList_few: 'بانتظار التواصل منذ {{count}} دقائق',
+    awaitingContactList_many: 'بانتظار التواصل منذ {{count}} دقيقة',
+    awaitingContactList_other: 'بانتظار التواصل منذ {{count}} دقيقة',
     noAwaitingContact: 'تم التواصل مع كل العملاء الجدد.',
 
     title: 'نظرة عامة',
@@ -514,7 +525,7 @@ export default {
     invalid: 'غير صالح',
     no_response: 'لا يرد',
     conversionRate: 'نسبة التحويل',
-    hotLeads: 'عملاء Hot',
+    hotLeads: 'عملاء باهتمام مرتفع',
     unassigned: 'بانتظار الإسناد',
     todayTitle: 'مهام اليوم',
     funnelTitle: 'ملخص المسار',
@@ -527,10 +538,10 @@ export default {
     byCampaign: 'أعلى الحملات',
     trend: 'العملاء خلال ١٤ يوماً',
     needsAttention: 'يحتاج انتباهك',
-    hotLeadsList: 'أبرز العملاء Hot',
+    hotLeadsList: 'أبرز العملاء اهتمامًا',
     overdueList: 'متابعات متأخرة',
     viewAll: 'عرض الكل',
-    noHotLeads: 'لا يوجد عملاء Hot حالياً.',
+    noHotLeads: 'لا يوجد عملاء باهتمام مرتفع حالياً.',
     noOverdue: 'ممتاز، لا توجد متابعات متأخرة.',
   },
   onboarding: {
@@ -649,7 +660,7 @@ export default {
     re_engaged: 'عاد العميل للتفاعل',
     updated: 'تم تحديث البيانات',
   },
-  temperature: { hot: 'Hot', warm: 'Warm', cold: 'Cold' },
+  temperature: { hot: 'مرتفع', warm: 'متوسط', cold: 'منخفض' },
   platforms: {
     meta: 'Meta',
     facebook: 'Facebook',
@@ -843,7 +854,7 @@ export default {
     contacted: 'تم التواصل',
     replied: 'ردوا',
     qualified: 'مؤهلون',
-    hot: 'Hot',
+    hot: 'اهتمام مرتفع',
     appointments: 'مواعيد',
     won: 'مبيعات',
     qualificationRate: 'نسبة التأهيل',
@@ -950,7 +961,7 @@ export default {
     leads: 'العملاء المحتملون',
     scoring: 'التأهيل والتقييم',
     generalHint: 'اللغة والعملة والمنطقة الزمنية وطريقة الإسناد',
-    scoringHint: 'ما الذي يجعل العميل Hot، وكم ننتظر قبل اعتباره مهملًا',
+    scoringHint: 'ما الذي يرفع اهتمام العميل، وكم ننتظر قبل اعتباره مهملًا',
     firstContactTarget: 'هدف أول تواصل (دقيقة)',
     firstContactHint: 'بعدها يظهر العميل في «لم يتم التواصل»',
 
@@ -978,8 +989,8 @@ export default {
     roundRobin: 'توزيع تلقائي بالتناوب',
     assignmentHint: 'التوزيع التلقائي يوزع العملاء الجدد على موظفي المبيعات النشطين بالتناوب.',
     scoreThresholds: 'حدود التقييم',
-    warmThreshold: 'حد Warm',
-    hotThreshold: 'حد Hot',
+    warmThreshold: 'حدّ الاهتمام المتوسط',
+    hotThreshold: 'حدّ الاهتمام المرتفع',
     whatsappTemplate: 'قالب رسالة واتساب',
     whatsappHint: 'المتغيرات المتاحة: {{name}} و {{agent}} و {{project}} و {{company}}',
     addLostReason: 'إضافة سبب',

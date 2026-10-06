@@ -23,7 +23,7 @@ test.describe('الأتمتة — rules', () => {
     await page.getByTestId('install-hot_lead_priority').click()
 
     const rules = page.getByTestId('rules-list')
-    await expect(rules).toContainText('عميل ساخن')
+    await expect(rules).toContainText('اهتمام مرتفع')
 
     // Off, deliberately: a rule that runs the moment somebody clicks a card
     // messages real customers before anyone has read what it does.
@@ -56,9 +56,23 @@ test.describe('الأتمتة — rules', () => {
 
     const dialog = page.getByRole('dialog')
     const actions = dialog.getByRole('combobox').nth(1)
+
+    /*
+     * Wait for the options before reading them.
+     *
+     * The editor fills this select from the schema endpoint, so for the first
+     * moments after the dialog opens it is legitimately empty — and an empty
+     * list compared against an empty list is the one case where this test
+     * would pass while proving nothing. Reading it early instead produced a
+     * flake that failed once in a full run and passed on its own.
+     */
+    await expect(actions.locator('option')).not.toHaveCount(0)
+
     const offered = await actions.locator('option').evaluateAll((options) =>
       options.map((option) => (option as HTMLOptionElement).value),
     )
+
+    expect(offered.length).toBeGreaterThan(0)
 
     // The schema endpoint is the single source; this proves the editor reads it
     // rather than carrying a hard-coded list that drifts.
@@ -75,7 +89,7 @@ test.describe('الأتمتة — rules', () => {
 
   test('preview says what a rule would match and changes nothing', async ({ page }) => {
     await page.getByTestId('install-hot_lead_priority').click()
-    await expect(page.getByTestId('rules-list')).toContainText('عميل ساخن')
+    await expect(page.getByTestId('rules-list')).toContainText('اهتمام مرتفع')
 
     await page.getByRole('button', { name: 'معاينة' }).first().click()
 

@@ -77,4 +77,18 @@ describe('Arabic plural categories', () => {
     expect(i18n.t('work.overdueBy', { count: 2 })).toBe('متأخر دقيقتين')
     expect(i18n.t('work.overdueBy', { count: 5 })).toBe('متأخر 5 دقائق')
   })
+
+  /**
+   * The first-contact target is configurable, and this heading interpolated it
+   * into a fixed `دقيقة`. At the default of 30 that happens to be right, which
+   * is why it survived: set the target to 3 or 10 and the dashboard says
+   * "3 دقيقة".
+   */
+  it('agrees with whatever the workspace set its first-contact target to', () => {
+    expect(i18n.t('dashboard.awaitingContactList', { count: 1 })).toBe('بانتظار التواصل منذ دقيقة')
+    expect(i18n.t('dashboard.awaitingContactList', { count: 2 })).toBe('بانتظار التواصل منذ دقيقتين')
+    expect(i18n.t('dashboard.awaitingContactList', { count: 3 })).toBe('بانتظار التواصل منذ 3 دقائق')
+    expect(i18n.t('dashboard.awaitingContactList', { count: 10 })).toBe('بانتظار التواصل منذ 10 دقائق')
+    expect(i18n.t('dashboard.awaitingContactList', { count: 30 })).toBe('بانتظار التواصل منذ 30 دقيقة')
+  })
 })

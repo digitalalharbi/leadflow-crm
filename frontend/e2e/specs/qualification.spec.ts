@@ -43,9 +43,10 @@ test.describe('Qualification', () => {
     await expect(page.getByTestId('qualification-status')).toHaveText('مؤهل')
     await expect(page.getByTestId('score-reasons')).toBeVisible()
 
-    // Hot, because the answers say so — not because anything was typed in.
+    // High interest, because the answers say so — not because anything was
+    // typed in.
     await expect(page.getByTestId('lead-quick-actions')).toBeVisible()
-    await expect(page.getByText('Hot').first()).toBeVisible()
+    await expect(page.getByText('مرتفع').first()).toBeVisible()
   })
 
   test('the score explains itself', async ({ page }) => {

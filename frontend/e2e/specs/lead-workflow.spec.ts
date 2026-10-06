@@ -90,9 +90,9 @@ test.describe('Lead workflow', () => {
     await openLeadByName(page, LEADS.activity)
 
     await page.getByTestId('action-temperature').click()
-    await page.getByRole('button', { name: 'Cold' }).click()
+    await page.getByRole('button', { name: 'منخفض' }).click()
 
-    await expect(page.getByTestId('lead-temperature-badge')).toHaveText('Cold')
+    await expect(page.getByTestId('lead-temperature-badge')).toHaveText('منخفض')
 
     await expect(async () => {
       expect((await fetchLead(LEADS.activity)).temperature).toBe('cold')

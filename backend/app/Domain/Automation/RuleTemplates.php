@@ -52,7 +52,7 @@ class RuleTemplates
         ],
 
         'hot_lead_priority' => [
-            'name' => 'عميل ساخن: أولوية قصوى',
+            'name' => 'اهتمام مرتفع: أولوية قصوى',
             'description' => 'العميل مرتفع النية يُرفع تقييمه ويُنبَّه المندوب فورًا.',
             'trigger' => 'lead.created',
             'priority' => 5,
@@ -62,7 +62,7 @@ class RuleTemplates
             'actions' => [
                 ['type' => 'adjust_score', 'by' => 15],
                 ['type' => 'add_tag', 'tag' => 'أولوية'],
-                ['type' => 'notify', 'audience' => 'owner', 'message' => 'عميل ساخن — اتصل الآن.'],
+                ['type' => 'notify', 'audience' => 'owner', 'message' => 'اهتمام مرتفع — اتصل الآن.'],
             ],
         ],
 

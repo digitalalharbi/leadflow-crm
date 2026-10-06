@@ -116,6 +116,7 @@ export function PlatformPerformanceChart({ rows }: { rows: CampaignQualityRow[] 
                   <span key={measure} className="flex items-center gap-2">
                     <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
                       <span
+                        data-chart-mark
                         className="block h-full rounded-full transition-[width] duration-[var(--duration-slow)]"
                         style={{
                           width: `${Math.max((row[measure] / peak) * 100, row[measure] > 0 ? 2 : 0)}%`,

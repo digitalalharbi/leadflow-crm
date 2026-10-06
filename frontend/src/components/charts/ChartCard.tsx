@@ -68,7 +68,12 @@ export function ChartCard({
           <h3 className="t-card-title truncate">{title}</h3>
           {description && <p className="t-caption mt-0.5">{description}</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        {/*
+          Controls only — a toggle and whatever the screen passed as an action.
+          On paper the reader has already got whichever view was chosen, so
+          these are two buttons that do nothing but take up the corner.
+        */}
+        <div className="flex shrink-0 items-center gap-1.5" data-print="hide">
           {action}
           {table && !loading && !empty && (
             <button

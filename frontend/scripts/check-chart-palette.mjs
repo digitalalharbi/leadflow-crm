@@ -59,4 +59,39 @@ if (drift.length > 0) {
   process.exit(1)
 }
 
-console.log(`✓ chart palette: ${declared.length} declarations match the checked values`)
+/*
+ * Nothing may reach for a slot that no longer exists.
+ *
+ * The palette went from eight slots to five, and `LostReasonsChart` was still
+ * asking for `var(--chart-8)`. An undefined custom property is not an error in
+ * CSS — it resolves to nothing — so the bars simply rendered with no fill and
+ * every test stayed green. It took grepping for the old names to find.
+ */
+import { readdirSync } from 'node:fs'
+
+const chartsDir = resolve(here, '../src/components/charts')
+const valid = new Set(['1', '2', '3', '4', '5'])
+const dangling = []
+
+for (const file of readdirSync(chartsDir)) {
+  if (!file.endsWith('.tsx') && !file.endsWith('.ts')) continue
+
+  const source = readFileSync(resolve(chartsDir, file), 'utf8')
+
+  for (const match of source.matchAll(/var\(--chart-([a-z0-9]+)\)/g)) {
+    if (!valid.has(match[1]) && match[1] !== 'other') {
+      dangling.push(`${file}: --chart-${match[1]}`)
+    }
+  }
+}
+
+if (dangling.length > 0) {
+  console.error('✗ chart components reach for palette slots that do not exist:')
+  for (const d of dangling) console.error(`    ${d}`)
+  console.error('\n  An undefined custom property resolves to nothing, so the mark renders')
+  console.error('  with no fill and no test notices. The palette has five slots plus')
+  console.error('  --chart-other; anything past the fifth folds via foldSeries().')
+  process.exit(1)
+}
+
+console.log(`✓ chart palette: ${declared.length} declarations match the checked values, no dangling slots`)

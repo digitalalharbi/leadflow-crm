@@ -82,6 +82,7 @@ export function CampaignQualityChart({
                 {/* Volume: how many leads this campaign produced at all. */}
                 <span
                   className="absolute inset-y-0 start-0 rounded-full"
+                  data-chart-mark
                   style={{
                     width: `${leadWidth}%`,
                     background: 'color-mix(in srgb, var(--chart-2) 22%, transparent)',

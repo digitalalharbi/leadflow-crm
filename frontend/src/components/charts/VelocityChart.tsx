@@ -50,6 +50,7 @@ export function VelocityChart({ steps }: { steps: VelocityStep[] }) {
             <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
               {hours !== null && (
                 <div
+                  data-chart-mark
                   className="h-full rounded-full"
                   style={{
                     width: `${max > 0 ? Math.max(2, (hours / max) * 100) : 0}%`,

@@ -84,6 +84,7 @@ export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
               {/* The bar is the background, so the label always sits on it and
                   never wraps under a narrow stage. */}
               <span
+                data-chart-mark
                 className="absolute inset-y-0 start-0 rounded-[var(--radius-control)] transition-[width] duration-[var(--duration-slow)]"
                 style={{
                   width: `${width}%`,

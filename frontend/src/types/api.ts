@@ -311,6 +311,8 @@ export interface ChartPoint {
 }
 
 export interface DashboardData {
+  /** One point per day, each event counted on the day it happened. */
+  timeline: { date: string; leads: number; qualified: number; won: number }[]
   summary: {
     total_leads: number
     new: number

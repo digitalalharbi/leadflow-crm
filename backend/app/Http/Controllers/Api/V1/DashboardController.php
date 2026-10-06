@@ -122,6 +122,15 @@ class DashboardController extends Controller
              * whole screen agrees with itself and costs one round trip.
              */
             'funnel' => $this->analytics->funnel($base()),
+            /*
+             * Not filtered by the date range, deliberately. A thirty-day line
+             * inside a seven-day filter is a thirty-day line; cropping it to
+             * the filter would leave four points and call itself a trend.
+             */
+            'timeline' => $this->analytics->timeline(
+                $this->baseQuery($request, withDates: false),
+                (int) $request->integer('timeline_days', 30),
+            ),
             'quality' => $this->analytics->quality($base()),
             'response_time' => $this->analytics->responseTime($base()),
             'comparison' => $this->analytics->comparison(

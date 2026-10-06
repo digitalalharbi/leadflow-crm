@@ -272,6 +272,15 @@ export default {
     },
   },
   charts: {
+    leadFlow: {
+      title: 'Lead flow',
+      hint: 'Arriving, qualified and closed — each on its own day',
+      aria: 'Time series of leads arriving, leads qualified and deals won',
+      leads: 'Arrived',
+      qualified: 'Qualified',
+      won: 'Won',
+      day: 'Day',
+    },
     showChart: 'Show chart',
     showTable: 'Show the numbers',
   },

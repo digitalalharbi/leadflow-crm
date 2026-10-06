@@ -16,8 +16,8 @@ import {
   Card, ErrorState, PageHeader, Select, Skeleton, SkeletonCards, StatusBadge, TemperatureBadge,
 } from '@/components/ui'
 import {
-  CampaignMatrix, CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar, MetricCard,
-  PlatformPerformanceChart, ResponseTimeChart, TEMPERATURE_COLOR,
+  CampaignMatrix, CampaignQualityChart, ChartCard, ChartLegend, ConversionFunnel, DistributionBar,
+  LeadFlowChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart, SERIES, TEMPERATURE_COLOR,
 } from '@/components/charts'
 import type { DashboardData, LeadListItem } from '@/types/api'
 
@@ -207,6 +207,45 @@ export function DashboardPage() {
               testId="kpi-won"
             />
           </section>
+
+          {/*
+            Under the five figures, because it is the context they are missing:
+            43 leads is excellent or alarming depending entirely on last week,
+            and a tile cannot say which.
+          */}
+          <ChartCard
+            title={t('charts.leadFlow.title')}
+            description={t('charts.leadFlow.hint')}
+            height={240}
+            testId="lead-flow"
+            empty={(data.timeline ?? []).every((p) => p.leads + p.qualified + p.won === 0)}
+            emptyMessage={t('dashboard.noData')}
+            legend={
+              <ChartLegend
+                items={[
+                  { key: 'leads', label: t('charts.leadFlow.leads'), color: SERIES[0] },
+                  { key: 'qualified', label: t('charts.leadFlow.qualified'), color: SERIES[1] },
+                  { key: 'won', label: t('charts.leadFlow.won'), color: SERIES[3] },
+                ]}
+              />
+            }
+            table={{
+              head: [
+                t('charts.leadFlow.day'),
+                t('charts.leadFlow.leads'),
+                t('charts.leadFlow.qualified'),
+                t('charts.leadFlow.won'),
+              ],
+              rows: (data.timeline ?? []).map((point) => [
+                point.date,
+                point.leads,
+                point.qualified,
+                point.won,
+              ]),
+            }}
+          >
+            <LeadFlowChart points={data.timeline ?? []} />
+          </ChartCard>
 
           {/*
             A brand-new workspace has nothing to show, so the first thing an

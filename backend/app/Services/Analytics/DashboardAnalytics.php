@@ -211,6 +211,55 @@ class DashboardAnalytics
     }
 
     /**
+     * What happened each day: leads in, leads qualified, deals won.
+     *
+     * Each count lands on the day *it* happened, not on the day the lead
+     * arrived. The alternative — attributing a win back to the lead's creation
+     * date — answers a different question entirely ("how did January's intake
+     * do?") and answers it badly on a partial month, because the recent cohorts
+     * have not had time to convert and the line falls off a cliff that is not
+     * real.
+     *
+     * @return array<int, array{date:string, leads:int, qualified:int, won:int}>
+     */
+    public function timeline(Builder $query, int $days = 30): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
+
+        $count = function (string $column) use ($query, $from) {
+            return (clone $query)
+                ->whereNotNull("leads.{$column}")
+                ->where("leads.{$column}", '>=', $from)
+                ->selectRaw("date(leads.{$column}) as day, count(*) as total")
+                ->groupBy(DB::raw("date(leads.{$column})"))
+                ->pluck('total', 'day');
+        };
+
+        $leads = $count('created_at');
+        $qualified = $count('qualified_at');
+        $won = $count('won_at');
+
+        /*
+         * Every day in the range, including the empty ones. A series that skips
+         * quiet days draws a straight line between the two either side of a
+         * weekend, which reads as steady business rather than as a closed one.
+         */
+        return collect(range($days - 1, 0))
+            ->map(function (int $ago) use ($leads, $qualified, $won) {
+                $day = now()->subDays($ago)->toDateString();
+
+                return [
+                    'date' => $day,
+                    'leads' => (int) ($leads[$day] ?? 0),
+                    'qualified' => (int) ($qualified[$day] ?? 0),
+                    'won' => (int) ($won[$day] ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * The window immediately before the one being viewed, of equal length.
      *
      * @return array{0: Carbon, 1: Carbon}|null

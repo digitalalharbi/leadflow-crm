@@ -170,6 +170,12 @@ export default {
     },
   },
   dataQuality: {
+      shareOfLeads_zero: 'لا عملاء',
+      shareOfLeads_one: 'عميل واحد من {{total}} — {{percent}}%',
+      shareOfLeads_two: 'عميلان من {{total}} — {{percent}}%',
+      shareOfLeads_few: '{{count}} عملاء من {{total}} — {{percent}}%',
+      shareOfLeads_many: '{{count}} عميلًا من {{total}} — {{percent}}%',
+      shareOfLeads_other: '{{count}} عميل من {{total}} — {{percent}}%',
     title: 'جودة البيانات',
     subtitle: 'ما الذي يحتاج تصحيحًا قبل أن يكلّفك',
     allClear: 'لا توجد مشاكل — بياناتك نظيفة',

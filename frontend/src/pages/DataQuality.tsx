@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, Plug } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { fetchDataQuality, type QualityCheck } from '@/features/dataQuality'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatNumber } from '@/lib/format'
 import { Badge, Card, CardBody, ErrorState, PageHeader, SkeletonCards } from '@/components/ui'
 import { cn } from '@/lib/cn'
 
@@ -57,7 +57,7 @@ export function DataQualityPage() {
         <>
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="quality-checks">
             {data?.checks.map((check) => (
-              <QualityCard key={check.key} check={check} />
+              <QualityCard key={check.key} check={check} total={data?.total_leads ?? 0} />
             ))}
           </section>
 
@@ -114,27 +114,69 @@ export function DataQualityPage() {
   )
 }
 
-function QualityCard({ check }: { check: QualityCheck }) {
-  const { t } = useTranslation()
+function QualityCard({ check, total }: { check: QualityCheck; total: number }) {
+  const { t, i18n } = useTranslation()
   const clean = check.count === 0
   const query = new URLSearchParams(check.filter).toString()
 
+  /*
+   * The share, not only the count.
+   *
+   * Ten leads with no campaign is a quarter of a small workspace and a
+   * rounding error in a large one, and this card showed the same "10" either
+   * way. The bar is the fastest read of "is this worth my afternoon"; the
+   * figures beside it are there because a bar two pixels wide is not a number.
+   */
+  const share = total > 0 ? (check.count / total) * 100 : 0
+
   const body = (
-    <CardBody className="flex items-start justify-between gap-3">
-      <div className="space-y-1">
-        <p className="t-body font-medium">{t(`dataQuality.check.${check.key}`)}</p>
-        <p className="t-caption">{t(`dataQuality.why.${check.key}`)}</p>
+    <CardBody className="space-y-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="t-body font-medium">{t(`dataQuality.check.${check.key}`)}</p>
+          <p className="t-caption">{t(`dataQuality.why.${check.key}`)}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {/*
+            The count is addressable on its own. The card now also carries the
+            share, and a test reading the whole card for the first run of digits
+            read "10" and "10 عملاء من 43" as 1010 — the same way the dashboard
+            tile glued its figure to its change percentage.
+          */}
+          <span
+            className={cn('t-h3 tabular-nums', !clean && 'text-[var(--color-danger)]')}
+            data-testid={`check-${check.key}-count`}
+          >
+            {check.count}
+          </span>
+          {clean ? (
+            <CheckCircle2 className="size-4 text-[var(--color-status-won)]" aria-hidden />
+          ) : (
+            <AlertTriangle className="size-4 text-[var(--color-danger)]" aria-hidden />
+          )}
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className={cn('t-h3 tabular-nums', !clean && 'text-[var(--color-danger)]')}>
-          {check.count}
-        </span>
-        {clean ? (
-          <CheckCircle2 className="size-4 text-[var(--color-status-won)]" aria-hidden />
-        ) : (
-          <AlertTriangle className="size-4 text-[var(--color-danger)]" aria-hidden />
-        )}
-      </div>
+
+      {!clean && total > 0 && (
+        <div className="space-y-1">
+          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
+            <div
+              data-chart-mark
+              className="h-full rounded-full bg-[var(--color-danger)]"
+              // A sliver still has to be visible: a problem affecting one lead
+              // in four hundred is small, not absent.
+              style={{ width: `${Math.max(share, 1.5)}%` }}
+            />
+          </div>
+          <p className="t-caption">
+            {t('dataQuality.shareOfLeads', {
+              count: check.count,
+              total: formatNumber(total, i18n.language),
+              percent: share >= 1 ? Math.round(share) : share.toFixed(1),
+            })}
+          </p>
+        </div>
+      )}
     </CardBody>
   )
 

@@ -46,6 +46,15 @@ class DataQualityController extends Controller
 
         return ApiResponse::success([
             'checks' => $checks,
+            /*
+             * The denominator, because a count on its own is not a finding.
+             *
+             * Ten leads with no campaign is a quarter of a small workspace and
+             * a rounding error in a large one, and the screen was showing the
+             * same "10" either way. It is the share that says whether this is
+             * worth somebody's afternoon.
+             */
+            'total_leads' => Lead::count(),
             'total_issues' => array_sum(array_column($checks, 'count')),
             'integrations' => $this->integrationHealth(),
             'checked_at' => now()->toIso8601String(),

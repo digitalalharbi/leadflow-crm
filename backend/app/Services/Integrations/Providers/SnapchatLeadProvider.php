@@ -20,6 +20,11 @@ class SnapchatLeadProvider extends AbstractLeadProvider
         return ['access_token', 'ad_account_id'];
     }
 
+    public function pullsLeads(): bool
+    {
+        return true;
+    }
+
     public function fetch(Integration $integration): array
     {
         if (! $this->isConfigured($integration)) {

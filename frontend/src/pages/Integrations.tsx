@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check, Copy, FileUp, Sparkles, Upload,
+  Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { apiGet, apiPost, http } from '@/lib/api'
+import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -13,7 +13,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState,
   Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
-import type { IntegrationCard } from '@/types/api'
+import type { IntegrationCard, SyncResult } from '@/types/api'
 import { cn } from '@/lib/cn'
 import { ProviderMark } from '@/components/integrations/ProviderMark'
 import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
@@ -57,7 +57,7 @@ export function IntegrationsPage() {
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data: cards, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['integrations'],
     queryFn: () => apiGet<{ integrations: IntegrationCard[] }>('/integrations').then((r) => r.integrations),
   })
@@ -71,6 +71,26 @@ export function IntegrationsPage() {
           id: string; provider: string; status: string; error: string | null
           received_at: string; lead: { id: string; full_name: string } | null
         }[]),
+  })
+
+  const [credentialsFor, setCredentialsFor] = useState<IntegrationCard | null>(null)
+  const [syncResult, setSyncResult] = useState<{ provider: string; result: SyncResult } | null>(null)
+
+  /**
+   * Ask the source now, rather than waiting for the five-minute poll.
+   *
+   * Without it a workspace saves a token, sees nothing change, and cannot tell
+   * a wrong token from a quiet afternoon — so the first thing anybody does is
+   * paste it again.
+   */
+  const sync = useMutation({
+    mutationFn: (id: string) => apiPost<{ result: SyncResult }>(`/integrations/${id}/sync`, {}),
+    onSuccess: (response, id) => {
+      const card = cards?.find((c) => c.integration?.id === id)
+      setSyncResult({ provider: card?.provider ?? '', result: response.result })
+      void queryClient.invalidateQueries({ queryKey: ['integrations'] })
+      void queryClient.invalidateQueries({ queryKey: ['ingestion', 30] })
+    },
   })
 
   const connect = useMutation({
@@ -141,7 +161,7 @@ export function IntegrationsPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {data?.map((card) => (
+          {cards?.map((card) => (
             <Card key={card.provider} className="flex flex-col">
               <CardBody className="flex-1">
                 <div className="flex items-start justify-between gap-2">
@@ -214,15 +234,55 @@ export function IntegrationsPage() {
                   the page into a wall of green shouting at an admin who is
                   reading status, not deciding to connect eight networks at once.
                 */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  loading={connect.isPending && connect.variables === card.provider}
-                  onClick={() => connect.mutate(card.provider)}
-                >
-                  {card.integration ? t('integrations.generateEndpoint') : t('integrations.connect')}
-                </Button>
+                <div className="space-y-2">
+                  {/*
+                    A pulled source has no webhook URL to hand out, so offering
+                    one is noise; a pushed source has nothing to poll, so a
+                    "sync now" button on it would do nothing and say nothing.
+                    They are different integrations and they get different
+                    buttons.
+                  */}
+                  {!card.pulls_leads && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      loading={connect.isPending && connect.variables === card.provider}
+                      onClick={() => connect.mutate(card.provider)}
+                    >
+                      {card.integration ? t('integrations.generateEndpoint') : t('integrations.connect')}
+                    </Button>
+                  )}
+
+                  {card.required_credentials.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      icon={<KeyRound className="size-4" />}
+                      onClick={() => setCredentialsFor(card)}
+                      data-testid={`credentials-${card.provider}`}
+                    >
+                      {card.integration?.configured_credentials.length
+                        ? t('integrations.editCredentials')
+                        : t('integrations.addCredentials')}
+                    </Button>
+                  )}
+
+                  {card.pulls_leads && card.integration && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      icon={<RefreshCw className="size-4" />}
+                      loading={sync.isPending && sync.variables === card.integration.id}
+                      onClick={() => sync.mutate(card.integration!.id)}
+                      data-testid={`sync-${card.provider}`}
+                    >
+                      {t('integrations.syncNow')}
+                    </Button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
@@ -273,6 +333,52 @@ export function IntegrationsPage() {
       </Card>
 
       {/* The secret is shown exactly once; the dialog says so plainly. */}
+      <CredentialsModal
+        card={credentialsFor}
+        onClose={() => setCredentialsFor(null)}
+        onSaved={() => {
+          setCredentialsFor(null)
+          void queryClient.invalidateQueries({ queryKey: ['integrations'] })
+        }}
+      />
+
+      <Modal
+        open={Boolean(syncResult)}
+        onClose={() => setSyncResult(null)}
+        title={t('integrations.syncResult')}
+        footer={<Button onClick={() => setSyncResult(null)}>{t('common.close')}</Button>}
+      >
+        {syncResult && (
+          <div className="space-y-3">
+            <p className="t-small">
+              {t(`platforms.${syncResult.provider}`, { defaultValue: syncResult.provider })}
+            </p>
+
+            {syncResult.result.error ? (
+              /*
+                The provider's own words, not ours. "Could not connect" sends an
+                admin to their network; "(#190) access token expired" sends them
+                to the one place that can fix it.
+              */
+              <p className="t-small rounded-[var(--radius-control)] bg-[var(--color-danger-soft)] p-3 text-[var(--color-danger)]">
+                {syncResult.result.error}
+              </p>
+            ) : (
+              <dl className="grid grid-cols-2 gap-3">
+                {(['fetched', 'created', 'duplicates', 'skipped', 'rejected', 'failed'] as const).map((key) => (
+                  <div key={key}>
+                    <dt className="t-caption">{t(`integrations.sync_${key}`)}</dt>
+                    <dd className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+                      {formatNumber(syncResult.result[key], i18n.language)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        )}
+      </Modal>
+
       <Modal
         open={Boolean(secret)}
         onClose={() => setSecret(null)}
@@ -365,6 +471,95 @@ function IngestionCard() {
         )}
       </div>
     </ChartCard>
+  )
+}
+
+/**
+ * Where an access token is actually entered.
+ *
+ * The page named the credentials each source needs and offered no way to
+ * supply them, so every pull-based provider — TikTok, Snapchat, LinkedIn,
+ * Google Sheets — could be "connected" and could never deliver a lead. The
+ * only route in was an API call the customer was never told about.
+ *
+ * Values are write-only. The server returns which keys are set and never what
+ * they are, so a saved secret shows as saved and an empty field means "leave
+ * it alone" rather than "clear it".
+ */
+function CredentialsModal({
+  card,
+  onClose,
+  onSaved,
+}: {
+  card: IntegrationCard | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { t } = useTranslation()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const [values, setValues] = useState<Record<string, string>>({})
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const filled = Object.fromEntries(
+        Object.entries(values).filter(([, value]) => value.trim() !== ''),
+      )
+
+      // A provider with no integration row yet has to be created before it can
+      // be given anything to hold.
+      const id =
+        card?.integration?.id ??
+        (await apiPost<{ integration: { id: string } }>('/integrations', { provider: card?.provider }))
+          .integration.id
+
+      return apiPatch(`/integrations/${id}`, { credentials: filled })
+    },
+    onSuccess: () => {
+      setValues({})
+      toast(t('integrations.credentialsSaved'), 'success')
+      onSaved()
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  return (
+    <Modal
+      open={Boolean(card)}
+      onClose={onClose}
+      title={t('integrations.credentialsTitle')}
+      description={t('integrations.credentialsHint')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button loading={save.isPending} onClick={() => save.mutate()} data-testid="save-credentials">
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {card?.required_credentials.map((key) => {
+          const stored = card.integration?.configured_credentials.includes(key)
+
+          return (
+            <label key={key} className="block">
+              <span className="t-small mb-1 block font-medium" dir="ltr">{key}</span>
+              <input
+                type="password"
+                autoComplete="off"
+                dir="ltr"
+                data-testid={`credential-${key}`}
+                placeholder={stored ? t('integrations.credentialStored') : ''}
+                value={values[key] ?? ''}
+                onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[0.875rem]"
+              />
+            </label>
+          )
+        })}
+      </div>
+    </Modal>
   )
 }
 

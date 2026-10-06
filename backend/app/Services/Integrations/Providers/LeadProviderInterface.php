@@ -27,6 +27,16 @@ interface LeadProviderInterface
      */
     public function fetch(Integration $integration): array;
 
+    /**
+     * Do we have to go and ask this source, or does it call us?
+     *
+     * Explicit rather than inferred from `fetch()` returning rows, because the
+     * honest answer for a misconfigured puller and for a push-only provider is
+     * the same empty array — and the two need opposite handling. One is a
+     * source to chase; the other is a source that is working.
+     */
+    public function pullsLeads(): bool;
+
     /** Credential keys this provider needs, used to render the settings form. */
     public function requiredCredentials(): array;
 }

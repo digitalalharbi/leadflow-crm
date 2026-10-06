@@ -30,6 +30,24 @@ class ProviderRegistry
         IntegrationProvider::Manual->value => ManualProvider::class,
     ];
 
+    /**
+     * Is this a lead source at all?
+     *
+     * Not every row in `integrations` is one. WhatsApp lives in the same table
+     * because a workspace configures it on the same screen, but it carries
+     * messages rather than leads and has no provider class — so anything that
+     * walks the table has to ask before it reaches for one, or it throws on the
+     * first workspace that uses WhatsApp.
+     */
+    public function has(IntegrationProvider|string|null $provider): bool
+    {
+        if ($provider === null) {
+            return false;
+        }
+
+        return isset($this->map[$provider instanceof IntegrationProvider ? $provider->value : $provider]);
+    }
+
     public function get(IntegrationProvider|string $provider): LeadProviderInterface
     {
         $key = $provider instanceof IntegrationProvider ? $provider->value : $provider;

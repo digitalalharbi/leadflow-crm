@@ -45,6 +45,12 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
         return [];
     }
 
+    /** Push by default: the source calls us, and there is nothing to poll. */
+    public function pullsLeads(): bool
+    {
+        return false;
+    }
+
     /**
      * Apply the tenant's field mapping, then the provider's own aliases.
      * Mapping is stored as { "incoming_key": "canonical_key" }.
@@ -188,6 +194,19 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
             'ad' => 'ad_name',
             'creative_name' => 'ad_name',
             'form' => 'form_name',
+            /*
+             * The source's own id for this row, which is the only thing that
+             * survives us editing, merging or re-engaging the lead. Without it
+             * a poll cannot tell a row it has already taken from a new one, so
+             * every five-minute poll re-recorded the same leads as duplicates.
+             *
+             * `lead_id` and `leadgen_id` are named enough to trust; a bare `id`
+             * is not, and is only read inside an answer envelope where it
+             * unambiguously means the lead.
+             */
+            'lead_id' => 'provider_lead_id',
+            'leadgen_id' => 'provider_lead_id',
+            'external_id' => 'provider_lead_id',
             'budget' => 'budget_max',
             'utm_source' => 'source',
             'utm_campaign' => 'campaign_name',

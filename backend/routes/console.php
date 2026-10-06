@@ -22,4 +22,17 @@ Schedule::command('leadflow:sweep-sla')->everyFiveMinutes()->withoutOverlapping(
  */
 Schedule::command('leadflow:sweep-conversions')->everyFifteenMinutes()->withoutOverlapping();
 
+/*
+ * Pull-based sources, every five minutes.
+ *
+ * A lead that filled a form on TikTok is calling a sales team today, not
+ * tomorrow, so the poll has to be closer to the SLA than to a nightly job —
+ * the first-contact target is measured in minutes and a fifteen-minute poll
+ * would spend most of that budget before anybody saw the lead.
+ *
+ * `withoutOverlapping` because a slow provider must not stack polls on top of
+ * each other, each re-reading the same window.
+ */
+Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();

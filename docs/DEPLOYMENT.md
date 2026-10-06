@@ -145,8 +145,18 @@ structured so adding `deploy.replicas` is the only change.
 
 The `scheduler` container runs `schedule:work`, which dispatches:
 
-* `leadflow:follow-up-reminders` — hourly
-* `horizon:snapshot` — every five minutes
+| Command | Every | Without it |
+| --- | --- | --- |
+| `leadflow:pull-leads` | 5 min | **Pull-based sources deliver nothing.** TikTok, Snapchat, LinkedIn, Google Sheets and Meta-in-API-mode are polled by this command and by nothing else. A valid token with no scheduler looks exactly like a wrong token. |
+| `leadflow:sweep-sla` | 5 min | First-contact SLAs are never enforced: no reminder, no escalation, no reassignment. |
+| `leadflow:follow-up-reminders` | hourly | "Due today" and "overdue" counters drift, and nobody is told. |
+| `leadflow:sweep-conversions` | 15 min | Conversions are never exported back to the ad platforms, so campaign optimisation never gets the feedback. |
+| `horizon:snapshot` | 5 min | The queue dashboard has no metrics. |
+
+Each is `withoutOverlapping()`. If the scheduler is down, the product keeps
+serving requests and quietly stops doing all of the above — which is why
+`leadflow:pull-leads` exits non-zero when a source could not be reached, so a
+cron that only checks exit status still notices.
 
 ## Troubleshooting
 

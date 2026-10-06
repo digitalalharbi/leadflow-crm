@@ -255,6 +255,31 @@ class E2ESeeder extends Seeder
             foreach (range(1, self::FILLER_COUNT) as $i) {
                 $status = $statuses[$i % count($statuses)];
 
+                /*
+                 * A closed lead is backdated far enough that its whole journey
+                 * fits before now.
+                 *
+                 * These used to be absolute — `won_at = now()->subDays(3)` on
+                 * a lead created this second — so every won lead in the
+                 * fixtures was closed three days *before* it arrived. Nothing
+                 * failed: the velocity chart quietly drops any step whose end
+                 * precedes its start, so "من التأهيل إلى البيع" simply showed
+                 * a dash in every run, and the two steps it was written to
+                 * measure were never exercised at all.
+                 */
+                $won = $status === LeadStatus::Won->value;
+                $lost = $status === LeadStatus::Lost->value;
+                $createdAt = $won ? now()->subDays(12) : ($lost ? now()->subDays(6) : now());
+
+                // Only the statuses that genuinely passed through qualification.
+                // `lost` is left out on purpose: a lead can be lost before
+                // anybody qualified it, and claiming otherwise would inflate
+                // the qualification rate in the fixtures the screens are read
+                // against.
+                $qualifiedAt = in_array($status, [
+                    LeadStatus::Qualified->value, LeadStatus::Appointment->value, LeadStatus::Won->value,
+                ], true) ? $createdAt->copy()->addHours(6) : null;
+
                 $this->lead($tenant, 'عميل تجريبي '.str_pad((string) $i, 2, '0', STR_PAD_LEFT), '+9665003'.str_pad((string) $i, 5, '0', STR_PAD_LEFT), [
                     'assigned_to' => [$admin->id, $manager->id][$i % 2],
                     'project_id' => $projects[$i % 3]->id,
@@ -263,9 +288,11 @@ class E2ESeeder extends Seeder
                     'score' => 20 + ($i % 70),
                     'platform' => $platforms[$i % count($platforms)],
                     'campaign_name' => 'حملة رقم '.(($i % 4) + 1),
-                    'lost_reason_id' => $status === LeadStatus::Lost->value ? $lostReason?->id : null,
-                    'lost_at' => $status === LeadStatus::Lost->value ? now()->subDays(2) : null,
-                    'won_at' => $status === LeadStatus::Won->value ? now()->subDays(3) : null,
+                    'created_at' => $createdAt,
+                    'qualified_at' => $qualifiedAt,
+                    'lost_reason_id' => $lost ? $lostReason?->id : null,
+                    'lost_at' => $lost ? $createdAt->copy()->addDays(4) : null,
+                    'won_at' => $won ? $createdAt->copy()->addDays(9) : null,
                 ]);
             }
 
@@ -373,6 +400,15 @@ class E2ESeeder extends Seeder
     {
         $parts = explode(' ', $name, 2);
 
+        /*
+         * `created_at` is applied after the insert, not through it: Eloquent
+         * stamps its own timestamps on create and would overwrite a mass
+         * assigned one. It has to land before the first-contact backfill
+         * below, which is measured from it.
+         */
+        $createdAt = $attributes['created_at'] ?? null;
+        unset($attributes['created_at']);
+
         $lead = Lead::create(array_merge([
             'tenant_id' => $tenant->id,
             'first_name' => $parts[0],
@@ -398,6 +434,11 @@ class E2ESeeder extends Seeder
          * run read as zero seconds — fixtures should look like the data the
          * screens were designed for.
          */
+        if ($createdAt !== null) {
+            $lead->forceFill(['created_at' => $createdAt])->saveQuietly();
+            $lead->refresh();
+        }
+
         if ($lead->status->impliesContactWasMade()) {
             $lead->forceFill([
                 'first_contact_at' => $lead->created_at->copy()->addMinutes(12),

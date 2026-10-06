@@ -37,6 +37,16 @@ export const LEADS = {
   assign: 'بشاير الإسناد',
   chat: 'غادة المحادثة',
   qualify: 'ماجد التأهيل',
+
+  /*
+   * Two of the filler leads, named here because the journey spec needs one
+   * that closed and one that did not. Their outcome is deterministic: the
+   * seeder walks `statuses[i % 6]` over leads 01..30, so 10 is always won and
+   * 05 is always lost.
+   */
+  won: 'عميل تجريبي 10',
+  closedLost: 'عميل تجريبي 05',
+  open: 'عميل تجريبي 01',
 } as const
 
 /**

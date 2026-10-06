@@ -311,6 +311,8 @@ export interface ChartPoint {
 }
 
 export interface DashboardData {
+  /** Median hours per funnel step, for the leads that actually made it. */
+  velocity: { step: string; median_hours: number | null; count: number }[]
   /** One point per day, each event counted on the day it happened. */
   timeline: { date: string; leads: number; qualified: number; won: number }[]
   summary: {

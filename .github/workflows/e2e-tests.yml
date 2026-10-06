@@ -49,6 +49,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Lives here rather than in the backend or frontend workflow because both
+      # of those are scoped with `paths:` — a marker in a file neither of them
+      # watches would reach develop unseen. This job runs on every pull request.
+      - name: Check for conflict markers
+        run: ./scripts/check-conflict-markers.sh
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:

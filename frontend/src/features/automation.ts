@@ -84,6 +84,16 @@ export interface AutomationRun {
   created_at: string | null
 }
 
+export interface AutomationInsights {
+  summary: { runs: number; applied: number; failed: number; actions: number; days: number }
+  daily: { date: string; applied: number; skipped: number; failed: number }[]
+  by_rule: { rule: string; applied: number; skipped: number; failed: number }[]
+}
+
+export function fetchInsights(days = 30) {
+  return apiGet<AutomationInsights>('/automation/insights', { days })
+}
+
 export function fetchSchema() {
   return apiGet<AutomationSchema>('/automation/schema')
 }

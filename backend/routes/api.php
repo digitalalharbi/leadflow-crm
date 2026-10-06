@@ -147,6 +147,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/onboarding/test-lead/{uuid}', [TestLeadController::class, 'destroy']);
             Route::get('/automation/templates', [AutomationRuleController::class, 'templates']);
             Route::post('/automation/templates/{key}', [AutomationRuleController::class, 'installTemplate']);
+            Route::get('/automation/insights', [AutomationRuleController::class, 'insights']);
             Route::get('/automation/rules', [AutomationRuleController::class, 'index']);
             Route::post('/automation/rules', [AutomationRuleController::class, 'store']);
             Route::patch('/automation/rules/{uuid}', [AutomationRuleController::class, 'update']);

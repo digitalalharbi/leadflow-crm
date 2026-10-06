@@ -272,6 +272,18 @@ export default {
     },
   },
   charts: {
+    automation: {
+      title: 'What the rules did',
+      hint: 'Every run in the last thirty days — including the ones that did not apply',
+      aria: 'Daily automation rule runs, split by outcome',
+      applied: 'Applied',
+      skipped: 'Did not apply',
+      failed: 'Failed',
+      actionsDone: 'actions carried out automatically',
+      noRuns: 'No rule has run yet. Switch one on to see its effect here.',
+      topRules: 'Busiest rules',
+      rule: 'Rule',
+    },
     leadFlow: {
       title: 'Lead flow',
       hint: 'Arriving, qualified and closed — each on its own day',

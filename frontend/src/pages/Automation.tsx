@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Sparkles, Trash2, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
-  createRule, deleteRule, fetchRules, fetchSchema, fetchTemplates, installTemplate,
-  previewRule, updateRule, type AutomationRule,
+  createRule, deleteRule, fetchInsights, fetchRules, fetchSchema, fetchTemplates,
+  installTemplate, previewRule, updateRule, type AutomationRule,
 } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -13,6 +13,7 @@ import {
   Badge, Button, Card, CardBody, EmptyState, ErrorState, Modal,
   PageHeader, SkeletonCards,
 } from '@/components/ui'
+import { AutomationActivityChart, ChartCard, ChartLegend, SERIES } from '@/components/charts'
 import { RuleEditor } from '@/features/automation/RuleEditor'
 
 /**
@@ -35,6 +36,7 @@ export function AutomationPage() {
   const [confirmDelete, setConfirmDelete] = useState<AutomationRule | null>(null)
 
   const schema = useQuery({ queryKey: ['automation-schema'], queryFn: fetchSchema })
+  const insights = useQuery({ queryKey: ['automation-insights'], queryFn: () => fetchInsights(30) })
   const rules = useQuery({ queryKey: ['automation-rules'], queryFn: fetchRules })
   const templates = useQuery({ queryKey: ['automation-templates'], queryFn: fetchTemplates })
 
@@ -113,6 +115,54 @@ export function AutomationPage() {
           </Button>
         }
       />
+
+      {/*
+        Above the rules, because the first question about a list of rules is
+        whether any of them fires — and a list cannot answer it. A workspace
+        with twelve enabled rules and a flat chart has a problem it would not
+        otherwise find until a customer went uncalled.
+      */}
+      {insights.data && insights.data.summary.runs > 0 && (
+        <ChartCard
+          title={t('charts.automation.title')}
+          description={t('charts.automation.hint')}
+          height={200}
+          testId="automation-activity"
+          legend={
+            <ChartLegend
+              items={[
+                { key: 'applied', label: t('charts.automation.applied'), color: SERIES[0] },
+                { key: 'skipped', label: t('charts.automation.skipped'), color: SERIES[1] },
+                { key: 'failed', label: t('charts.automation.failed'), color: 'var(--color-status-lost)' },
+              ]}
+            />
+          }
+          footer={
+            <p className="t-caption">
+              <span className="t-body font-medium text-[var(--color-ink)]">
+                {insights.data.summary.actions}
+              </span>{' '}
+              {t('charts.automation.actionsDone')}
+            </p>
+          }
+          table={{
+            head: [
+              t('charts.automation.rule'),
+              t('charts.automation.applied'),
+              t('charts.automation.skipped'),
+              t('charts.automation.failed'),
+            ],
+            rows: insights.data.by_rule.map((row) => [
+              row.rule,
+              row.applied,
+              row.skipped,
+              row.failed,
+            ]),
+          }}
+        >
+          <AutomationActivityChart days={insights.data.daily} />
+        </ChartCard>
+      )}
 
       {/* The gallery comes first while the workspace has nothing. */}
       {uninstalled.length > 0 && (

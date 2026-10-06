@@ -10,6 +10,8 @@ use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
 use App\Enums\Role;
+use App\Models\AutomationRule;
+use App\Models\AutomationRun;
 use App\Models\FollowUp;
 use App\Models\Integration;
 use App\Models\Lead;
@@ -219,6 +221,8 @@ class E2ESeeder extends Seeder
                 'temperature' => LeadTemperature::Hot->value, 'score' => 75, 'platform' => 'meta',
             ]);
 
+            $this->seedAutomationHistory($tenant, $admin);
+
             // Unassigned on purpose: the assignment test gives it an owner.
             $this->lead($tenant, self::LEAD_ASSIGN, '+966500000006', [
                 'assigned_to' => null, 'status' => LeadStatus::New->value,
@@ -300,6 +304,57 @@ class E2ESeeder extends Seeder
                 'campaign_name' => 'حملة بيتا السرية',
             ]);
         });
+    }
+
+    /**
+     * A little automation history.
+     *
+     * A workspace that has been running has runs behind it, and a fixture set
+     * with none makes every automation screen look like a feature nobody
+     * switched on. The rule is enabled and its runs are spread across the last
+     * fortnight, including skips and one failure — the states that matter are
+     * the ones that are not success.
+     */
+    private function seedAutomationHistory(Tenant $tenant, User $admin): void
+    {
+        $rule = AutomationRule::create([
+            'name' => 'عميل ساخن: أولوية قصوى',
+            'trigger' => 'lead.created',
+            'is_enabled' => true,
+            'priority' => 5,
+            'conditions' => [['field' => 'temperature', 'operator' => 'equals', 'value' => 'hot']],
+            'actions' => [['type' => 'adjust_score', 'by' => 10]],
+            'created_by' => $admin->id,
+        ]);
+
+        $leads = Lead::query()->limit(6)->get();
+
+        if ($leads->isEmpty()) {
+            return;
+        }
+
+        $plan = [
+            ['applied', 12], ['applied', 10], ['skipped', 9], ['applied', 7],
+            ['skipped', 6], ['skipped', 5], ['applied', 3], ['failed', 2],
+            ['applied', 1], ['skipped', 0],
+        ];
+
+        foreach ($plan as $index => [$outcome, $daysAgo]) {
+            $run = AutomationRun::create([
+                'lead_id' => $leads[$index % $leads->count()]->id,
+                'automation_rule_id' => $rule->id,
+                'trigger' => 'lead.created',
+                'outcome' => $outcome,
+                'reason' => $outcome === 'skipped'
+                    ? 'درجة اهتمام العميل ليست "ساخن"'
+                    : null,
+                'applied_actions' => $outcome === 'applied'
+                    ? [['ok' => true, 'type' => 'adjust_score', 'description' => 'التقييم 60 ← 70.']]
+                    : [],
+            ]);
+
+            $run->forceFill(['created_at' => now()->subDays($daysAgo)])->saveQuietly();
+        }
     }
 
     private function user(Tenant $tenant, string $name, string $email, Role $role): User

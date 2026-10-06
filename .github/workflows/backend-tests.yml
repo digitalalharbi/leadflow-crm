@@ -80,6 +80,12 @@ jobs:
         run: ./vendor/bin/pint --test
         continue-on-error: false
 
+      # Before the suite, not inside it: a test class that shadows PHPUnit's
+      # final run() aborts at class load and takes every other test with it,
+      # so no test can catch this one.
+      - name: Check test helpers
+        run: ./scripts/check-test-helpers.sh
+
       - name: Run migrations
         env:
           DB_CONNECTION: pgsql

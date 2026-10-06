@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Automation\AutomationInsights;
 use App\Domain\Automation\ConditionEvaluator;
 use App\Domain\Automation\RuleTemplates;
 use App\Enums\LeadStatus;
@@ -304,5 +305,25 @@ class AutomationRuleController extends Controller
                 : $action,
             $actions,
         );
+    }
+
+    /**
+     * Whether the rules are doing anything.
+     *
+     * Readable by anyone who can see the rules, because the question "did the
+     * automation call this lead or did we forget" is asked by whoever is
+     * holding the phone, not only by whoever wrote the rule.
+     */
+    public function insights(Request $request, AutomationInsights $insights)
+    {
+        $this->authorize('viewAny', AutomationRule::class);
+
+        $days = min(90, max(7, (int) $request->integer('days', 30)));
+
+        return ApiResponse::success([
+            'summary' => $insights->summary($days),
+            'daily' => $insights->daily($days),
+            'by_rule' => $insights->byRule($days),
+        ]);
     }
 }

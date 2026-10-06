@@ -69,6 +69,29 @@ test.describe('الرسوم البيانية — charts', () => {
     await expect(tooltip).toContainText('مكسوب')
   })
 
+  /**
+   * A list of enabled rules cannot answer the first question about automation:
+   * does any of it fire? A workspace with twelve rules and a flat chart has a
+   * problem it would not otherwise find until a customer went uncalled.
+   */
+  test('the automation screen shows what the rules actually did', async ({ page }) => {
+    await page.goto('/automation')
+
+    /*
+     * `toBeVisible` rather than `count()`: the insights query has not resolved
+     * the instant the page loads, so counting there found nothing and skipped
+     * — a test that skips itself proves exactly as much as no test.
+     */
+    const card = page.getByTestId('automation-activity')
+
+    await expect(card).toBeVisible()
+    await expect(card).toContainText('طُبِّقت')
+    // Skips are drawn, not hidden: a week of them looks like a quiet week
+    // on a chart of successes alone.
+    await expect(card).toContainText('لم تنطبق')
+    await expect(card).toContainText('فشلت')
+  })
+
   test('the time axis is not mirrored by the RTL page', async ({ page }) => {
     // Dates ascend left to right, like the numbers themselves. Mirrored, a
     // rising month looks like a falling one.

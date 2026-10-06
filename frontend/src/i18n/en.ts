@@ -104,6 +104,8 @@ export default {
     },
   },
   dataQuality: {
+      shareOfLeads_one: '1 lead of {{total}} — {{percent}}%',
+      shareOfLeads_other: '{{count}} leads of {{total}} — {{percent}}%',
     title: 'Data quality',
     subtitle: 'What needs fixing before it costs you',
     allClear: 'Nothing to fix — your data is clean',

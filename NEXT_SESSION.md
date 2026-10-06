@@ -1,113 +1,177 @@
 # Next session — مهتم
 
-Updated 2026-10-05.
+Updated 2026-10-07.
 
 ## Where things stand
 
-`develop` carries PRs #15–#27. Nothing is on `main`.
+`develop` carries PRs #15–#43. Nothing is on `main`.
+
+Suites: **621 backend** (2067 assertions), **105 frontend unit**, **167 E2E**.
+Typecheck, lint and build clean.
 
 | Area | State |
 |---|---|
-| Automation engine, events, SLA sweeper | Done (#19) |
-| Rules API, closed vocabulary, policy | Done (#21) |
-| Six rule templates, `notify`, `stop_follow_ups` | Done (#24) |
-| Rules screen: gallery, builder, preview | Done (#25) |
-| Next Best Action + work queue API | Done (#20) |
-| "اعمل الآن": one-press outcome loop, shortcuts | Done (#23) |
-| Contact-state invariant (3 levels) | Done (#22) |
-| Data quality centre + drill-down | Done (#26) |
-| Automation trace on the lead page | Done (#27) |
-| Missed follow-ups bucket | This branch |
+| Automation engine, rules API, templates, builder, trace | Done (#19–#27) |
+| Next Best Action, "اعمل الآن" work queue | Done (#20, #23) |
+| Data quality centre, drill-down, share of workspace | Done (#26, #45) |
+| Chart palette — measured, CVD-checked, drift-guarded | Done (#34) |
+| Lead flow timeline, automation activity, stage timings | Done (#35, #37) |
+| Rep performance, printing | Done (#38, #39) |
+| Lead journey (per-lead milestones and gaps) | Done (#40) |
+| Ingestion health — arrivals, duplicates, source staleness | Done (#41) |
+| Category naming + Arabic interest scale | Done (#42) |
+| **Pull-based sources actually working** | Done (#43) |
+| عوامل الإغلاق — does speed/scoring predict a sale | #44, open |
+| Data-quality share of workspace | #45, open |
 
-Suites at the time of writing: **509 backend**, **62 frontend**, **~100 E2E**.
-Typecheck and lint clean.
+## The one that mattered most
+
+`fetch()` was implemented on five providers — Meta, TikTok, Snapchat, LinkedIn,
+Google Sheets — and **called by nothing**. No command, no job, no schedule
+entry. A workspace could paste a valid access token, watch the card go green,
+and wait forever. The page also named the credentials each source needs and
+gave you nowhere to type them, so four of seven providers were unreachable from
+the interface entirely.
+
+Both are fixed in #43: `LeadPuller`, `leadflow:pull-leads` every five minutes, a
+«مزامنة الآن» button, and a credentials form. Verified against the live TikTok
+Business API — the error comes back in TikTok's own words and `last_synced_at`
+is correctly left null.
+
+**This needs the Laravel scheduler running in production.** Without it, pull
+sources deliver nothing and a valid token looks exactly like a wrong one.
+`docs/DEPLOYMENT.md` now lists all five scheduled commands and what breaks
+without each.
 
 ## Open, and worth doing next
 
 ### P1, in the order I would take them
 
-1. **Offline conversions** — adapters for Meta / Google / TikTok / Snapchat.
-   Build the adapter and the queue; send nothing until real credentials exist.
-2. **Cost per qualified lead and ROAS** — blocked on ad-spend ingestion, which
-   is the same credentials problem as above.
+1. **Offline conversions** — adapters exist; the queue and exporters are
+   written. Nothing is sent until real ad credentials exist.
+2. **Cost per qualified lead and ROAS** — blocked on ad-spend ingestion, the
+   same credentials problem.
 3. **Realtime** — new lead, reply, assignment, stage change. Everything polls
    today; the work screen in particular would feel different.
-4. **Global search / command palette.**
-5. **Onboarding wizard + traceable test lead** (spec items 24 and 25). The
-   trace from #27 is the hard half and it already exists.
-6. **Daily manager digest** (item 18). The numbers all exist; this is
-   assembling and scheduling them.
+4. **Daily manager digest.** The numbers all exist; this is assembling and
+   scheduling them.
+5. **A partial unique index on leads** — see below, it is a real bug.
 
 ### P2
 
 AI assist, calendar sync, extended providers.
 
-### Deliberately not done
-
-**Delay and branch in automation rules** (part of spec item 5). A delay means a
-scheduled job per rule step with its own retry and cancellation semantics —
-"wait 3 days then message, unless the lead replied" needs the *unless*, or it
-becomes the thing that messages customers after they have already bought. It is
-a day's work done properly and a liability done quickly.
-
-**Draft/Published** is implemented as enable/disable, which is the same control
-under a different word. Say so rather than adding a second flag.
-
-## Three things to be careful of
-
-### A test failed once and I could not reproduce it
-
-During #24 a single unnamed test failed in a run that took 97 seconds against a
-normal 35. Nine subsequent runs, including randomised order, were clean. It
-smells like something time-sensitive — there is precedent in this repo
-(`FollowUpTest` used to fail for two hours a day). If it reappears, capture the
-name before rerunning.
+## Things to be careful of
 
 ### A soft-deleted lead blocks its phone number forever
 
 `leads_tenant_phone_unique` is a plain unique index on `(tenant_id,
 phone_normalized)`, not a partial one. A soft-deleted lead keeps occupying it,
-so the same person can never be re-added after deletion — they would hit a
-constraint violation rather than a duplicate warning. Worth a partial unique
-index `where deleted_at is null`, with a deliberate decision about what
-re-adding a deleted lead should do.
+so the same person can never be re-added after deletion — they hit a constraint
+violation rather than a duplicate warning. Worth a partial unique index
+`where deleted_at is null`, with a deliberate decision about what re-adding a
+deleted lead should do. **Still open.**
 
 ### Any sentence with two numbers in it is a plural bug
 
 i18next picks its plural category from a single `count`, so a string holding two
-counts silently skips pluralisation entirely — no warning, no fallback, just
-slightly wrong Arabic. It happened three times in one day:
-`{{conditions}} شرط · {{actions}} إجراء`, `تنطبق على {{count}} من آخر {{sampled}}`,
-and `بقي {{count}} عميل`. Split them into two keys and join. `plurals.test.ts`
-pins 19 cases.
+counts silently skips pluralisation — no warning, no fallback, just slightly
+wrong Arabic. Found again this session: the awaiting-contact heading
+interpolated the workspace's configurable first-contact target into a fixed
+`دقيقة`. At the default of 30 that is correct, which is exactly why it survived;
+set the target to 3 and the dashboard said "3 دقيقة". `plurals.test.ts` pins the
+cases.
+
+### Never scrape a card's text for a number
+
+Twice in one session a test read a whole card, stripped non-digits, and got a
+number that was never on screen. The metric tile renders its figure *and* a
+period-over-period change, so "39" and "87.5%" became **398750**. The data
+quality card did the same with "10" and "10 عملاء من 43" → **1010**. Both
+passed for a while because they compared one mangled number against another.
+Values that a test needs now carry their own `data-testid`.
+
+### Fixtures are part of the product
+
+Three screens in a row could not be exercised because the fixtures never
+produced the data they read:
+
+* **Velocity** — `won_at` was set to an absolute date, so every won lead closed
+  three days *before* it was created. The chart silently drops any step whose
+  end precedes its start, so two of three steps showed a dash in every run.
+* **Ingestion** — no `lead_source_events` were seeded at all.
+* **عوامل الإغلاق** — every lead was under three weeks old, so nothing was
+  mature enough to count.
+
+And the windows fight each other: the dashboard measures the last thirty days,
+the conversion analysis counts only leads older than that. Half the closed
+leads now sit in each. Aging all of them is exactly how the velocity chart went
+back to a dash.
+
+### GitHub will not run CI on a conflicting PR
+
+A stacked PR targeting another branch gets no workflow run at all — they are
+scoped to PRs into `main`/`develop`. Retargeting does not help on its own,
+because the head commit has not changed, and an empty commit does not help
+either when the branch conflicts with its base. **Merge the base in and resolve
+first**; CI starts the moment the PR is mergeable.
+
+Also: **retarget the child before merging the parent.** Deleting a base branch
+closes its child PR rather than retargeting it — #39 had to be reopened after
+recreating the deleted ref.
 
 ## Still blocked on you
 
-Deployment cannot proceed past this point without:
+### Deployment
 
 1. **Server IP** and the **SSH user** to deploy as.
-2. A **deploy SSH key you generate** — do not paste the private key into the
-   chat; add the public half to the server's `authorized_keys` and the private
-   half to the GitHub secret yourself.
+2. A **deploy SSH key you generate** — do not paste the private key into a chat;
+   add the public half to the server's `authorized_keys` and the private half to
+   the GitHub secret yourself.
 3. The five GitHub Actions secrets named in `EXTERNAL_SETUP.md`.
 
-For the advertising integrations, separately: real API credentials for Meta,
-Google, TikTok or Snapchat. The adapters can be written and tested without
-them; nothing will be sent to a live ad account until you provide them.
+The staging deploy currently fails on every merge to `develop`, by design: it
+checks for `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` and `DEPLOY_PATH_SECRET` and
+exits non-zero rather than reporting a green deploy that shipped nothing.
+`scripts/check-deploy-readiness.sh` prints which are missing by name and never
+prints a value.
 
-`scripts/check-deploy-readiness.sh` prints which secrets are missing by name and
-never prints a value.
+### Live ad sources
 
-## One local gotcha
+Real credentials for Meta, TikTok, Snapchat, LinkedIn or Google Sheets. Each
+needs someone with access to that ad account to create an app, grant scopes and
+generate a token; none of it can be done from مهتم, and no part of مهتم asks for
+an ad-account password.
 
-Another project on this machine serves ports 5173 and 5174, and Playwright's
-`reuseExistingServer: true` will happily run the whole suite against it — every
-spec fails with a baffling `page-title not found`. Run E2E with an explicit free
-port:
+`docs/CONNECTING_SOURCES.md` is the runbook: which keys per platform, where each
+comes from, how to read a sync result, and what to check when a source stops.
 
+The generic webhook needs **no credentials** and works today — it is the fastest
+way to prove the whole pipeline end to end.
+
+## Running it locally
+
+Another project on this machine owns ports **8000** and **5173/5174**, and
+Playwright's `reuseExistingServer` will happily run the whole suite against it.
+Use explicit free ports:
+
+```bash
+cd backend && php artisan serve --host=127.0.0.1 --port=8012
+cd frontend && VITE_PROXY_TARGET=http://127.0.0.1:8012 \
+  npx vite --port 5301 --host 127.0.0.1 --strictPort
 ```
-E2E_NO_SERVER=1 E2E_BASE_URL=http://127.0.0.1:5301 npx playwright test
+
+```bash
+E2E_NO_SERVER=1 E2E_BASE_URL=http://127.0.0.1:5301 \
+  E2E_API_URL=http://127.0.0.1:8012 npx playwright test
 ```
 
-with `npm run dev -- --port 5301 --host 127.0.0.1 --strictPort` alongside. The
 `--host` matters: Vite binds IPv6-only otherwise and Playwright cannot reach it.
+`VITE_PROXY_TARGET` matters too — the dev server's default proxy target is 8000,
+which is the other project.
+
+Start both servers as long-lived processes, not as `nohup … &` from a one-shot
+shell. A server that dies mid-run fails eighteen tests with `ECONNREFUSED` and
+looks exactly like a code regression. Check
+`curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8012/api/health`
+before any long run.

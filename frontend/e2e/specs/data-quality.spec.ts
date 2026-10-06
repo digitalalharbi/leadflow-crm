@@ -32,7 +32,8 @@ test.describe('جودة البيانات — data quality', () => {
 
   test('a count opens exactly the leads it counted', async ({ page }) => {
     const card = page.getByTestId('check-missing_campaign')
-    const shown = Number((await card.textContent())?.match(/\d+/)?.[0] ?? 0)
+    // The count element, not the card: the card also carries the share.
+    const shown = Number((await page.getByTestId('check-missing_campaign-count').textContent()) ?? 0)
 
     test.skip(shown === 0, 'nothing to drill into in this fixture set')
 
@@ -47,7 +48,7 @@ test.describe('جودة البيانات — data quality', () => {
 
   test('a clean check is not a link to an empty list', async ({ page }) => {
     const card = page.getByTestId('check-duplicates')
-    const shown = Number((await card.textContent())?.match(/\d+/)?.[0] ?? 0)
+    const shown = Number((await page.getByTestId('check-duplicates-count').textContent()) ?? 0)
 
     test.skip(shown !== 0, 'this fixture set has duplicates')
 
@@ -74,5 +75,26 @@ test.describe('جودة البيانات — data quality', () => {
       expect(text).toContain('مشكلة')
     }
     expect(text).not.toContain('dataQuality.')
+  })
+
+  /**
+   * A count on its own is not a finding. Ten leads with no campaign is a
+   * quarter of a small workspace and a rounding error in a large one, and this
+   * screen showed the same "10" either way.
+   */
+  test('each issue is stated as a share of the workspace, not only a count', async ({ page }) => {
+    const card = page.getByTestId('check-missing_campaign')
+
+    await expect(card).toBeVisible()
+    // "N عميل من TOTAL — P%" — the denominator is the point.
+    await expect(card).toContainText(/من \d+ — \d+(\.\d)?%/)
+  })
+
+  /** A clean check has nothing to draw. A zero-width bar is not information. */
+  test('a clean check shows no bar at all', async ({ page }) => {
+    const clean = page.getByTestId('check-unreachable_phones')
+
+    await expect(clean).toBeVisible()
+    await expect(clean.locator('[data-chart-mark]')).toHaveCount(0)
   })
 })

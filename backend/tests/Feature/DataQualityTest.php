@@ -218,4 +218,26 @@ class DataQualityTest extends TestCase
 
         $this->assertIsArray($data['integrations']);
     }
+
+    /**
+     * A count on its own is not a finding.
+     *
+     * Ten leads with no campaign is a quarter of a small workspace and a
+     * rounding error in a large one, and the screen showed the same "10"
+     * either way. The share is what says whether it is worth an afternoon,
+     * and the share needs a denominator the client did not have.
+     */
+    public function test_it_reports_the_denominator_the_counts_are_out_of(): void
+    {
+        $data = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/data-quality')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertArrayHasKey('total_leads', $data);
+        $this->assertSame(
+            $this->asTenant($this->t['tenant'], fn () => Lead::count()),
+            $data['total_leads'],
+        );
+    }
 }

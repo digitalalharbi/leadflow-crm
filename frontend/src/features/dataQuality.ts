@@ -20,6 +20,8 @@ export interface IntegrationHealth {
 export interface DataQualityReport {
   checks: QualityCheck[]
   total_issues: number
+  /** The denominator: a count on its own is not a finding. */
+  total_leads: number
   integrations: IntegrationHealth[]
   checked_at: string
 }

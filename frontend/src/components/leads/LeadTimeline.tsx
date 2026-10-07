@@ -4,6 +4,7 @@ import {
   X, Mail, Pencil,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { formatRelative } from '@/lib/format'
 import { EmptyState } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -46,6 +47,32 @@ const STYLES: Record<string, { Icon: typeof Check; tone: string }> = {
   lost: { Icon: X, tone: dot('--color-status-lost') },
   re_engaged: { Icon: RefreshCw, tone: dot('--color-status-new') },
   updated: { Icon: Pencil, tone: NEUTRAL },
+}
+
+/**
+ * Who did it — including when the answer is "nobody".
+ *
+ * An automated change carries no user, so the line simply started at the
+ * timestamp and a stage moved by a rule read exactly like a stage moved by a
+ * colleague. The backend has marked these `by: automation` all along and the
+ * interface never showed it, which left the first question anybody asks about
+ * an automatic change — which rule did this? — answerable only by opening the
+ * automation log and matching timestamps by eye.
+ */
+function actorOf(activity: LeadActivity, t: TFunction): string {
+  if (activity.user?.name) {
+    return `${activity.user.name} · `
+  }
+
+  if (activity.meta?.by !== 'automation') {
+    return ''
+  }
+
+  const rule = activity.meta?.rule_name
+
+  return typeof rule === 'string' && rule !== ''
+    ? `${t('automation.byRule', { name: rule })} · `
+    : `${t('automation.byAutomation')} · `
 }
 
 export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
@@ -126,7 +153,7 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
               )}
 
               <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
-                {activity.user?.name ? `${activity.user.name} · ` : ''}
+                {actorOf(activity, t)}
                 {formatRelative(activity.created_at, i18n.language)}
               </p>
             </div>

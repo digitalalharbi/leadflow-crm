@@ -220,7 +220,7 @@ class OutcomeRecorder
             return $pending;
         }
 
-        return FollowUp::create([
+        $followUp = FollowUp::create([
             'lead_id' => $lead->id,
             'assigned_to' => $lead->assigned_to ?? $actor->id,
             'created_by' => $actor->id,
@@ -228,6 +228,21 @@ class OutcomeRecorder
             'note' => $label,
             'status' => FollowUp::PENDING,
         ]);
+
+        /*
+         * `follow_up_created` was logged only by the follow-ups screen, and
+         * almost nobody books a follow-up there: they come from this button and
+         * from automation rules. So the lead's story went straight from "no
+         * answer" to a reminder that appeared from nowhere, and the one place
+         * that is supposed to hold the whole account of a lead held neither the
+         * most common reminder nor the reason for it.
+         */
+        $this->activities->log($lead, ActivityType::FollowUpCreated, $actor, $label, [
+            'via' => 'work_queue',
+            'due_at' => $followUp->due_at->toIso8601String(),
+        ]);
+
+        return $followUp;
     }
 
     /** Lets the automation rules see what the rep just did. */

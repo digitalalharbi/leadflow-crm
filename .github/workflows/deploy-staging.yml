@@ -94,9 +94,26 @@ jobs:
         env:
           STAGING_DOMAIN: ${{ vars.STAGING_DOMAIN }}
         run: |
+          # A deploy nobody checked is not a deploy that worked.
+          #
+          # This used to exit 0 with a notice, so a run with no domain set went
+          # green having proved nothing: the SSH step can succeed against a host
+          # that then fails to boot, and the only thing that distinguishes a
+          # release from a hopeful one is an HTTP response from the deployed
+          # environment. Same reasoning as the missing-secrets guard above, one
+          # step later in the same job.
           if [ -z "$STAGING_DOMAIN" ]; then
-            echo "::notice::STAGING_DOMAIN variable not set; skipping the public check."
-            exit 0
+            {
+              echo "## Staging deployed, and not verified"
+              echo ""
+              echo "The repository variable **STAGING_DOMAIN** is not set, so nothing"
+              echo "could check that staging is actually serving the new build."
+              echo ""
+              echo "Set it under Settings → Secrets and variables → Actions → Variables."
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            echo "::error title=Cannot verify the deploy::STAGING_DOMAIN is not set — see the job summary."
+            exit 1
           fi
 
           for i in $(seq 1 10); do

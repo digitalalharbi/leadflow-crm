@@ -94,7 +94,7 @@ export function disconnectWhatsapp() {
 /* ------------------------------------------------------------------ reports */
 
 export function fetchCampaignQuality(filters: Record<string, unknown> = {}) {
-  return apiGet<{ rows: CampaignQualityRow[]; totals: CampaignQualityRow }>(
+  return apiGet<{ rows: CampaignQualityRow[]; totals: CampaignQualityRow; currency: string }>(
     '/reports/campaign-quality',
     filters,
   )

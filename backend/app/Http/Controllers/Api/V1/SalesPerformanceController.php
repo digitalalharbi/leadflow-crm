@@ -6,10 +6,12 @@ use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\CampaignSpend;
 use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
 use App\Support\CsvWriter;
+use App\Support\TenantContext;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +28,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class SalesPerformanceController extends Controller
 {
-    public function __construct(private LeadQueryBuilder $queries) {}
+    public function __construct(
+        private LeadQueryBuilder $queries,
+        private TenantContext $context,
+    ) {}
 
     public function campaignQuality(Request $request)
     {
@@ -37,6 +42,8 @@ class SalesPerformanceController extends Controller
         return ApiResponse::success([
             'rows' => $rows,
             'totals' => $this->summarise($rows),
+            // So a cost is never rendered in a currency the screen guessed.
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
         ]);
     }
 
@@ -163,14 +170,83 @@ class SalesPerformanceController extends Controller
             ->limit(200)
             ->get();
 
-        return $rows->map(function ($row) {
+        $spend = $this->spendByCampaign($request);
+
+        return $rows->map(function ($row) use ($spend) {
             $counts = $this->normaliseCounts($row);
+            $platform = (string) $row->platform;
+            $campaign = (string) $row->campaign;
 
             return array_merge([
-                'platform' => (string) $row->platform,
-                'campaign' => (string) $row->campaign,
-            ], $counts, $this->rates($counts));
+                'platform' => $platform,
+                'campaign' => $campaign,
+            ], $counts, $this->rates($counts), $this->costs($spend["{$platform}|{$campaign}"] ?? null, $counts));
         })->all();
+    }
+
+    /**
+     * Spend per campaign over the same period the leads were counted in.
+     *
+     * Keyed the way the rows are grouped — platform and campaign, with the same
+     * '—' for an unnamed one — so a campaign whose spend was entered without a
+     * name still matches the leads that arrived without one.
+     *
+     * @return array<string, int> minor units, keyed "platform|campaign"
+     */
+    private function spendByCampaign(Request $request): array
+    {
+        $query = CampaignSpend::query();
+
+        // The report's own date filters, applied to the day the money was
+        // spent. A cost per lead that divides a month of spend by a week of
+        // leads is not a number anybody should see.
+        if ($from = $request->date('date_from')) {
+            $query->where('spend_date', '>=', $from);
+        }
+
+        if ($to = $request->date('date_to')) {
+            $query->where('spend_date', '<=', $to);
+        }
+
+        return $query
+            ->selectRaw("coalesce(platform, '—') as platform")
+            ->selectRaw("coalesce(campaign_name, '—') as campaign")
+            ->selectRaw('sum(amount_minor) as total')
+            ->groupBy('platform', 'campaign')
+            ->get()
+            ->mapWithKeys(fn ($row) => ["{$row->platform}|{$row->campaign}" => (int) $row->total])
+            ->all();
+    }
+
+    /**
+     * What each lead cost, and what each qualified lead cost.
+     *
+     * Null rather than zero when no spend was entered. A campaign nobody has
+     * costed is not free, and a column of 0.00 beside a real 41.20 invites
+     * exactly the wrong conclusion about which campaign to scale.
+     *
+     * There is deliberately no ROAS here. It needs the value of a closed deal
+     * and this product records a buyer's budget, not what they paid — so the
+     * honest options were to omit it or to invent a revenue figure.
+     *
+     * @return array{spend: ?float, cost_per_lead: ?float, cost_per_qualified: ?float}
+     */
+    private function costs(?int $spendMinor, array $counts): array
+    {
+        if ($spendMinor === null) {
+            return ['spend' => null, 'cost_per_lead' => null, 'cost_per_qualified' => null];
+        }
+
+        $per = fn (int $divisor) => $divisor > 0 ? round($spendMinor / $divisor / 100, 2) : null;
+
+        return [
+            'spend' => round($spendMinor / 100, 2),
+            'cost_per_lead' => $per($counts['leads']),
+            // Null, not the whole spend, when a campaign qualified nobody. The
+            // cost of nothing is not a cost per unit; it is the finding itself,
+            // and the leads column beside it already says so.
+            'cost_per_qualified' => $per($counts['qualified']),
+        ];
     }
 
     /** @return array<int, Expression> */

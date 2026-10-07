@@ -13,6 +13,7 @@ export interface AutomationSchema {
   triggers: string[]
   fields: string[]
   operators: string[]
+  condition_matches?: string[]
   actions: string[]
   stages: string[]
   /**
@@ -45,6 +46,8 @@ export interface AutomationRule {
   priority: number
   stops_processing: boolean
   conditions: RuleCondition[]
+  /** 'all' (every condition) or 'any' (one is enough). */
+  condition_match?: string
   actions: RuleAction[]
   times_matched: number
   last_matched_at: string | null

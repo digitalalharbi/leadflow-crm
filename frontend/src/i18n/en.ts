@@ -227,6 +227,9 @@ export default {
     },
     byAutomation: 'Automation',
     byRule: 'Rule: {{name}}',
+    matchLabel: 'How conditions combine',
+    matchAll: 'All conditions match',
+    matchAny: 'Any condition matches',
     trigger: {
       'lead.created': 'A new lead arrives',
       'lead.assigned': 'A lead is assigned',

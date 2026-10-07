@@ -83,6 +83,7 @@ class AutomationRuleController extends Controller
             'triggers' => self::TRIGGERS,
             'fields' => self::FIELDS,
             'operators' => self::OPERATORS,
+            'condition_matches' => ConditionEvaluator::matches(),
             'actions' => self::ACTIONS,
             'stages' => array_map(fn (LeadStatus $s) => $s->value, LeadStatus::cases()),
             /*
@@ -152,8 +153,15 @@ class AutomationRuleController extends Controller
             ->limit(200)
             ->get();
 
+        // The rule's own match mode, or the preview answers a different question
+        // from the one the rule will ask when it runs.
         $matched = $sample
-            ->map(fn (Lead $lead) => [$lead, $evaluator->evaluate($lead, $rule->conditions ?? [])])
+            ->map(fn (Lead $lead) => [$lead, $evaluator->evaluate(
+                $lead,
+                $rule->conditions ?? [],
+                [],
+                $rule->condition_match ?? ConditionEvaluator::MATCH_ALL,
+            )])
             ->filter(fn ($pair) => $pair[1]['matched']);
 
         return ApiResponse::success([
@@ -214,6 +222,14 @@ class AutomationRuleController extends Controller
              * rather than silently given a rule that fires on everything.
              */
             'conditions' => $partial ? ['sometimes', 'array', 'max:20'] : ['present', 'array', 'max:20'],
+
+            /*
+             * Whether the rule needs all of its conditions or any one of them.
+             * `sometimes`, so a client written before this existed keeps the
+             * column's default and every rule already saved means exactly what
+             * it meant when it was written.
+             */
+            'condition_match' => ['sometimes', Rule::in(ConditionEvaluator::matches())],
             'conditions.*.field' => ['required', Rule::in(self::FIELDS)],
             'conditions.*.operator' => ['required', Rule::in(self::OPERATORS)],
             'conditions.*.value' => ['nullable'],
@@ -287,6 +303,7 @@ class AutomationRuleController extends Controller
             'priority' => $rule->priority,
             'stops_processing' => $rule->stops_processing,
             'conditions' => $rule->conditions,
+            'condition_match' => $rule->condition_match,
             'actions' => $rule->actions,
             'times_matched' => $rule->times_matched,
             'last_matched_at' => $rule->last_matched_at?->toIso8601String(),

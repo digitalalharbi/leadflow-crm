@@ -320,6 +320,9 @@ export default {
     },
     byAutomation: 'الأتمتة',
     byRule: 'قاعدة: {{name}}',
+    matchLabel: 'طريقة المطابقة',
+    matchAll: 'تتحقق كل الشروط',
+    matchAny: 'يتحقق أي شرط',
     trigger: {
       'lead.created': 'عند وصول عميل جديد',
       'lead.assigned': 'عند إسناد العميل',

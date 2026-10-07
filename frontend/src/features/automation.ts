@@ -15,6 +15,15 @@ export interface AutomationSchema {
   operators: string[]
   actions: string[]
   stages: string[]
+  /**
+   * The values a field accepts, where they are a closed set.
+   *
+   * Only some fields appear here — a city or a campaign name has no list. The
+   * ones that do get a picker rather than a text box, because a condition on
+   * `last_outcome` typed as "no answer" instead of `no_answer` saves, runs,
+   * matches nothing and reports no error.
+   */
+  field_values?: Record<string, string[]>
 }
 
 export interface RuleCondition {

@@ -10,6 +10,24 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
+    /*
+     * Discovery off. The lead listeners are registered by hand in AppServiceProvider.
+     *
+     * `configure()` switches on automatic discovery of app/Listeners, which binds
+     * each listener to whatever event its `handle()` is typed against — exactly
+     * the binding AppServiceProvider already makes explicitly. Both were in
+     * force, so every listener sat on `LeadDomainEvent` twice and every lead
+     * event ran every automation rule twice: two identical notes, two WhatsApp
+     * messages to the same customer, every score change applied twice. Nothing
+     * in the engine deduplicates, and the trace showed two runs with different
+     * correlation ids, so it read as two genuine events rather than a bug.
+     *
+     * Keeping the explicit registration and dropping discovery, not the reverse:
+     * discovery is invisible at the call site, it stops silently if the
+     * `handle()` parameter type is ever narrowed, and left on it would re-arm
+     * the same trap for the next listener anybody adds.
+     */
+    ->withEvents(discover: false)
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',

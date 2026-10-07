@@ -82,6 +82,8 @@ export default {
       meeting_booked: 'Meeting booked',
       won: 'Won',
       lost: 'Lost',
+      not_interested: 'Not interested',
+      invalid: 'Bad number',
     },
     recorded: {
       interested: 'Interest recorded, follow-up set for two days',
@@ -228,6 +230,46 @@ export default {
       'lead.qualified': 'A lead is qualified',
       'lead.won': 'A deal is won',
       'lead.lost': 'A lead is lost',
+      'lead.outcome_recorded': 'The rep records an outcome',
+    },
+    /*
+     * The field names, not their keys.
+     *
+     * The editor falls back to the key when a label is missing, so the list
+     * read `minutes_since_first_contact` in both languages — and in Arabic the
+     * most important screen in automation was in English.
+     */
+    field_: {
+      last_outcome: 'What the rep recorded',
+      status: 'Stage',
+      temperature: 'Interest level',
+      qualification_status: 'Qualification',
+      score: 'Lead score',
+      platform: 'Platform',
+      source: 'Source',
+      campaign_name: 'Campaign name',
+      project_id: 'Project',
+      city: 'City',
+      budget_min: 'Budget from',
+      budget_max: 'Budget to',
+      purchase_purpose: 'Purchase purpose',
+      payment_method: 'Payment method',
+      financing_status: 'Financing',
+      purchase_timeline: 'Buying timeline',
+      preferred_property_type: 'Property type wanted',
+      preferred_location: 'Preferred location',
+      appointment_interest: 'Wants a viewing',
+      assigned_to: 'Owner',
+      is_assigned: 'Has an owner',
+      has_phone: 'Has a phone number',
+      has_email: 'Has an email',
+      has_whatsapp: 'Has WhatsApp',
+      re_engaged_count: 'Times re-engaged',
+      minutes_since_created: 'Minutes since it arrived',
+      minutes_since_first_contact: 'Minutes since first contact',
+      minutes_since_last_contact: 'Minutes since last contact',
+      was_contacted: 'Has been contacted',
+      has_replied: 'Has replied',
     },
     operator_: {
       equals: 'is',

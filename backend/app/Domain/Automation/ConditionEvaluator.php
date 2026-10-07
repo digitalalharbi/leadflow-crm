@@ -20,10 +20,16 @@ use Illuminate\Support\Carbon;
 class ConditionEvaluator
 {
     /**
+     * `$context` is the event's own — the only thing a rule can read that is
+     * not on the lead. A stage change is visible in `status` afterwards; an
+     * outcome like "no answer" changes nothing, so the only record of it is
+     * the event that carried it.
+     *
      * @param  array<int,array{field?:string,operator?:string,value?:mixed}>  $conditions
+     * @param  array<string,scalar|null>  $context
      * @return array{matched:bool, reason:?string}
      */
-    public function evaluate(Lead $lead, array $conditions): array
+    public function evaluate(Lead $lead, array $conditions, array $context = []): array
     {
         foreach ($conditions as $condition) {
             $field = (string) ($condition['field'] ?? '');
@@ -33,7 +39,7 @@ class ConditionEvaluator
                 return ['matched' => false, 'reason' => 'A condition is missing its field or operator.'];
             }
 
-            $actual = $this->read($lead, $field);
+            $actual = $this->read($lead, $field, $context);
             $expected = $condition['value'] ?? null;
 
             if (! $this->compare($actual, $operator, $expected)) {
@@ -58,9 +64,15 @@ class ConditionEvaluator
      * a rule written in a form must never be able to reach a password hash, a
      * token, or another tenant's row by naming a relation.
      */
-    public function read(Lead $lead, string $field): mixed
+    public function read(Lead $lead, string $field, array $context = []): mixed
     {
         return match ($field) {
+            /*
+             * Not a column: the outcome the rep just recorded, carried on the
+             * event. Without it `lead.outcome_recorded` fires for every button
+             * in the work queue and a rule cannot tell "no answer" from "won".
+             */
+            'last_outcome' => $context['outcome'] ?? null,
             'status' => $lead->status?->value,
             'temperature' => $lead->temperature?->value,
             'qualification_status' => $lead->qualification_status?->value,

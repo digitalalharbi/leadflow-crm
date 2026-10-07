@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Leads\OutcomeRecorder;
 use App\Enums\Role;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
@@ -66,6 +67,48 @@ class AutomationRuleApiTest extends TestCase
                     'conditions' => [['field' => $field, 'operator' => 'exists']],
                 ]))
                 ->assertCreated();
+        }
+    }
+
+    /**
+     * The one condition value nobody can be expected to type.
+     *
+     * `last_outcome` matches on internal strings — `no_answer`, `meeting_booked`
+     * — so a free text box asks a manager to spell one from memory, and a rule
+     * written as "لم يرد" saves, runs, matches nothing and reports no error. The
+     * editor offers these instead, and they come from the recorder so a new
+     * outcome cannot exist without being selectable.
+     */
+    public function test_the_schema_names_the_values_a_closed_field_accepts(): void
+    {
+        $schema = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/automation/schema')->assertOk()->json('data');
+
+        $this->assertSame(
+            OutcomeRecorder::available(),
+            $schema['field_values']['last_outcome'],
+        );
+
+        // Including the two the rep's card deliberately does not offer: a rule
+        // may still act on an outcome recorded from the lead's own page.
+        $this->assertContains('not_interested', $schema['field_values']['last_outcome']);
+        $this->assertContains('invalid', $schema['field_values']['last_outcome']);
+    }
+
+    /** Every value offered has to be one a rule can actually be saved with. */
+    public function test_every_offered_value_is_accepted_by_the_validator(): void
+    {
+        $schema = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/automation/schema')->assertOk()->json('data');
+
+        foreach ($schema['field_values'] as $field => $values) {
+            foreach ($values as $value) {
+                $this->actingAs($this->t['admin'])
+                    ->postJson('/api/v1/automation/rules', $this->valid([
+                        'conditions' => [['field' => $field, 'operator' => 'equals', 'value' => $value]],
+                    ]))
+                    ->assertCreated();
+            }
         }
     }
 

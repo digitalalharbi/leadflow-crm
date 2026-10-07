@@ -604,6 +604,9 @@ export default {
   campaignQuality: {
       costPerLead: 'Cost per lead',
       costPerQualified: 'Cost per qualified',
+      roas: 'Return on spend',
+      dealValue: 'Deal value',
+      dealValueHint: 'Optional — return on spend is computed from it',
       spend: 'Spend',
       addSpend: 'Enter spend',
       spendTitle: 'Campaign spend',

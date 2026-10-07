@@ -72,7 +72,12 @@ export function assignLead(id: string, assignedTo: string | null) {
 export function changeLeadStatus(
   id: string,
   status: LeadStatus,
-  extra?: { lost_reason_id?: string; lost_note?: string },
+  /**
+   * `deal_value` is optional even on a win. A sale recorded without its value
+   * is still a sale, and refusing to close one until somebody knows the final
+   * figure is how a CRM ends up with a stage people route around.
+   */
+  extra?: { lost_reason_id?: string; lost_note?: string; deal_value?: number },
 ) {
   return apiPost<{ lead: Lead }>(`/leads/${id}/status`, { status, ...extra })
 }

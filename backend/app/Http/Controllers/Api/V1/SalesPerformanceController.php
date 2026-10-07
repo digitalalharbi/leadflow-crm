@@ -233,8 +233,14 @@ class SalesPerformanceController extends Controller
      */
     private function costs(?int $spendMinor, array $counts): array
     {
+        $revenueMinor = $counts['revenue_minor'];
+        $revenue = $revenueMinor > 0 ? round($revenueMinor / 100, 2) : null;
+
         if ($spendMinor === null) {
-            return ['spend' => null, 'cost_per_lead' => null, 'cost_per_qualified' => null];
+            return [
+                'spend' => null, 'cost_per_lead' => null, 'cost_per_qualified' => null,
+                'revenue' => $revenue, 'roas' => null,
+            ];
         }
 
         $per = fn (int $divisor) => $divisor > 0 ? round($spendMinor / $divisor / 100, 2) : null;
@@ -246,7 +252,32 @@ class SalesPerformanceController extends Controller
             // cost of nothing is not a cost per unit; it is the finding itself,
             // and the leads column beside it already says so.
             'cost_per_qualified' => $per($counts['qualified']),
+            'revenue' => $revenue,
+            /*
+             * Return on ad spend, and null unless both halves are real.
+             *
+             * A campaign that sold nothing has a return of zero, which is a
+             * finding and is reported as 0. A campaign whose sales nobody
+             * valued has no return that can be computed at all — reporting
+             * that as 0 would read as "this campaign loses money" when the
+             * truth is "nobody typed the price in", and those two deserve
+             * opposite decisions.
+             */
+            'roas' => $spendMinor > 0 && $this->anySaleValued($counts)
+                ? round($revenueMinor / $spendMinor, 2)
+                : null,
         ];
+    }
+
+    /**
+     * Did any won deal in this campaign carry a value?
+     *
+     * Without this, a campaign with three unvalued sales reports a return of
+     * zero — indistinguishable from one that genuinely sold nothing.
+     */
+    private function anySaleValued(array $counts): bool
+    {
+        return $counts['won'] === 0 || $counts['revenue_minor'] > 0;
     }
 
     /** @return array<int, Expression> */
@@ -292,12 +323,20 @@ class SalesPerformanceController extends Controller
             )),
             DB::raw(sprintf("count(*) filter (where leads.status = '%s') as won", LeadStatus::Won->value)),
             DB::raw(sprintf("count(*) filter (where leads.status = '%s') as lost", LeadStatus::Lost->value)),
+            /*
+             * What the won deals actually closed for — not the buyers' stated
+             * budgets, which is a qualification signal and would make every
+             * return figure a number somebody typed into a form before anybody
+             * showed them anything.
+             */
+            DB::raw('coalesce(sum(leads.deal_value_minor), 0) as revenue_minor'),
         ];
     }
 
     private function normaliseCounts(object $row): array
     {
         return [
+            'revenue_minor' => (int) ($row->revenue_minor ?? 0),
             'leads' => (int) $row->leads,
             'contacted' => (int) $row->contacted,
             'replied' => (int) $row->replied,

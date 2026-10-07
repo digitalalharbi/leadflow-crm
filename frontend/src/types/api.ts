@@ -104,6 +104,8 @@ export interface Lead extends LeadListItem {
   purchase_timeline: string | null
   last_contact_at: string | null
   won_at: string | null
+  /** What the deal closed for. Null is "nobody recorded it", not "worth zero". */
+  deal_value: number | null
   lost_at: string | null
   lost_note: string | null
   lost_reason: { id: string; label: string } | null
@@ -231,6 +233,14 @@ export interface CampaignQualityRow {
   cost_per_lead: number | null
   /** Null when the campaign qualified nobody: the cost of nothing is not a rate. */
   cost_per_qualified: number | null
+  /** What the won deals closed for. Null when nobody recorded any value. */
+  revenue: number | null
+  /*
+   * Return on ad spend. Zero means the campaign sold nothing, which is a
+   * finding. Null means its sales were never valued, which is not — and the
+   * two deserve opposite decisions.
+   */
+  roas: number | null
 }
 
 export interface CampaignSpend {

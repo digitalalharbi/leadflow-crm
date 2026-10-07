@@ -51,6 +51,9 @@ class LeadResource extends JsonResource
             'first_response_at' => $this->first_response_at?->toIso8601String(),
             'whatsapp_opt_out_at' => $this->whatsapp_opt_out_at?->toIso8601String(),
             'won_at' => $this->won_at?->toIso8601String(),
+            // Major units for the screen; minor in the database. Null means
+            // nobody recorded it, which is not the same as a sale worth zero.
+            'deal_value' => $this->deal_value_minor === null ? null : $this->deal_value_minor / 100,
             'lost_at' => $this->lost_at?->toIso8601String(),
             'lost_note' => $this->lost_note,
             're_engaged_count' => $this->re_engaged_count,

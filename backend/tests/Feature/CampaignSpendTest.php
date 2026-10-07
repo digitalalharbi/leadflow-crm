@@ -191,6 +191,112 @@ class CampaignSpendTest extends TestCase
         $this->assertEquals(100, $this->campaignRow('حملة مشتركة')['spend']);
     }
 
+    private function won(string $campaign, ?float $value): Lead
+    {
+        $lead = $this->lead($campaign, ['status' => 'won']);
+
+        $lead->forceFill([
+            'won_at' => now(),
+            'deal_value_minor' => $value === null ? null : (int) round($value * 100),
+        ])->saveQuietly();
+
+        return $lead;
+    }
+
+    public function test_it_reports_the_return_on_what_was_spent(): void
+    {
+        $this->won('حملة العائد', 300000);
+        $this->won('حملة العائد', 200000);
+        $this->spend('حملة العائد', 100000);
+
+        $row = $this->campaignRow('حملة العائد');
+
+        $this->assertEquals(500000, $row['revenue']);
+        $this->assertEquals(5, $row['roas']);   // half a million back on a hundred thousand
+    }
+
+    /**
+     * The distinction the whole figure turns on.
+     *
+     * A campaign that sold nothing has a return of zero, and that is a finding.
+     * A campaign whose sales nobody valued has no computable return at all —
+     * reporting that as zero reads as "this loses money" when the truth is
+     * "nobody typed the price in", and those two deserve opposite decisions.
+     */
+    public function test_sales_nobody_valued_are_not_a_return_of_zero(): void
+    {
+        $this->won('حملة بلا قيمة', null);
+        $this->won('حملة بلا قيمة', null);
+        $this->spend('حملة بلا قيمة', 50000);
+
+        $row = $this->campaignRow('حملة بلا قيمة');
+
+        $this->assertSame(2, $row['won']);
+        $this->assertNull($row['revenue']);
+        $this->assertNull($row['roas']);
+    }
+
+    public function test_a_campaign_that_sold_nothing_has_a_return_of_zero(): void
+    {
+        $this->lead('حملة بلا مبيعات');
+        $this->spend('حملة بلا مبيعات', 50000);
+
+        $row = $this->campaignRow('حملة بلا مبيعات');
+
+        $this->assertSame(0, $row['won']);
+        $this->assertEquals(0, $row['roas']);
+    }
+
+    public function test_there_is_no_return_without_spend_to_divide_by(): void
+    {
+        $this->won('حملة بلا إنفاق', 100000);
+
+        $row = $this->campaignRow('حملة بلا إنفاق');
+
+        $this->assertEquals(100000, $row['revenue']);
+        $this->assertNull($row['roas']);
+    }
+
+    /**
+     * A sale that is no longer a sale carries no revenue. Leaving the figure
+     * behind keeps it in what the campaign is credited with — visibly gone from
+     * the pipeline and still counted in the return.
+     */
+    public function test_undoing_a_win_clears_the_deal_value(): void
+    {
+        $lead = $this->won('حملة التراجع', 400000);
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$lead->uuid}/status", ['status' => 'negotiation'])
+            ->assertOk();
+
+        $this->assertNull($lead->fresh()->deal_value_minor);
+    }
+
+    /** A sale recorded without its value is still a sale. */
+    public function test_a_win_may_be_recorded_without_a_value(): void
+    {
+        $lead = $this->lead('حملة بلا رقم');
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$lead->uuid}/status", ['status' => 'won'])
+            ->assertOk();
+
+        $this->assertNotNull($lead->fresh()->won_at);
+        $this->assertNull($lead->fresh()->deal_value_minor);
+    }
+
+    public function test_a_value_given_when_closing_is_stored_in_minor_units(): void
+    {
+        $lead = $this->lead('حملة بقيمة');
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/leads/{$lead->uuid}/status", ['status' => 'won', 'deal_value' => 1250000.50])
+            ->assertOk();
+
+        $this->assertSame(125000050, $lead->fresh()->deal_value_minor);
+    }
+
     public function test_a_sales_rep_may_not_enter_or_read_workspace_spend(): void
     {
         // Spend is a workspace-wide figure, so it takes the same authority the

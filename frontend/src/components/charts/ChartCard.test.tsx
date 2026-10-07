@@ -67,7 +67,7 @@ describe('ChartCard states', () => {
         title="تقرير"
         testId="c"
         error="ليس لديك صلاحية"
-        table={{ columns: ['أ'], rows: [['1']] }}
+        table={{ head: ['أ'], rows: [['1']] }}
       >
         <div>chart</div>
       </ChartCard>,

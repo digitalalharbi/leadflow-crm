@@ -206,8 +206,13 @@ class OutcomeRecorder
         // A finished lead keeps no open step. Chasing a customer who already
         // bought is the complaint that costs a workspace its trust in the tool.
         if ($hours === 0) {
+            // One at a time rather than a mass update: a query-builder update
+            // fires no model events, and the lead's `next_follow_up_at` is
+            // derived from those. A closed lead would have kept pointing at a
+            // reminder that no longer exists.
             FollowUp::where('lead_id', $lead->id)->where('status', FollowUp::PENDING)
-                ->update(['status' => FollowUp::CANCELLED]);
+                ->get()
+                ->each(fn (FollowUp $followUp) => $followUp->update(['status' => FollowUp::CANCELLED]));
 
             return null;
         }

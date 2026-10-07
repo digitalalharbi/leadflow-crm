@@ -206,6 +206,8 @@ export default {
     listHint: 'Separate with commas',
     action: 'Action',
     stage: 'Stage',
+    lostReason: 'Lost reason',
+    noLostReasons: 'No lost reasons yet — add them in Settings',
     scoreBy: 'Change by',
     inHours: 'In hours',
     tag: 'Tag',

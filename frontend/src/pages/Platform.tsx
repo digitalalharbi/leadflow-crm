@@ -286,7 +286,7 @@ export function PlatformPage() {
                     setStatus('')
                   }}
                 >
-                  {t('leads.clearFilters')}
+                  {t('common.clearFilters')}
                 </Button>
               ) : (
                 <Button onClick={() => setOpen(true)}>{t('superAdmin.createTenant')}</Button>

@@ -572,6 +572,7 @@ export default {
     qualityHint: 'العملاء المفتوحون فقط',
     responseTitle: 'سرعة التواصل',
     responseHint: 'كم يستغرق الفريق للرد على عميل جديد',
+    noData: 'لا توجد بيانات في هذه الفترة',
     noLeadsYet: 'لا توجد بيانات في هذه الفترة',
     noOpenLeads: 'لا يوجد عملاء مفتوحون',
     viewReports: 'التقارير',
@@ -713,6 +714,8 @@ export default {
     negotiation: 'تفاوض',
     won: 'مكسوب',
     lost: 'مفقود',
+    invalid: 'غير صالح',
+    no_response: 'بلا استجابة',
   },
   activity: {
     whatsapp_sent: 'أرسلنا رسالة واتساب',

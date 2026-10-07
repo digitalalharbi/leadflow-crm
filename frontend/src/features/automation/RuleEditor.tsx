@@ -352,7 +352,7 @@ function ActionDetail({
         >
           {schema.stages.map((stage) => (
             <option key={stage} value={stage}>
-              {t(`leadStatus.${stage}`, { defaultValue: stage })}
+              {t(`status.${stage}`, { defaultValue: stage })}
             </option>
           ))}
         </Select>

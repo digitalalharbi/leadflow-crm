@@ -5,6 +5,7 @@ namespace App\Domain\Leads;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadLost;
+use App\Events\LeadOutcomeRecorded;
 use App\Events\LeadQualified;
 use App\Events\LeadStageChanged;
 use App\Events\LeadWon;
@@ -123,6 +124,17 @@ class OutcomeRecorder
             $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label']);
 
             $lead->refresh();
+
+            /*
+             * Announced whether or not the stage moved.
+             *
+             * `announce()` only fires when the lead advances, so "no answer"
+             * and "call later" — the two most common outcomes on a call list —
+             * reached the automation engine as nothing at all. A workspace
+             * could not write "after two unanswered calls, send a WhatsApp",
+             * which is most of what a follow-up sequence is for.
+             */
+            LeadOutcomeRecorded::dispatch($lead, $outcome, $actor);
 
             if ($stageChanged) {
                 $this->announce($lead, $from, $actor, $outcome);

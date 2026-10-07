@@ -44,7 +44,57 @@ class Lead extends Model
             if ($lead->first_contact_at === null && $lead->status?->impliesContactWasMade()) {
                 $lead->first_contact_at = now();
             }
+
+            self::reconcileClosedState($lead);
         });
+    }
+
+    /**
+     * A closed lead carries the marks of how it closed, and only those.
+     *
+     * The status controller set these by hand and got them right. Nothing else
+     * did: the automation engine's `change_stage` writes
+     * `forceFill(['status' => $to])->save()`, so a rule that moved a lead to
+     * won left `won_at` null — and `won_at` is what the velocity chart, the
+     * conversion analysis and the revenue attribution all count. A sale closed
+     * by automation was invisible to every report that measures sales.
+     *
+     * Rather than teach each caller to remember, the rule lives here with the
+     * contact-state one. `now()` is an approximation when some other path
+     * skipped the stamp; it is never a contradiction, which the alternative is.
+     *
+     * The clearing half matters as much. A lead dragged back out of won still
+     * holding `won_at` and its deal value stays in the revenue a campaign is
+     * credited with — visibly gone from the pipeline and still counted in the
+     * return.
+     */
+    private static function reconcileClosedState(self $lead): void
+    {
+        $status = $lead->status;
+
+        if ($status === LeadStatus::Won) {
+            $lead->won_at ??= now();
+            $lead->lost_at = null;
+            $lead->lost_reason_id = null;
+            $lead->lost_note = null;
+
+            return;
+        }
+
+        if ($status === LeadStatus::Lost) {
+            $lead->lost_at ??= now();
+            $lead->won_at = null;
+            // A deal that is no longer won has no value to credit anybody with.
+            $lead->deal_value_minor = null;
+
+            return;
+        }
+
+        $lead->won_at = null;
+        $lead->lost_at = null;
+        $lead->lost_reason_id = null;
+        $lead->lost_note = null;
+        $lead->deal_value_minor = null;
     }
 
     protected $fillable = [

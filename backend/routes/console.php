@@ -35,13 +35,4 @@ Schedule::command('leadflow:sweep-conversions')->everyFifteenMinutes()->withoutO
  */
 Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping();
 
-/*
- * The morning summary, at 05:00 UTC — 08:00 in Riyadh, which is the start of
- * the working day for every workspace this product has.
- *
- * Tenants carry no timezone of their own yet; when they do, this becomes a
- * per-tenant send rather than one hour for everybody.
- */
-Schedule::command('leadflow:daily-digest')->dailyAt('05:00')->withoutOverlapping();
-
 Schedule::command('horizon:snapshot')->everyFiveMinutes();

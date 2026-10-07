@@ -102,24 +102,6 @@ interpolated the workspace's configurable first-contact target into a fixed
 set the target to 3 and the dashboard said "3 دقيقة". `plurals.test.ts` pins the
 cases.
 
-### Lazy-loading violations do not surface under PHPUnit here
-
-`AppServiceProvider` calls `Model::preventLazyLoading(! isProduction())`, so a
-relation read without eager loading throws in local and staging. It does not
-throw under `php artisan test`: a plainly lazy access on a freshly fetched
-model fires nothing, verified by installing the violation callback by hand and
-watching it stay silent.
-
-That cost a real bug. `DailyDigest` read `$tenant->settings` directly; every
-test passed, because their tenant came from a fixture that had already loaded
-the relation — and the command then threw for every workspace and sent nothing.
-Running it was the only thing that showed it.
-
-So: **run commands, do not trust the suite for this class of bug.** A test that
-claims to guard a lazy load in this project is guarding nothing, and the one
-written for the digest says so in its own docblock rather than implying
-otherwise.
-
 ### Never scrape a card's text for a number
 
 Twice in one session a test read a whole card, stripped non-digits, and got a

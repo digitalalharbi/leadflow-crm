@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Domain\Automation\ActionExecutor;
 use App\Enums\LeadStatus;
+use App\Models\AutomationRule;
 use App\Models\Lead;
 use App\Models\LostReason;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -178,5 +179,49 @@ class LeadClosedStateInvariantTest extends TestCase
         $this->assertNull($fresh->won_at);
         $this->assertNull($fresh->lost_at);
         $this->assertNull($fresh->lost_reason_id);
+    }
+
+    /**
+     * The rule has to be refusable where it is written, not where it runs.
+     *
+     * The executor will not close a lead as lost without a reason — that is the
+     * invariant. But `validate()` returns only the keys it has rules for, so a
+     * reason sent by the editor was stripped on the way in, and the rule failed
+     * on every run into a trace nobody reads. A rule that cannot work must not
+     * save.
+     */
+    public function test_a_rule_that_closes_a_lead_as_lost_must_name_the_reason(): void
+    {
+        $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', [
+                'name' => 'إغلاق تلقائي',
+                'trigger' => 'lead.created',
+                'conditions' => [],
+                'actions' => [['type' => 'change_stage', 'status' => 'lost']],
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_a_rule_keeps_the_lost_reason_it_was_given(): void
+    {
+        $reason = $this->asTenant($this->t['tenant'], fn () => LostReason::firstOrFail());
+
+        $uuid = $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', [
+                'name' => 'إغلاق تلقائي',
+                'trigger' => 'lead.created',
+                'conditions' => [],
+                'actions' => [[
+                    'type' => 'change_stage',
+                    'status' => 'lost',
+                    'lost_reason_id' => $reason->uuid,
+                ]],
+            ])
+            ->assertCreated()
+            ->json('data.rule.id');
+
+        $saved = AutomationRule::withoutGlobalScopes()->where('uuid', $uuid)->firstOrFail();
+
+        $this->assertSame($reason->uuid, $saved->actions[0]['lost_reason_id'] ?? null);
     }
 }

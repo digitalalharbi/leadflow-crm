@@ -214,6 +214,17 @@ class AutomationRuleController extends Controller
              * closed vocabulary exists to prevent, one level down.
              */
             'actions.*.status' => ['required_if:actions.*.type,change_stage', Rule::in(LeadStatus::values())],
+
+            /*
+             * A lost lead carries why it was lost, whoever closed it.
+             *
+             * The executor refuses to close one without a reason, and
+             * `validate()` returns only the keys it has rules for — so without
+             * this line the reason was stripped on the way in and every rule
+             * that closed a lead as lost failed on every run, in a trace nobody
+             * reads. The rule has to be refused at the point it is written.
+             */
+            'actions.*.lost_reason_id' => ['required_if:actions.*.status,lost', 'uuid'],
             'actions.*.by' => ['required_if:actions.*.type,adjust_score', 'integer', 'not_in:0'],
             'actions.*.tag' => ['required_if:actions.*.type,add_tag', 'string', 'max:60'],
             'actions.*.body' => ['required_if:actions.*.type,add_note', 'string', 'max:2000'],

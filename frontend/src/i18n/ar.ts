@@ -298,6 +298,8 @@ export default {
     listHint: 'افصل بينها بفاصلة',
     action: 'الإجراء',
     stage: 'المرحلة',
+    lostReason: 'سبب الفقد',
+    noLostReasons: 'لا توجد أسباب فقد — أضفها من الإعدادات',
     scoreBy: 'مقدار التغيير',
     inHours: 'بعد كم ساعة',
     tag: 'الوسم',
@@ -671,6 +673,8 @@ export default {
     negotiation: 'تفاوض',
     won: 'مكسوب',
     lost: 'مفقود',
+    invalid: 'غير صالح',
+    no_response: 'بلا استجابة',
   },
   activity: {
     whatsapp_sent: 'أرسلنا رسالة واتساب',

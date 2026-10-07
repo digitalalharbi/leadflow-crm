@@ -257,10 +257,21 @@ class LeadController extends Controller
             $lead->lost_at = null;
             $lead->lost_reason_id = null;
             $lead->next_follow_up_at = null;
+
+            if ($request->filled('deal_value')) {
+                $lead->deal_value_minor = (int) round((float) $request->input('deal_value') * 100);
+            }
         } else {
             $lead->won_at = null;
             $lead->lost_at = null;
             $lead->lost_reason_id = null;
+            /*
+             * A deal that is no longer won has no value. Leaving the figure
+             * behind would keep it in the revenue a campaign is credited with,
+             * which is the quiet kind of wrong: the sale is visibly gone from
+             * the pipeline and still counted in the return.
+             */
+            $lead->deal_value_minor = null;
         }
 
         if (in_array($new, [LeadStatus::Contacted, LeadStatus::Qualified, LeadStatus::Appointment], true)) {

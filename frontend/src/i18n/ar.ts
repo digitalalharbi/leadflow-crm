@@ -880,6 +880,9 @@ export default {
   campaignQuality: {
       costPerLead: 'تكلفة العميل',
       costPerQualified: 'تكلفة المؤهَّل',
+      roas: 'العائد على الإنفاق',
+      dealValue: 'قيمة الصفقة',
+      dealValueHint: 'اختياري — يُحتسب العائد على الإنفاق منه',
       spend: 'الإنفاق',
       addSpend: 'إدخال الإنفاق',
       spendTitle: 'إنفاق الحملات',

@@ -43,6 +43,8 @@ export function LeadDetailPage() {
   const [note, setNote] = useState('')
   const [noteOpen, setNoteOpen] = useState(false)
   const [lostOpen, setLostOpen] = useState(false)
+  const [wonOpen, setWonOpen] = useState(false)
+  const [dealValue, setDealValue] = useState('')
   const [lostReasonId, setLostReasonId] = useState('')
   const [lostNote, setLostNote] = useState('')
   const [followUpOpen, setFollowUpOpen] = useState(false)
@@ -81,15 +83,26 @@ export function LeadDetailPage() {
   }
 
   const statusMutation = useMutation({
-    mutationFn: (next: LeadStatus) =>
-      next === 'lost'
-        ? changeLeadStatus(id, next, { lost_reason_id: lostReasonId, lost_note: lostNote || undefined })
-        : changeLeadStatus(id, next),
+    mutationFn: (next: LeadStatus) => {
+      if (next === 'lost') {
+        return changeLeadStatus(id, next, { lost_reason_id: lostReasonId, lost_note: lostNote || undefined })
+      }
+
+      // Blank means nobody knows the figure yet, which is not the same as zero
+      // and must not be sent as one.
+      if (next === 'won' && dealValue.trim() !== '') {
+        return changeLeadStatus(id, next, { deal_value: Number(dealValue) })
+      }
+
+      return changeLeadStatus(id, next)
+    },
     onSuccess: () => {
       refresh()
       setLostOpen(false)
       setLostReasonId('')
       setLostNote('')
+      setWonOpen(false)
+      setDealValue('')
     },
     onError,
   })
@@ -415,7 +428,13 @@ export function LeadDetailPage() {
                 key={status}
                 type="button"
                 disabled={statusMutation.isPending}
-                onClick={() => (status === 'lost' ? setLostOpen(true) : statusMutation.mutate(status))}
+                onClick={() =>
+                  status === 'lost'
+                    ? setLostOpen(true)
+                    : status === 'won'
+                      ? setWonOpen(true)
+                      : statusMutation.mutate(status)
+                }
                 className={cn(
                   'rounded-[var(--radius-control)] border px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
                   lead.status === status
@@ -562,6 +581,46 @@ export function LeadDetailPage() {
       {/* Reachable from the quick actions as well as the card, because a rep on
           a call should not have to find the card first. */}
       <QualificationDrawer lead={lead} open={qualifyOpen} onClose={() => setQualifyOpen(false)} />
+
+      {/*
+        A win asks what it closed for. Optional, and the button says so: a sale
+        recorded without its value is still a sale, and blocking the stage until
+        somebody knows the final figure is how a CRM ends up with a stage people
+        route around. Without it there is no return on ad spend to compute, and
+        the buyer's stated budget is not a substitute — that is a number they
+        typed into a form before anybody showed them anything.
+      */}
+      <Modal
+        open={wonOpen}
+        onClose={() => setWonOpen(false)}
+        title={t('status.won')}
+        description={t('campaignQuality.dealValueHint')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setWonOpen(false)}>{t('common.cancel')}</Button>
+            <Button
+              loading={statusMutation.isPending}
+              onClick={() => statusMutation.mutate('won')}
+              data-testid="confirm-won"
+            >
+              {t('common.confirm')}
+            </Button>
+          </>
+        }
+      >
+        <Input
+          label={t('campaignQuality.dealValue')}
+          hint={t('common.optional')}
+          type="number"
+          min="0"
+          step="0.01"
+          dir="ltr"
+          value={dealValue}
+          onChange={(event) => setDealValue(event.target.value)}
+          data-testid="deal-value"
+        />
+      </Modal>
 
       {/* Lost requires a reason — this is what makes the lost-reason report real. */}
       <Modal

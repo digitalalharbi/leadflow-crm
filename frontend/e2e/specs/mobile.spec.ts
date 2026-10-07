@@ -65,6 +65,31 @@ test.describe('Mobile layout', () => {
     await expect(page.getByTestId('action-note')).toBeVisible()
   })
 
+  /**
+   * The screens an admin opens, swept for sideways scroll.
+   *
+   * The rep's screens above are checked one by one because each has something
+   * specific to assert. These have one thing in common and it is the one that
+   * breaks: a grid item's automatic minimum size is its min-content width, so a
+   * single card holding something that does not wrap — a webhook URL — sized
+   * the column to 689px inside a 343px screen and pushed the whole integrations
+   * page off to the side. The `truncate` on it could not help, because the
+   * column had already been sized to fit it.
+   *
+   * Cheap: six navigations, not a second run of the suite.
+   */
+  for (const path of ['/integrations', '/automation', '/reports', '/data-quality', '/settings', '/users']) {
+    test(`${path} fits the screen with no sideways scrolling`, async ({ page }) => {
+      await page.goto(path)
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      )
+      expect(overflow, `${path} scrolls sideways on a phone`).toBeLessThanOrEqual(1)
+    })
+  }
+
   test('the follow-ups page is usable on a phone', async ({ page }) => {
     await page.goto('/follow-ups?bucket=overdue')
 

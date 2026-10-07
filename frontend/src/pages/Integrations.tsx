@@ -162,7 +162,17 @@ export function IntegrationsPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {cards?.map((card) => (
-            <Card key={card.provider} className="flex flex-col">
+            /*
+              `min-w-0`, or the page scrolls sideways on a phone.
+
+              A grid item's automatic minimum size is its min-content width, and
+              one of these cards holds a webhook URL that does not wrap. The
+              single column grew to 689px inside a 343px screen, so the whole
+              integrations page scrolled horizontally and the cards sat mostly
+              off-screen. The `truncate` on the URL could not help: the column
+              had already been sized to fit it.
+            */
+            <Card key={card.provider} className="flex min-w-0 flex-col">
               <CardBody className="flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2.5">

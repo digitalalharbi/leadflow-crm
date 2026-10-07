@@ -69,6 +69,99 @@ class AutomationRuleApiTest extends TestCase
         }
     }
 
+    /**
+     * The alert text a manager typed, still there after a save.
+     *
+     * `validate()` returns only the keys it has rules for, and `message` had
+     * none — so the text was dropped between the editor and the database, after
+     * a success toast, and the rule sent the generic fallback to the same people
+     * forever. Nothing on any screen said so.
+     */
+    public function test_a_rule_keeps_the_alert_text_it_was_given(): void
+    {
+        $uuid = $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', $this->valid([
+                'actions' => [[
+                    'type' => 'notify',
+                    'audience' => 'managers',
+                    'message' => 'عميل من حملة النرجس — تواصل خلال عشر دقائق',
+                ]],
+            ]))
+            ->assertCreated()
+            ->json('data.rule.id');
+
+        $saved = AutomationRule::withoutGlobalScopes()->where('uuid', $uuid)->firstOrFail();
+
+        $this->assertSame(
+            'عميل من حملة النرجس — تواصل خلال عشر دقائق',
+            $saved->actions[0]['message'] ?? null,
+        );
+    }
+
+    /** Renaming a rule must not quietly empty what it does. */
+    public function test_editing_a_rule_does_not_drop_the_parts_the_form_did_not_change(): void
+    {
+        $actions = [[
+            'type' => 'schedule_follow_up',
+            'in_hours' => 2,
+            'note' => 'أول اتصال',
+        ]];
+
+        $uuid = $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', $this->valid(['actions' => $actions]))
+            ->assertCreated()
+            ->json('data.rule.id');
+
+        $this->actingAs($this->t['admin'])
+            ->patchJson("/api/v1/automation/rules/{$uuid}", ['name' => 'باسم آخر', 'actions' => $actions])
+            ->assertOk();
+
+        $saved = AutomationRule::withoutGlobalScopes()->where('uuid', $uuid)->firstOrFail();
+
+        $this->assertSame('أول اتصال', $saved->actions[0]['note'] ?? null);
+    }
+
+    /**
+     * A named rep is a different outcome from "whoever is least busy", and the
+     * executor has always supported both. The strategy was dropped on the way
+     * in, so every assignment rule behaved as round robin whatever it said.
+     */
+    public function test_an_assignment_to_a_named_rep_keeps_the_name(): void
+    {
+        $rep = $this->makeUser($this->t['tenant']);
+
+        $uuid = $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', $this->valid([
+                'actions' => [['type' => 'assign', 'strategy' => 'specific', 'user_id' => $rep->uuid]],
+            ]))
+            ->assertCreated()
+            ->json('data.rule.id');
+
+        $saved = AutomationRule::withoutGlobalScopes()->where('uuid', $uuid)->firstOrFail();
+
+        $this->assertSame('specific', $saved->actions[0]['strategy'] ?? null);
+        $this->assertSame($rep->uuid, $saved->actions[0]['user_id'] ?? null);
+    }
+
+    /** Naming nobody is the configuration that would silently assign anyone. */
+    public function test_assigning_to_a_specific_rep_without_naming_one_is_refused(): void
+    {
+        $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', $this->valid([
+                'actions' => [['type' => 'assign', 'strategy' => 'specific']],
+            ]))
+            ->assertStatus(422);
+    }
+
+    public function test_an_unknown_assignment_strategy_is_refused(): void
+    {
+        $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/automation/rules', $this->valid([
+                'actions' => [['type' => 'assign', 'strategy' => 'whoever']],
+            ]))
+            ->assertStatus(422);
+    }
+
     public function test_an_unknown_field_is_refused(): void
     {
         $this->actingAs($this->t['admin'])

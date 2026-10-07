@@ -84,6 +84,22 @@ class AutomationEngine
         $failed = false;
 
         foreach ($rule->actions ?? [] as $action) {
+            /*
+             * The rule's name, put on the action here rather than stored on it.
+             *
+             * `notify` has always read `rule_name` and nothing ever set it, so
+             * every automated alert was attributed to "قاعدة تلقائية" — a
+             * manager with four rules running could not tell which one had just
+             * messaged them, which is the one thing that makes an alert
+             * actionable. Setting it at execution also means a renamed rule is
+             * named correctly in the next alert it sends.
+             *
+             * Server-side on purpose: the validator has no rule for `rule_name`
+             * and `validate()` drops what it was not given rules for, so a
+             * client cannot put somebody else's rule name on its own alerts.
+             */
+            $action['rule_name'] = $rule->name;
+
             $result = $this->actions->execute($lead->fresh() ?? $lead, $action);
             $applied[] = [
                 'type' => $action['type'] ?? 'unknown',

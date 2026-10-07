@@ -31,7 +31,7 @@ describe('LeadFormModal', () => {
   })
 
   it('submits the lead and reports success', async () => {
-    vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: false })
+    vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: false, restored: false })
     const onClose = vi.fn()
     const user = userEvent.setup()
 
@@ -50,8 +50,33 @@ describe('LeadFormModal', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
+  /**
+   * A deleted lead coming back is not the same event as a duplicate, and the
+   * difference matters to the person typing the number in. "This number
+   * already exists" is reasonable about a lead they can see in the list, and
+   * baffling about one they deleted — which is exactly the record that comes
+   * back, with the name and notes they removed.
+   */
+  it('says when a deleted lead was brought back, not just that it exists', async () => {
+    vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: true, restored: true })
+    const user = userEvent.setup()
+
+    renderWithProviders(<LeadFormModal open onClose={vi.fn()} />)
+
+    await user.type(screen.getByLabelText(/الاسم/), 'سعود')
+    await user.type(screen.getByPlaceholderText('05xxxxxxxx'), '0501234567')
+    await user.click(screen.getByRole('button', { name: 'إنشاء' }))
+
+    await waitFor(() => {
+      const toasts = useUi.getState().toasts
+      expect(toasts).toHaveLength(1)
+      expect(toasts[0].message).toContain('محذوف')
+      expect(toasts[0].message).not.toContain('مسجّل مسبقاً')
+    })
+  })
+
   it('explains a duplicate instead of showing it as an error', async () => {
-    vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: true })
+    vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: true, restored: false })
     const user = userEvent.setup()
 
     renderWithProviders(<LeadFormModal open onClose={vi.fn()} />)

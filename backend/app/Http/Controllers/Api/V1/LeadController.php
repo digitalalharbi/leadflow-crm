@@ -125,8 +125,16 @@ class LeadController extends Controller
 
         if ($result->isDuplicate()) {
             return ApiResponse::success(
-                ['lead' => new LeadResource($fresh), 'duplicate' => true],
-                'This phone number already exists. The existing lead was updated and marked as re-engaged.',
+                [
+                    'lead' => new LeadResource($fresh),
+                    'duplicate' => true,
+                    // Told apart because they are different events to the person
+                    // typing: one lead they can already see, one they deleted.
+                    'restored' => $result->restored,
+                ],
+                $result->restored
+                    ? 'A deleted lead held this number. It has been restored, with the name and notes it had.'
+                    : 'This phone number already exists. The existing lead was updated and marked as re-engaged.',
             );
         }
 

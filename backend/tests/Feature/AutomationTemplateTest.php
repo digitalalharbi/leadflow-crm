@@ -43,20 +43,59 @@ class AutomationTemplateTest extends TestCase
      * Every template has to survive the same door a hand-written rule does.
      * The schema endpoint and the templates are two lists that must agree, and
      * nothing except this test makes them.
+     *
+     * It asserts what came back, not that the request was accepted. `validate()`
+     * returns only the keys it has rules for, so a parameter nobody wrote a rule
+     * for was dropped on the way in and the response was still 201 — every
+     * template here carries a message, a note or a strategy, and the earlier
+     * version of this test watched all of them be deleted and called it a pass.
      */
     #[DataProvider('templateKeys')]
-    public function test_a_template_passes_the_validation_a_typed_rule_faces(string $key): void
+    public function test_a_template_survives_the_door_a_typed_rule_goes_through(string $key): void
     {
         $template = RuleTemplates::get($key);
 
-        $this->actingAs($this->t['admin'])
+        $uuid = $this->actingAs($this->t['admin'])
             ->postJson('/api/v1/automation/rules', [
                 'name' => $template['name'],
                 'trigger' => $template['trigger'],
                 'conditions' => $template['conditions'],
                 'actions' => $template['actions'],
             ])
-            ->assertCreated();
+            ->assertCreated()
+            ->json('data.rule.id');
+
+        $saved = AutomationRule::withoutGlobalScopes()->where('uuid', $uuid)->firstOrFail();
+
+        $this->assertEquals($template['actions'], $saved->actions);
+        $this->assertEquals($template['conditions'], $saved->conditions);
+    }
+
+    /**
+     * The same loss, reached the way a customer reaches it: install a template,
+     * open it to change one thing, save. Everything the form did not ask about
+     * on that screen went with it.
+     */
+    #[DataProvider('templateKeys')]
+    public function test_editing_an_installed_template_does_not_delete_the_rest_of_it(string $key): void
+    {
+        $template = RuleTemplates::get($key);
+
+        $uuid = $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/automation/templates/{$key}")
+            ->assertCreated()
+            ->json('data.rule.id');
+
+        $this->actingAs($this->t['admin'])
+            ->patchJson("/api/v1/automation/rules/{$uuid}", [
+                'name' => 'باسم آخر',
+                'actions' => $template['actions'],
+            ])
+            ->assertOk();
+
+        $saved = AutomationRule::withoutGlobalScopes()->where('uuid', $uuid)->firstOrFail();
+
+        $this->assertEquals($template['actions'], $saved->actions);
     }
 
     #[DataProvider('templateKeys')]

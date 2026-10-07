@@ -250,6 +250,30 @@ class AutomationRuleController extends Controller
             'actions.*.body' => ['required_if:actions.*.type,add_note', 'string', 'max:2000'],
             'actions.*.audience' => ['required_if:actions.*.type,notify', Rule::in(['owner', 'managers'])],
             'actions.*.in_hours' => ['required_if:actions.*.type,schedule_follow_up', 'integer', 'min:1', 'max:8760'],
+
+            /*
+             * The parameters that used to fall off the rule on the way in.
+             *
+             * `validate()` returns only the keys it was given rules for, so
+             * every parameter missing from this list was dropped between the
+             * editor and the database — silently, after a success toast. The
+             * alert text a manager typed was gone, and the rule sent the
+             * generic fallback to the same people forever.
+             *
+             * Worst where it was least visible: every built-in template carries
+             * a message, a note or a strategy, and they survive only because
+             * templates are installed server-side. Opening one in the editor to
+             * change its delay and saving deleted the rest of it.
+             *
+             * So the test for this is a round trip, not a rule-by-rule
+             * assertion: anything the executor reads has to come back out of
+             * the API unchanged.
+             */
+            'actions.*.strategy' => ['required_if:actions.*.type,assign', Rule::in(['round_robin', 'specific'])],
+            'actions.*.user_id' => ['required_if:actions.*.strategy,specific', 'uuid'],
+            'actions.*.message' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'actions.*.note' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'actions.*.in_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
         ]);
     }
 

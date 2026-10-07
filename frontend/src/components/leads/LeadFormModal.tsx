@@ -50,8 +50,19 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
       void queryClient.invalidateQueries({ queryKey: ['leads'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 
-      // A returning phone number is not an error — say plainly what happened.
-      toast(result.duplicate ? t('leads.duplicateNotice') : t('leads.createdSuccess'), result.duplicate ? 'info' : 'success')
+      /*
+       * A returning phone number is not an error — say plainly what happened,
+       * and say which of the two things happened. "This number already exists"
+       * is reasonable about a lead the reader can see in the list, and
+       * baffling about one they deleted.
+       */
+      const notice = result.restored
+        ? 'leads.restoredNotice'
+        : result.duplicate
+          ? 'leads.duplicateNotice'
+          : 'leads.createdSuccess'
+
+      toast(t(notice), result.duplicate ? 'info' : 'success')
       reset()
       onClose()
     },

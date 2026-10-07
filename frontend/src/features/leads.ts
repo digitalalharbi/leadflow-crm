@@ -46,7 +46,15 @@ export function fetchLead(id: string) {
 }
 
 export function createLead(payload: Record<string, unknown>) {
-  return apiPost<{ lead: Lead; duplicate: boolean }>('/leads', payload)
+  /*
+   * `restored` is not the same event as `duplicate`.
+   *
+   * One means the lead is already in the list; the other means a lead somebody
+   * deleted has just come back, with the name and notes it had. Telling a
+   * person "this number already exists" about a record they cannot see is the
+   * confusing half of that.
+   */
+  return apiPost<{ lead: Lead; duplicate: boolean; restored: boolean }>('/leads', payload)
 }
 
 export function updateLead(id: string, payload: Record<string, unknown>) {

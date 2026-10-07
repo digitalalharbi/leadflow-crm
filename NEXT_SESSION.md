@@ -63,14 +63,34 @@ AI assist, calendar sync, extended providers.
 
 ## Things to be careful of
 
-### A soft-deleted lead blocks its phone number forever
+### Deleting a lead does not stick, and that is deliberate
 
-`leads_tenant_phone_unique` is a plain unique index on `(tenant_id,
-phone_normalized)`, not a partial one. A soft-deleted lead keeps occupying it,
-so the same person can never be re-added after deletion — they hit a constraint
-violation rather than a duplicate warning. Worth a partial unique index
-`where deleted_at is null`, with a deliberate decision about what re-adding a
-deleted lead should do. **Still open.**
+This section used to say a soft-deleted lead blocks its phone number forever —
+that the same person could never be re-added. **That was wrong**, and it had
+been repeated from an earlier handover without anyone testing it.
+
+`leads_tenant_phone_unique` really is a plain unique index with no
+`where deleted_at is null`, and inserting a second row directly does violate it.
+But nothing in the product inserts that row. `DuplicateMatcher` searches
+`withTrashed()` on purpose, and `LeadIngestionService` **restores** the deleted
+lead and marks it re-engaged. Both paths into the system — the webhook and
+manual creation — go through it, so re-adding the number returns 200 and brings
+the record back. The index is consistent with that design; making it partial
+would enable a second row the application never wants.
+
+The real defect was that the resurrection was silent. Somebody deletes a lead;
+the number comes back; the record reappears in the list with the name, notes,
+owner and history they removed, and the only thing they are told is that the
+number "already exists" — about a record they cannot see. Fixed: the restore is
+recorded on the lead's own timeline (`re_engaged` carries `restored`), and the
+person typing the number in is told a deleted lead was brought back rather than
+that a duplicate exists.
+
+What is still a genuine decision, rather than a bug: whether a deleted lead
+*should* come back at all, or whether deletion should mean the next arrival
+starts a clean record. Restoring is right for inbound traffic — the person
+really did come back. It is more arguable when the lead was deleted because the
+number was wrong, or at somebody's request.
 
 ### Any sentence with two numbers in it is a plural bug
 

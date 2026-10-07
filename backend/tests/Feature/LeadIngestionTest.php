@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ActivityType;
 use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\Lead;
+use App\Models\LeadActivity;
 use App\Models\WebhookEndpoint;
 use App\Models\WebhookLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,6 +60,64 @@ class LeadIngestionTest extends TestCase
         $this->assertSame('الرياض', $lead->city);
         $this->assertSame('حملة النرجس', $lead->campaign_name);
         $this->assertSame($this->t['tenant']->id, $lead->tenant_id);
+    }
+
+    /**
+     * A deleted lead whose number comes back is restored — and the restore is
+     * recorded rather than performed silently.
+     *
+     * Deletion is a deliberate act: somebody removed that record, and its name,
+     * notes, owner and history went with it. Bringing all of that back without
+     * saying so means the lead reappears in the list as though it had never
+     * gone, and the only thing anybody is told is that the number "already
+     * exists" — about a record they cannot see.
+     *
+     * The number is not blocked, which is what the handover claimed. The
+     * problem was that nothing said the record had come back.
+     */
+    public function test_a_deleted_lead_is_restored_and_the_restore_is_recorded(): void
+    {
+        $this->send(['name' => 'سعود', 'phone' => '0512345678'])->assertOk();
+
+        $lead = Lead::withoutGlobalScopes()->first();
+        $this->asTenant($this->t['tenant'], fn () => $lead->delete());
+        $this->assertTrue($lead->fresh()->trashed());
+
+        $this->send(['name' => 'سعود', 'phone' => '0512345678'])
+            ->assertOk()
+            ->assertJsonPath('data.outcome', 're_engaged');
+
+        // One record, back from the dead, not a second row beside it.
+        $this->assertFalse($lead->fresh()->trashed());
+        $this->assertSame(1, Lead::withoutGlobalScopes()->count());
+
+        // The lead's own timeline is the only place that can answer "why is
+        // this here again?" months later.
+        $activity = LeadActivity::withoutGlobalScopes()
+            ->where('lead_id', $lead->id)
+            ->where('type', ActivityType::ReEngaged)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertTrue($activity->meta['restored'] ?? false);
+    }
+
+    /** A live lead coming back is a re-engagement, and must not claim a restore. */
+    public function test_a_re_engagement_that_restores_nothing_does_not_say_it_did(): void
+    {
+        $this->send(['name' => 'سعود', 'phone' => '0512345678'])->assertOk();
+        $this->send(['name' => 'سعود', 'phone' => '0512345678'])->assertOk();
+
+        $lead = Lead::withoutGlobalScopes()->first();
+
+        $activity = LeadActivity::withoutGlobalScopes()
+            ->where('lead_id', $lead->id)
+            ->where('type', ActivityType::ReEngaged)
+            ->latest('id')
+            ->first();
+
+        $this->assertFalse($activity->meta['restored'] ?? true);
     }
 
     public function test_the_same_number_in_a_different_format_re_engages_the_existing_lead(): void

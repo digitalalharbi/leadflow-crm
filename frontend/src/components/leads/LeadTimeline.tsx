@@ -82,9 +82,17 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
             <div className="min-w-0 flex-1 pt-1">
               <p className="text-[0.875rem]">
                 <span className="font-medium">
-                  {t(`activity.${activity.type}`, {
-                    defaultValue: t(`status.${activity.type}`, { defaultValue: activity.type }),
-                  })}
+                  {/*
+                    A re-engagement that brought a deleted record back is a
+                    different event from one that did not, and this timeline is
+                    the only place that can answer "why is this lead here again"
+                    months later. The name, notes and owner came back with it.
+                  */}
+                  {activity.type === 're_engaged' && activity.meta?.restored
+                    ? t('activity.re_engaged_restored')
+                    : t(`activity.${activity.type}`, {
+                        defaultValue: t(`status.${activity.type}`, { defaultValue: activity.type }),
+                      })}
                 </span>
                 {activity.type === 'status_changed' && from && to && (
                   <span className="text-[var(--color-ink-muted)]">

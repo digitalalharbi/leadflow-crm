@@ -175,7 +175,18 @@ class LeadIngestionService
      */
     private function reEngage(Lead $lead, IncomingLead $incoming, ?string $phone): IngestionResult
     {
-        if ($lead->trashed()) {
+        /*
+         * A deleted lead coming back is a restore, and it is recorded as one.
+         *
+         * Deletion is a deliberate act: somebody removed that record, and its
+         * notes, owner and history went with it. Bringing all of that back
+         * without saying so means the lead reappears in the list as though it
+         * had never gone, and the person who deleted it is told only that "this
+         * number already exists" — about a record they cannot see.
+         */
+        $restored = $lead->trashed();
+
+        if ($restored) {
             $lead->restore();
         }
 
@@ -203,9 +214,12 @@ class LeadIngestionService
         $this->activities->log($lead, ActivityType::ReEngaged, null, null, [
             'provider' => $incoming->provider->value,
             'campaign_name' => $incoming->campaignName,
+            // On the lead's own timeline, so the resurrection is answerable
+            // later: it is the only place that records the record came back.
+            'restored' => $restored,
         ]);
 
-        return IngestionResult::reEngaged($lead->refresh());
+        return IngestionResult::reEngaged($lead->refresh(), $restored);
     }
 
     /** Scoped lookup — a foreign or unknown project id resolves to null. */

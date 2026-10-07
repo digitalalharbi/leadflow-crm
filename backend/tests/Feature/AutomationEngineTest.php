@@ -8,7 +8,9 @@ use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\FollowUp;
 use App\Models\Lead;
+use App\Notifications\AutomationNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
@@ -62,6 +64,70 @@ class AutomationEngineTest extends TestCase
 
             $this->assertDatabaseHas('follow_ups', ['lead_id' => $lead->id, 'status' => 'pending']);
         });
+    }
+
+    /**
+     * An alert that cannot be traced back to the rule that sent it.
+     *
+     * The notification was written to carry the rule's name — its own docblock
+     * says so — and nothing ever put one on the action, so every automated alert
+     * arrived titled "قاعدة تلقائية". A manager with four rules running could
+     * not tell which one had just messaged them at eleven at night, and so could
+     * not go and turn it off. That is the one thing an alert has to support.
+     */
+    public function test_an_alert_names_the_rule_that_sent_it(): void
+    {
+        Notification::fake();
+
+        $this->rule([
+            'name' => 'العملاء المهتمون يُنبَّه عليهم فورًا',
+            'actions' => [[
+                'type' => 'notify',
+                'audience' => 'managers',
+                'message' => 'عميل مهتم — اتصل الآن.',
+            ]],
+        ]);
+
+        $lead = $this->lead();
+
+        $this->asTenant($this->t['tenant'], fn () => $this->engine->handle(new LeadCreated($lead)));
+
+        Notification::assertSentTo(
+            $this->t['admin'],
+            AutomationNotification::class,
+            function (AutomationNotification $notification) {
+                $payload = $notification->toDatabase($this->t['admin']);
+
+                return $payload['rule'] === 'العملاء المهتمون يُنبَّه عليهم فورًا'
+                    && $payload['body'] === 'عميل مهتم — اتصل الآن.';
+            },
+        );
+    }
+
+    /** A client must not be able to put another rule's name on its own alerts. */
+    public function test_a_rule_cannot_carry_its_own_rule_name(): void
+    {
+        Notification::fake();
+
+        $this->rule([
+            'name' => 'الاسم الحقيقي',
+            'actions' => [[
+                'type' => 'notify',
+                'audience' => 'managers',
+                'message' => 'تنبيه',
+                'rule_name' => 'اسم منتحَل',
+            ]],
+        ]);
+
+        $lead = $this->lead();
+
+        $this->asTenant($this->t['tenant'], fn () => $this->engine->handle(new LeadCreated($lead)));
+
+        Notification::assertSentTo(
+            $this->t['admin'],
+            AutomationNotification::class,
+            fn (AutomationNotification $n) => $n->toDatabase($this->t['admin'])['rule'] === 'الاسم الحقيقي',
+        );
     }
 
     public function test_a_rule_that_does_not_match_leaves_the_lead_alone(): void

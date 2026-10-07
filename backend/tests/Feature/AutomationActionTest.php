@@ -144,4 +144,78 @@ class AutomationActionTest extends TestCase
 
         $this->assertTrue($result['ok']);
     }
+
+    /**
+     * Naming a rep is how a developer actually runs a project launch: every
+     * lead from this campaign goes to نورة, who knows that project.
+     *
+     * The executor has supported it from the start and nothing could reach it —
+     * the builder offered one strategy, and the API dropped `strategy` and
+     * `user_id` because neither had a validation rule. So the capability
+     * existed, was tested nowhere, and could not be used.
+     */
+    public function test_a_rule_can_assign_to_the_rep_it_names(): void
+    {
+        $rep = $this->makeUser($this->t['tenant']);
+        $lead = $this->lead(['assigned_to' => null]);
+
+        $result = $this->fire($lead, [
+            'type' => 'assign',
+            'strategy' => 'specific',
+            'user_id' => $rep->uuid,
+        ]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame($rep->id, $lead->fresh()->assigned_to);
+    }
+
+    /** A rep from another workspace is not somebody this rule may name. */
+    public function test_a_rule_cannot_assign_to_a_rep_in_another_workspace(): void
+    {
+        $other = $this->provisionTenant('Somebody Else');
+        $lead = $this->lead(['assigned_to' => null]);
+
+        $result = $this->fire($lead, [
+            'type' => 'assign',
+            'strategy' => 'specific',
+            'user_id' => $other['admin']->uuid,
+        ]);
+
+        $this->assertFalse($result['ok']);
+        $this->assertNull($lead->fresh()->assigned_to);
+    }
+
+    /** A rule outliving the rep it names must not park leads on a dead account. */
+    public function test_a_rule_cannot_assign_to_a_deactivated_rep(): void
+    {
+        $rep = $this->makeUser($this->t['tenant']);
+        $rep->forceFill(['is_active' => false])->save();
+
+        $lead = $this->lead(['assigned_to' => null]);
+
+        $result = $this->fire($lead, [
+            'type' => 'assign',
+            'strategy' => 'specific',
+            'user_id' => $rep->uuid,
+        ]);
+
+        $this->assertFalse($result['ok']);
+        $this->assertNull($lead->fresh()->assigned_to);
+    }
+
+    /** A rep who has since been deleted leaves the lead where it was. */
+    public function test_a_rule_naming_somebody_who_no_longer_exists_fails_loudly(): void
+    {
+        $lead = $this->lead(['assigned_to' => null]);
+
+        $result = $this->fire($lead, [
+            'type' => 'assign',
+            'strategy' => 'specific',
+            'user_id' => '00000000-0000-4000-8000-000000000000',
+        ]);
+
+        $this->assertFalse($result['ok']);
+        $this->assertNotEmpty($result['description']);
+        $this->assertNull($lead->fresh()->assigned_to);
+    }
 }

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Select } from '@/components/ui'
-import { fetchLostReasons } from '@/features/leads'
+import { fetchAssignableUsers, fetchLostReasons } from '@/features/leads'
 import type { AutomationRule, AutomationSchema, RuleAction, RuleCondition } from '@/features/automation'
 
 /**
@@ -69,6 +69,13 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const { data: lostReasons = [] } = useQuery({
     queryKey: ['lost-reasons'],
     queryFn: fetchLostReasons,
+  })
+
+  // Only the people a lead can actually be given to: a rule naming somebody who
+  // cannot hold leads would fail on every run, in a trace nobody reads.
+  const { data: assignees = [] } = useQuery({
+    queryKey: ['assignable-users'],
+    queryFn: fetchAssignableUsers,
   })
 
   const [name, setName] = useState(rule?.name ?? '')
@@ -311,6 +318,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                 schema={schema}
                 labelled={index === 0}
                 lostReasons={lostReasons}
+                assignees={assignees}
                 onChange={(patch) => patchAction(index, patch)}
               />
 
@@ -343,12 +351,14 @@ function ActionDetail({
   schema,
   labelled,
   lostReasons,
+  assignees,
   onChange,
 }: {
   action: RuleAction
   schema: AutomationSchema
   labelled: boolean
   lostReasons: { id: string; label: string }[]
+  assignees: { id: string; name: string }[]
   onChange: (patch: Partial<RuleAction>) => void
 }) {
   const { t } = useTranslation()
@@ -471,14 +481,57 @@ function ActionDetail({
 
     case 'assign':
       return (
-        <Select
-          className="min-w-40 flex-1"
-          label={labelled ? t('automation.strategy') : undefined}
-          value={String(action.strategy ?? 'round_robin')}
-          onChange={(e) => onChange({ strategy: e.target.value })}
-        >
-          <option value="round_robin">{t('automation.strategyRoundRobin')}</option>
-        </Select>
+        <>
+          <Select
+            className="min-w-40 flex-1"
+            label={labelled ? t('automation.strategy') : undefined}
+            value={String(action.strategy ?? 'round_robin')}
+            onChange={(e) =>
+              onChange({
+                strategy: e.target.value,
+                // The rep belongs to "a specific person" and to nothing else.
+                // Left behind, the rule would carry a name the executor ignores.
+                user_id: e.target.value === 'specific' ? (assignees[0]?.id ?? '') : undefined,
+              })
+            }
+          >
+            <option value="round_robin">{t('automation.strategyRoundRobin')}</option>
+            {/*
+              Unselectable until there is somebody to name — which also covers
+              the moment before the list has loaded. Otherwise the rule is saved
+              holding an empty rep while the select below displays a real one,
+              and the API refuses it with a message about a field the person
+              never saw.
+            */}
+            <option value="specific" disabled={assignees.length === 0}>
+              {t('automation.strategySpecific')}
+            </option>
+          </Select>
+
+          {/*
+            The executor has always supported naming a rep, and nothing could
+            say one: the builder offered a single strategy, and the API dropped
+            `strategy` and `user_id` on the way in because neither had a
+            validation rule. So "every lead from this campaign goes to نورة" —
+            which is how a developer actually runs a project launch — could not
+            be written at all.
+          */}
+          {action.strategy === 'specific' && (
+            <Select
+              className="min-w-40 flex-1"
+              label={labelled ? t('automation.assignee') : undefined}
+              value={String(action.user_id ?? '')}
+              onChange={(e) => onChange({ user_id: e.target.value })}
+            >
+              {assignees.length === 0 && <option value="">{t('automation.noAssignees')}</option>}
+              {assignees.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </>
       )
 
     default:

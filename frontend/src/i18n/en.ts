@@ -219,6 +219,9 @@ export default {
     message: 'Message',
     strategy: 'Assignment',
     strategyRoundRobin: 'Least busy',
+    strategySpecific: 'A specific rep',
+    assignee: 'Rep',
+    noAssignees: 'Nobody can be assigned yet',
     priority: 'Priority',
     priorityHint: 'Lower runs first',
     empty: {

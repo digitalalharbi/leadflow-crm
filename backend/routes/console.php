@@ -50,3 +50,13 @@ Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping
 Schedule::command('leadflow:daily-digest')->hourly()->withoutOverlapping();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
+
+/*
+ * Raw inbound payloads, forgotten on a schedule.
+ *
+ * Nothing pruned them, so every webhook body and every customer's WhatsApp
+ * message was kept for the life of the workspace against a debugging question
+ * that is asked within days of a lead arriving. Nightly and off-peak: it is a
+ * large delete on tables nothing is waiting on.
+ */
+Schedule::command('leadflow:prune-payloads')->dailyAt('03:30')->withoutOverlapping();

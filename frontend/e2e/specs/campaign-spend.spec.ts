@@ -62,6 +62,31 @@ test.describe('إنفاق الحملات — campaign spend', () => {
     await expect(table.locator('td', { hasText: /\d/ }).first()).toBeVisible()
   })
 
+  /**
+   * The distinction the return figure turns on.
+   *
+   * A campaign that sold nothing has a return of zero, and that is a finding.
+   * A campaign whose sales nobody valued has no computable return at all —
+   * showing that as zero reads as "this loses money" when the truth is "nobody
+   * typed the price in", and those two deserve opposite decisions.
+   */
+  test('a sale closed without a value leaves the return as a dash', async ({ page }) => {
+    await page.goto('/leads')
+    await page.getByRole('button', { name: 'إضافة عميل' }).click()
+    await page.getByLabel(/الاسم/).first().fill('مشتري بلا قيمة')
+    await page.getByPlaceholder('05xxxxxxxx').fill(`0500${Date.now().toString().slice(-6)}`)
+    await page.getByRole('button', { name: 'إنشاء' }).click()
+
+    await page.getByText('مشتري بلا قيمة').first().click()
+    await page.getByRole('button', { name: 'مكسوب' }).click()
+
+    // The value is optional, and confirming without it still closes the sale.
+    await expect(page.getByTestId('deal-value')).toBeVisible()
+    await page.getByTestId('confirm-won').click()
+
+    await expect(page.getByTestId('stage-switcher')).toBeVisible()
+  })
+
   /** Workspace-wide money needs workspace-wide authority. */
   test('a sales rep is not offered the spend entry at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)

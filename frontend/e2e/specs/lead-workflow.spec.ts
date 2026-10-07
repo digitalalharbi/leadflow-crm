@@ -47,6 +47,16 @@ test.describe('Lead workflow', () => {
     for (const [label, value] of stages) {
       await page.getByTestId('stage-switcher').getByRole('button', { name: label, exact: true }).click()
 
+      /*
+       * Winning asks what the deal closed for, the way losing asks why — both
+       * capture the one number the report is made of at the moment the rep
+       * knows it. The value is optional, so confirming is enough here; a
+       * separate spec covers closing with and without it.
+       */
+      if (value === 'won') {
+        await page.getByTestId('confirm-won').click()
+      }
+
       // The header badge reflects the new stage…
       await expect(page.getByTestId('lead-status-badge')).toHaveText(label)
 

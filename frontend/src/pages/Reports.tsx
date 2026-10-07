@@ -646,6 +646,7 @@ function CampaignTable({
                 */}
                 <Th className="hidden lg:table-cell">{t('campaignQuality.costPerLead')}</Th>
                 <Th className="hidden lg:table-cell">{t('campaignQuality.costPerQualified')}</Th>
+                <Th className="hidden xl:table-cell">{t('campaignQuality.roas')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -684,6 +685,22 @@ function CampaignTable({
                     {row.cost_per_qualified === null
                       ? '—'
                       : formatCurrency(row.cost_per_qualified, currency, i18n.language)}
+                  </Td>
+                  {/*
+                    A dash and a zero mean opposite things here. Zero is "this
+                    campaign sold nothing" — a finding. A dash is "its sales
+                    were never valued", which is a gap in the data rather than
+                    a verdict on the campaign.
+                  */}
+                  <Td
+                    className={cn(
+                      'tabular hidden xl:table-cell font-semibold',
+                      row.roas !== null && row.roas >= 1 && 'text-[var(--color-status-won)]',
+                      row.roas !== null && row.roas < 1 && 'text-[var(--color-status-lost)]',
+                    )}
+                    dir="ltr"
+                  >
+                    {row.roas === null ? '—' : `${row.roas}×`}
                   </Td>
                 </Tr>
               ))}

@@ -63,7 +63,7 @@ class Lead extends Model
         'next_follow_up_at', 'last_contact_at', 'assigned_at',
         'first_contact_at', 'first_response_at',
         'whatsapp_opt_in_at', 'whatsapp_opt_out_at',
-        'won_at', 'lost_at', 'lost_reason_id', 'lost_note',
+        'won_at', 'lost_at', 'lost_reason_id', 'lost_note', 'deal_value_minor',
         'provider', 'provider_lead_id', 'provider_payload',
         'created_by', 're_engaged_count',
     ];
@@ -90,6 +90,7 @@ class Lead extends Model
             'whatsapp_opt_out_at' => 'datetime',
             'assigned_at' => 'datetime',
             'won_at' => 'datetime',
+            'deal_value_minor' => 'integer',
             'lost_at' => 'datetime',
             'provider_payload' => 'array',
             're_engaged_count' => 'integer',

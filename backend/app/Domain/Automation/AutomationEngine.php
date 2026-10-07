@@ -72,7 +72,7 @@ class AutomationEngine
         $startedAt = microtime(true);
         $lead = $event->lead();
 
-        $verdict = $this->conditions->evaluate($lead, $rule->conditions ?? []);
+        $verdict = $this->conditions->evaluate($lead, $rule->conditions ?? [], $event->context ?? []);
 
         if (! $verdict['matched']) {
             $this->record($rule, $event, 'skipped', $verdict['reason'], [], $correlation, $startedAt);

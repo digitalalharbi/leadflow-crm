@@ -86,7 +86,9 @@ for v in STAGING_DOMAIN PRODUCTION_DOMAIN; do
   if printf '%s\n' "$VARS" | grep -qx "$v"; then
     ok "$v"
   else
-    warn "$v" "optional — without it the post-deploy health check is skipped"
+    # Not optional any more: the deploy job fails without it, because a run
+    # that could not check the deployed environment has not shown it works.
+    bad "$v" "required — a deploy that cannot be verified over HTTP fails"
   fi
 done
 

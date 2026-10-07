@@ -127,8 +127,9 @@ gh secret set STAGING_PATH --body "/var/www/leads-crm/staging"
 gh secret set PRODUCTION_PATH --body "/var/www/leads-crm/production"
 ```
 
-And the two repository **variables** (used for the public health check and the
-deployment URL shown in GitHub):
+And the two repository **variables**. These are required, not cosmetic: the
+deploy job checks the deployed environment over HTTP and fails without them,
+because a run that could not check what it shipped has not shown that it works.
 
 - [ ] `STAGING_DOMAIN` — e.g. `staging.example.com`
 - [ ] `PRODUCTION_DOMAIN` — e.g. `app.example.com`

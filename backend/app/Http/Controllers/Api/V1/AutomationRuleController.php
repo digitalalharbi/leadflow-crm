@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Automation\AutomationInsights;
 use App\Domain\Automation\ConditionEvaluator;
 use App\Domain\Automation\RuleTemplates;
+use App\Domain\Leads\OutcomeRecorder;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationRule;
@@ -29,9 +30,15 @@ class AutomationRuleController extends Controller
     private const TRIGGERS = [
         'lead.created', 'lead.assigned', 'lead.replied',
         'lead.stage_changed', 'lead.qualified', 'lead.won', 'lead.lost',
+        // Fires for every outcome a rep records, including the ones that move
+        // nothing — which is the only way "after two unanswered calls…" can be
+        // written at all.
+        'lead.outcome_recorded',
     ];
 
     private const FIELDS = [
+        // Not a column: what the rep just recorded, carried on the event.
+        'last_outcome',
         'status', 'temperature', 'qualification_status', 'score', 'platform', 'source',
         'campaign_name', 'project_id', 'city', 'budget_min', 'budget_max',
         'purchase_purpose', 'payment_method', 'financing_status', 'purchase_timeline',
@@ -78,6 +85,19 @@ class AutomationRuleController extends Controller
             'operators' => self::OPERATORS,
             'actions' => self::ACTIONS,
             'stages' => array_map(fn (LeadStatus $s) => $s->value, LeadStatus::cases()),
+            /*
+             * Fields whose values are a closed set, so the editor can offer them
+             * instead of asking somebody to type `no_answer` from memory. A
+             * typo here is the worst kind of bug to own: the rule saves, runs,
+             * matches nothing, and reports no error.
+             *
+             * Taken from the recorder rather than written out, so a new outcome
+             * cannot exist without being selectable. It lists every outcome the
+             * API accepts, which is more than the six buttons on the rep's card.
+             */
+            'field_values' => [
+                'last_outcome' => OutcomeRecorder::available(),
+            ],
         ]);
     }
 

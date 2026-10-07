@@ -62,6 +62,8 @@ interface Props {
 export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const { t } = useTranslation()
 
+  const knownValues = (field: string) => schema.field_values?.[field]
+
   // Only the active ones, and only here: a rule written against a reason an
   // admin has since retired would fail on every run.
   const { data: lostReasons = [] } = useQuery({
@@ -172,7 +174,13 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
               onClick={() =>
                 setConditions((prev) => [
                   ...prev,
-                  { field: schema.fields[0], operator: schema.operators[0], value: '' },
+                  {
+                    field: schema.fields[0],
+                    operator: schema.operators[0],
+                    // A select has no empty option, so an unseeded condition
+                    // would display its first value and save none.
+                    value: knownValues(schema.fields[0])?.[0] ?? '',
+                  },
                 ])
               }
             >
@@ -191,7 +199,14 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                   className="min-w-40 flex-1"
                   label={index === 0 ? t('automation.field') : undefined}
                   value={condition.field}
-                  onChange={(e) => patchCondition(index, { field: e.target.value })}
+                  onChange={(e) =>
+                    patchCondition(index, {
+                      field: e.target.value,
+                      // The old value belongs to the old field. Carrying it over
+                      // leaves a select showing a value the rule does not hold.
+                      value: knownValues(e.target.value)?.[0] ?? '',
+                    })
+                  }
                 >
                   {schema.fields.map((field) => (
                     <option key={field} value={field}>
@@ -213,15 +228,42 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                   ))}
                 </Select>
 
-                {!VALUELESS.has(condition.operator) && (
-                  <Input
-                    className="min-w-32 flex-1"
-                    label={index === 0 ? t('automation.value') : undefined}
-                    hint={LIST_VALUED.has(condition.operator) ? t('automation.listHint') : undefined}
-                    value={String(condition.value ?? '')}
-                    onChange={(e) => patchCondition(index, { value: e.target.value })}
-                  />
-                )}
+                {/*
+                  A picker where the server knows the answers.
+
+                  `last_outcome` is the case that forced this: its values are
+                  internal strings, and a manager writing "لم يرد" or "no answer"
+                  instead of `no_answer` gets a rule that saves, runs, matches
+                  nothing and reports no error — the hardest kind of rule to
+                  debug, because every screen says it is fine.
+
+                  Still a text box for `in` and `between`, which take several
+                  values; a multi-select for those is worth doing, and is not
+                  worth guessing at here.
+                */}
+                {!VALUELESS.has(condition.operator) &&
+                  (knownValues(condition.field) && !LIST_VALUED.has(condition.operator) ? (
+                    <Select
+                      className="min-w-32 flex-1"
+                      label={index === 0 ? t('automation.value') : undefined}
+                      value={String(condition.value ?? '')}
+                      onChange={(e) => patchCondition(index, { value: e.target.value })}
+                    >
+                      {knownValues(condition.field)!.map((option) => (
+                        <option key={option} value={option}>
+                          {t(`work.outcome.${option}`, { defaultValue: option })}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      className="min-w-32 flex-1"
+                      label={index === 0 ? t('automation.value') : undefined}
+                      hint={LIST_VALUED.has(condition.operator) ? t('automation.listHint') : undefined}
+                      value={String(condition.value ?? '')}
+                      onChange={(e) => patchCondition(index, { value: e.target.value })}
+                    />
+                  ))}
 
                 <Button
                   size="icon"

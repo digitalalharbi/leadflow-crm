@@ -148,6 +148,8 @@ export default {
       meeting_booked: 'حجز موعد',
       won: 'تم البيع',
       lost: 'خسارة',
+      not_interested: 'غير مهتم',
+      invalid: 'رقم خاطئ',
     },
     recorded: {
       interested: 'سُجِّل الاهتمام، وحُدِّدت متابعة بعد يومين',
@@ -324,6 +326,46 @@ export default {
       'lead.qualified': 'عند تأهيل العميل',
       'lead.won': 'عند نجاح الصفقة',
       'lead.lost': 'عند خسارة العميل',
+      'lead.outcome_recorded': 'عند تسجيل المندوب نتيجة',
+    },
+    /*
+     * الحقول بأسمائها، لا بمفاتيحها.
+     *
+     * كانت القائمة تعرض `minutes_since_first_contact` كما هي، لأن المحرر يرجع
+     * إلى المفتاح عند غياب الترجمة — وهو ما يجعل أهم شاشة في الأتمتة إنجليزية
+     * داخل نظام عربي.
+     */
+    field_: {
+      last_outcome: 'ما سجّله المندوب',
+      status: 'المرحلة',
+      temperature: 'درجة الاهتمام',
+      qualification_status: 'حالة التأهيل',
+      score: 'نقاط العميل',
+      platform: 'المنصة',
+      source: 'المصدر',
+      campaign_name: 'اسم الحملة',
+      project_id: 'المشروع',
+      city: 'المدينة',
+      budget_min: 'أدنى ميزانية',
+      budget_max: 'أعلى ميزانية',
+      purchase_purpose: 'الغرض من الشراء',
+      payment_method: 'طريقة الدفع',
+      financing_status: 'حالة التمويل',
+      purchase_timeline: 'موعد الشراء',
+      preferred_property_type: 'نوع العقار المطلوب',
+      preferred_location: 'الموقع المفضَّل',
+      appointment_interest: 'الرغبة في زيارة',
+      assigned_to: 'المسؤول',
+      is_assigned: 'مُسنَد إلى مندوب',
+      has_phone: 'لديه رقم جوال',
+      has_email: 'لديه بريد إلكتروني',
+      has_whatsapp: 'لديه واتساب',
+      re_engaged_count: 'عدد مرات إعادة التواصل',
+      minutes_since_created: 'دقائق منذ وصوله',
+      minutes_since_first_contact: 'دقائق منذ أول تواصل',
+      minutes_since_last_contact: 'دقائق منذ آخر تواصل',
+      was_contacted: 'تم التواصل معه',
+      has_replied: 'سبق أن ردّ',
     },
     operator_: {
       equals: 'يساوي',

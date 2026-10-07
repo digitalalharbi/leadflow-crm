@@ -21,9 +21,14 @@ use Throwable;
  */
 class SendDailyDigest extends Command
 {
-    protected $signature = 'leadflow:daily-digest {--tenant= : only this tenant slug}';
+    protected $signature = 'leadflow:daily-digest
+        {--tenant= : only this tenant slug}
+        {--now : send regardless of the hour, for a manual run}';
 
     protected $description = 'Send each workspace its managers a summary of yesterday and what is waiting';
+
+    /** Eight in the morning, where the workspace is. */
+    private const SEND_AT_HOUR = 8;
 
     public function handle(DailyDigest $digest, TenantContext $context): int
     {
@@ -36,6 +41,19 @@ class SendDailyDigest extends Command
 
         foreach ($tenants as $tenant) {
             try {
+                /*
+                 * Eight o'clock where the workspace is, not where the server is.
+                 *
+                 * This used to be one fixed UTC hour for everybody, on the
+                 * strength of a comment claiming tenants had no timezone of
+                 * their own. They do — `tenant_settings.timezone` — and a
+                 * "morning" digest that lands at four in the afternoon is just
+                 * another notification.
+                 */
+                if (! $this->option('now') && ! $this->isMorningFor($tenant)) {
+                    continue;
+                }
+
                 $context->withTenant($tenant, function () use ($tenant, $digest, &$sent, &$skipped) {
                     $figures = $digest->for($tenant);
 
@@ -75,5 +93,20 @@ class SendDailyDigest extends Command
         $this->info("Daily digest: {$sent} notification(s) sent, {$skipped} workspace(s) with nothing to report.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Is it the sending hour in this workspace's own timezone?
+     *
+     * The command runs hourly and exactly one hour a day matches, which is what
+     * keeps it from sending twice. A timezone with a repeated hour would see
+     * two; Saudi Arabia has no daylight saving, and for the ones that do the
+     * cost is a duplicate digest once a year rather than a missed one.
+     */
+    private function isMorningFor(Tenant $tenant): bool
+    {
+        $zone = $tenant->settings?->timezone ?: config('app.timezone');
+
+        return now()->setTimezone($zone)->hour === self::SEND_AT_HOUR;
     }
 }

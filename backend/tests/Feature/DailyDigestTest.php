@@ -204,7 +204,10 @@ class DailyDigestTest extends TestCase
             'password' => bcrypt('secret'), 'role' => Role::Sales->value, 'is_active' => true,
         ]);
 
-        $this->artisan('leadflow:daily-digest')->assertSuccessful();
+        // `--now` because this test is about *who* is told, not *when*. The
+        // hour gate is covered by the timezone tests below, and leaving it in
+        // play here makes this pass or fail depending on the time of day.
+        $this->artisan('leadflow:daily-digest --now')->assertSuccessful();
 
         // Workspace-wide figures need workspace-wide authority — the same rule
         // the reports and data-quality screens apply.
@@ -237,11 +240,56 @@ class DailyDigestTest extends TestCase
         $this->assertSame(1, $figures['uncontacted']);
     }
 
+    /**
+     * Eight o'clock where the workspace is, not where the server is.
+     *
+     * The first version fired at one fixed UTC hour on the strength of a
+     * comment claiming tenants had no timezone. They do, and a "morning"
+     * digest that lands at four in the afternoon is just another notification.
+     */
+    public function test_it_sends_at_eight_in_the_workspaces_own_timezone(): void
+    {
+        Notification::fake();
+        $this->t['tenant']->settings->forceFill(['timezone' => 'Asia/Riyadh'])->save();
+
+        // Travel first: the backlog is dated relative to "now", so creating it
+        // before moving the clock dates it against a time that no longer applies.
+        $this->travelTo(now()->setTime(5, 30));
+        $this->neglected();
+
+        $this->artisan('leadflow:daily-digest')->assertSuccessful();
+        Notification::assertSentTo($this->t['admin'], DailyDigestNotification::class);
+    }
+
+    public function test_it_stays_quiet_at_the_wrong_hour_for_that_workspace(): void
+    {
+        Notification::fake();
+        $this->t['tenant']->settings->forceFill(['timezone' => 'Asia/Riyadh'])->save();
+
+        // Eight in the morning UTC is eleven in Riyadh — the wrong hour there.
+        $this->travelTo(now()->setTime(8, 0));
+        $this->neglected();
+        $this->artisan('leadflow:daily-digest')->assertSuccessful();
+        Notification::assertNothingSent();
+    }
+
+    /** A different timezone gets a different hour, which is the whole point. */
+    public function test_two_workspaces_in_different_timezones_are_sent_at_different_hours(): void
+    {
+        Notification::fake();
+        $this->t['tenant']->settings->forceFill(['timezone' => 'Europe/London'])->save();
+
+        $this->travelTo(now()->setTime(5, 30));
+        $this->neglected();
+        $this->artisan('leadflow:daily-digest')->assertSuccessful();
+        Notification::assertNothingSent();
+    }
+
     public function test_a_quiet_workspace_gets_nothing(): void
     {
         Notification::fake();
 
-        $this->artisan('leadflow:daily-digest')
+        $this->artisan('leadflow:daily-digest --now')
             ->expectsOutputToContain('nothing to report')
             ->assertSuccessful();
 

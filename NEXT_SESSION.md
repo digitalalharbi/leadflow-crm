@@ -213,3 +213,26 @@ shell. A server that dies mid-run fails eighteen tests with `ECONNREFUSED` and
 looks exactly like a code regression. Check
 `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8012/api/health`
 before any long run.
+
+## CI stopped: GitHub Actions billing (2026-10-08)
+
+Every workflow began failing within seconds, on all three jobs, with:
+
+> The job was not started because recent account payments have failed or your
+> spending limit needs to be increased.
+
+Not a code failure. The same commits pass locally, and the runs that started
+before the cutoff passed in CI. The fix is in GitHub → Settings → Billing &
+plans: repair the payment method or raise the Actions spending limit.
+
+Left open and unverifiable until then — do not merge on local green alone, CI is
+the arbiter:
+
+- **#65** SLA reminders reach a person. Backend and Playwright passed; the one
+  red check was the `format.test.ts` flake, which #67 has since fixed on
+  `develop`. Merge `develop` in and it needs a single re-run.
+- **#66** reports stop claiming "no data" when the answer was 403.
+- **#68** a rule can name the rep it assigns to — and closes a cross-tenant hole
+  in `ActionExecutor`, which looked a named rep up by uuid with no tenant
+  filter. `User` is deliberately outside the tenant scope, so that handed leads
+  to people in other workspaces. Worth getting in.

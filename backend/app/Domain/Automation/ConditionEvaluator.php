@@ -13,12 +13,25 @@ use Illuminate\Support\Carbon;
  * that cannot be understood must not fire — silently doing nothing is the only
  * safe failure for something a tenant wrote through a form.
  *
- * Conditions are a flat list combined with AND, which is what a rule builder
- * can express honestly. Nested boolean trees are a second rule, not a deeper
- * structure nobody can read back.
+ * Conditions are a flat list, and the rule says whether it needs all of them or
+ * any one of them. Still flat on purpose: nested boolean trees are a second
+ * rule, not a deeper structure nobody can read back. One choice for the whole
+ * list is the most a builder can express honestly, and it is the thing people
+ * actually reach for — "call back or no answer", "Riyadh or Jeddah" — which
+ * otherwise has to be written as two rules kept in step by hand.
  */
 class ConditionEvaluator
 {
+    public const MATCH_ALL = 'all';
+
+    public const MATCH_ANY = 'any';
+
+    /** @return array<int,string> */
+    public static function matches(): array
+    {
+        return [self::MATCH_ALL, self::MATCH_ANY];
+    }
+
     /**
      * `$context` is the event's own — the only thing a rule can read that is
      * not on the lead. A stage change is visible in `status` afterwards; an
@@ -29,12 +42,21 @@ class ConditionEvaluator
      * @param  array<string,scalar|null>  $context
      * @return array{matched:bool, reason:?string}
      */
-    public function evaluate(Lead $lead, array $conditions, array $context = []): array
+    public function evaluate(Lead $lead, array $conditions, array $context = [], string $match = self::MATCH_ALL): array
     {
+        $any = $match === self::MATCH_ANY;
+        $failures = [];
+
         foreach ($conditions as $condition) {
             $field = (string) ($condition['field'] ?? '');
             $operator = (string) ($condition['operator'] ?? '');
 
+            /*
+             * A malformed condition stops the rule whichever mode it is in.
+             * Under "any" it would otherwise be skipped over in silence, and a
+             * rule that fires on the strength of the conditions somebody could
+             * still read is worse than one that refuses to fire at all.
+             */
             if ($field === '' || $operator === '') {
                 return ['matched' => false, 'reason' => 'A condition is missing its field or operator.'];
             }
@@ -42,18 +64,37 @@ class ConditionEvaluator
             $actual = $this->read($lead, $field, $context);
             $expected = $condition['value'] ?? null;
 
-            if (! $this->compare($actual, $operator, $expected)) {
-                return [
-                    'matched' => false,
-                    'reason' => sprintf(
-                        '%s (%s) did not satisfy "%s %s"',
-                        $field,
-                        $this->describe($actual),
-                        $operator,
-                        $this->describe($expected),
-                    ),
-                ];
+            if ($this->compare($actual, $operator, $expected)) {
+                if ($any) {
+                    return ['matched' => true, 'reason' => null];
+                }
+
+                continue;
             }
+
+            $failure = sprintf(
+                '%s (%s) did not satisfy "%s %s"',
+                $field,
+                $this->describe($actual),
+                $operator,
+                $this->describe($expected),
+            );
+
+            if (! $any) {
+                return ['matched' => false, 'reason' => $failure];
+            }
+
+            $failures[] = $failure;
+        }
+
+        // An empty list matches in both modes: a rule with a trigger and no
+        // conditions fires on every event of that kind, which is a thing people
+        // legitimately want and the API deliberately allows.
+        if ($any && $failures !== []) {
+            return [
+                'matched' => false,
+                'reason' => 'None of the conditions matched: '.implode('; ', $failures),
+            ];
         }
 
         return ['matched' => true, 'reason' => null];

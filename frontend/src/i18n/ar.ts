@@ -318,6 +318,9 @@ export default {
       title: 'لا توجد قواعد بعد',
       description: 'ابدأ من قالب جاهز أعلاه، أو اكتب قاعدتك الأولى.',
     },
+    matchLabel: 'طريقة المطابقة',
+    matchAll: 'تتحقق كل الشروط',
+    matchAny: 'يتحقق أي شرط',
     trigger: {
       'lead.created': 'عند وصول عميل جديد',
       'lead.assigned': 'عند إسناد العميل',

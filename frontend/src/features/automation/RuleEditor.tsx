@@ -75,6 +75,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const [trigger, setTrigger] = useState(rule?.trigger ?? schema.triggers[0])
   const [priority, setPriority] = useState(String(rule?.priority ?? 100))
   const [conditions, setConditions] = useState<RuleCondition[]>(rule?.conditions ?? [])
+  const [conditionMatch, setConditionMatch] = useState(rule?.condition_match ?? 'all')
   const [actions, setActions] = useState<RuleAction[]>(
     rule?.actions ?? [withDefaults(schema.actions[0])],
   )
@@ -104,6 +105,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
       priority: Number(priority) || 100,
       // Sent even when empty: a rule with a trigger and no conditions fires on
       // every event of that kind, which is a thing people legitimately want.
+      condition_match: conditionMatch,
       conditions: conditions.map((condition) => ({
         field: condition.field,
         operator: condition.operator,
@@ -165,7 +167,27 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
 
         <section className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="t-body font-medium">{t('automation.ifLabel')}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="t-body font-medium">{t('automation.ifLabel')}</h3>
+
+              {/*
+                Shown only once there are two conditions, because with one it is
+                a choice between two identical outcomes — and a control that
+                changes nothing is a thing somebody has to stop and think about.
+              */}
+              {conditions.length > 1 && (
+                <select
+                  value={conditionMatch}
+                  onChange={(event) => setConditionMatch(event.target.value)}
+                  data-testid="condition-match"
+                  aria-label={t('automation.matchLabel')}
+                  className="rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[0.8125rem]"
+                >
+                  <option value="all">{t('automation.matchAll')}</option>
+                  <option value="any">{t('automation.matchAny')}</option>
+                </select>
+              )}
+            </div>
             <Button
               size="sm"
               variant="ghost"

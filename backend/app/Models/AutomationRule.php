@@ -20,7 +20,7 @@ class AutomationRule extends Model
 
     protected $fillable = [
         'name', 'trigger', 'template_key', 'is_enabled', 'priority',
-        'stops_processing', 'conditions', 'actions', 'created_by',
+        'stops_processing', 'conditions', 'condition_match', 'actions', 'created_by',
     ];
 
     protected function casts(): array

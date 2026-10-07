@@ -224,6 +224,9 @@ export default {
       title: 'No rules yet',
       description: 'Start from a template above, or write your first rule.',
     },
+    matchLabel: 'How conditions combine',
+    matchAll: 'All conditions match',
+    matchAny: 'Any condition matches',
     trigger: {
       'lead.created': 'A new lead arrives',
       'lead.assigned': 'A lead is assigned',

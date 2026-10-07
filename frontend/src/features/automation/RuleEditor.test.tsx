@@ -18,6 +18,7 @@ const schema: AutomationSchema = {
   triggers: ['lead.outcome_recorded', 'lead.created'],
   fields: ['last_outcome', 'city'],
   operators: ['equals', 'in'],
+  condition_matches: ['all', 'any'],
   actions: ['add_tag'],
   stages: ['new', 'contacted'],
   field_values: { last_outcome: ['interested', 'no_answer'] },
@@ -85,6 +86,47 @@ describe('RuleEditor', () => {
         conditions: [{ field: 'city', operator: 'equals', value: '' }],
       }),
     )
+  })
+
+  /**
+   * The toggle appears only once there are two conditions: with one it is a
+   * choice between two identical outcomes, and a control that changes nothing
+   * is still a thing somebody has to stop and read.
+   */
+  it('offers no match toggle until there are two conditions', async () => {
+    const user = userEvent.setup()
+    render()
+
+    await user.click(screen.getByTestId('add-condition'))
+    expect(screen.queryByTestId('condition-match')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('add-condition'))
+    expect(screen.getByTestId('condition-match')).toBeInTheDocument()
+  })
+
+  it('saves a rule that needs only one of its conditions', async () => {
+    const user = userEvent.setup()
+    const onSave = render()
+
+    await user.click(screen.getByTestId('add-condition'))
+    await user.click(screen.getByTestId('add-condition'))
+    await user.selectOptions(screen.getByTestId('condition-match'), 'any')
+    await user.type(screen.getByTestId('rule-name'), 'قاعدة')
+    await user.click(screen.getByTestId('save-rule'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ condition_match: 'any' }))
+  })
+
+  /** Every rule written before the toggle existed means what it always meant. */
+  it('sends all when nobody chose', async () => {
+    const user = userEvent.setup()
+    const onSave = render()
+
+    await user.click(screen.getByTestId('add-condition'))
+    await user.type(screen.getByTestId('rule-name'), 'قاعدة')
+    await user.click(screen.getByTestId('save-rule'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ condition_match: 'all' }))
   })
 
   /** `in` takes several values, so it keeps the text box and its hint. */

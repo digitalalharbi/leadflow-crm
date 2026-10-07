@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Select } from '@/components/ui'
+import { fetchLostReasons } from '@/features/leads'
 import type { AutomationRule, AutomationSchema, RuleAction, RuleCondition } from '@/features/automation'
 
 /**
@@ -61,6 +63,13 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const { t } = useTranslation()
 
   const knownValues = (field: string) => schema.field_values?.[field]
+
+  // Only the active ones, and only here: a rule written against a reason an
+  // admin has since retired would fail on every run.
+  const { data: lostReasons = [] } = useQuery({
+    queryKey: ['lost-reasons'],
+    queryFn: fetchLostReasons,
+  })
 
   const [name, setName] = useState(rule?.name ?? '')
   const [trigger, setTrigger] = useState(rule?.trigger ?? schema.triggers[0])
@@ -301,6 +310,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                 action={action}
                 schema={schema}
                 labelled={index === 0}
+                lostReasons={lostReasons}
                 onChange={(patch) => patchAction(index, patch)}
               />
 
@@ -332,11 +342,13 @@ function ActionDetail({
   action,
   schema,
   labelled,
+  lostReasons,
   onChange,
 }: {
   action: RuleAction
   schema: AutomationSchema
   labelled: boolean
+  lostReasons: { id: string; label: string }[]
   onChange: (patch: Partial<RuleAction>) => void
 }) {
   const { t } = useTranslation()
@@ -344,18 +356,54 @@ function ActionDetail({
   switch (action.type) {
     case 'change_stage':
       return (
-        <Select
-          className="min-w-40 flex-1"
-          label={labelled ? t('automation.stage') : undefined}
-          value={String(action.status ?? schema.stages[0])}
-          onChange={(e) => onChange({ status: e.target.value })}
-        >
-          {schema.stages.map((stage) => (
-            <option key={stage} value={stage}>
-              {t(`status.${stage}`, { defaultValue: stage })}
-            </option>
-          ))}
-        </Select>
+        <>
+          <Select
+            className="min-w-40 flex-1"
+            label={labelled ? t('automation.stage') : undefined}
+            value={String(action.status ?? schema.stages[0])}
+            onChange={(e) =>
+              onChange({
+                status: e.target.value,
+                // A reason belongs to "lost" and to nothing else. Carrying it
+                // into another stage leaves the rule holding a field the
+                // executor will not read and nobody can see.
+                lost_reason_id: e.target.value === 'lost' ? (lostReasons[0]?.id ?? '') : undefined,
+              })
+            }
+          >
+            {schema.stages.map((stage) => (
+              <option key={stage} value={stage}>
+                {t(`status.${stage}`, { defaultValue: stage })}
+              </option>
+            ))}
+          </Select>
+
+          {/*
+            A lost lead carries why it was lost, whoever closed it.
+
+            The executor refuses to close one without a reason, which is the
+            point — a sale lost for "price" and one lost for "wrong city" call
+            for opposite decisions, and a pipeline full of unexplained losses
+            answers neither. Without this input the rule could not supply one,
+            so the refusal would have landed in a trace nobody reads instead of
+            on the screen where the rule is written.
+          */}
+          {action.status === 'lost' && (
+            <Select
+              className="min-w-40 flex-1"
+              label={labelled ? t('automation.lostReason') : undefined}
+              value={String(action.lost_reason_id ?? '')}
+              onChange={(e) => onChange({ lost_reason_id: e.target.value })}
+            >
+              {lostReasons.length === 0 && <option value="">{t('automation.noLostReasons')}</option>}
+              {lostReasons.map((reason) => (
+                <option key={reason.id} value={reason.id}>
+                  {reason.label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </>
       )
 
     case 'adjust_score':

@@ -120,6 +120,27 @@ class OutcomeRecorder
                 $note ?: $spec['label'],
                 ['outcome' => $outcome, 'via' => 'work_queue']);
 
+            /*
+             * Recording an outcome is the act of having worked the lead.
+             *
+             * `last_contact_at` is what the product means by "when did anybody
+             * last do anything with this lead", and the status endpoint, the
+             * follow-up screen and WhatsApp all set it. The work queue — where
+             * a rep spends the whole day — did not, so a lead called every
+             * morning for a week read as untouched since the day it arrived.
+             *
+             * Three things read that column and all three were wrong about the
+             * same leads: the data-quality screen listing stale leads, the
+             * re-engagement filter, and `minutes_since_last_contact` — which a
+             * rule uses to escalate a lead nobody has called, and so escalated
+             * the ones being called hardest.
+             *
+             * An unanswered call counts. The product already treats one as
+             * contact: "no answer" moves the lead to `contacted`, and that
+             * status is in `impliesContactWasMade`.
+             */
+            $lead->last_contact_at = now();
+
             $stageChanged = $this->advance($lead, $spec['stage']);
             $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label']);
 
@@ -157,10 +178,17 @@ class OutcomeRecorder
         $isDecision = $floor->isClosed();
 
         if (! $isDecision && $lead->status->position() >= $floor->position()) {
+            // Saved anyway: the outcome touched the lead even when it moved no
+            // stage, and "no answer" on an already-contacted lead is the most
+            // common outcome there is.
+            $lead->save();
+
             return false;
         }
 
         if ($lead->status === $floor) {
+            $lead->save();
+
             return false;
         }
 
@@ -178,8 +206,13 @@ class OutcomeRecorder
         // A finished lead keeps no open step. Chasing a customer who already
         // bought is the complaint that costs a workspace its trust in the tool.
         if ($hours === 0) {
+            // One at a time rather than a mass update: a query-builder update
+            // fires no model events, and the lead's `next_follow_up_at` is
+            // derived from those. A closed lead would have kept pointing at a
+            // reminder that no longer exists.
             FollowUp::where('lead_id', $lead->id)->where('status', FollowUp::PENDING)
-                ->update(['status' => FollowUp::CANCELLED]);
+                ->get()
+                ->each(fn (FollowUp $followUp) => $followUp->update(['status' => FollowUp::CANCELLED]));
 
             return null;
         }

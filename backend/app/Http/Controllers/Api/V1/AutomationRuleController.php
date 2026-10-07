@@ -234,11 +234,46 @@ class AutomationRuleController extends Controller
              * closed vocabulary exists to prevent, one level down.
              */
             'actions.*.status' => ['required_if:actions.*.type,change_stage', Rule::in(LeadStatus::values())],
+
+            /*
+             * A lost lead carries why it was lost, whoever closed it.
+             *
+             * The executor refuses to close one without a reason, and
+             * `validate()` returns only the keys it has rules for — so without
+             * this line the reason was stripped on the way in and every rule
+             * that closed a lead as lost failed on every run, in a trace nobody
+             * reads. The rule has to be refused at the point it is written.
+             */
+            'actions.*.lost_reason_id' => ['required_if:actions.*.status,lost', 'uuid'],
             'actions.*.by' => ['required_if:actions.*.type,adjust_score', 'integer', 'not_in:0'],
             'actions.*.tag' => ['required_if:actions.*.type,add_tag', 'string', 'max:60'],
             'actions.*.body' => ['required_if:actions.*.type,add_note', 'string', 'max:2000'],
             'actions.*.audience' => ['required_if:actions.*.type,notify', Rule::in(['owner', 'managers'])],
             'actions.*.in_hours' => ['required_if:actions.*.type,schedule_follow_up', 'integer', 'min:1', 'max:8760'],
+
+            /*
+             * The parameters that used to fall off the rule on the way in.
+             *
+             * `validate()` returns only the keys it was given rules for, so
+             * every parameter missing from this list was dropped between the
+             * editor and the database — silently, after a success toast. The
+             * alert text a manager typed was gone, and the rule sent the
+             * generic fallback to the same people forever.
+             *
+             * Worst where it was least visible: every built-in template carries
+             * a message, a note or a strategy, and they survive only because
+             * templates are installed server-side. Opening one in the editor to
+             * change its delay and saving deleted the rest of it.
+             *
+             * So the test for this is a round trip, not a rule-by-rule
+             * assertion: anything the executor reads has to come back out of
+             * the API unchanged.
+             */
+            'actions.*.strategy' => ['required_if:actions.*.type,assign', Rule::in(['round_robin', 'specific'])],
+            'actions.*.user_id' => ['required_if:actions.*.strategy,specific', 'uuid'],
+            'actions.*.message' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'actions.*.note' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'actions.*.in_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
         ]);
     }
 

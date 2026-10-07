@@ -7,6 +7,7 @@ use App\Enums\LeadStatus;
 use App\Enums\Role;
 use App\Models\FollowUp;
 use App\Models\Lead;
+use App\Models\LostReason;
 use App\Models\User;
 use App\Notifications\AutomationNotification;
 use App\Services\Leads\ActivityLogger;
@@ -98,6 +99,29 @@ class ActionExecutor
 
         if ($lead->status === $to) {
             return ['ok' => true, 'description' => "العميل في مرحلة {$to->value} أصلًا."];
+        }
+
+        /*
+         * A rule may not close a lead as lost without saying why.
+         *
+         * The model backfills the timestamps a closed lead must carry, because
+         * `now()` is an approximation it can defend. A lost reason is not: it is
+         * the thing the lost-reasons report is made of, and a value invented
+         * here would be indistinguishable from one a rep chose. So the rule
+         * fails loudly instead, and the trace says what was missing.
+         */
+        if ($to === LeadStatus::Lost && blank($action['lost_reason_id'] ?? null)) {
+            return ['ok' => false, 'description' => 'لا يمكن إغلاق العميل كمفقود دون تحديد السبب.'];
+        }
+
+        if ($to === LeadStatus::Lost) {
+            $reason = LostReason::where('uuid', $action['lost_reason_id'])->first();
+
+            if (! $reason) {
+                return ['ok' => false, 'description' => 'سبب الفقد المحدد في القاعدة غير موجود.'];
+            }
+
+            $lead->lost_reason_id = $reason->id;
         }
 
         $from = $lead->status;
@@ -248,9 +272,16 @@ class ActionExecutor
      */
     private function stopFollowUps(Lead $lead): array
     {
-        $cancelled = FollowUp::where('lead_id', $lead->id)
+        // One at a time rather than a mass update: a query-builder update fires
+        // no model events, and the lead's `next_follow_up_at` is derived from
+        // those — so the lead would still have pointed at a cancelled reminder.
+        $pending = FollowUp::where('lead_id', $lead->id)
             ->where('status', FollowUp::PENDING)
-            ->update(['status' => FollowUp::CANCELLED]);
+            ->get();
+
+        $pending->each(fn (FollowUp $followUp) => $followUp->update(['status' => FollowUp::CANCELLED]));
+
+        $cancelled = $pending->count();
 
         return $cancelled === 0
             ? ['ok' => true, 'description' => 'لا توجد متابعات مفتوحة لإيقافها.']

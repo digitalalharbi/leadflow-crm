@@ -45,6 +45,45 @@ class Lead extends Model
                 $lead->first_contact_at = now();
             }
 
+            /*
+             * The funnel chart counts `qualified_at` and the velocity chart
+             * measures two of its three steps from it. Only the qualification
+             * screen ever set it — so a lead qualified from the work queue, by
+             * a rule, or by a manager changing the stage was missing from both,
+             * and for a workspace that works its leads through "اعمل الآن" the
+             * middle of the funnel was permanently near zero.
+             */
+            if ($lead->qualified_at === null && $lead->status?->impliesQualificationHappened()) {
+                $lead->qualified_at = now();
+            }
+
+            /*
+             * The dashboard counts a reply as `first_response_at is not null`
+             * and the sales report measures time-to-first-reply from it, so a
+             * lead moved to "replied" by anything other than an inbound message
+             * was a reply nothing could see.
+             *
+             * Never before the contact it answers: a reply stamped earlier than
+             * the first contact makes the response time negative, and the
+             * report drops those rows as a clock that ran backwards.
+             */
+            if ($lead->first_response_at === null && $lead->status?->impliesLeadResponded()) {
+                $lead->first_response_at = max(now(), $lead->first_contact_at ?? now());
+            }
+
+            /*
+             * An owner and the moment they got it travel together. The
+             * assignment service sets both; everything that writes
+             * `assigned_to` directly — an import, a rule, a correction — set
+             * only one, leaving a lead that is owned since never, or one that
+             * is unowned and still carries the hour it was handed over.
+             */
+            if ($lead->assigned_to === null) {
+                $lead->assigned_at = null;
+            } elseif ($lead->assigned_at === null) {
+                $lead->assigned_at = now();
+            }
+
             self::reconcileClosedState($lead);
         });
     }

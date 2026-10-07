@@ -602,6 +602,17 @@ export default {
   },
 
   campaignQuality: {
+      costPerLead: 'Cost per lead',
+      costPerQualified: 'Cost per qualified',
+      spend: 'Spend',
+      addSpend: 'Enter spend',
+      spendTitle: 'Campaign spend',
+      spendHint: 'Enter what each campaign spent per day — cost per lead and per qualified lead come from it',
+      spendDate: 'Date',
+      spendAmount: 'Amount',
+      spendSaved: 'Spend saved.',
+      spendEmpty: 'No spend entered yet — the columns show a dash until it is.',
+      spendRemove: 'Remove',
     needMoreCampaigns: 'At least two campaigns are needed to compare.',
     matrixTitle: 'Volume against quality',
     matrixHint: 'One circle per campaign, sized by sales. Top right: high volume, high quality.',

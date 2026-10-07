@@ -878,6 +878,17 @@ export default {
   },
 
   campaignQuality: {
+      costPerLead: 'تكلفة العميل',
+      costPerQualified: 'تكلفة المؤهَّل',
+      spend: 'الإنفاق',
+      addSpend: 'إدخال الإنفاق',
+      spendTitle: 'إنفاق الحملات',
+      spendHint: 'أدخل ما صرفته كل حملة في اليوم — تُحتسب تكلفة العميل والمؤهَّل منه',
+      spendDate: 'التاريخ',
+      spendAmount: 'المبلغ',
+      spendSaved: 'تم حفظ الإنفاق.',
+      spendEmpty: 'لم يُدخل أي إنفاق بعد — الأعمدة تظهر شرطة حتى تُدخله.',
+      spendRemove: 'حذف',
     needMoreCampaigns: 'تحتاج حملتين على الأقل للمقارنة.',
     matrixTitle: 'الحجم مقابل الجودة',
     matrixHint: 'كل دائرة حملة — حجمها عدد المبيعات. أعلى يمين: حجم كبير وجودة عالية.',

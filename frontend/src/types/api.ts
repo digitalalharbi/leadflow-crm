@@ -222,6 +222,25 @@ export interface CampaignQualityRow {
   qualification_rate: number
   appointment_rate: number
   win_rate: number
+  /*
+   * Null, not zero, when nobody has entered what this campaign cost. A
+   * campaign that has not been costed is not free, and 0.00 beside a real
+   * 41.20 invites exactly the wrong conclusion about which one to scale.
+   */
+  spend: number | null
+  cost_per_lead: number | null
+  /** Null when the campaign qualified nobody: the cost of nothing is not a rate. */
+  cost_per_qualified: number | null
+}
+
+export interface CampaignSpend {
+  id: number
+  platform: string
+  campaign_name: string
+  spend_date: string
+  amount: number
+  currency: string
+  source: string
 }
 
 export interface SalesPerformance {

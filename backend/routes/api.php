@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
+use App\Http\Controllers\Api\V1\CampaignSpendController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
@@ -174,6 +175,9 @@ Route::prefix('v1')->group(function () {
             // Reports
             Route::get('/reports', [ReportController::class, 'index']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
+            Route::get('/campaign-spend', [CampaignSpendController::class, 'index']);
+            Route::post('/campaign-spend', [CampaignSpendController::class, 'store']);
+            Route::delete('/campaign-spend/{id}', [CampaignSpendController::class, 'destroy']);
             Route::get('/reports/export', [ReportController::class, 'export']);
 
             /*

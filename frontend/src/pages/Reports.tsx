@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next'
 import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
 import { fetchDrivers, type Drivers } from '@/features/drivers'
+import { SpendModal } from '@/components/reports/SpendModal'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDate, formatNumber } from '@/lib/format'
+import { formatCurrency, formatDate, formatNumber } from '@/lib/format'
 import {
   Button, Card, EmptyState, ErrorState, Input, PageHeader, Select, Skeleton,
   SkeletonTable, Table, TableWrap, Td, Th, Tr,
@@ -17,7 +18,7 @@ import {
   LostReasonsChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart,
   TEMPERATURE_COLOR, formatDuration,
 } from '@/components/charts'
-import type { DashboardData, Project, Ref, ReportRow } from '@/types/api'
+import type { CampaignQualityRow, DashboardData, Project, Ref, ReportRow } from '@/types/api'
 import { cn } from '@/lib/cn'
 
 const TABS = ['overview', 'campaigns', 'platforms', 'team', 'lost', 'drivers'] as const
@@ -241,7 +242,11 @@ export function ReportsPage() {
             <CampaignMatrix rows={campaigns.data?.rows ?? []} />
           </ChartCard>
 
-          <CampaignTable rows={campaigns.data?.rows ?? []} loading={campaigns.isLoading} />
+          <CampaignTable
+            rows={campaigns.data?.rows ?? []}
+            loading={campaigns.isLoading}
+            currency={campaigns.data?.currency ?? 'SAR'}
+          />
         </div>
       )}
 
@@ -588,15 +593,34 @@ function TeamTab({
   )
 }
 
-function CampaignTable({ rows, loading }: { rows: Array<Record<string, never>> | unknown[]; loading: boolean }) {
+function CampaignTable({
+  rows,
+  loading,
+  currency,
+}: {
+  rows: CampaignQualityRow[]
+  loading: boolean
+  /** The workspace's own, so a cost is never shown in a guessed currency. */
+  currency: string
+}) {
   const { t, i18n } = useTranslation()
-  const list = rows as Array<Record<string, string | number>>
+  const [spendOpen, setSpendOpen] = useState(false)
+  const list = rows
 
   return (
     <Card className="overflow-hidden" data-testid="campaign-table">
-      <div className="border-b border-[var(--color-line)] px-5 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-3">
         <h2 className="t-card-title">{t('reports.byCampaign')}</h2>
+        {/*
+          The cost columns are a dash until somebody enters what the ads cost,
+          so the way to enter it sits on the table that shows the dashes.
+        */}
+        <Button variant="outline" size="sm" onClick={() => setSpendOpen(true)} data-testid="open-spend">
+          {t('campaignQuality.addSpend')}
+        </Button>
       </div>
+
+      <SpendModal open={spendOpen} onClose={() => setSpendOpen(false)} campaigns={list} />
 
       {loading ? (
         <SkeletonTable rows={6} cols={6} />
@@ -615,6 +639,13 @@ function CampaignTable({ rows, loading }: { rows: Array<Record<string, never>> |
                 <Th className="hidden sm:table-cell">{t('campaignQuality.appointments')}</Th>
                 <Th>{t('campaignQuality.won')}</Th>
                 <Th>{t('campaignQuality.qualificationRate')}</Th>
+                {/*
+                  The two columns that turn volume into a decision. Hidden on a
+                  phone because the table is already at its limit there, and a
+                  cost per lead nobody can read is worse than one they scroll to.
+                */}
+                <Th className="hidden lg:table-cell">{t('campaignQuality.costPerLead')}</Th>
+                <Th className="hidden lg:table-cell">{t('campaignQuality.costPerQualified')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -638,6 +669,21 @@ function CampaignTable({ rows, loading }: { rows: Array<Record<string, never>> |
                     dir="ltr"
                   >
                     {row.qualification_rate}%
+                  </Td>
+                  {/*
+                    A dash, never a zero. A campaign nobody has costed is not
+                    free, and a campaign that qualified nobody has no cost per
+                    qualified lead — the whole budget is not the price of one.
+                  */}
+                  <Td className="tabular hidden lg:table-cell" dir="ltr">
+                    {row.cost_per_lead === null
+                      ? '—'
+                      : formatCurrency(row.cost_per_lead, currency, i18n.language)}
+                  </Td>
+                  <Td className="tabular hidden lg:table-cell font-medium" dir="ltr">
+                    {row.cost_per_qualified === null
+                      ? '—'
+                      : formatCurrency(row.cost_per_qualified, currency, i18n.language)}
                   </Td>
                 </Tr>
               ))}

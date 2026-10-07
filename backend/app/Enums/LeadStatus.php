@@ -85,6 +85,32 @@ enum LeadStatus: string
         ], true);
     }
 
+    /**
+     * The lead got as far as being qualified, whatever stage it sits at now.
+     *
+     * Separate from `QualificationStatus`, which that enum's own docblock keeps
+     * deliberately apart: it describes how much is known about a person, not
+     * where they sit in the funnel. This is about the funnel.
+     */
+    public function impliesQualificationHappened(): bool
+    {
+        return in_array($this, [
+            self::Qualified, self::Appointment, self::Negotiation, self::Won,
+        ], true);
+    }
+
+    /**
+     * The lead answered us.
+     *
+     * Only `Replied` — a lead sold over an outbound call reached Won without
+     * ever replying, and stamping one for it would invent a reply the reports
+     * would then count.
+     */
+    public function impliesLeadResponded(): bool
+    {
+        return $this === self::Replied;
+    }
+
     /** @return array<int, string> the statuses of a lead still being worked */
     public static function openValues(): array
     {

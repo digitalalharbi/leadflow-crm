@@ -51,6 +51,20 @@ describe('LeadTimeline attribution', () => {
     expect(screen.getByText(/الأتمتة/)).toBeInTheDocument()
   })
 
+  /**
+   * The response-time sweeper acts without a person too, and it is worth
+   * naming separately: "the system did this" and "nobody contacted this lead
+   * in time" are different answers to the same question.
+   */
+  it('names the response-time sweeper as itself', () => {
+    renderWithProviders(
+      <LeadTimeline activities={[activity({ meta: { by: 'sla', sla: 'escalate' } })]} />,
+    )
+
+    expect(screen.getByText(/مهلة الاستجابة/)).toBeInTheDocument()
+    expect(screen.queryByText(/الأتمتة/)).not.toBeInTheDocument()
+  })
+
   it('credits a person by name', () => {
     renderWithProviders(
       <LeadTimeline activities={[activity({ user: { id: 'u-1', name: 'سارة' } })]} />,

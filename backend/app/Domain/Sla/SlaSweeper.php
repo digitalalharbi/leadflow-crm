@@ -4,12 +4,15 @@ namespace App\Domain\Sla;
 
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
+use App\Enums\Role;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Notifications\SlaBreachNotification;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Support\TenantContext;
+use Illuminate\Support\Collection;
 
 /**
  * Finds leads nobody has contacted and walks them up the escalation ladder.
@@ -75,7 +78,17 @@ class SlaSweeper
         $lead->forceFill(['sla_reminded_at' => now()])->saveQuietly();
         $this->activities->log($lead, ActivityType::NoteAdded, null,
             "تذكير آلي: لم يتم التواصل بعد {$age} دقيقة",
-            ['sla' => 'remind', 'age_minutes' => $age]);
+            ['by' => 'sla', 'sla' => 'remind', 'age_minutes' => $age]);
+
+        /*
+         * The rung that reaches a person.
+         *
+         * This wrote "تذكير آلي" into the lead's timeline and sent nothing, so
+         * the reminder arrived only for somebody already looking at the lead
+         * they had not contacted. A reminder nobody receives is not a reminder,
+         * and the whole ladder exists because nobody is looking.
+         */
+        $this->tell($lead->assignee ? [$lead->assignee] : [], $lead, SlaBreachNotification::REMIND, $age);
 
         return 1;
     }
@@ -91,7 +104,11 @@ class SlaSweeper
         $lead->forceFill(['sla_escalated_at' => now()])->saveQuietly();
         $this->activities->log($lead, ActivityType::NoteAdded, null,
             "تصعيد آلي للإدارة: {$age} دقيقة بلا تواصل",
-            ['sla' => 'escalate', 'age_minutes' => $age]);
+            ['by' => 'sla', 'sla' => 'escalate', 'age_minutes' => $age]);
+
+        // It said "للإدارة" and told the management nothing. An escalation that
+        // only the escalated-about can see is not an escalation.
+        $this->tell($this->management($lead), $lead, SlaBreachNotification::ESCALATE, $age);
 
         return 1;
     }
@@ -121,9 +138,36 @@ class SlaSweeper
 
         $this->activities->log($lead, ActivityType::Assigned, null,
             "إعادة إسناد آلية بعد {$age} دقيقة بلا تواصل",
-            ['sla' => 'reassign', 'from' => $previous, 'to' => $next->id, 'age_minutes' => $age]);
+            ['by' => 'sla', 'sla' => 'reassign', 'from' => $previous, 'to' => $next->id, 'age_minutes' => $age]);
 
         return 1;
+    }
+
+    /**
+     * @param  iterable<User>  $people
+     */
+    private function tell(iterable $people, Lead $lead, string $stage, int $age): void
+    {
+        foreach ($people as $person) {
+            $person->notify(new SlaBreachNotification($lead, $stage, $age));
+        }
+    }
+
+    /**
+     * Who hears an escalation.
+     *
+     * The owner is left out on purpose: they have already had the reminder,
+     * and the point of this rung is that somebody else now knows.
+     *
+     * @return Collection<int, User>
+     */
+    private function management(Lead $lead): Collection
+    {
+        return User::where('tenant_id', $lead->tenant_id)
+            ->whereIn('role', [Role::Admin->value, Role::Manager->value])
+            ->where('is_active', true)
+            ->when($lead->assigned_to, fn ($q) => $q->where('id', '!=', $lead->assigned_to))
+            ->get();
     }
 
     /** Someone other than the current owner, by round robin. */

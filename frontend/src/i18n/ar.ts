@@ -318,6 +318,7 @@ export default {
       title: 'لا توجد قواعد بعد',
       description: 'ابدأ من قالب جاهز أعلاه، أو اكتب قاعدتك الأولى.',
     },
+    bySla: 'مهلة الاستجابة',
     byAutomation: 'الأتمتة',
     byRule: 'قاعدة: {{name}}',
     trigger: {

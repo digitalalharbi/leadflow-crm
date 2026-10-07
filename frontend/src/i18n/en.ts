@@ -224,6 +224,7 @@ export default {
       title: 'No rules yet',
       description: 'Start from a template above, or write your first rule.',
     },
+    bySla: 'Response time',
     byAutomation: 'Automation',
     byRule: 'Rule: {{name}}',
     trigger: {

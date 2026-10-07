@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { BarChart3, Table2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Card } from '@/components/ui'
+import { Card, ErrorState } from '@/components/ui'
 import { cn } from '@/lib/cn'
 
 /** The numbers behind the picture. */
@@ -27,6 +27,7 @@ export function ChartCard({
   table,
   height = 260,
   loading = false,
+  error,
   empty = false,
   emptyMessage,
   emptyAction,
@@ -51,6 +52,16 @@ export function ChartCard({
   table?: ChartTable
   height?: number
   loading?: boolean
+  /**
+   * Why the card has nothing to draw, when the reason is a failure.
+   *
+   * Without it every card collapsed a failed request into its empty state, so
+   * a report a rep is not allowed to see read "لا توجد بيانات كافية" — the
+   * product stating a reason that was not true. "No data yet" and "this did
+   * not load" lead somewhere different: one is a fact about the workspace, the
+   * other is something to retry or to ask for access to.
+   */
+  error?: string
   empty?: boolean
   emptyMessage?: string
   emptyAction?: ReactNode
@@ -75,7 +86,7 @@ export function ChartCard({
         */}
         <div className="flex shrink-0 items-center gap-1.5" data-print="hide">
           {action}
-          {table && !loading && !empty && (
+          {table && !loading && !empty && !error && (
             <button
               type="button"
               onClick={() => setShowTable((previous) => !previous)}
@@ -100,6 +111,12 @@ export function ChartCard({
       <div className="min-w-0 flex-1 px-2 pb-2" style={{ minHeight: height }}>
         {loading ? (
           <ChartSkeleton height={height} />
+        ) : error ? (
+          // Before `empty`: a card that failed has no rows either, and
+          // answering with "no data yet" would be the wrong reason.
+          <div className="grid place-items-center px-3" style={{ minHeight: height }}>
+            <ErrorState message={error} />
+          </div>
         ) : empty ? (
           <ChartEmpty message={emptyMessage} action={emptyAction} height={height} />
         ) : showTable && table ? (

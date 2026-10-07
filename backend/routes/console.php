@@ -36,12 +36,17 @@ Schedule::command('leadflow:sweep-conversions')->everyFifteenMinutes()->withoutO
 Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping();
 
 /*
- * The morning summary, at 05:00 UTC — 08:00 in Riyadh, which is the start of
- * the working day for every workspace this product has.
+ * The morning summary, hourly — and sent to each workspace at eight o'clock its
+ * own time.
  *
- * Tenants carry no timezone of their own yet; when they do, this becomes a
- * per-tenant send rather than one hour for everybody.
+ * It was `dailyAt('05:00')` with a comment claiming tenants had no timezone.
+ * They do: `tenant_settings.timezone`, defaulting to Asia/Riyadh. One fixed UTC
+ * hour is right only for workspaces that happen to share Riyadh's offset, and
+ * the whole point of a morning digest is that it arrives in the morning.
+ *
+ * So the command runs every hour and each tenant is sent to only on the hour
+ * that is 08:00 where it is. Exactly one hour a day matches.
  */
-Schedule::command('leadflow:daily-digest')->dailyAt('05:00')->withoutOverlapping();
+Schedule::command('leadflow:daily-digest')->hourly()->withoutOverlapping();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();

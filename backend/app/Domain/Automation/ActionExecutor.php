@@ -56,13 +56,30 @@ class ActionExecutor
                 'schedule_follow_up' => $this->scheduleFollowUp($lead, $action),
                 'add_note' => $this->addNote($lead, $action),
                 'notify' => $this->notify($lead, $action),
-                'stop_follow_ups' => $this->stopFollowUps($lead),
+                'stop_follow_ups' => $this->stopFollowUps($lead, $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
         } catch (\Throwable $e) {
             // The message, never the trace: a rule's failure is shown in the UI.
             return ['ok' => false, 'description' => "فشل الإجراء '{$type}': ".$e->getMessage()];
         }
+    }
+
+    /**
+     * What every activity a rule writes carries.
+     *
+     * `by` was already here and the interface never showed it, so a stage moved
+     * by a rule and a stage moved by a colleague read identically — and the
+     * first question anybody asks about an automated change is which rule did
+     * it. The engine puts the rule's name on the action before executing it, so
+     * the name reaches here without the executor having to know about rules.
+     */
+    private function signature(array $action): array
+    {
+        return array_filter([
+            'by' => 'automation',
+            'rule_name' => $action['rule_name'] ?? null,
+        ], fn ($value) => $value !== null);
     }
 
     private function assign(Lead $lead, array $action): array
@@ -128,7 +145,7 @@ class ActionExecutor
         $lead->forceFill(['status' => $to])->save();
         $this->activities->log($lead, ActivityType::StatusChanged, null,
             "من {$from->value} إلى {$to->value}",
-            ['from' => $from->value, 'to' => $to->value, 'by' => 'automation']);
+            ['from' => $from->value, 'to' => $to->value] + $this->signature($action));
 
         return ['ok' => true, 'description' => "نُقل من {$from->value} إلى {$to->value}."];
     }
@@ -160,7 +177,7 @@ class ActionExecutor
         }
 
         $this->activities->log($lead, ActivityType::NoteAdded, null,
-            "وسم آلي: {$tag}", ['tag' => $tag, 'by' => 'automation']);
+            "وسم آلي: {$tag}", ['tag' => $tag] + $this->signature($action));
 
         return ['ok' => true, 'description' => "أُضيف الوسم '{$tag}'."];
     }
@@ -205,6 +222,16 @@ class ActionExecutor
 
         $lead->forceFill(['next_follow_up_at' => $due])->save();
 
+        /*
+         * `follow_up_created` was logged only by the follow-ups screen, so the
+         * two ways a follow-up is actually booked — a rule, or the rep's own
+         * outcome in the work queue — left no trace at all. The lead's story
+         * jumped from "no answer" to a reminder that appeared from nowhere.
+         */
+        $this->activities->log($lead, ActivityType::FollowUpCreated, null,
+            $action['note'] ?? null,
+            $this->signature($action) + ['due_at' => $due->toIso8601String()]);
+
         return ['ok' => true, 'description' => 'حُدِّدت متابعة في '.$due->toDayDateTimeString().'.'];
     }
 
@@ -216,7 +243,7 @@ class ActionExecutor
             return ['ok' => false, 'description' => 'الملاحظة فارغة — لم تُضَف.'];
         }
 
-        $this->activities->log($lead, ActivityType::NoteAdded, null, $body, ['by' => 'automation']);
+        $this->activities->log($lead, ActivityType::NoteAdded, null, $body, $this->signature($action));
 
         return ['ok' => true, 'description' => 'أُضيفت ملاحظة.'];
     }
@@ -270,7 +297,7 @@ class ActionExecutor
      * no. Nothing else in the product cancels a step automatically, so a rule
      * is the only way a workspace can express "stop".
      */
-    private function stopFollowUps(Lead $lead): array
+    private function stopFollowUps(Lead $lead, array $action): array
     {
         // One at a time rather than a mass update: a query-builder update fires
         // no model events, and the lead's `next_follow_up_at` is derived from
@@ -282,6 +309,13 @@ class ActionExecutor
         $pending->each(fn (FollowUp $followUp) => $followUp->update(['status' => FollowUp::CANCELLED]));
 
         $cancelled = $pending->count();
+
+        // A lead that stops being chased stops for a reason, and the reason is
+        // a rule the reader cannot see from anywhere else on this screen.
+        if ($cancelled > 0) {
+            $this->activities->log($lead, ActivityType::NoteAdded, null,
+                "أُوقفت {$cancelled} متابعة مفتوحة.", $this->signature($action));
+        }
 
         return $cancelled === 0
             ? ['ok' => true, 'description' => 'لا توجد متابعات مفتوحة لإيقافها.']

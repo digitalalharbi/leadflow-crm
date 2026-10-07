@@ -248,9 +248,16 @@ class ActionExecutor
      */
     private function stopFollowUps(Lead $lead): array
     {
-        $cancelled = FollowUp::where('lead_id', $lead->id)
+        // One at a time rather than a mass update: a query-builder update fires
+        // no model events, and the lead's `next_follow_up_at` is derived from
+        // those — so the lead would still have pointed at a cancelled reminder.
+        $pending = FollowUp::where('lead_id', $lead->id)
             ->where('status', FollowUp::PENDING)
-            ->update(['status' => FollowUp::CANCELLED]);
+            ->get();
+
+        $pending->each(fn (FollowUp $followUp) => $followUp->update(['status' => FollowUp::CANCELLED]));
+
+        $cancelled = $pending->count();
 
         return $cancelled === 0
             ? ['ok' => true, 'description' => 'لا توجد متابعات مفتوحة لإيقافها.']

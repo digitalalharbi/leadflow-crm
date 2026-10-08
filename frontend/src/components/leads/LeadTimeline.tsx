@@ -64,6 +64,13 @@ function actorOf(activity: LeadActivity, t: TFunction): string {
     return `${activity.user.name} · `
   }
 
+  // The response-time sweeper is the other thing that acts without a person,
+  // and it is worth naming separately: "the system did this" and "nobody
+  // contacted this lead in time" are different answers to the same question.
+  if (activity.meta?.by === 'sla') {
+    return `${t('automation.bySla')} · `
+  }
+
   if (activity.meta?.by !== 'automation') {
     return ''
   }

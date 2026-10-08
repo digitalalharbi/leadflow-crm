@@ -7,6 +7,7 @@ use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -49,6 +50,12 @@ class User extends Authenticatable
      * Being away until Sunday is a different thing, and assignment had no way
      * to say it.
      */
+    /** The projects this rep works, if the workspace has said. */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class);
+    }
+
     public function isAvailable(): bool
     {
         return $this->is_active && ($this->away_until === null || $this->away_until->isPast());

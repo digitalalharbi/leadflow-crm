@@ -88,7 +88,7 @@ class ActionExecutor
 
         $user = match ($strategy) {
             'specific' => User::where('uuid', $action['user_id'] ?? '')->first(),
-            default => $this->assignment->byStrategy($lead->tenant),
+            default => $this->assignment->byStrategy($lead->tenant, $lead),
         };
 
         if (! $user) {

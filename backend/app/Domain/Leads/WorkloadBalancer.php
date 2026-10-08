@@ -31,9 +31,9 @@ class WorkloadBalancer
      * Ties break on whoever has gone longest without a lead, so two idle reps
      * alternate instead of one taking everything.
      */
-    public function pick(Tenant $tenant): ?User
+    public function pick(Tenant $tenant, ?Collection $only = null): ?User
     {
-        $candidates = $this->candidates($tenant);
+        $candidates = $only ?? $this->candidates($tenant);
 
         if ($candidates->isEmpty()) {
             return null;

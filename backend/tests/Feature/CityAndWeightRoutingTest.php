@@ -257,9 +257,11 @@ class CityAndWeightRoutingTest extends TestCase
     {
         $rep = $this->rep();
 
+        // Refused by the policy rather than by a field rule, so the status is
+        // 403: who may share out leads is an authority, not a validation.
         $this->actingAs($rep)
             ->patchJson("/api/v1/users/{$rep->uuid}", ['assignment_weight' => 9])
-            ->assertStatus(422);
+            ->assertForbidden();
 
         $this->assertSame(1, $rep->fresh()->assignmentWeight());
     }
@@ -270,7 +272,7 @@ class CityAndWeightRoutingTest extends TestCase
 
         $this->actingAs($rep)
             ->patchJson("/api/v1/users/{$rep->uuid}", ['covers_cities' => ['الرياض']])
-            ->assertStatus(422);
+            ->assertForbidden();
 
         $this->assertSame([], $rep->fresh()->covers_cities ?? []);
     }

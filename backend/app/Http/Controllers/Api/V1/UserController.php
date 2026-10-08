@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,16 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
-        return ApiResponse::success(['users' => UserResource::collection($users)]);
+        return ApiResponse::success([
+            'users' => UserResource::collection($users),
+            /*
+             * The languages worth claiming, served rather than hardcoded in the
+             * interface: a rep can only be matched on a language the system can
+             * read off a number, so the screen offers exactly that list and
+             * grows with it instead of drifting behind it.
+             */
+            'languages' => PhoneLanguage::known(),
+        ]);
     }
 
     /** Lightweight list for assignment dropdowns — available to every role. */
@@ -88,7 +98,20 @@ class UserController extends Controller
     public function update(Request $request, string $uuid)
     {
         $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->firstOrFail();
-        $this->authorize('update', $user);
+
+        /*
+         * Two authorities, not one. Changing somebody's account takes an admin;
+         * saying how their team's leads are shared out takes a manager, which
+         * is a different and smaller thing — so a request that only touches the
+         * second is judged by the second.
+         */
+        $routing = ['covers_cities', 'assignment_weight', 'speaks'];
+        $touched = array_keys($request->all());
+
+        $this->authorize(
+            $touched !== [] && array_diff($touched, $routing) === [] ? 'routeWork' : 'update',
+            $user,
+        );
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -127,6 +150,21 @@ class UserController extends Controller
             'covers_cities' => ['sometimes', 'nullable', 'array', 'max:50'],
             'covers_cities.*' => ['string', 'max:120'],
             'assignment_weight' => ['sometimes', 'integer', 'min:1', 'max:10'],
+
+            /*
+             * Which languages this rep can sell in. Empty means every language,
+             * same as coverage — and for the same reason, it is the workspace's
+             * call rather than the rep's own: a rep who could edit their own
+             * list could quietly opt out of the half of the pipeline they do
+             * not want.
+             *
+             * Checked for shape rather than against a list of known codes. The
+             * language the system infers from a number comes from a table that
+             * will grow, and a validator built from today's copy of it would
+             * start rejecting a claim that is true about a person.
+             */
+            'speaks' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'speaks.*' => ['string', 'regex:/^[A-Za-z]{2,3}([-_][A-Za-z]{2,4})?$/'],
         ]);
 
         // Only an admin changes roles or activation, and never their own.
@@ -135,12 +173,14 @@ class UserController extends Controller
         }
 
         /*
-         * Coverage and weight decide who gets which customer, so they are the
-         * workspace's call rather than the rep's own — a rep who could widen
-         * their own weight could quietly take the whole pipeline.
+         * Coverage, weight and spoken languages decide who gets which
+         * customer, so they are the workspace's call rather than the rep's own
+         * — a rep who could widen their own weight could quietly take the whole
+         * pipeline, and one who could narrow their own languages could quietly
+         * leave it.
          */
-        if ((array_key_exists('covers_cities', $data) || array_key_exists('assignment_weight', $data))
-            && ! ($request->user()->isAdmin() || $request->user()->isManager())) {
+        if (array_intersect($routing, array_keys($data)) !== []
+            && $request->user()->cannot('routeWork', $user)) {
             throw ValidationException::withMessages([
                 'assignment_weight' => ['Only an admin or a manager can change how leads are shared out.'],
             ]);

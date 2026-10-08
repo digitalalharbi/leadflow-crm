@@ -20,10 +20,6 @@ class LeadAssignmentService
     ) {}
 
     /**
-     * Pick the next sales user for a tenant. Manual mode returns null — the lead
-     * lands unassigned in the queue and a manager distributes it.
-     */
-    /**
      * The tenant's default policy for a lead arriving with nobody named on it.
      * Honours `assignment_mode`, so a workspace that wants to triage by hand
      * keeps doing that.
@@ -54,10 +50,12 @@ class LeadAssignmentService
          * before — whoever is least busy — which is the only honest default for
          * something that decides who talks to a customer.
          *
-         * The order is deliberate. Knowing the project beats covering the city:
-         * a rep on the النرجس team should get a النرجس lead even if somebody in
-         * Riyadh is nominally closer to it, because what the customer asks
-         * about is the project.
+         * The order is deliberate. Knowing the project beats speaking the
+         * language beats covering the city: a rep on the النرجس team should get
+         * a النرجس lead even if somebody in Riyadh is nominally closer to it,
+         * because what the customer asks about is the project — and sharing a
+         * language beats sharing a city, because a rep who cannot be understood
+         * is no nearer for being in the same place.
          */
         $candidates = $this->assignable($tenant);
 
@@ -66,6 +64,7 @@ class LeadAssignmentService
         }
 
         $candidates = $this->whoKnowsTheProject($candidates, $lead) ?? $candidates;
+        $candidates = $this->whoSpeaksTheLanguage($candidates, $lead) ?? $candidates;
         $candidates = $this->whoSellsThere($candidates, $lead) ?? $candidates;
 
         return match ($tenant->settings?->assignment_strategy) {
@@ -123,6 +122,43 @@ class LeadAssignmentService
         $team = $candidates->whereIn('id', $onProject)->values();
 
         return $team->isEmpty() ? null : $team;
+    }
+
+    /**
+     * The reps who can talk to this lead.
+     *
+     * The language comes from the lead's own number — a +92 number is dialled
+     * from Pakistan, and whoever on the team speaks Urdu will have a better
+     * first call than whoever is least busy. Nothing on a lead form says this;
+     * the country code is the only field that comes from somewhere real.
+     *
+     * Null when the number says nothing, when nobody has said what they speak,
+     * or when nobody left speaks it — a lead whose language nobody on the team
+     * has claimed still needs an owner, and a rep reaching for an interpreter
+     * is better than a lead nobody calls.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoSpeaksTheLanguage(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        $language = $lead?->language();
+
+        if ($language === null) {
+            return null;
+        }
+
+        $speakers = $candidates->filter(fn (User $user) => $user->speaksLanguage($language))->values();
+
+        /*
+         * Everybody "speaks" every language until somebody claims otherwise, so
+         * a set that did not shrink is a set nobody has an opinion about —
+         * return null and let the next step work on the original rather than a
+         * copy of it.
+         */
+        return $speakers->isEmpty() || $speakers->count() === $candidates->count()
+            ? null
+            : $speakers;
     }
 
     /**

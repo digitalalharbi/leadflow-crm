@@ -8,6 +8,7 @@ use App\Http\Resources\BrandingResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -77,6 +78,8 @@ class AuthController extends Controller
             ]);
         }
 
+        $user->loadMissing('tenant.branding', 'tenant.settings');
+
         // One token per device; logging in again elsewhere does not kill this session.
         $token = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8))->plainTextToken;
 
@@ -89,6 +92,16 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            /*
+             * The language this workspace itself works in, read off its default
+             * country code by the same table that reads a customer's number.
+             *
+             * The interface uses it to stay quiet: a Riyadh team does not need
+             * every lead labelled "Arabic", and the one labelled "Urdu" is the
+             * one worth seeing.
+             */
+            'workspace_language' => app(PhoneLanguage::class)
+                ->forCallingCode($user->tenant?->settings?->default_country_code),
         ]);
     }
 
@@ -100,6 +113,10 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            // The language this workspace itself works in — see login, which
+            // sends the same field; the SPA re-hydrates from here on reload.
+            'workspace_language' => app(PhoneLanguage::class)
+                ->forCallingCode($user->tenant?->settings?->default_country_code),
             // Lets the SPA offer the sales-demo helpers. False in production, so
             // the controls simply do not exist for a real customer.
             'demo_mode' => ! app()->environment('production'),

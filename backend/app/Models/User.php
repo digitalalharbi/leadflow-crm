@@ -27,7 +27,7 @@ class User extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
-        'covers_cities', 'assignment_weight',
+        'covers_cities', 'assignment_weight', 'speaks',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -41,18 +41,12 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'away_until' => 'datetime',
             'covers_cities' => 'array',
+            'speaks' => 'array',
             'assignment_weight' => 'integer',
             'role' => Role::class,
         ];
     }
 
-    /**
-     * Can be given a lead right now.
-     *
-     * `is_active` is an account state — set when somebody leaves the company.
-     * Being away until Sunday is a different thing, and assignment had no way
-     * to say it.
-     */
     /** The projects this rep works, if the workspace has said. */
     public function projects(): BelongsToMany
     {
@@ -97,12 +91,54 @@ class User extends Authenticatable
         return mb_strtolower(trim(preg_replace('/\s+/u', ' ', $city) ?? $city));
     }
 
+    /**
+     * Whether this rep can sell in that language.
+     *
+     * An empty list means every language, which is what every rep starts as —
+     * so this narrows nothing until somebody says what their team speaks. A
+     * lead whose number says nothing is nobody's exception either: with no
+     * language to match, everyone matches.
+     */
+    public function speaksLanguage(?string $language): bool
+    {
+        $spoken = $this->speaks ?? [];
+
+        if ($spoken === [] || blank($language)) {
+            return true;
+        }
+
+        foreach ($spoken as $claim) {
+            if ($this->normaliseLanguage((string) $claim) === $this->normaliseLanguage($language)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * `ar-SA`, `AR` and ` ar ` are the same claim. The region is dropped
+     * deliberately: somebody who speaks Egyptian Arabic can talk to a customer
+     * in Jeddah, and a routing rule that disagreed would be wrong about people.
+     */
+    private function normaliseLanguage(string $language): string
+    {
+        return mb_strtolower(trim(explode('-', str_replace('_', '-', $language))[0]));
+    }
+
     /** How many leads this rep carries for every one an ordinary rep takes. */
     public function assignmentWeight(): int
     {
         return max(1, (int) ($this->assignment_weight ?? 1));
     }
 
+    /**
+     * Can be given a lead right now.
+     *
+     * `is_active` is an account state — set when somebody leaves the company.
+     * Being away until Sunday is a different thing, and assignment had no way
+     * to say it.
+     */
     public function isAvailable(): bool
     {
         return $this->is_active && ($this->away_until === null || $this->away_until->isPast());

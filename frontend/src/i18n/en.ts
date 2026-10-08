@@ -497,7 +497,43 @@ export default {
     branding: 'Set up your branding', team: 'Add your sales team', project: 'Add a project',
     leadSource: 'Connect a lead source', firstLead: 'Receive your first lead', dismiss: 'Dismiss',
   },
+  /*
+   * The languages a number can be read as — see the backend PhoneLanguage.
+   * Named in the reading language rather than their own, because the person
+   * reading them is the manager filling in their team, not the customer.
+   */
+  languages: {
+    ar: 'Arabic',
+    en: 'English',
+    ur: 'Urdu',
+    bn: 'Bengali',
+    tr: 'Turkish',
+    fa: 'Persian',
+    ru: 'Russian',
+    uk: 'Ukrainian',
+    zh: 'Chinese',
+    id: 'Indonesian',
+    th: 'Thai',
+    vi: 'Vietnamese',
+    ja: 'Japanese',
+    ko: 'Korean',
+    ne: 'Nepali',
+    am: 'Amharic',
+    fr: 'French',
+    de: 'German',
+    es: 'Spanish',
+    it: 'Italian',
+    nl: 'Dutch',
+    pt: 'Portuguese',
+    pl: 'Polish',
+    sv: 'Swedish',
+    nb: 'Norwegian',
+    da: 'Danish',
+    fi: 'Finnish',
+  },
+
   leads: {
+    language: 'Language',
     searchPlaceholder: 'Search by name, phone or email…',
     title: 'Leads', subtitle: 'Every lead in one place', addLead: 'Add lead',
     name: 'Name', phone: 'Phone', email: 'Email', city: 'City', project: 'Project',
@@ -750,6 +786,8 @@ export default {
     coversCitiesHint: 'Comma separated. Leave empty to cover every city.',
     weight: 'Share of leads',
     weightHint: 'How many leads they take for every one an ordinary rep takes (1 = equal share)',
+    speaks: 'Languages they sell in',
+    speaksHint: "Leave empty to take every language. A lead's language is read from their number's country code.",
     away: 'Away',
     awayHint: 'No new leads will be assigned to you until you are back',
     awayUntil: 'Back on',

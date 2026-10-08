@@ -7,6 +7,7 @@ import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatNumber, formatLastSeen } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import { fetchSalesTeam } from '@/features/conversations'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
@@ -26,10 +27,19 @@ export function UsersPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'sales', phone: '' })
   const [cities, setCities] = useState('')
   const [weight, setWeight] = useState('1')
+  const [speaks, setSpeaks] = useState<string[]>([])
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
 
   const canManage = can.manageUsers(currentUser)
+
+  /*
+   * A manager may say how their team's leads are shared out without being able
+   * to edit the accounts themselves — the same split the API makes, so the
+   * screen offers a manager exactly the fields their request would be allowed
+   * to carry rather than a form that fails on save.
+   */
+  const canRoute = (row: User) => canManage || can.routeWork(currentUser, row)
 
   /*
    * The outcome columns come from the sales-team report rather than a second
@@ -44,13 +54,38 @@ export function UsersPage() {
 
   const metricsByName = new Map((team?.rows ?? []).map((row) => [row.name, row]))
 
-  const { data: users = [], isLoading, isError, error, refetch } = useQuery({
+  const { data: directory, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['users'],
-    queryFn: () => apiGet<{ users: User[] }>('/users').then((r) => r.users),
+    queryFn: () => apiGet<{ users: User[]; languages: string[] }>('/users'),
+  })
+
+  const users = directory?.users ?? []
+
+  /*
+   * Served rather than listed here: a rep can only be matched on a language the
+   * system can read off a phone number, so the screen offers exactly that list
+   * and grows with it instead of drifting behind it.
+   */
+  const languages = directory?.languages ?? []
+
+  /** A manager editing somebody: the routing fields and nothing else. */
+  const routingOnly = editing !== null && !canManage
+
+  const routingPayload = () => ({
+    covers_cities: cities
+      .split(/[,،\n]/)
+      .map((city) => city.trim())
+      .filter(Boolean),
+    assignment_weight: Number(weight) || 1,
+    speaks,
   })
 
   const mutation = useMutation({
     mutationFn: () => {
+      if (editing && routingOnly) {
+        return apiPatch(`/users/${editing.id}`, routingPayload())
+      }
+
       const payload: Record<string, unknown> = {
         name: form.name,
         email: form.email,
@@ -65,11 +100,7 @@ export function UsersPage() {
        * rep, and the create endpoint does not take them.
        */
       if (editing) {
-        payload.covers_cities = cities
-          .split(/[,،\n]/)
-          .map((city) => city.trim())
-          .filter(Boolean)
-        payload.assignment_weight = Number(weight) || 1
+        Object.assign(payload, routingPayload())
       }
 
       return editing ? apiPatch(`/users/${editing.id}`, payload) : apiPost('/users', payload)
@@ -107,6 +138,7 @@ export function UsersPage() {
     setForm({ name: '', email: '', password: '', role: 'sales', phone: '' })
     setCities('')
     setWeight('1')
+    setSpeaks([])
     setFieldErrors({})
     setOpen(true)
   }
@@ -116,6 +148,7 @@ export function UsersPage() {
     setForm({ name: user.name, email: user.email, password: '', role: user.role, phone: user.phone ?? '' })
     setCities((user.covers_cities ?? []).join('، '))
     setWeight(String(user.assignment_weight ?? 1))
+    setSpeaks(user.speaks ?? [])
     setFieldErrors({})
     setOpen(true)
   }
@@ -168,7 +201,9 @@ export function UsersPage() {
                   <Th className="hidden lg:table-cell">{t('campaignQuality.won')}</Th>
                   <Th className="hidden xl:table-cell">{t('users.lastLogin')}</Th>
                   <Th>{t('common.status')}</Th>
-                  {canManage && <Th className="text-end">{t('common.actions')}</Th>}
+                  {(canManage || currentUser?.role === 'manager') && (
+                    <Th className="text-end">{t('common.actions')}</Th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -208,13 +243,15 @@ export function UsersPage() {
                         {user.is_active ? t('common.active') : t('common.inactive')}
                       </Badge>
                     </Td>
-                    {canManage && (
+                    {(canManage || currentUser?.role === 'manager') && (
                       <Td>
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => openEdit(user)}>
-                            <Pencil className="size-4" />
-                          </Button>
-                          {user.id !== currentUser?.id && (
+                          {canRoute(user) && (
+                            <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => openEdit(user)}>
+                              <Pencil className="size-4" />
+                            </Button>
+                          )}
+                          {canManage && user.id !== currentUser?.id && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -247,6 +284,19 @@ export function UsersPage() {
         }
       >
         <form id="user-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {/*
+            The account itself is an admin's to change. A manager opening this
+            is here to say how their team's leads are shared out, so they get
+            that part and are not shown fields their own request would be
+            refused for carrying.
+          */}
+          {routingOnly ? (
+            <p className="t-small">
+              <span className="font-medium">{editing?.name}</span>
+              <span className="t-caption ms-2"><bdi dir="ltr">{editing?.email}</bdi></span>
+            </p>
+          ) : (
+          <>
           <Input
             required
             label={t('users.name')}
@@ -293,6 +343,8 @@ export function UsersPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
             />
           </div>
+          </>
+          )}
 
           {/*
             How this rep's share of the leads is decided.
@@ -325,6 +377,53 @@ export function UsersPage() {
                 onChange={(e) => setWeight(e.target.value)}
               />
             </div>
+          )}
+
+          {/*
+            Which languages this rep can sell in.
+
+            The other half of reading a lead's language off their number: that
+            says who is calling, this says who can take the call. Empty means
+            every language, which is what every rep starts as, and nothing about
+            assignment changes until somebody here says otherwise.
+          */}
+          {editing && languages.length > 0 && (
+            <fieldset className="space-y-2">
+              <legend className="t-small mb-1 font-medium">{t('users.speaks')}</legend>
+              <p className="t-caption">{t('users.speaksHint')}</p>
+
+              <div className="flex flex-wrap gap-2" data-testid="speaks">
+                {languages.map((code) => {
+                  const chosen = speaks.includes(code)
+
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      aria-pressed={chosen}
+                      data-testid={`speaks-${code}`}
+                      onClick={() =>
+                        setSpeaks((previous) =>
+                          chosen ? previous.filter((it) => it !== code) : [...previous, code],
+                        )
+                      }
+                      className={cn(
+                        'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                        chosen
+                          ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                          : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                      )}
+                    >
+                      {t(`languages.${code}`, { defaultValue: code })}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {fieldErrors.speaks && (
+                <p className="t-caption text-[var(--color-danger)]">{fieldErrors.speaks}</p>
+              )}
+            </fieldset>
           )}
         </form>
       </Modal>

@@ -17,6 +17,13 @@ class LeadResource extends JsonResource
             'phone' => $this->phone,
             'phone_normalized' => $this->phone_normalized,
             'whatsapp' => $this->phone_normalized ? ltrim($this->phone_normalized, '+') : null,
+            /*
+             * The language to expect on the call, inferred from the number's
+             * country code. Null when the number says nothing, which the
+             * interface shows as nothing rather than as a guess — see
+             * PhoneLanguage.
+             */
+            'language' => $this->resource->language(),
             'email' => $this->email,
             'city' => $this->city,
 

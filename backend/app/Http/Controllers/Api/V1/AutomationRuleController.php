@@ -290,6 +290,16 @@ class AutomationRuleController extends Controller
             'actions.*.message' => ['sometimes', 'nullable', 'string', 'max:500'],
             'actions.*.note' => ['sometimes', 'nullable', 'string', 'max:500'],
             'actions.*.in_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
+
+            /*
+             * How long a rule waits before doing this one.
+             *
+             * Thirty days at the outside. Longer than that and the world the
+             * rule decided against no longer exists in any useful sense — and a
+             * message arriving two months after the conversation it belongs to
+             * reads as a mistake, which is what it would be.
+             */
+            'actions.*.delay_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:43200'],
         ]);
     }
 

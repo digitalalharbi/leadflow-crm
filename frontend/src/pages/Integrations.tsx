@@ -219,6 +219,34 @@ export function IntegrationsPage() {
                   </dl>
                 )}
 
+                {/*
+                  Why it is failing, on the page whose job is to say so.
+
+                  The card showed a red dot and the word "خطأ" and nothing else,
+                  so an admin learned that something was wrong and had to go to
+                  the data-quality screen to find out what. The provider's own
+                  words, not ours: "invalid OAuth access token" tells somebody
+                  what to go and fix, and anything we paraphrase it into does not.
+                */}
+                {card.integration?.last_error && (
+                  <p
+                    /*
+                      `auto`, so the browser takes the direction from the text
+                      itself. A provider's message is almost always English, and
+                      inside an RTL paragraph its trailing full stop jumps to the
+                      front of the wrapped line — "…has expired" / ".on Monday,
+                      06-Oct-26" — which reads as a typo in our product rather
+                      than as Meta's own words. An Arabic message still reads
+                      right-to-left.
+                    */
+                    dir="auto"
+                    className="notice notice-danger mt-3 text-start text-[0.75rem]"
+                    data-testid={`integration-error-${card.provider}`}
+                  >
+                    {card.integration.last_error}
+                  </p>
+                )}
+
                 {card.required_credentials.length > 0 && card.status !== 'connected' && (
                   <p className="mt-2 text-[0.75rem] text-[var(--color-ink-subtle)]">
                     {t('integrations.credentialsNeeded')}: {card.required_credentials.join(', ')}

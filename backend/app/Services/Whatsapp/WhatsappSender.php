@@ -6,6 +6,7 @@ use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
+use App\Jobs\RetryWhatsappMessage;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Models\User;
@@ -91,7 +92,33 @@ class WhatsappSender
 
         $result = $provider->sendText($integration, $to, $body);
 
+        $message->forceFill(['attempts' => 1]);
+
         if (! $result->accepted) {
+            /*
+             * A failure that describes the attempt rather than the message is
+             * worth trying again: the network dropped, or Meta answered 503.
+             * The message stays pending and a job carries it, so the rep is
+             * told "sending" rather than "failed" for something that is about
+             * to succeed — and is told "failed" once it genuinely has.
+             *
+             * Not retried inline: the rep's request has to come back now, and
+             * waiting out a backoff inside it would hold the browser.
+             */
+            if (SendFailure::isTransient($result->failureCode)) {
+                $message->forceFill([
+                    'status' => MessageStatus::Pending,
+                    'failure_code' => $result->failureCode,
+                    'failure_reason' => $result->failureReason,
+                    'provider_payload' => $result->payload ?: null,
+                ])->save();
+
+                RetryWhatsappMessage::dispatch($message->id)
+                    ->delay(RetryWhatsappMessage::delayFor(1));
+
+                return $message;
+            }
+
             $message->forceFill([
                 'status' => MessageStatus::Failed,
                 'failed_at' => now(),

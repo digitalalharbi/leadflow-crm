@@ -63,6 +63,45 @@ GitHub Actions minute.
 
 ---
 
+## 0b. The live feed — optional, no external account
+
+Off by default. With `BROADCAST_CONNECTION=log` nothing is published, the
+websocket container sits idle, and every screen refetches on its timer exactly
+as it did before. Nothing about the product depends on it being on.
+
+To turn it on, generate three values per environment and set them on both sides:
+
+```bash
+# server — backend/.env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=... REVERB_APP_KEY=... REVERB_APP_SECRET=...
+REVERB_HOST=ws.example.com REVERB_PORT=443 REVERB_SCHEME=https
+
+# browser — build time only
+VITE_REVERB_APP_KEY=<the same key> VITE_REVERB_HOST=ws.example.com
+VITE_REVERB_PORT=443 VITE_REVERB_SCHEME=https
+```
+
+The key is public by design: it identifies the application to the socket server,
+and every channel is private and authorised through the API against the
+signed-in person. **`REVERB_APP_SECRET` never goes near the frontend build** —
+anything in a `VITE_` variable ships inside the bundle a customer downloads.
+
+Two things the deployment has to provide:
+
+- **A worker.** The feed is published from the queue so a provider's webhook is
+  never held up by a socket call. With Horizon stopped, nothing arrives however
+  healthy the socket looks — check that first.
+- **A route to the socket.** The `reverb` container listens on 8080 and is not
+  published to the host; the reverse proxy terminates TLS and forwards `/app`
+  and `/apps` to it, the same way it does for the API.
+
+Verified end to end on a local stack: a lead created through the API reached an
+open work queue in under a second, with the toast that only the socket can
+produce.
+
+---
+
 ## 1. GitHub — done
 
 - [x] Repository created and pushed

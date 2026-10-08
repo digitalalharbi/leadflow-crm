@@ -28,10 +28,24 @@ return Application::configure(basePath: dirname(__DIR__))
      * the same trap for the next listener anybody adds.
      */
     ->withEvents(discover: false)
+    /*
+     * The live feed's authorisation endpoint, on the API's own terms.
+     *
+     * Laravel's default puts it on the `web` stack, which means session and
+     * CSRF — and this SPA authenticates with a Bearer token from another
+     * origin, so every subscription would be refused with a 403 that says
+     * nothing. Mounted under /api with `auth:sanctum`, it answers to exactly
+     * the credential the rest of the client already holds.
+     */
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['prefix' => 'api', 'middleware' => ['api', 'auth:sanctum']],
+    )
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         /*

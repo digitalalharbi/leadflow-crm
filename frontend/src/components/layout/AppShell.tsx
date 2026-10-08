@@ -1,10 +1,18 @@
 import { Outlet } from 'react-router-dom'
+import { useLiveFeed } from '@/hooks/useLiveFeed'
 import { useAuth } from '@/stores/auth'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppShell() {
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+
+  /*
+   * Mounted here rather than on the screens that use it: one socket for the
+   * session, subscribed once, instead of one per page that happens to show
+   * leads — and it keeps listening while somebody is on a screen that does not.
+   */
+  useLiveFeed()
 
   return (
     /*

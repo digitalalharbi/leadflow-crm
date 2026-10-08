@@ -86,6 +86,12 @@ class Lead extends Model
 
             self::reconcileClosedState($lead);
         });
+
+        static::saved(function (self $lead) {
+            if ($lead->wasChanged('status') && $lead->status?->isClosed()) {
+                self::cancelPromisedWork($lead);
+            }
+        });
     }
 
     /**
@@ -134,6 +140,31 @@ class Lead extends Model
         $lead->lost_reason_id = null;
         $lead->lost_note = null;
         $lead->deal_value_minor = null;
+    }
+
+    /**
+     * A closed lead stops being chased, including by things promised earlier.
+     *
+     * A rule can now say "and in two days, send a WhatsApp". If the lead buys
+     * tomorrow, that message must not arrive — messaging somebody who has
+     * already bought is the complaint that costs a workspace its trust in the
+     * tool, and it is the same reasoning that cancels pending follow-ups.
+     *
+     * On the model rather than at each closing path, because there are four of
+     * them: the status endpoint, the work queue, an automation rule, and an
+     * import. The job re-checks closure as well, but that would leave the trace
+     * saying "pending" for two days about something that is already decided.
+     */
+    protected static function cancelPromisedWork(self $lead): void
+    {
+        ScheduledAction::withoutGlobalScopes()
+            ->where('lead_id', $lead->id)
+            ->where('status', ScheduledAction::PENDING)
+            ->get()
+            ->each(fn (ScheduledAction $action) => $action->resolve(
+                ScheduledAction::CANCELLED,
+                'أُغلق العميل قبل موعد التنفيذ.',
+            ));
     }
 
     protected $fillable = [

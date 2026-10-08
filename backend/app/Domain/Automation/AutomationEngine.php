@@ -3,8 +3,11 @@
 namespace App\Domain\Automation;
 
 use App\Events\Contracts\LeadDomainEvent;
+use App\Jobs\RunScheduledAction;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
+use App\Models\Lead;
+use App\Models\ScheduledAction;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -105,6 +108,24 @@ class AutomationEngine
              */
             $action['rule_name'] = $rule->name;
 
+            /*
+             * An action with a delay is promised, not performed.
+             *
+             * Automation was entirely immediate, which left the most ordinary
+             * sequence in the business unwritable: "if nobody has replied in
+             * two days, send a WhatsApp" needs something to happen two days
+             * after something did not. The row it writes is what makes the wait
+             * visible in the trace, cancellable when the lead closes, and
+             * durable across a worker that dies.
+             */
+            $delay = (int) ($action['delay_minutes'] ?? 0);
+
+            if ($delay > 0) {
+                $applied[] = $this->schedule($rule, $lead, $action, $delay, $correlation);
+
+                continue;
+            }
+
             $result = $this->actions->execute($lead->fresh() ?? $lead, $action);
             $applied[] = [
                 'type' => $action['type'] ?? 'unknown',
@@ -131,6 +152,39 @@ class AutomationEngine
         ])->saveQuietly();
 
         return (bool) $rule->stops_processing;
+    }
+
+    /**
+     * @return array{type:string, ok:bool, description:string}
+     */
+    private function schedule(
+        AutomationRule $rule,
+        Lead $lead,
+        array $action,
+        int $delayMinutes,
+        string $correlation,
+    ): array {
+        $runAt = now()->addMinutes($delayMinutes);
+
+        $scheduled = ScheduledAction::create([
+            'lead_id' => $lead->id,
+            'automation_rule_id' => $rule->id,
+            // Copied, not joined: the rule may be renamed or deleted while this
+            // waits, and the trace still has to say what asked for it.
+            'rule_name' => $rule->name,
+            'action' => $action,
+            'run_at' => $runAt,
+            'status' => ScheduledAction::PENDING,
+            'correlation_id' => $correlation,
+        ]);
+
+        RunScheduledAction::dispatch($scheduled->id)->delay($runAt);
+
+        return [
+            'type' => $action['type'] ?? 'unknown',
+            'ok' => true,
+            'description' => 'مجدول في '.$runAt->toDayDateTimeString().'.',
+        ];
     }
 
     private function record(

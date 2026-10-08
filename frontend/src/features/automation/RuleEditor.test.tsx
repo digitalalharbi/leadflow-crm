@@ -129,6 +129,38 @@ describe('RuleEditor', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ condition_match: 'all' }))
   })
 
+  /**
+   * Every action happened the instant the rule ran, which left the most
+   * ordinary sequence in the business unwritable: "if nobody has replied in two
+   * days, send a WhatsApp".
+   */
+  it('lets an action be asked for later', async () => {
+    const user = userEvent.setup()
+    const onSave = render()
+
+    await user.type(screen.getByTestId('rule-name'), 'قاعدة')
+    await user.selectOptions(screen.getByTestId('action-delay-0'), '2880')
+    await user.click(screen.getByTestId('save-rule'))
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actions: [expect.objectContaining({ delay_minutes: 2880 })],
+      }),
+    )
+  })
+
+  /** Blank means now, so every rule already written means what it meant. */
+  it('sends no delay when nobody asked for one', async () => {
+    const user = userEvent.setup()
+    const onSave = render()
+
+    await user.type(screen.getByTestId('rule-name'), 'قاعدة')
+    await user.click(screen.getByTestId('save-rule'))
+
+    const saved = onSave.mock.calls[0][0] as { actions: Array<Record<string, unknown>> }
+    expect(saved.actions[0].delay_minutes).toBeUndefined()
+  })
+
   /** `in` takes several values, so it keeps the text box and its hint. */
   it('keeps a text box for an operator that takes a list', async () => {
     const user = userEvent.setup()

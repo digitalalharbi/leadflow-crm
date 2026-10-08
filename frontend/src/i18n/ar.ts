@@ -315,6 +315,9 @@ export default {
     message: 'نص التنبيه',
     strategy: 'طريقة الإسناد',
     strategyRoundRobin: 'الأقل انشغالًا',
+    strategySpecific: 'مندوب محدد',
+    assignee: 'المندوب',
+    noAssignees: 'لا يوجد من يمكن الإسناد إليه',
     priority: 'الأولوية',
     priorityHint: 'الأصغر ينفَّذ أولًا',
     empty: {

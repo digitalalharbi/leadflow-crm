@@ -301,9 +301,33 @@ class E2ESeeder extends Seeder
                 // anybody qualified it, and claiming otherwise would inflate
                 // the qualification rate in the fixtures the screens are read
                 // against.
-                $qualifiedAt = in_array($status, [
+                $qualifiedAt = null;
+
+                if (in_array($status, [
                     LeadStatus::Qualified->value, LeadStatus::Appointment->value, LeadStatus::Won->value,
-                ], true) ? $createdAt->copy()->addHours(6) : null;
+                ], true)) {
+                    /*
+                     * Six hours is the shape we want, bounded by how long the
+                     * lead has actually existed.
+                     *
+                     * `now()->subDays($i % 21)` is this instant for every
+                     * twenty-first lead, and a flat `addHours(6)` then stamped
+                     * the qualification six hours into the future. The journey
+                     * card computes the waiting time from the last milestone,
+                     * so a lead sitting at "appointment" since this morning
+                     * reported that it had been waiting "less than a minute" —
+                     * the component clamping a negative number, correctly, over
+                     * data that should never have said that.
+                     *
+                     * Fixtures are read as the product, so they have to describe
+                     * a past that happened.
+                     */
+                    // No floor: a lead seeded as arriving at this instant is
+                    // qualified at that same instant, because the alternative
+                    // is a minute that has not happened yet.
+                    $minutes = min(6 * 60, max(0, intdiv((int) $createdAt->diffInMinutes(now()), 2)));
+                    $qualifiedAt = $createdAt->copy()->addMinutes($minutes);
+                }
 
                 $filler = $this->lead($tenant, 'عميل تجريبي '.str_pad((string) $i, 2, '0', STR_PAD_LEFT), '+9665003'.str_pad((string) $i, 5, '0', STR_PAD_LEFT), [
                     'assigned_to' => [$admin->id, $manager->id][$i % 2],
@@ -479,8 +503,18 @@ class E2ESeeder extends Seeder
         }
 
         if ($lead->status->impliesContactWasMade()) {
+            /*
+             * Twelve minutes, bounded by how long the lead has existed.
+             *
+             * Several leads are seeded as arriving at this instant, and a flat
+             * twelve minutes stamped their first contact in the future — a
+             * response time nobody has yet had, in the figures the screens are
+             * read against.
+             */
+            $elapsed = (int) $lead->created_at->diffInMinutes(now());
+
             $lead->forceFill([
-                'first_contact_at' => $lead->created_at->copy()->addMinutes(12),
+                'first_contact_at' => $lead->created_at->copy()->addMinutes(min(12, max(0, $elapsed))),
             ])->saveQuietly();
         }
 

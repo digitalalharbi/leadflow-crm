@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Role;
 use App\Models\Concerns\HasUuid;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,7 +25,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
-        'phone', 'avatar_url', 'is_active', 'locale',
+        'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -36,8 +37,28 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'away_until' => 'datetime',
             'role' => Role::class,
         ];
+    }
+
+    /**
+     * Can be given a lead right now.
+     *
+     * `is_active` is an account state — set when somebody leaves the company.
+     * Being away until Sunday is a different thing, and assignment had no way
+     * to say it.
+     */
+    public function isAvailable(): bool
+    {
+        return $this->is_active && ($this->away_until === null || $this->away_until->isPast());
+    }
+
+    /** @param  Builder<self>  $query */
+    public function scopeAvailable($query)
+    {
+        return $query->where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('away_until')->orWhere('away_until', '<=', now()));
     }
 
     public static function booted(): void

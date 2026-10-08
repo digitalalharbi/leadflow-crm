@@ -760,6 +760,12 @@ export default {
     rows: 'rows', done: 'Import complete', failedRows: 'Rows that failed', row: 'Row',
   },
   users: {
+    away: 'Away',
+    awayHint: 'No new leads will be assigned to you until you are back',
+    awayUntil: 'Back on',
+    backNow: "I'm back",
+    awaySaved: 'You will not receive new leads until you are back',
+    backSaved: 'Welcome back — leads will come through again',
     title: 'Team', subtitle: 'Who uses the system and what they can do',
     addUser: 'Add user', name: 'Name', role: 'Role', leadsAssigned: 'Leads assigned',
     lastLogin: 'Last sign-in', deactivate: 'Deactivate', activate: 'Activate',

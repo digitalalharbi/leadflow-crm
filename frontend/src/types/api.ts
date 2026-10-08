@@ -54,6 +54,8 @@ export interface User {
   phone: string | null
   avatar_url: string | null
   is_active: boolean
+  /** When they are back. Null means they are here. */
+  away_until?: string | null
   locale: string | null
   last_login_at: string | null
   created_at: string

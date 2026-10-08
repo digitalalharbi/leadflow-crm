@@ -82,6 +82,11 @@ export interface LeadListItem {
   full_name: string
   phone: string | null
   whatsapp: string | null
+  /**
+   * The language to expect on the call, read off the number's country code.
+   * Null means the number says nothing — see the backend PhoneLanguage.
+   */
+  language: string | null
   email: string | null
   city: string | null
   status: LeadStatus

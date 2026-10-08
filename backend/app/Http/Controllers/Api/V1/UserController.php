@@ -104,6 +104,17 @@ class UserController extends Controller
             'role' => ['sometimes', Rule::in(Role::tenantRoles())],
             'is_active' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'string', 'min:8'],
+
+            /*
+             * Away until, rather than away.
+             *
+             * Deliberately not gated behind an admin the way `role` and
+             * `is_active` are: being on leave is a fact about the person's week,
+             * not a change to their account, and a rep who has to ask an admin
+             * to mark it is a rep whose leads keep arriving anyway. A manager
+             * can already change their team; this is less than that.
+             */
+            'away_until' => ['sometimes', 'nullable', 'date', 'before:+1 year'],
         ]);
 
         // Only an admin changes roles or activation, and never their own.

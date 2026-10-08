@@ -21,6 +21,8 @@ interface AuthState {
   logout: () => Promise<void>
   restore: () => Promise<void>
   setBranding: (branding: Branding) => void
+  /** For the few things a person changes about themselves without reloading. */
+  setUser: (user: User) => void
   reset: () => void
 }
 
@@ -89,6 +91,7 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   setBranding: (branding) => set({ branding }),
+  setUser: (user) => set({ user }),
   reset: () => {
     tokenStorage.clear()
     set({

@@ -68,12 +68,22 @@ class LeadAssignmentService
             return null;
         }
 
-        $candidates = User::query()
+        /*
+         * Whoever can take a lead right now, falling back to the whole team
+         * when everybody is away — an unassigned lead belongs to nobody and
+         * appears on nobody's queue, which is worse than one waiting for a rep
+         * who is back on Sunday.
+         */
+        $base = fn () => User::query()
             ->where('tenant_id', $tenant->id)
-            ->where('is_active', true)
             ->whereIn('role', [Role::Sales->value, Role::Manager->value])
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        $candidates = $base()->available()->get();
+
+        if ($candidates->isEmpty()) {
+            $candidates = $base()->where('is_active', true)->get();
+        }
 
         if ($candidates->isEmpty()) {
             return null;

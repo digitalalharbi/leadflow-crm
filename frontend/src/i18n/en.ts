@@ -600,6 +600,9 @@ export default {
     created: 'Follow-up scheduled.', completedMsg: 'Follow-up completed.',
   },
   projects: {
+    team: 'Project team',
+    teamHint: 'Leads for this project go to these reps. Leave it empty for anybody.',
+    teamNobody: 'Nobody can be assigned leads yet.',
     title: 'Projects', subtitle: 'The projects your leads come in for',
     addProject: 'Add project', name: 'Project name', developer: 'Developer',
     location: 'Location', startingPrice: 'Starting price', leadsCount: 'Leads',

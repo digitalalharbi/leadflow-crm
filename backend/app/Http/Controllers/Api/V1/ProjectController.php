@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectResource;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -19,6 +20,8 @@ class ProjectController extends Controller
 
         $projects = Project::query()
             ->withCount('leads')
+            // Eager, because the list is where a manager sees who works what.
+            ->with('team:id,uuid,name')
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
             ->when($request->filled('search'), fn ($q) => $q->where('name', 'ilike', '%'.$request->input('search').'%'))
             ->orderBy('name')
@@ -80,9 +83,24 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
 
         $data = $this->validatePayload($request);
+
+        // Not a column: a project can be created with a team, synced after it
+        // exists and has an id to sync against.
+        $team = $data['team'] ?? null;
+        unset($data['team']);
+
         $project = Project::create($data);
 
-        return ApiResponse::created(['project' => new ProjectResource($project)]);
+        if ($team !== null) {
+            $project->team()->sync(
+                User::query()
+                    ->where('tenant_id', $project->tenant_id)
+                    ->whereIn('uuid', $team)
+                    ->pluck('id')
+            );
+        }
+
+        return ApiResponse::created(['project' => new ProjectResource($project->load('team'))]);
     }
 
     public function show(string $uuid)
@@ -98,9 +116,28 @@ class ProjectController extends Controller
         $project = Project::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $project);
 
-        $project->update($this->validatePayload($request, partial: true));
+        $data = $this->validatePayload($request, partial: true);
 
-        return ApiResponse::success(['project' => new ProjectResource($project->fresh())]);
+        // Not a column: the team is a relation, synced below.
+        unset($data['team']);
+
+        $project->update($data);
+
+        /*
+         * The team, if the request named one. Scoped to this workspace when it
+         * is resolved, because the pivot has no tenant of its own — the query
+         * is the only thing keeping workspaces apart here.
+         */
+        if ($request->has('team')) {
+            $ids = User::query()
+                ->where('tenant_id', $project->tenant_id)
+                ->whereIn('uuid', $request->input('team') ?: [])
+                ->pluck('id');
+
+            $project->team()->sync($ids);
+        }
+
+        return ApiResponse::success(['project' => new ProjectResource($project->fresh()->load('team'))]);
     }
 
     public function destroy(string $uuid)
@@ -124,6 +161,15 @@ class ProjectController extends Controller
             'starting_price' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
             'status' => ['nullable', 'in:active,paused,sold_out'],
             'notes' => ['nullable', 'string', 'max:2000'],
+
+            /*
+             * The reps who work this project, by uuid. Validated as a shape
+             * only — which users those uuids are is resolved against this
+             * workspace when they are synced, so naming somebody else's rep
+             * selects nobody rather than reaching into their workspace.
+             */
+            'team' => ['sometimes', 'nullable', 'array', 'max:50'],
+            'team.*' => ['uuid'],
         ]);
     }
 }

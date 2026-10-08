@@ -322,6 +322,11 @@ export interface Project {
   starting_price: number | null
   status: 'active' | 'paused' | 'sold_out'
   notes: string | null
+  /**
+   * The reps who work this project. Empty means anybody — the routing only
+   * engages once somebody says a project has a team.
+   */
+  team?: { id: string; name: string }[]
   leads_count?: number
   created_at: string
 }

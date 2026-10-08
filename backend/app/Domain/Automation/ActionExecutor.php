@@ -103,7 +103,7 @@ class ActionExecutor
                 ->where('tenant_id', $lead->tenant_id)
                 ->where('is_active', true)
                 ->first(),
-            default => $this->assignment->byStrategy($lead->tenant),
+            default => $this->assignment->byStrategy($lead->tenant, $lead),
         };
 
         if (! $user) {

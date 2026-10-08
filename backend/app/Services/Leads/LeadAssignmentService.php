@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\LeadAssignedNotification;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class LeadAssignmentService
@@ -27,7 +28,7 @@ class LeadAssignmentService
      * Honours `assignment_mode`, so a workspace that wants to triage by hand
      * keeps doing that.
      */
-    public function pickAssignee(Tenant $tenant): ?User
+    public function pickAssignee(Tenant $tenant, ?Lead $lead = null): ?User
     {
         $settings = $tenant->settings;
 
@@ -35,21 +36,68 @@ class LeadAssignmentService
             return null;
         }
 
-        return $this->byStrategy($tenant);
+        return $this->byStrategy($tenant, $lead);
     }
 
     /**
      * The workspace's chosen strategy, used wherever a lead needs an owner and
      * no particular person was named.
      */
-    public function byStrategy(Tenant $tenant): ?User
+    public function byStrategy(Tenant $tenant, ?Lead $lead = null): ?User
     {
+        /*
+         * The project's own team first, when the lead belongs to one and that
+         * project has a team.
+         *
+         * A developer selling three compounds does not have one sales team, it
+         * has three: the rep who knows النرجس can answer what the service charge
+         * covers, and the rep who does not has to go and ask. Still chosen by
+         * workload within that team, so the project's busiest rep does not take
+         * everything.
+         *
+         * Not a separate strategy somebody has to switch on: a project with no
+         * team changes nothing, which is what every workspace starts as.
+         */
+        $team = $this->projectTeam($lead);
+
+        if ($team !== null && $team->isNotEmpty()) {
+            return $this->workload->pick($tenant, $team);
+        }
+
         return match ($tenant->settings?->assignment_strategy) {
             'round_robin' => $this->roundRobin($tenant),
             // Workload is the default: taking turns lets one rep's backlog grow
             // while another sits idle, and keeps feeding leads to someone away.
             default => $this->workload->pick($tenant) ?? $this->roundRobin($tenant),
         };
+    }
+
+    /**
+     * The project's team, as far as it can take a lead right now.
+     *
+     * Null when there is no project or no team — meaning "no opinion", which
+     * falls through to the workspace's own strategy. An empty collection after
+     * filtering means the whole project team is away, and that also falls
+     * through rather than leaving the lead with nobody: a lead that belongs to
+     * no one is worse than one with a rep who knows the project less well.
+     *
+     * @return Collection<int,User>|null
+     */
+    private function projectTeam(?Lead $lead): ?Collection
+    {
+        if (! $lead?->project_id) {
+            return null;
+        }
+
+        $team = User::query()
+            ->where('tenant_id', $lead->tenant_id)
+            ->whereIn('role', [Role::Sales->value, Role::Manager->value])
+            ->whereHas('projects', fn ($q) => $q->where('projects.id', $lead->project_id))
+            ->available()
+            ->orderBy('id')
+            ->get();
+
+        return $team->isEmpty() ? null : $team;
     }
 
     /**

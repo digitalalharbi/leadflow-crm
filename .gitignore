@@ -56,3 +56,7 @@ Thumbs.db
 
 # Written inside the image at build time; never from the host.
 .release
+
+# Direct deploy configuration — real values, never committed.
+.deploy.env
+.verify-passed

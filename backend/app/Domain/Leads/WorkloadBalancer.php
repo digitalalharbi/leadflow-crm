@@ -66,14 +66,31 @@ class WorkloadBalancer
     }
 
     /** @return Collection<int,User> */
+    /**
+     * Whoever can take a lead right now.
+     *
+     * `available()` rather than `is_active`: the second is an account state,
+     * set when somebody leaves the company. A rep away until Sunday is active
+     * and cannot work a lead, and sending them one is how a lead sits untouched
+     * for a day inside a system whose whole promise is that it will not.
+     *
+     * Falls back to everyone when the whole team is away, because an unassigned
+     * lead is worse than one waiting on somebody who is back on Sunday — it
+     * belongs to nobody, appears on nobody's queue, and is found by whoever next
+     * reads the data-quality screen.
+     */
     private function candidates(Tenant $tenant): Collection
     {
-        return User::query()
+        $base = fn () => User::query()
             ->where('tenant_id', $tenant->id)
-            ->where('is_active', true)
             ->whereIn('role', [Role::Sales->value, Role::Manager->value])
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        $available = $base()->available()->get();
+
+        return $available->isNotEmpty()
+            ? $available
+            : $base()->where('is_active', true)->get();
     }
 
     /**

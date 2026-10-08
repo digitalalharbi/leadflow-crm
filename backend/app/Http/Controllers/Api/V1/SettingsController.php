@@ -32,6 +32,14 @@ class SettingsController extends Controller
                 'score_hot_threshold' => $tenant->settings?->score_hot_threshold,
                 'first_contact_target_minutes' => $tenant->settings?->first_contact_target_minutes,
                 'whatsapp_template' => $tenant->settings?->whatsapp_template,
+                /*
+                 * When the business is open. Null means always, which is where
+                 * every workspace starts — the response-time clock only stops
+                 * once somebody says when they work.
+                 */
+                'work_days' => $tenant->settings?->work_days,
+                'work_starts_at' => $tenant->settings?->work_starts_at,
+                'work_ends_at' => $tenant->settings?->work_ends_at,
             ],
             'subscription' => [
                 'plan' => $tenant->plan,
@@ -91,6 +99,19 @@ class SettingsController extends Controller
             // it neglected. A week is the ceiling; past that it is not a target.
             'first_contact_target_minutes' => ['sometimes', 'integer', 'min:1', 'max:10080'],
             'whatsapp_template' => ['nullable', 'string', 'max:1000'],
+
+            /*
+             * When the business is open, in its own timezone.
+             *
+             * Null is "always", which is what the response-time clock has
+             * always assumed. Days are ISO weekday numbers because
+             * `dayOfWeekIso` is what reads them — 7 is Sunday, which is the
+             * start of the week here and the easiest thing to get wrong.
+             */
+            'work_days' => ['sometimes', 'nullable', 'array', 'max:7'],
+            'work_days.*' => ['integer', 'min:1', 'max:7'],
+            'work_starts_at' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'work_ends_at' => ['sometimes', 'nullable', 'date_format:H:i', 'after:work_starts_at'],
         ]);
 
         $tenant->settings->update($data);

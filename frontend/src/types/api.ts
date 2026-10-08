@@ -503,6 +503,14 @@ export interface TenantSettings {
   score_hot_threshold: number
   first_contact_target_minutes: number
   whatsapp_template: string | null
+  /**
+   * When the business is open, in its own timezone. Null means always, which
+   * is what the response-time clock assumed before anybody could say otherwise.
+   * Days are ISO weekday numbers — 7 is Sunday.
+   */
+  work_days: number[] | null
+  work_starts_at: string | null
+  work_ends_at: string | null
 }
 
 export interface LostReason {

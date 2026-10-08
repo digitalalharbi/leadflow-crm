@@ -27,6 +27,21 @@ interface SettingsResponse {
 type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'subscription'
 
 
+/**
+ * The week, in ISO numbers because `Carbon::dayOfWeekIso` is what reads them on
+ * the other side. Sunday is 7 and starts the list, which is the week here and
+ * the easiest thing to get wrong.
+ */
+const WEEK = [
+  { iso: 7, key: 'sun' },
+  { iso: 1, key: 'mon' },
+  { iso: 2, key: 'tue' },
+  { iso: 3, key: 'wed' },
+  { iso: 4, key: 'thu' },
+  { iso: 5, key: 'fri' },
+  { iso: 6, key: 'sat' },
+] as const
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
@@ -342,10 +357,22 @@ function GeneralForm({
     score_hot_threshold: settings.score_hot_threshold,
     first_contact_target_minutes: settings.first_contact_target_minutes ?? 30,
     whatsapp_template: settings.whatsapp_template ?? '',
+    work_days: settings.work_days ?? [],
+    work_starts_at: settings.work_starts_at?.slice(0, 5) ?? '09:00',
+    work_ends_at: settings.work_ends_at?.slice(0, 5) ?? '18:00',
   })
 
   const mutation = useMutation({
-    mutationFn: () => apiPatch('/settings', form),
+    mutationFn: () => apiPatch('/settings', {
+      ...form,
+      /*
+       * No days chosen means always open, and the hours go with it — sending
+       * times beside an empty week would store an opinion nobody expressed.
+       */
+      work_days: form.work_days.length ? form.work_days : null,
+      work_starts_at: form.work_days.length ? form.work_starts_at : null,
+      work_ends_at: form.work_days.length ? form.work_ends_at : null,
+    }),
     onSuccess: onSaved,
     onError: (caught) => toast(translateError(caught), 'error'),
   })
@@ -455,6 +482,71 @@ function GeneralForm({
                   }
                 />
               </div>
+
+              {/*
+                When the business is open.
+
+                The response-time clock counted wall-clock minutes, so a lead
+                arriving at two in the morning was escalated to the management
+                before anybody could have called. Leaving every day unticked
+                means always open, which is where every workspace starts.
+              */}
+              <fieldset className="space-y-2">
+                <legend className="t-small mb-1 font-medium">{t('settings.workingHours')}</legend>
+                <p className="t-caption">{t('settings.workingHoursHint')}</p>
+
+                <div className="flex flex-wrap gap-2" data-testid="work-days">
+                  {WEEK.map(({ iso, key }) => {
+                    const on = form.work_days.includes(iso)
+
+                    return (
+                      <button
+                        key={iso}
+                        type="button"
+                        aria-pressed={on}
+                        data-testid={`work-day-${iso}`}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            work_days: on
+                              ? prev.work_days.filter((d) => d !== iso)
+                              : [...prev.work_days, iso].sort((a, b) => a - b),
+                          }))
+                        }
+                        className={cn(
+                          'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                          on
+                            ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                            : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                        )}
+                      >
+                        {t(`settings.weekday.${key}`)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {form.work_days.length > 0 && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      type="time"
+                      dir="ltr"
+                      label={t('settings.workStarts')}
+                      value={form.work_starts_at}
+                      data-testid="work-starts-at"
+                      onChange={(e) => setForm((prev) => ({ ...prev, work_starts_at: e.target.value }))}
+                    />
+                    <Input
+                      type="time"
+                      dir="ltr"
+                      label={t('settings.workEnds')}
+                      value={form.work_ends_at}
+                      data-testid="work-ends-at"
+                      onChange={(e) => setForm((prev) => ({ ...prev, work_ends_at: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </fieldset>
 
               <Textarea
                 label={t('settings.whatsappTemplate')}

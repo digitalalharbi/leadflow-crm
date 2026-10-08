@@ -7,6 +7,7 @@ use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -26,6 +27,7 @@ class User extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
+        'covers_cities', 'assignment_weight',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -38,6 +40,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'away_until' => 'datetime',
+            'covers_cities' => 'array',
+            'assignment_weight' => 'integer',
             'role' => Role::class,
         ];
     }
@@ -49,6 +53,56 @@ class User extends Authenticatable
      * Being away until Sunday is a different thing, and assignment had no way
      * to say it.
      */
+    /** The projects this rep works, if the workspace has said. */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class);
+    }
+
+    /**
+     * Whether this rep sells in that city.
+     *
+     * An empty list means every city, which is what every rep starts as. A lead
+     * with no city at all is nobody's to refuse — the field is optional on most
+     * ad platform forms, and a lead with a blank city must not become a lead
+     * nobody covers.
+     *
+     * Matched loosely because the value is whatever the customer typed into a
+     * form: "الرياض" and " الرياض " are the same place, and so are "Riyadh" and
+     * "riyadh". Anything beyond that — spelling variants, transliteration — is
+     * a normalising problem this is deliberately not trying to solve, because
+     * guessing wrong routes a lead to the wrong person silently.
+     */
+    public function coversCity(?string $city): bool
+    {
+        $covers = $this->covers_cities ?? [];
+
+        if ($covers === [] || blank($city)) {
+            return true;
+        }
+
+        $wanted = $this->normaliseCity($city);
+
+        foreach ($covers as $covered) {
+            if ($this->normaliseCity((string) $covered) === $wanted) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normaliseCity(string $city): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s+/u', ' ', $city) ?? $city));
+    }
+
+    /** How many leads this rep carries for every one an ordinary rep takes. */
+    public function assignmentWeight(): int
+    {
+        return max(1, (int) ($this->assignment_weight ?? 1));
+    }
+
     public function isAvailable(): bool
     {
         return $this->is_active && ($this->away_until === null || $this->away_until->isPast());

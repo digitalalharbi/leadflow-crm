@@ -147,7 +147,8 @@ class LeadIngestionService
         // Explicit assignment from the payload wins; otherwise fall back to tenant policy.
         $assignee = $incoming->assignedTo
             ? $tenant->users()->whereKey($incoming->assignedTo)->first()
-            : $this->assignment->pickAssignee($tenant);
+            // The lead goes too: a project with its own team takes its own leads.
+            : $this->assignment->pickAssignee($tenant, $lead);
 
         if ($assignee) {
             $this->assignment->assign($lead, $assignee);

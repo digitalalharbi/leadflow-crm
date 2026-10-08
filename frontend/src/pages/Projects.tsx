@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Pencil, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiPatch, apiPost, ApiError } from '@/lib/api'
-import { fetchProjectsWithMetrics } from '@/features/leads'
+import { fetchAssignableUsers, fetchProjectsWithMetrics } from '@/features/leads'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { Link } from 'react-router-dom'
 import { formatCurrency, formatNumber } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
   Select, SkeletonTable,
@@ -28,11 +29,18 @@ export function ProjectsPage() {
   const [editing, setEditing] = useState<Project | null>(null)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY)
+  const [team, setTeam] = useState<string[]>([])
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['projects'],
     queryFn: fetchProjectsWithMetrics,
+  })
+
+  // Only people a lead can actually be given to.
+  const { data: assignees = [] } = useQuery({
+    queryKey: ['assignable-users'],
+    queryFn: fetchAssignableUsers,
   })
 
   const mutation = useMutation({
@@ -43,6 +51,7 @@ export function ProjectsPage() {
         location: form.location || null,
         starting_price: form.starting_price ? Number(form.starting_price) : null,
         status: form.status,
+        team,
       }
 
       return editing ? apiPatch(`/projects/${editing.id}`, payload) : apiPost('/projects', payload)
@@ -68,6 +77,7 @@ export function ProjectsPage() {
   function openCreate() {
     setEditing(null)
     setForm(EMPTY)
+    setTeam([])
     setFieldErrors({})
     setOpen(true)
   }
@@ -81,6 +91,7 @@ export function ProjectsPage() {
       starting_price: project.starting_price?.toString() ?? '',
       status: project.status,
     })
+    setTeam((project.team ?? []).map((member) => member.id))
     setFieldErrors({})
     setOpen(true)
   }
@@ -89,6 +100,7 @@ export function ProjectsPage() {
     setOpen(false)
     setEditing(null)
     setForm(EMPTY)
+    setTeam([])
   }
 
   function handleSubmit(event: FormEvent) {
@@ -209,6 +221,54 @@ export function ProjectsPage() {
               <option value="sold_out">{t('projects.statusSoldOut')}</option>
             </Select>
           </div>
+
+          {/*
+            Who works this project.
+
+            A developer selling three compounds does not have one sales team, it
+            has three: the rep who knows النرجس can answer what the service
+            charge covers, and the rep who does not has to go and ask. Leaving
+            it empty means anybody, which is what every workspace starts as —
+            nothing about assignment changes until somebody fills this in.
+          */}
+          <fieldset className="space-y-2">
+            <legend className="t-small mb-1 font-medium">{t('projects.team')}</legend>
+            <p className="t-caption">{t('projects.teamHint')}</p>
+
+            {assignees.length === 0 ? (
+              <p className="t-caption">{t('projects.teamNobody')}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2" data-testid="project-team">
+                {assignees.map((person) => {
+                  const chosen = team.includes(person.id)
+
+                  return (
+                    <button
+                      key={person.id}
+                      type="button"
+                      aria-pressed={chosen}
+                      data-testid={`project-team-${person.id}`}
+                      onClick={() =>
+                        setTeam((previous) =>
+                          chosen
+                            ? previous.filter((id) => id !== person.id)
+                            : [...previous, person.id],
+                        )
+                      }
+                      className={cn(
+                        'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                        chosen
+                          ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                          : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                      )}
+                    >
+                      {person.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </fieldset>
         </form>
       </Modal>
     </>

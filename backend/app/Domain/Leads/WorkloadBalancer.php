@@ -31,9 +31,9 @@ class WorkloadBalancer
      * Ties break on whoever has gone longest without a lead, so two idle reps
      * alternate instead of one taking everything.
      */
-    public function pick(Tenant $tenant): ?User
+    public function pick(Tenant $tenant, ?Collection $only = null): ?User
     {
-        $candidates = $this->candidates($tenant);
+        $candidates = $only ?? $this->candidates($tenant);
 
         if ($candidates->isEmpty()) {
             return null;
@@ -54,7 +54,17 @@ class WorkloadBalancer
          */
         return $candidates
             ->sort(function (User $a, User $b) use ($open, $last) {
-                $load = ($open[$a->id] ?? 0) <=> ($open[$b->id] ?? 0);
+                /*
+                 * Share of their own capacity, not a raw count.
+                 *
+                 * A senior closer on a weight of three should be carrying three
+                 * leads for every one a rep on one carries — so the comparison
+                 * is open-leads-per-unit-of-weight. With every weight at one,
+                 * which is where every workspace starts, this is exactly the
+                 * count it was before.
+                 */
+                $load = (($open[$a->id] ?? 0) / $a->assignmentWeight())
+                    <=> (($open[$b->id] ?? 0) / $b->assignmentWeight());
 
                 if ($load !== 0) {
                     return $load;

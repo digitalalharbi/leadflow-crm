@@ -56,6 +56,10 @@ export interface User {
   is_active: boolean
   /** When they are back. Null means they are here. */
   away_until?: string | null
+  /** Cities this rep sells in. Empty means every city. */
+  covers_cities?: string[]
+  /** How many leads they take for every one an ordinary rep takes. */
+  assignment_weight?: number
   locale: string | null
   last_login_at: string | null
   created_at: string
@@ -322,6 +326,11 @@ export interface Project {
   starting_price: number | null
   status: 'active' | 'paused' | 'sold_out'
   notes: string | null
+  /**
+   * The reps who work this project. Empty means anybody — the routing only
+   * engages once somebody says a project has a team.
+   */
+  team?: { id: string; name: string }[]
   leads_count?: number
   created_at: string
 }

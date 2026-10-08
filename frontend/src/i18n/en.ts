@@ -597,6 +597,9 @@ export default {
     created: 'Follow-up scheduled.', completedMsg: 'Follow-up completed.',
   },
   projects: {
+    team: 'Project team',
+    teamHint: 'Leads for this project go to these reps. Leave it empty for anybody.',
+    teamNobody: 'Nobody can be assigned leads yet.',
     title: 'Projects', subtitle: 'The projects your leads come in for',
     addProject: 'Add project', name: 'Project name', developer: 'Developer',
     location: 'Location', startingPrice: 'Starting price', leadsCount: 'Leads',
@@ -762,6 +765,10 @@ export default {
     rows: 'rows', done: 'Import complete', failedRows: 'Rows that failed', row: 'Row',
   },
   users: {
+    coversCities: 'Cities covered',
+    coversCitiesHint: 'Comma separated. Leave empty to cover every city.',
+    weight: 'Share of leads',
+    weightHint: 'How many leads they take for every one an ordinary rep takes (1 = equal share)',
     away: 'Away',
     awayHint: 'No new leads will be assigned to you until you are back',
     awayUntil: 'Back on',

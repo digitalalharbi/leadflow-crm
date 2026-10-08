@@ -23,6 +23,46 @@ command for each — without printing any value. Run it again after each change.
 
 ---
 
+## 0. Deploying without GitHub Actions
+
+Actions is one of two ways to reach the server, not the only one. The workflows
+run the tests, SSH in, and run the repository's own on-server deploy script —
+and when Actions cannot run at all (a billing hold, an outage, a runner that is
+down), only the middle step is actually missing. It is one SSH call.
+
+```bash
+cp .deploy.env.example .deploy.env     # host, user, key path, paths, domains
+$EDITOR .deploy.env                    # git-ignored; the key stays a path
+
+./scripts/verify-all.sh                # what the four workflows run, run here
+./scripts/deploy-direct.sh staging     # ... then production
+```
+
+`verify-all.sh` mirrors `backend-tests.yml`, `frontend-tests.yml` and
+`e2e-tests.yml` step for step and stamps the commit it passed on.
+`deploy-direct.sh` refuses to deploy a commit without that stamp — with no CI
+run to point at, "the tests passed" has to mean a run somebody can name.
+
+It is not CI and does not claim to be: CI runs on a clean checkout, a clean
+database and a machine doing nothing else. A failure there is worth believing;
+a pass is worth less, and it cannot tell you whether the branch still passes
+beside everybody else's.
+
+The deploy itself calls `scripts/deploy-staging.sh` or
+`scripts/deploy-production.sh` on the server unchanged — the same scripts
+Actions calls, with the same backup, the same maintenance window and the same
+automatic rollback. What the direct driver adds is the view from outside: the
+on-server check verifies the release over loopback, which proves the container
+is serving the new commit and proves nothing about DNS, TLS or the proxy in
+front of it. The last gate is a request to the public domain, the way a
+customer arrives, and a deploy that cannot be verified that way is a failed
+deploy rather than a quiet one.
+
+**This still needs a server** — section 2 below. What it does not need is a
+GitHub Actions minute.
+
+---
+
 ## 1. GitHub — done
 
 - [x] Repository created and pushed

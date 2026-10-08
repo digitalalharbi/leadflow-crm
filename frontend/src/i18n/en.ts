@@ -150,6 +150,9 @@ export default {
       description: 'Every rule considered for this lead, and why it applied or did not.',
       empty: 'No rule has acted on this lead yet.',
       deletedRule: 'Deleted rule',
+      scheduled: '{{action}} — scheduled by "{{rule}}"',
+      cancelScheduled: 'Cancel',
+      cancelled: 'Scheduled action cancelled',
       outcome: {
         applied: 'Applied',
         skipped: 'Did not apply',

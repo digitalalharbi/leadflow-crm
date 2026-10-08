@@ -305,4 +305,79 @@ class ARuleCanWaitTest extends TestCase
             fn () => ScheduledAction::count(),
         ));
     }
+
+    /**
+     * A trace that showed only the past would say a rule "applied" on Tuesday
+     * and never mention the WhatsApp it arranged for Thursday — which is the
+     * one thing somebody reading the screen on Wednesday needs to know.
+     */
+    public function test_the_trace_shows_what_is_still_coming(): void
+    {
+        $this->rule([['type' => 'add_note', 'body' => 'تابع', 'delay_minutes' => 2880]], 'قاعدة الانتظار');
+        $lead = $this->lead();
+        $this->fire($lead);
+
+        $scheduled = $this->actingAs($this->t['admin'])
+            ->getJson("/api/v1/leads/{$lead->uuid}/automation-runs")
+            ->assertOk()
+            ->json('data.scheduled');
+
+        $this->assertCount(1, $scheduled);
+        $this->assertSame('قاعدة الانتظار', $scheduled[0]['rule_name']);
+        $this->assertSame('add_note', $scheduled[0]['type']);
+        $this->assertSame(ScheduledAction::PENDING, $scheduled[0]['status']);
+    }
+
+    /**
+     * The rule decided on Tuesday; by Wednesday a manager may know something it
+     * does not. Without this the only way to stop it was to close the lead,
+     * which is a worse thing to do to the pipeline than the message was.
+     */
+    public function test_a_manager_can_call_off_what_a_rule_promised(): void
+    {
+        $this->rule([['type' => 'add_note', 'body' => 'تابع', 'delay_minutes' => 2880]]);
+        $lead = $this->lead();
+        $this->fire($lead);
+
+        $scheduled = ScheduledAction::withoutGlobalScopes()->first();
+
+        $this->actingAs($this->t['admin'])
+            ->deleteJson("/api/v1/scheduled-actions/{$scheduled->uuid}")
+            ->assertOk();
+
+        $this->assertSame(ScheduledAction::CANCELLED, $scheduled->fresh()->status);
+
+        // And the job firing later does nothing.
+        $this->runNow($scheduled->fresh());
+        $this->assertSame(0, $this->notes($lead));
+    }
+
+    public function test_cancelling_something_already_done_is_refused(): void
+    {
+        $this->rule([['type' => 'add_note', 'body' => 'تابع', 'delay_minutes' => 60]]);
+        $lead = $this->lead();
+        $this->fire($lead);
+
+        $scheduled = ScheduledAction::withoutGlobalScopes()->first();
+        $this->runNow($scheduled);
+
+        $this->actingAs($this->t['admin'])
+            ->deleteJson("/api/v1/scheduled-actions/{$scheduled->uuid}")
+            ->assertStatus(422);
+    }
+
+    public function test_nobody_can_cancel_an_action_in_another_workspace(): void
+    {
+        $this->rule([['type' => 'add_note', 'body' => 'تابع', 'delay_minutes' => 60]]);
+        $this->fire($this->lead());
+
+        $scheduled = ScheduledAction::withoutGlobalScopes()->first();
+        $other = $this->provisionTenant('Somebody Else');
+
+        $this->actingAs($other['admin'])
+            ->deleteJson("/api/v1/scheduled-actions/{$scheduled->uuid}")
+            ->assertNotFound();
+
+        $this->assertSame(ScheduledAction::PENDING, $scheduled->fresh()->status);
+    }
 }

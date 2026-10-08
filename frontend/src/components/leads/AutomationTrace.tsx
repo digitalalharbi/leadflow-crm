@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { CircleSlash, PlayCircle, TriangleAlert } from 'lucide-react'
-import { fetchRunsForLead, type AutomationRun } from '@/features/automation'
+import { CircleSlash, Clock, PlayCircle, TriangleAlert } from 'lucide-react'
+import { cancelScheduledAction, fetchRunsForLead, type AutomationRun } from '@/features/automation'
 import { formatDateTime } from '@/lib/format'
-import { Badge, CardBody, Skeleton } from '@/components/ui'
+import { Badge, Button, CardBody, Skeleton } from '@/components/ui'
+import { useApiError } from '@/hooks/useApiError'
+import { useUi } from '@/stores/ui'
 
 /**
  * Why the system did that.
@@ -22,9 +24,22 @@ import { Badge, CardBody, Skeleton } from '@/components/ui'
 export function AutomationTrace({ leadId }: { leadId: string }) {
   const { t, i18n } = useTranslation()
 
+  const queryClient = useQueryClient()
+  const toast = useUi((state) => state.toast)
+  const translateError = useApiError()
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['automation-runs', leadId],
     queryFn: () => fetchRunsForLead(leadId),
+  })
+
+  const cancel = useMutation({
+    mutationFn: (id: string) => cancelScheduledAction(id),
+    onSuccess: () => {
+      toast(t('automation.trace.cancelled'), 'success')
+      void queryClient.invalidateQueries({ queryKey: ['automation-runs', leadId] })
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
   })
 
   if (isLoading) {
@@ -37,7 +52,9 @@ export function AutomationTrace({ leadId }: { leadId: string }) {
 
   // A trace that cannot load must not take the lead page down with it: this is
   // supporting detail, and the rest of the screen is the rep's actual work.
-  if (isError || !data || data.runs.length === 0) {
+  const scheduled = (data?.scheduled ?? []).filter((action) => action.status === 'pending')
+
+  if (isError || !data || (data.runs.length === 0 && scheduled.length === 0)) {
     return (
       <CardBody>
         <p className="t-caption">{t('automation.trace.empty')}</p>
@@ -47,6 +64,46 @@ export function AutomationTrace({ leadId }: { leadId: string }) {
 
   return (
     <CardBody>
+      {/*
+        What is still coming, above what already happened.
+        
+        A trace of the past alone would say a rule "applied" on Tuesday and
+        never mention the WhatsApp it arranged for Thursday — which is the one
+        thing somebody reading this on Wednesday needs to know, and the only
+        place they can stop it.
+      */}
+      {scheduled.length > 0 && (
+        <ul className="mb-4 space-y-2" data-testid="scheduled-actions">
+          {scheduled.map((action) => (
+            <li
+              key={action.id}
+              className="flex flex-wrap items-center gap-2 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] px-3 py-2"
+            >
+              <Clock className="size-4 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
+              <span className="t-small min-w-0 flex-1">
+                {t('automation.trace.scheduled', {
+                  action: t(`automation.action_.${action.type}`, { defaultValue: action.type }),
+                  rule: action.rule_name,
+                })}
+                {' · '}
+                <span className="text-[var(--color-ink-muted)]">
+                  {formatDateTime(action.run_at, i18n.language)}
+                </span>
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                loading={cancel.isPending && cancel.variables === action.id}
+                onClick={() => cancel.mutate(action.id)}
+                data-testid={`cancel-scheduled-${action.id}`}
+              >
+                {t('automation.trace.cancelScheduled')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <ol className="space-y-3" data-testid="automation-trace">
         {data.runs.map((run) => (
           <li key={run.id} className="flex gap-3">

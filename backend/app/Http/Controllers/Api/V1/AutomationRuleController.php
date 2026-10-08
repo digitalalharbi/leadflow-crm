@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Lead;
+use App\Models\ScheduledAction;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -187,6 +188,20 @@ class AutomationRuleController extends Controller
             ->limit(100)
             ->get();
 
+        /*
+         * What is still coming, beside what already happened.
+         *
+         * A rule can promise an action two days out, and a trace that showed
+         * only the past would say a rule "applied" on Tuesday and never mention
+         * the WhatsApp it arranged for Thursday — which is the one thing
+         * somebody reading this screen on Wednesday needs to know, and the only
+         * place they could stop it.
+         */
+        $scheduled = ScheduledAction::where('lead_id', $lead->id)
+            ->orderBy('run_at')
+            ->limit(50)
+            ->get();
+
         return ApiResponse::success([
             'runs' => $runs->map(fn (AutomationRun $run) => [
                 'id' => $run->id,
@@ -199,7 +214,41 @@ class AutomationRuleController extends Controller
                 'duration_ms' => $run->duration_ms,
                 'created_at' => $run->created_at?->toIso8601String(),
             ]),
+            'scheduled' => $scheduled->map(fn (ScheduledAction $action) => [
+                'id' => $action->uuid,
+                'rule_name' => $action->rule_name,
+                'type' => $action->action['type'] ?? 'unknown',
+                'run_at' => $action->run_at?->toIso8601String(),
+                'status' => $action->status,
+                'outcome' => $action->outcome,
+                'correlation_id' => $action->correlation_id,
+            ]),
         ]);
+    }
+
+    /**
+     * Call off something a rule promised.
+     *
+     * The rule decided on Tuesday; by Wednesday a manager may know something
+     * the rule does not. Without this the only way to stop it was to close the
+     * lead, which is a worse thing to do to the pipeline than the message was
+     * going to be.
+     */
+    public function cancelScheduled(Request $request, string $uuid)
+    {
+        $action = ScheduledAction::where('uuid', $uuid)->firstOrFail();
+
+        // The authority to change a lead, not to write rules: the person
+        // watching this lead is the one who knows the message is now wrong.
+        $this->authorize('update', $action->lead);
+
+        if ($action->status !== ScheduledAction::PENDING) {
+            return ApiResponse::error('This action is no longer pending.', null, 422);
+        }
+
+        $action->resolve(ScheduledAction::CANCELLED, 'أُلغي بواسطة '.$request->user()->name.'.');
+
+        return ApiResponse::success(null, 'Scheduled action cancelled.');
     }
 
     private function validated(Request $request, bool $partial = false): array

@@ -223,6 +223,9 @@ export default {
       description: 'كل قاعدة نُظر فيها لهذا العميل، ولماذا طُبِّقت أو لم تُطبَّق.',
       empty: 'لم تُطبَّق أي قاعدة على هذا العميل بعد.',
       deletedRule: 'قاعدة محذوفة',
+      scheduled: '{{action}} — مجدول من «{{rule}}»',
+      cancelScheduled: 'إلغاء',
+      cancelled: 'أُلغي الإجراء المجدول',
       outcome: {
         applied: 'طُبِّقت',
         skipped: 'لم تنطبق',

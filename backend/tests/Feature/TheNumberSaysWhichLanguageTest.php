@@ -410,6 +410,24 @@ class TheNumberSaysWhichLanguageTest extends TestCase
             ->assertJsonPath('data.lead.language', 'ur');
     }
 
+    /**
+     * And on the list, not only the detail screen.
+     *
+     * The moment it is useful is before dialling, in the work queue. Finding
+     * out after the call that the customer does not speak Arabic is finding out
+     * too late, and the queue reads the slim payload.
+     */
+    public function test_the_work_queue_payload_carries_it_too(): void
+    {
+        $rep = $this->rep();
+        $this->lead(['phone_normalized' => '+905321234567', 'assigned_to' => $rep->id]);
+
+        $this->actingAs($rep)
+            ->getJson('/api/v1/work/next')
+            ->assertOk()
+            ->assertJsonPath('data.lead.language', 'tr');
+    }
+
     public function test_a_lead_whose_number_says_nothing_carries_no_language(): void
     {
         $lead = $this->lead(['phone_normalized' => '+41791234567']);

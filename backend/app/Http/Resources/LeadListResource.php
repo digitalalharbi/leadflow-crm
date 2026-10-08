@@ -15,6 +15,13 @@ class LeadListResource extends JsonResource
             'full_name' => $this->full_name,
             'phone' => $this->phone,
             'whatsapp' => $this->phone_normalized ? ltrim($this->phone_normalized, '+') : null,
+            /*
+             * Which language to open the call in, read off the number's country
+             * code. It belongs in the slim payload because the moment it is
+             * useful is before dialling, in the work queue — knowing afterwards
+             * that the customer does not speak Arabic is knowing too late.
+             */
+            'language' => $this->resource->language(),
             'email' => $this->email,
             'city' => $this->city,
             'status' => $this->status?->value,

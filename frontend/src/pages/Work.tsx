@@ -7,6 +7,7 @@ import {
   fetchNextInQueue, fetchWorkSummary, logContact, recordOutcome,
   OUTCOMES, type NextAction, type Outcome,
 } from '@/features/work'
+import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen, telLink, whatsappLink } from '@/lib/format'
@@ -49,6 +50,7 @@ export function WorkPage() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
+  const workspaceLanguage = useAuth((s) => s.workspaceLanguage)
   const translateError = useApiError()
 
   const [note, setNote] = useState('')
@@ -257,6 +259,18 @@ export function WorkPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={lead.status} />
                   <TemperatureBadge temperature={lead.temperature} />
+                  {/*
+                    Which language to open the call in — read off the number's
+                    country code, and shown only when it is not the one this
+                    workspace works in. Before dialling is the only moment this
+                    is useful: finding out afterwards that the customer does not
+                    speak Arabic is finding out too late.
+                  */}
+                  {lead.language && lead.language !== workspaceLanguage && (
+                    <Badge tone="info" testId="work-language">
+                      {t(`languages.${lead.language}`, { defaultValue: lead.language })}
+                    </Badge>
+                  )}
                   {lead.city && <span className="t-caption">{lead.city}</span>}
                 </div>
                 <p className="t-caption">

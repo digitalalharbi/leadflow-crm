@@ -43,7 +43,27 @@ test.describe('Follow-ups', () => {
     await page.getByTestId('action-follow-up').click()
 
     const dialog = page.getByRole('dialog')
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 16)
+    /*
+     * Tomorrow at midday, in the browser's own clock.
+     *
+     * The field is a `datetime-local`, and the form does
+     * `new Date(value).toISOString()` — so whatever is typed is read as local
+     * time and converted to UTC. Feeding it a UTC wall-clock (`toISOString()`)
+     * therefore subtracted the offset again: on a machine at UTC+3, "tomorrow"
+     * became 21 hours away, which lands back inside today's UTC date and so in
+     * the "today" bucket rather than "upcoming".
+     *
+     * It only failed east of UTC and only during the first hours of the UTC
+     * day, which is why CI — which runs at UTC, where the conversion is a
+     * no-op — never saw it. It makes the suite unrunnable locally for a few
+     * hours each morning.
+     *
+     * Midday local is tomorrow in UTC for any offset within ±12.
+     */
+    const noon = new Date(Date.now() + 86_400_000)
+    noon.setHours(12, 0, 0, 0)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const tomorrow = `${noon.getFullYear()}-${pad(noon.getMonth() + 1)}-${pad(noon.getDate())}T12:00`
 
     await dialog.getByLabel('موعد المتابعة').fill(tomorrow)
     await dialog.getByLabel('ملاحظة').fill('مكالمة تأكيد الموعد')

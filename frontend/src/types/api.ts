@@ -56,6 +56,10 @@ export interface User {
   is_active: boolean
   /** When they are back. Null means they are here. */
   away_until?: string | null
+  /** Cities this rep sells in. Empty means every city. */
+  covers_cities?: string[]
+  /** How many leads they take for every one an ordinary rep takes. */
+  assignment_weight?: number
   locale: string | null
   last_login_at: string | null
   created_at: string

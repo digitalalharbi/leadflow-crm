@@ -115,11 +115,35 @@ class UserController extends Controller
              * can already change their team; this is less than that.
              */
             'away_until' => ['sometimes', 'nullable', 'date', 'before:+1 year'],
+
+            /*
+             * Where this rep sells, and how much of the load they carry.
+             *
+             * Both are workload policy rather than facts about the person, so
+             * unlike `away_until` they take an admin or a manager — the guard
+             * below. Empty coverage means every city and a weight of one means
+             * an equal share, which is where every workspace starts.
+             */
+            'covers_cities' => ['sometimes', 'nullable', 'array', 'max:50'],
+            'covers_cities.*' => ['string', 'max:120'],
+            'assignment_weight' => ['sometimes', 'integer', 'min:1', 'max:10'],
         ]);
 
         // Only an admin changes roles or activation, and never their own.
         if ((isset($data['role']) || isset($data['is_active'])) && ! $request->user()->isAdmin()) {
             throw ValidationException::withMessages(['role' => ['Only an admin can change roles.']]);
+        }
+
+        /*
+         * Coverage and weight decide who gets which customer, so they are the
+         * workspace's call rather than the rep's own — a rep who could widen
+         * their own weight could quietly take the whole pipeline.
+         */
+        if ((array_key_exists('covers_cities', $data) || array_key_exists('assignment_weight', $data))
+            && ! ($request->user()->isAdmin() || $request->user()->isManager())) {
+            throw ValidationException::withMessages([
+                'assignment_weight' => ['Only an admin or a manager can change how leads are shared out.'],
+            ]);
         }
 
         if ($user->id === $request->user()->id && array_key_exists('is_active', $data) && ! $data['is_active']) {

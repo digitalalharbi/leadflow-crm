@@ -223,6 +223,7 @@ export function ReportsPage() {
             description={t('campaignQuality.subtitle')}
             height={320}
             loading={campaigns.isLoading}
+            error={campaigns.isError ? translateError(campaigns.error) : undefined}
             empty={(campaigns.data?.rows.length ?? 0) === 0}
             emptyMessage={t('campaignQuality.empty')}
             testId="report-campaign-quality"
@@ -235,6 +236,7 @@ export function ReportsPage() {
             description={t('campaignQuality.matrixHint')}
             height={280}
             loading={campaigns.isLoading}
+            error={campaigns.isError ? translateError(campaigns.error) : undefined}
             empty={(campaigns.data?.rows.length ?? 0) < 2}
             emptyMessage={t('campaignQuality.needMoreCampaigns')}
             testId="report-campaign-matrix"
@@ -256,6 +258,7 @@ export function ReportsPage() {
           description={t('dashboard.platformsHint')}
           height={400}
           loading={campaigns.isLoading}
+          error={campaigns.isError ? translateError(campaigns.error) : undefined}
           empty={(campaigns.data?.rows.length ?? 0) === 0}
           emptyMessage={t('campaignQuality.empty')}
           testId="report-platforms"
@@ -264,7 +267,7 @@ export function ReportsPage() {
         </ChartCard>
       )}
 
-      {tab === 'team' && <TeamTab query={team} performance={performance} />}
+      {tab === 'team' && <TeamTab query={team} performance={performance} translateError={translateError} />}
 
       {tab === 'lost' && (
         <ChartCard
@@ -272,6 +275,7 @@ export function ReportsPage() {
           description={t('reports.lostHint')}
           height={340}
           loading={lost.isLoading}
+          error={lost.isError ? translateError(lost.error) : undefined}
           empty={(lost.data?.rows.length ?? 0) === 0}
           emptyMessage={t('reports.noLost')}
           testId="report-lost"
@@ -500,11 +504,24 @@ function OverviewTab({
 function TeamTab({
   query,
   performance,
+  translateError,
 }: {
   query: ReturnType<typeof useQuery>
   performance: ReturnType<typeof useQuery>
+  translateError: (error: unknown) => string
 }) {
   const { t, i18n } = useTranslation()
+
+  /*
+   * Before the table's own empty state, which said "لا توجد بيانات كافية لعرض
+   * هذا التقرير" to a sales rep who is simply not allowed to see how the team
+   * is doing. The data was there; they were refused it, and the product gave
+   * them a reason that was not true.
+   */
+  if (query.isError) {
+    return <Card><ErrorState message={translateError(query.error)} onRetry={() => void query.refetch()} /></Card>
+  }
+
   const rows = (query.data as { rows?: Array<Record<string, number | string | null>> } | undefined)?.rows ?? []
   const timing = (performance.data as { timing?: { avg_first_contact_seconds: number | null } } | undefined)?.timing
 

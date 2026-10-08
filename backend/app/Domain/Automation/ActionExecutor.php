@@ -87,7 +87,24 @@ class ActionExecutor
         $strategy = (string) ($action['strategy'] ?? 'round_robin');
 
         $user = match ($strategy) {
-            'specific' => User::where('uuid', $action['user_id'] ?? '')->first(),
+            /*
+             * Scoped to the lead's own workspace, by hand.
+             *
+             * `User` is deliberately not covered by the tenant scope — the
+             * login lookup has to run before a tenant context exists — and its
+             * docblock says filtering is done "in the controller/policy layer".
+             * This is neither, so a rule naming any uuid would hand the lead to
+             * somebody in another workspace, who would then own and see it.
+             *
+             * `is_active` too: a rule that outlives the rep it names must not
+             * quietly park leads on a disabled account.
+             */
+            'specific' => User::where('uuid', $action['user_id'] ?? '')
+                ->where('tenant_id', $lead->tenant_id)
+                ->where('is_active', true)
+                ->first(),
+            // The lead is passed so the narrowing steps apply — the project's
+            // own team, then the language the number says, then the city.
             default => $this->assignment->byStrategy($lead->tenant, $lead),
         };
 

@@ -142,6 +142,36 @@ services:
       backend: { condition: service_started }
     restart: unless-stopped
 
+  # The websocket server behind the live feed.
+  #
+  # Started whatever BROADCAST_CONNECTION says, because a container that exits
+  # on a missing variable looks like a crash loop to whoever is deploying. It
+  # is the application that decides whether anything is published to it: with
+  # the connection set to `log` or `null` this process simply sits there, and
+  # the browser never connects because the client needs VITE_REVERB_* to be set
+  # at build time.
+  reverb:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: production
+      args:
+        APP_RELEASE: ${DEPLOY_COMMIT:-}
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    environment: *backend-env
+    volumes:
+      - production-storage:/var/www/html/storage
+    depends_on:
+      backend: { condition: service_started }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+    # Not published to the host: the reverse proxy in front of this stack
+    # terminates TLS and forwards /app and /apps to it, the same way it does
+    # for the API. Opening 8080 to the internet would serve the socket without
+    # a certificate.
+    expose:
+      - '8080'
+
 volumes:
   production-postgres:
   production-redis:

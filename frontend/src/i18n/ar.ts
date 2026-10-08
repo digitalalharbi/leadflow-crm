@@ -707,6 +707,12 @@ export default {
     fi: 'الفنلندية',
   },
 
+  live: {
+    leadArrived: 'وصل عميل جديد إلى قائمتك',
+    leadAssigned: 'أُسنِد إليك عميل جديد',
+    leadReplied: 'ردّ عميلك للتو',
+  },
+
   leads: {
     language: 'اللغة',
     searchPlaceholder: 'ابحث بالاسم أو الجوال أو البريد…',

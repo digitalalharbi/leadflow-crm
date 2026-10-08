@@ -554,6 +554,12 @@ export default {
     fi: 'Finnish',
   },
 
+  live: {
+    leadArrived: 'A new lead reached your queue',
+    leadAssigned: 'A lead was assigned to you',
+    leadReplied: 'Your lead just replied',
+  },
+
   leads: {
     language: 'Language',
     searchPlaceholder: 'Search by name, phone or email…',

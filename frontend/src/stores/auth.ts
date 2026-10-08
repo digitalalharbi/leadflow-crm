@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiGet, apiPost, tokenStorage } from '@/lib/api'
+import { disconnectEcho } from '@/lib/echo'
 import type { Branding, User } from '@/types/api'
 
 interface LoginResponse {
@@ -62,6 +63,11 @@ export const useAuth = create<AuthState>((set) => ({
       // Even if the call fails the local session must end.
     }
 
+    // The socket belongs to the session that opened it: a live feed left
+    // running past a sign-out keeps a private channel subscribed on a device
+    // whose user has gone.
+    disconnectEcho()
+
     tokenStorage.clear()
     set({
       user: null, branding: null,
@@ -104,6 +110,11 @@ export const useAuth = create<AuthState>((set) => ({
   setBranding: (branding) => set({ branding }),
   setUser: (user) => set({ user }),
   reset: () => {
+    // The socket belongs to the session that opened it: a live feed left
+    // running past a sign-out keeps a private channel subscribed on a device
+    // whose user has gone.
+    disconnectEcho()
+
     tokenStorage.clear()
     set({
       user: null, branding: null,

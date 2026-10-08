@@ -1,62 +1,52 @@
 # مهتم — gap matrix against the SaaS specification
 
-Audited against the running code on `develop`, not against intent. "Partial"
-means the seam exists and the behaviour does not.
+Audited against the running code on `develop`, not against intent. This file was
+rewritten on 2026-10-08: every P0 row and all but one P1 row said **Missing**
+while the code had been built, which is worse than no document — it sends the
+next person to build what already exists.
 
-## What already holds up
+"Built" below means the behaviour is in the code **and** has tests that fail when
+it is removed. Where something is partial, the row says what is absent.
 
-These are built, tested, and need no rework — the brief's foundations are met.
+## P0 — the lead moves on its own
 
-| Area | Where |
-| --- | --- |
-| Provider adapters behind one port | `Services/Integrations/Providers/*` — Meta, TikTok, Snapchat, Google Ads, LinkedIn, Sheets, CSV, webhook, manual |
-| Ingestion pipeline: normalise → validate → dedup → create/re-engage | `Services/Leads/LeadIngestionService` |
-| Phone normalisation for every Saudi shape | `Services/Leads/PhoneNormalizer` |
-| Attribution touchpoints kept per arrival | `Models/LeadSourceEvent` |
-| Scoring with tenant-configurable thresholds | `Services/Leads/LeadScoringService` |
-| Tenant isolation that fails closed | `Scopes/TenantScope`, `CrossTenantInjectionTest` |
-| Audit log | `Models/AuditLog`, `Services/AuditLogger` |
-| WhatsApp send/receive, templates, delivery status | `Services/Whatsapp/*` |
-| Queues, Horizon, scheduler, health, rollback | compose + `scripts/deploy-*` |
-
-## P0 — the lead never moves on its own
-
-The brief's core complaint: a rep must do everything by hand. Everything in
-this block is what stops that.
-
-| # | Feature | State | Why it matters | Action |
-| --- | --- | --- | --- | --- |
-| 1 | **Domain events** | **Missing** — `app/Events` and `app/Listeners` are empty | Nothing can react to anything. Every automation below depends on this | Emit `LeadCreated`, `LeadAssigned`, `LeadReplied`, `LeadStageChanged`, `LeadQualified`, `LeadWon`, `LeadLost`, `FollowUpDue` |
-| 2 | **Automation engine** | **Missing** | The product's whole premise. No trigger → condition → action → delay | Rules stored per tenant, executed on events, queued |
-| 3 | **Rules engine / builder** | **Missing** | Every rule change is a deploy today | Conditions and actions as data, evaluated at runtime |
-| 4 | **SLA timers + escalation** | **Missing** | A lead nobody touches stays untouched forever | Timers per stage, reminder → escalate → reassign |
-| 5 | **Lifecycle statuses** | **Partial** — 6 of 10 | No `replied`, `negotiation`, `invalid`, `no_response`, so those outcomes have nowhere to go | Extend the enum and the board |
-| 6 | **Deduplication** | **Partial** — normalised phone only | Same person from Meta then TikTok becomes two leads if the phone differs by a digit | Add email, provider lead id, external id, WhatsApp number |
-| 7 | **Assignment strategies** | **Partial** — manual + round robin | Cannot route by project, campaign, city, language, workload, score or working hours | Strategy per rule, with workload and availability |
-| 8 | **Automation trace** | **Missing** | "Why was this assigned?" has no answer | Record every decision with its reason |
-| 9 | **Async ingestion** | **Partial** — one job exists | Webhook processing is synchronous; a slow provider blocks the request | Queue ingestion, add retry and dead-letter |
-
-## P1 — the manager cannot see or steer
-
-| # | Feature | State | Action |
+| # | Feature | State | Where |
 | --- | --- | --- | --- |
-| 10 | Appointments module | **Missing** | Model, reminders, calendar-ready |
-| 11 | Next Best Action | **Missing** | Derived per lead from stage, score, SLA, last contact |
-| 12 | Sales workspace + "Next Lead" | **Missing** | One screen, one button |
-| 13 | Offline conversions | **Missing** | Architecture + queue, no sending without configuration |
-| 14 | Cost per qualified lead / ROAS | **Partial** — counts, no spend | Needs ad-spend ingestion per provider |
-| 15 | Integration health centre | **Partial** — status exists | Token expiry, rate limit, last error, reconnect, test |
-| 16 | Realtime | **Missing** | Broadcasting for new lead, reply, assignment |
-| 17 | Data quality dashboard | **Missing** | Invalid phones, unmapped campaigns, stale leads |
-| 18 | Global search / command palette | **Missing** | |
-| 19 | Onboarding wizard + test lead | **Partial** — checklist only | Ten steps, then a traced test lead |
+| 1 | Domain events | **Built** | `app/Events/*` — created, assigned, replied, stage changed, outcome recorded, qualified, won, lost. Registered by hand in `AppServiceProvider`; discovery is off, because both were on once and every rule ran twice |
+| 2 | Automation engine | **Built** | `Domain/Automation/AutomationEngine` — trigger → condition → action, queued, with delayed actions via `ScheduledAction` |
+| 3 | Rules builder | **Built** | Conditions and actions as data; templates, duplication, preview and a match-any/match-all toggle |
+| 4 | SLA timers + escalation | **Built** | `Domain/Sla/SlaSweeper` — remind → escalate → reassign, counted in the workspace's own working hours (`BusinessHours`), and each step notifies a person |
+| 5 | Lifecycle statuses | **Built** | Ten, including `replied`, `negotiation`, `invalid`, `no_response` |
+| 6 | Deduplication | **Built** | `Domain/Leads/DuplicateMatcher` — provider lead id, then normalised phone, then email, strongest signal first and no fuzzy name matching |
+| 7 | Assignment strategies | **Built** | `Services/Leads/LeadAssignmentService` — a narrowing chain: the project's team, then the language read off the number, then the city, then workload-per-weight or round robin. Away reps are skipped |
+| 8 | Automation trace | **Built** | `AutomationRun` per decision with its reason; the lead timeline shows what a rule did and the insights screen shows what it did not |
+| 9 | Async ingestion | **Partial, deliberately** | Imports, exports, WhatsApp retries and scheduled actions are queued. The webhook itself is **not**: it answers 422 with the reason a lead was rejected, which a queue cannot do, and providers use that answer. The cost is that a slow ingestion holds the request |
+
+## P1 — the manager can see and steer
+
+| # | Feature | State | Where |
+| --- | --- | --- | --- |
+| 10 | Appointments | **Built** | `Models/Appointment`, reminders on the follow-up sweep |
+| 11 | Next best action | **Built** | `Domain/Leads/NextBestAction` — derived from stage, score, SLA and last contact |
+| 12 | Sales workspace | **Built** | `اعمل الآن` — one lead, one action, one outcome, then the next |
+| 13 | Offline conversions | **Built** | `Domain/Conversions` with per-provider adapters, hashed identifiers, queued export; sends nothing until a provider is configured |
+| 14 | Cost per qualified lead / ROAS | **Built** | `CampaignSpend` entered by hand per campaign and day; a campaign nobody costed reports no cost rather than a cost of zero |
+| 15 | Integration health | **Built** | Status, last error, last delivery and a test call per source; the daily digest names a source that has gone quiet |
+| 16 | Realtime | **Built** | Private per-workspace and per-person channels over Reverb. Off unless configured, and the screens keep their timers either way |
+| 17 | Data quality | **Built** | Invalid phones, unmapped campaigns, stale leads, duplicates |
+| 18 | Command palette | **Built** | Global search and navigation |
+| 19 | Onboarding | **Built** | `Domain/Onboarding` — a checklist and a traced test lead that says which step swallowed it |
 
 ## P2 — valuable, not load-bearing
 
-AI assist, calendar sync, extended providers, advanced analytics.
+Not started, and nothing above depends on them: AI assist, calendar sync,
+further provider adapters, cohort and forecast analytics.
 
-## Order of execution
+## What is actually left
 
-Events first, because items 2, 3, 4, 8 and 16 all hang off them. Then the
-automation engine, then SLA, then the statuses and dedup that give automation
-something to decide about.
+1. **A server.** Everything deploys; nothing is deployed. `EXTERNAL_SETUP.md`
+   section 0 and 2.
+2. **Row 9**, if a provider ever proves slow enough to matter. The fix is an
+   accepted-then-processed handshake, which changes what the 422 means — not a
+   change to make speculatively.
+3. **P2.**

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessLeadImport;
 use App\Models\Import;
 use App\Models\Lead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 class CsvImportTest extends TestCase
@@ -141,6 +143,55 @@ class CsvImportTest extends TestCase
 
         // Customer PII does not linger on disk once it is in the database.
         Storage::assertMissing($path);
+    }
+
+    /**
+     * The failure path did neither of the two things the success path does.
+     *
+     * `$tries = 1`, so a job that threw anywhere outside the per-row `try` left
+     * the import showing "جارٍ المعالجة" for the rest of the workspace's life —
+     * and left the customer's CSV, every row of it, sitting in storage.
+     */
+    public function test_an_import_that_crashes_says_so_and_does_not_keep_the_file(): void
+    {
+        $file = $this->csv("name,mobile\nفهد,0512345678\n");
+
+        $this->actingAs($this->t['admin'])
+            ->post('/api/v1/imports', ['file' => $file])->assertCreated();
+
+        $import = Import::withoutGlobalScopes()->first();
+        $path = $import->getRawOriginal('path');
+        Storage::assertExists($path);
+
+        (new ProcessLeadImport($import->id, $this->t['tenant']->id))
+            ->failed(new RuntimeException('the parser gave up'));
+
+        $fresh = $import->fresh();
+
+        $this->assertSame(Import::FAILED, $fresh->status);
+        $this->assertNotEmpty($fresh->error, 'the customer has to be told it failed');
+        Storage::assertMissing($path);
+    }
+
+    /**
+     * The message is a reference, not the exception. A parser's complaint
+     * repeats the row that broke it, and that row is somebody's name and phone
+     * number — shown on a screen and kept in the database.
+     */
+    public function test_the_failure_message_does_not_repeat_the_exception(): void
+    {
+        $file = $this->csv("name,mobile\nفهد,0512345678\n");
+
+        $this->actingAs($this->t['admin'])
+            ->post('/api/v1/imports', ['file' => $file])->assertCreated();
+
+        $import = Import::withoutGlobalScopes()->first();
+
+        (new ProcessLeadImport($import->id, $this->t['tenant']->id))
+            ->failed(new RuntimeException('could not parse فهد,0512345678'));
+
+        $this->assertStringNotContainsString('0512345678', (string) $import->fresh()->error);
+        $this->assertStringNotContainsString('could not parse', (string) $import->fresh()->error);
     }
 
     public function test_an_import_cannot_be_processed_twice(): void

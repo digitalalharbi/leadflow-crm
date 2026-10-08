@@ -236,3 +236,48 @@ the arbiter:
   in `ActionExecutor`, which looked a named rep up by uuid with no tenant
   filter. `User` is deliberately outside the tenant scope, so that handed leads
   to people in other workspaces. Worth getting in.
+
+## Merge order when Actions comes back (2026-10-08)
+
+Fifteen PRs are open, all verified locally, none mergeable until the billing
+block clears. They were merged together on a scratch branch and the combined
+result passes: backend 818, frontend 133, Playwright 170 plus 11 mobile.
+
+Merge the test-only ones first, then the independent ones, leaving the
+automation group last — that is where every conflict is:
+
+1. #75, #78 — test fixes, no product code
+2. #65, #66, #70, #71, #72, #73, #77 — independent of each other
+3. #68, #74, #76, #79 — all touch the automation builder or the executor
+
+Three conflicts to expect, all of the shape "two PRs added to the same place",
+all resolved by keeping both sides:
+
+- `frontend/src/features/automation/RuleEditor.test.tsx` — the match-any, delay
+  and named-rep tests. The schema fixture needs `condition_matches` AND
+  `actions: ['assign', 'add_tag']`, plus the `@/features/leads` mock from the
+  named-rep branch.
+- `frontend/src/features/automation.ts` — `duplicateRule` against the
+  scheduled-action helpers. Keep both; `fetchRunsForLead` is the richer one that
+  also returns `scheduled`.
+- `backend/app/Domain/Automation/ActionExecutor.php` — **the one that matters.**
+  #79 branched before #68, so its `'specific' =>` lookup is the old unscoped
+  one. Keep #68's tenant-scoped version (`where('tenant_id', $lead->tenant_id)`
+  and `where('is_active', true)`) and take #79's `byStrategy($lead->tenant,
+  $lead)`. Taking "theirs" wholesale reopens a cross-tenant assignment hole.
+
+## How it was actually resolved (2026-10-08)
+
+The billing block did not clear; the decision changed. The owner's instruction
+was that there is no billing and the project connects to the server directly
+rather than through Actions, so the arbiter moved rather than the schedule.
+
+`scripts/verify-all.sh` (#84) is what replaced it: the four workflows' steps,
+run here, in their order, stamping the commit they passed on. It is not CI and
+says so — same machine, same database, one branch at a time — but it is a run
+somebody can name, which is the part "merge on green" actually needs.
+`scripts/deploy-direct.sh` refuses to deploy a commit without that stamp.
+
+So the order above was followed and the PRs were merged on local green. The two
+sections above are kept as written: what was decided at the time, and why, is
+worth more than a tidy note claiming it was always the plan.

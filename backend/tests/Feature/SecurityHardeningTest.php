@@ -308,8 +308,35 @@ class SecurityHardeningTest extends TestCase
     {
         // Refusing an unknown address without hashing anything answers in
         // microseconds, which tells an attacker the address does not exist.
-        config(['integrations.rate_limits.login.per_email_per_minute' => 1000]);
-        config(['integrations.rate_limits.login.per_ip_per_minute' => 1000]);
+        /*
+         * `integrations.login.*`, not `integrations.rate_limits.login.*`.
+         *
+         * The limiter reads the first and this set the second, so the override
+         * had never done anything — and the test survived only because it makes
+         * exactly five attempts per email, which is exactly the limit. Adding a
+         * sixth sample answers 429 and the timing becomes meaningless, which is
+         * how this was found.
+         */
+        config(['integrations.login.per_email_per_minute' => 1000]);
+        config(['integrations.login.per_ip_per_minute' => 1000]);
+
+        /*
+         * A real cost factor, for this test only.
+         *
+         * The suite runs at `BCRYPT_ROUNDS=4` so that everything else is fast,
+         * which left both paths here costing about a millisecond — and the
+         * assertion below, which assumes "bcrypt dominates", was comparing two
+         * numbers made almost entirely of scheduler noise. It failed whenever
+         * the machine was busy, on branches that had not touched authentication.
+         *
+         * Ten rounds puts roughly fifty milliseconds of real work in both paths,
+         * so the thing being measured is the thing the test is about. Set before
+         * the tenant is provisioned, because the admin's password has to be
+         * hashed at this cost too — a 4-round hash is cheap to verify however
+         * the config reads afterwards, and the comparison would tilt the other
+         * way.
+         */
+        config(['hashing.bcrypt.rounds' => 10]);
 
         $t = $this->provisionTenant('Timing Co');
 

@@ -56,8 +56,22 @@ class SlaSweeper
             ->limit(500)
             ->get();
 
+        /*
+         * Measured in working minutes, not wall-clock ones.
+         *
+         * A lead arriving at two in the morning used to be reminded at ten
+         * past, escalated to the management at half past, and taken off its rep
+         * by three — for a call nobody could have made. The rep opened their
+         * laptop to a breach they could not have avoided, which is the fastest
+         * way to teach a team that the SLA is noise.
+         *
+         * A workspace that has not said when it works is always open, so this
+         * is the same number it has always been until somebody says otherwise.
+         */
+        $hours = BusinessHours::for($settings);
+
         foreach ($candidates as $lead) {
-            $age = (int) $lead->created_at->diffInMinutes(now());
+            $age = $hours->minutesBetween($lead->created_at, now());
 
             $counts['reassigned'] += $this->maybeReassign($lead, $settings, $age);
             $counts['escalated'] += $this->maybeEscalate($lead, $settings, $age);

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import {
   createRule, deleteRule, fetchInsights, fetchRules, fetchSchema, fetchTemplates,
   installTemplate, previewRule, updateRule, type AutomationRule,
+  duplicateRule,
 } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -83,6 +84,18 @@ export function AutomationPage() {
       setConfirmDelete(null)
       refresh()
       toast(t('automation.deleted'), 'success')
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const duplicate = useMutation({
+    mutationFn: (id: string) => duplicateRule(id),
+    onSuccess: (result) => {
+      refresh()
+      toast(t('automation.duplicated'), 'success')
+      // Straight into the copy: duplicating is the first half of editing, and
+      // it arrives switched off, so the next thing anybody does is change it.
+      setEditing(result.rule)
     },
     onError: (caught) => toast(translateError(caught), 'error'),
   })
@@ -246,6 +259,21 @@ export function AutomationPage() {
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(rule)}>
                       {t('automation.edit')}
+                    </Button>
+                    {/*
+                      A copy to edit, rather than a rule to retype. Three
+                      projects means the same rule three times with one
+                      condition different, and retyping is where the second copy
+                      quietly stops matching the first.
+                    */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      loading={duplicate.isPending && duplicate.variables === rule.id}
+                      onClick={() => duplicate.mutate(rule.id)}
+                      data-testid={`duplicate-rule-${rule.id}`}
+                    >
+                      {t('automation.duplicate')}
                     </Button>
                     <Button
                       size="sm"

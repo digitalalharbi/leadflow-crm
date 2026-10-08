@@ -154,6 +154,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/automation/rules/{uuid}', [AutomationRuleController::class, 'update']);
             Route::delete('/automation/rules/{uuid}', [AutomationRuleController::class, 'destroy']);
             Route::get('/automation/rules/{uuid}/preview', [AutomationRuleController::class, 'preview']);
+            Route::post('/automation/rules/{uuid}/duplicate', [AutomationRuleController::class, 'duplicate']);
             Route::get('/leads/{leadUuid}/automation-runs', [AutomationRuleController::class, 'runsForLead']);
 
             /*

@@ -252,6 +252,8 @@ export default {
     turnOff: 'إيقاف',
     edit: 'تعديل',
     delete: 'حذف',
+    duplicate: 'تكرار',
+    duplicated: 'أُنشئت نسخة — عدّلها ثم شغّلها',
     deleteTitle: 'حذف القاعدة',
     deleteBody: 'سيتم حذف «{{name}}». سجل تشغيلها السابق يبقى محفوظًا.',
     preview: 'معاينة',

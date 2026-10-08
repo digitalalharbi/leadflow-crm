@@ -126,6 +126,65 @@ class AutomationRuleController extends Controller
         return ApiResponse::success(['rule' => $this->present($rule->fresh())]);
     }
 
+    /**
+     * A copy to edit, rather than a rule to retype.
+     *
+     * A workspace running three projects writes the same rule three times with
+     * one condition different, and retyping it is where the second copy quietly
+     * stops matching the first — a condition missed, a delay that is two days
+     * in one and two hours in another. Nobody notices until a project stops
+     * being chased.
+     *
+     * The copy arrives switched off, like an installed template does and for
+     * the same reason: it is a rule nobody has read yet, and it is about to be
+     * edited anyway.
+     */
+    public function duplicate(Request $request, string $uuid)
+    {
+        $this->authorize('create', AutomationRule::class);
+
+        $original = AutomationRule::where('uuid', $uuid)->firstOrFail();
+
+        $copy = AutomationRule::create([
+            'name' => $this->copyName($original->name),
+            'trigger' => $original->trigger,
+            'conditions' => $original->conditions,
+            'condition_match' => $original->condition_match,
+            'actions' => $original->actions,
+            'priority' => $original->priority,
+            'stops_processing' => $original->stops_processing,
+            'is_enabled' => false,
+            'created_by' => $request->user()->id,
+        ]);
+
+        return ApiResponse::created(['rule' => $this->present($copy)]);
+    }
+
+    /**
+     * "نسخة من X", and "نسخة من X 2" after that.
+     *
+     * Duplicating twice is the ordinary case — three projects, three copies —
+     * and two rules with the same name in one list is the thing that makes the
+     * trace unreadable later.
+     */
+    private function copyName(string $name): string
+    {
+        $base = 'نسخة من '.$name;
+        $taken = AutomationRule::where('name', 'like', $base.'%')->pluck('name')->all();
+
+        if (! in_array($base, $taken, true)) {
+            return mb_substr($base, 0, 120);
+        }
+
+        $n = 2;
+
+        while (in_array($base.' '.$n, $taken, true)) {
+            $n++;
+        }
+
+        return mb_substr($base.' '.$n, 0, 120);
+    }
+
     public function destroy(Request $request, string $uuid)
     {
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();

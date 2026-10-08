@@ -138,6 +138,10 @@ export function previewRule(id: string) {
   return apiGet<RulePreview>(`/automation/rules/${id}/preview`)
 }
 
+export function duplicateRule(id: string) {
+  return apiPost<{ rule: AutomationRule }>(`/automation/rules/${id}/duplicate`, {})
+}
+
 /** An action a rule promised for later, and has not done yet. */
 export interface ScheduledAction {
   id: string

@@ -179,6 +179,8 @@ export default {
     turnOff: 'Turn off',
     edit: 'Edit',
     delete: 'Delete',
+    duplicate: 'Duplicate',
+    duplicated: 'Copy created — edit it, then turn it on',
     deleteTitle: 'Delete rule',
     deleteBody: '"{{name}}" will be deleted. Its run history is kept.',
     preview: 'Preview',

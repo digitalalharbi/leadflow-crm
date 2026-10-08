@@ -158,3 +158,12 @@ export function fetchRunsForLead(leadId: string) {
 export function cancelScheduledAction(id: string) {
   return apiDelete(`/scheduled-actions/${id}`)
 }
+
+/**
+ * Copying a rule is how a second one gets written: the fields that matter are
+ * the conditions, and retyping six of them to change one is where the mistake
+ * goes in.
+ */
+export function duplicateRule(id: string) {
+  return apiPost<{ rule: AutomationRule }>(`/automation/rules/${id}/duplicate`, {})
+}

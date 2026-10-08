@@ -39,6 +39,17 @@ export function Conversation({ lead }: { lead: Lead }) {
   const { data, isLoading } = useQuery({
     queryKey: ['lead-messages', lead.id, page],
     queryFn: () => fetchLeadMessages(lead.id, page),
+    /*
+     * Polled only while something is still in flight, and not at all otherwise.
+     *
+     * A send that hits a blip — the network dropped, Meta answered 503 — is now
+     * held pending and retried in the background, so this thread is the one
+     * screen where the answer arrives a minute after the rep asked for it.
+     * Without this it reads "جارٍ الإرسال" until they navigate away and back,
+     * which is a worse lie than the "فشل الإرسال" it replaced.
+     */
+    refetchInterval: (query) =>
+      query.state.data?.data.some((message) => message.status === 'pending') ? 10_000 : false,
   })
 
   const optedOut = Boolean(lead.whatsapp_opt_out_at)

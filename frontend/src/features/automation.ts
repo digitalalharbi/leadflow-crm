@@ -138,6 +138,10 @@ export function previewRule(id: string) {
   return apiGet<RulePreview>(`/automation/rules/${id}/preview`)
 }
 
+export function duplicateRule(id: string) {
+  return apiPost<{ rule: AutomationRule }>(`/automation/rules/${id}/duplicate`, {})
+}
+
 export function fetchRunsForLead(leadId: string) {
   return apiGet<{ runs: AutomationRun[] }>(`/leads/${leadId}/automation-runs`)
 }

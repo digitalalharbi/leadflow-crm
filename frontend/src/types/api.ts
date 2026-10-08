@@ -60,6 +60,12 @@ export interface User {
   covers_cities?: string[]
   /** How many leads they take for every one an ordinary rep takes. */
   assignment_weight?: number
+  /**
+   * Languages this rep can sell in. Empty means every language — it is a claim
+   * that narrows, not a permission. Distinct from `locale`, which is their own
+   * choice of interface language.
+   */
+  speaks?: string[]
   locale: string | null
   last_login_at: string | null
   created_at: string
@@ -94,6 +100,12 @@ export interface Lead extends LeadListItem {
   first_name: string | null
   last_name: string | null
   phone_normalized: string | null
+  /**
+   * The language to expect on the call, read off the number's country code.
+   * Null means the number says nothing, which the interface shows as nothing
+   * rather than as a guess.
+   */
+  language: string | null
   source: string | null
   campaign_id: string | null
   adset_name: string | null

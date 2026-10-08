@@ -8,6 +8,7 @@ use App\Enums\QualificationStatus;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\ExcludesTestLeads;
+use App\Services\Leads\PhoneLanguage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -246,6 +247,22 @@ class Lead extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(LeadMessage::class);
+    }
+
+    /**
+     * The language this lead is likely to want, read off their number.
+     *
+     * Derived rather than stored, so it can never disagree with the phone it
+     * was derived from — a number corrected after import would otherwise leave
+     * a stale language behind on the row, and the first thing anybody would do
+     * with that is route a customer on it.
+     *
+     * Null means the number says nothing, which is a real answer and not a
+     * missing one: see PhoneLanguage.
+     */
+    public function language(): ?string
+    {
+        return app(PhoneLanguage::class)->for($this->phone_normalized);
     }
 
     /** Whether this lead may still be messaged. Opt-out is final until re-opt-in. */

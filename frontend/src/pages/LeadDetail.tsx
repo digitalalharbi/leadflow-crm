@@ -37,6 +37,7 @@ export function LeadDetailPage() {
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
   const branding = useAuth((s) => s.branding)
+  const workspaceLanguage = useAuth((s) => s.workspaceLanguage)
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
@@ -242,6 +243,20 @@ export function LeadDetailPage() {
                       {lead.phone}
                     </dd>
                   </div>
+                )}
+
+                {/*
+                  Which language to open the call in — read off the number's
+                  country code, and shown only when it is not the language this
+                  workspace works in. Labelling every Riyadh lead "Arabic" would
+                  teach the eye to skip the line, and the +92 number is the one
+                  that needs the warning.
+                */}
+                {lead.language && lead.language !== workspaceLanguage && (
+                  <Fact
+                    label={t('leads.language')}
+                    value={t(`languages.${lead.language}`, { defaultValue: lead.language })}
+                  />
                 )}
 
                 <Fact label={t('leads.assignedTo')} value={lead.assignee?.name ?? t('common.unassigned')} />

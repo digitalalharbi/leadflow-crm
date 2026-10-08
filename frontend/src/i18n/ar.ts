@@ -669,7 +669,43 @@ export default {
     firstLead: 'استقبال أول عميل',
     dismiss: 'إخفاء',
   },
+  /*
+   * The languages a number can be read as — see the backend PhoneLanguage.
+   * Named in the reading language rather than their own, because the person
+   * reading them is the manager filling in their team, not the customer.
+   */
+  languages: {
+    ar: 'العربية',
+    en: 'الإنجليزية',
+    ur: 'الأردية',
+    bn: 'البنغالية',
+    tr: 'التركية',
+    fa: 'الفارسية',
+    ru: 'الروسية',
+    uk: 'الأوكرانية',
+    zh: 'الصينية',
+    id: 'الإندونيسية',
+    th: 'التايلاندية',
+    vi: 'الفيتنامية',
+    ja: 'اليابانية',
+    ko: 'الكورية',
+    ne: 'النيبالية',
+    am: 'الأمهرية',
+    fr: 'الفرنسية',
+    de: 'الألمانية',
+    es: 'الإسبانية',
+    it: 'الإيطالية',
+    nl: 'الهولندية',
+    pt: 'البرتغالية',
+    pl: 'البولندية',
+    sv: 'السويدية',
+    nb: 'النرويجية',
+    da: 'الدنماركية',
+    fi: 'الفنلندية',
+  },
+
   leads: {
+    language: 'اللغة',
     searchPlaceholder: 'ابحث بالاسم أو الجوال أو البريد…',
     title: 'العملاء المحتملون',
     subtitle: 'كل عملائك المحتملين في مكان واحد',
@@ -1083,6 +1119,8 @@ export default {
     coversCitiesHint: 'افصل بينها بفاصلة. اتركه فارغًا ليغطي كل المدن.',
     weight: 'حصته من العملاء',
     weightHint: 'كم عميلًا يأخذ مقابل كل عميل لمندوب عادي (١ = حصة متساوية)',
+    speaks: 'اللغات التي يبيع بها',
+    speaksHint: 'اتركه فارغًا ليستقبل كل اللغات. لغة العميل تُقرأ من مفتاح دولة رقمه.',
     away: 'الإجازة',
     awayHint: 'لن تُسنَد إليك عملاء جدد حتى تعود',
     awayUntil: 'أعود في',

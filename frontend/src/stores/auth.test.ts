@@ -107,6 +107,37 @@ describe('role capabilities', () => {
     expect(can.manageIntegrations(manager)).toBe(false)
   })
 
+  /**
+   * Running the team and editing an account are two authorities, and the one a
+   * manager has is the narrower of them: they say how their team's leads are
+   * shared out, and nobody — manager included — awards themselves a bigger
+   * share. Mirrors UserPolicy::routeWork.
+   */
+  it('lets a manager share out their team\'s leads but not their own', () => {
+    const manager = makeUser('manager')
+    const rep = { ...makeUser('sales'), id: 'u-2' }
+
+    expect(can.routeWork(manager, rep)).toBe(true)
+    expect(can.routeWork(manager, manager)).toBe(false)
+  })
+
+  it('lets an admin share out anyone\'s leads, their own included', () => {
+    const admin = makeUser('admin')
+    const rep = { ...makeUser('sales'), id: 'u-2' }
+
+    expect(can.routeWork(admin, rep)).toBe(true)
+    expect(can.routeWork(admin, admin)).toBe(true)
+  })
+
+  it('never lets a rep decide their own share', () => {
+    const sales = makeUser('sales')
+    const other = { ...makeUser('sales'), id: 'u-2' }
+
+    expect(can.routeWork(sales, sales)).toBe(false)
+    expect(can.routeWork(sales, other)).toBe(false)
+    expect(can.routeWork(null, other)).toBe(false)
+  })
+
   it('restricts a sales rep to their own leads', () => {
     const sales = makeUser('sales')
 

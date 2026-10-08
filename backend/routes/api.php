@@ -156,6 +156,13 @@ Route::prefix('v1')->group(function () {
             Route::get('/automation/rules/{uuid}/preview', [AutomationRuleController::class, 'preview']);
             Route::get('/leads/{leadUuid}/automation-runs', [AutomationRuleController::class, 'runsForLead']);
 
+            /*
+             * Cancelling sits with the lead, not with the rules: the authority
+             * to change this lead is what it takes, because the person watching
+             * it is the one who knows the message a rule promised is now wrong.
+             */
+            Route::delete('/scheduled-actions/{uuid}', [AutomationRuleController::class, 'cancelScheduled']);
+
             // Appointments
             Route::get('/appointments', [AppointmentController::class, 'index']);
             Route::post('/appointments', [AppointmentController::class, 'store']);

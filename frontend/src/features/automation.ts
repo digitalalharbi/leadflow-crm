@@ -138,6 +138,23 @@ export function previewRule(id: string) {
   return apiGet<RulePreview>(`/automation/rules/${id}/preview`)
 }
 
+/** An action a rule promised for later, and has not done yet. */
+export interface ScheduledAction {
+  id: string
+  rule_name: string
+  type: string
+  run_at: string
+  status: 'pending' | 'done' | 'cancelled' | 'failed'
+  outcome: string | null
+  correlation_id: string | null
+}
+
 export function fetchRunsForLead(leadId: string) {
-  return apiGet<{ runs: AutomationRun[] }>(`/leads/${leadId}/automation-runs`)
+  return apiGet<{ runs: AutomationRun[]; scheduled: ScheduledAction[] }>(
+    `/leads/${leadId}/automation-runs`,
+  )
+}
+
+export function cancelScheduledAction(id: string) {
+  return apiDelete(`/scheduled-actions/${id}`)
 }

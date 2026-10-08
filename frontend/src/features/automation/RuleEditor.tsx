@@ -45,6 +45,16 @@ function withDefaults(type: string): RuleAction {
   return { type, ...ACTION_DEFAULTS[type] }
 }
 
+/**
+ * The waits a rule can ask for, as durations rather than a number of minutes.
+ *
+ * A closed list because this is a sequence, not a scheduler: somebody writing
+ * "follow up in two days" should pick two days, not work out that it is 2,880
+ * minutes. The API accepts any minute count up to thirty days, so a rule
+ * written elsewhere is still honoured.
+ */
+const DELAYS = [60, 240, 1440, 2880, 4320, 10080, 20160, 43200] as const
+
 /** Operators that need no value at all. */
 const VALUELESS = new Set(['exists', 'not_exists'])
 
@@ -335,6 +345,33 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                 lostReasons={lostReasons}
                 onChange={(patch) => patchAction(index, patch)}
               />
+
+              {/*
+                When, not just what.
+                
+                Every action happened the instant the rule ran, which left the
+                most ordinary sequence in the business unwritable: "if nobody
+                has replied in two days, send a WhatsApp". Blank means now, so
+                every rule already written keeps meaning what it meant.
+              */}
+              <Select
+                className="min-w-32"
+                label={index === 0 ? t('automation.when') : undefined}
+                value={String(action.delay_minutes ?? '')}
+                data-testid={`action-delay-${index}`}
+                onChange={(e) =>
+                  patchAction(index, {
+                    delay_minutes: e.target.value === '' ? undefined : Number(e.target.value),
+                  })
+                }
+              >
+                <option value="">{t('automation.delayNone')}</option>
+                {DELAYS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {t('automation.delayAfter', { duration: t(`automation.delay_.${minutes}`) })}
+                  </option>
+                ))}
+              </Select>
 
               {actions.length > 1 && (
                 <Button

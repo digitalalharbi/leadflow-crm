@@ -46,58 +46,141 @@ class LeadAssignmentService
     public function byStrategy(Tenant $tenant, ?Lead $lead = null): ?User
     {
         /*
-         * The project's own team first, when the lead belongs to one and that
-         * project has a team.
+         * Narrowing, not a list of competing strategies.
          *
-         * A developer selling three compounds does not have one sales team, it
-         * has three: the rep who knows النرجس can answer what the service charge
-         * covers, and the rep who does not has to go and ask. Still chosen by
-         * workload within that team, so the project's busiest rep does not take
-         * everything.
+         * Each step below answers "is there a smaller group that should have
+         * this lead?" and gets out of the way when it has no opinion. A
+         * workspace that has set none of them lands exactly where it did
+         * before — whoever is least busy — which is the only honest default for
+         * something that decides who talks to a customer.
          *
-         * Not a separate strategy somebody has to switch on: a project with no
-         * team changes nothing, which is what every workspace starts as.
+         * The order is deliberate. Knowing the project beats covering the city:
+         * a rep on the النرجس team should get a النرجس lead even if somebody in
+         * Riyadh is nominally closer to it, because what the customer asks
+         * about is the project.
          */
-        $team = $this->projectTeam($lead);
+        $candidates = $this->assignable($tenant);
 
-        if ($team !== null && $team->isNotEmpty()) {
-            return $this->workload->pick($tenant, $team);
+        if ($candidates->isEmpty()) {
+            return null;
         }
 
+        $candidates = $this->whoKnowsTheProject($candidates, $lead) ?? $candidates;
+        $candidates = $this->whoSellsThere($candidates, $lead) ?? $candidates;
+
         return match ($tenant->settings?->assignment_strategy) {
-            'round_robin' => $this->roundRobin($tenant),
+            'round_robin' => $this->rotateAmong($tenant, $candidates),
             // Workload is the default: taking turns lets one rep's backlog grow
             // while another sits idle, and keeps feeding leads to someone away.
-            default => $this->workload->pick($tenant) ?? $this->roundRobin($tenant),
+            default => $this->workload->pick($tenant, $candidates),
         };
     }
 
     /**
-     * The project's team, as far as it can take a lead right now.
+     * Everyone who can take a lead right now, falling back to the whole team
+     * when all of them are away — a lead that belongs to nobody is worse than
+     * one waiting on a rep who is back on Sunday.
      *
-     * Null when there is no project or no team — meaning "no opinion", which
-     * falls through to the workspace's own strategy. An empty collection after
-     * filtering means the whole project team is away, and that also falls
-     * through rather than leaving the lead with nobody: a lead that belongs to
-     * no one is worse than one with a rep who knows the project less well.
+     * @return Collection<int,User>
+     */
+    private function assignable(Tenant $tenant): Collection
+    {
+        $base = fn () => User::query()
+            ->where('tenant_id', $tenant->id)
+            ->whereIn('role', [Role::Sales->value, Role::Manager->value])
+            ->orderBy('id');
+
+        $available = $base()->available()->get();
+
+        return $available->isNotEmpty() ? $available : $base()->where('is_active', true)->get();
+    }
+
+    /**
+     * The project's own team, when the lead belongs to a project that has one.
      *
+     * A developer selling three compounds does not have one sales team, it has
+     * three: the rep who knows النرجس can answer what the service charge covers,
+     * and the rep who does not has to go and ask.
+     *
+     * Null means no opinion — no project, no team, or nobody on it available —
+     * and the lead falls through rather than being held.
+     *
+     * @param  Collection<int,User>  $candidates
      * @return Collection<int,User>|null
      */
-    private function projectTeam(?Lead $lead): ?Collection
+    private function whoKnowsTheProject(Collection $candidates, ?Lead $lead): ?Collection
     {
         if (! $lead?->project_id) {
             return null;
         }
 
-        $team = User::query()
-            ->where('tenant_id', $lead->tenant_id)
-            ->whereIn('role', [Role::Sales->value, Role::Manager->value])
+        $onProject = User::query()
+            ->whereIn('id', $candidates->pluck('id'))
             ->whereHas('projects', fn ($q) => $q->where('projects.id', $lead->project_id))
-            ->available()
-            ->orderBy('id')
-            ->get();
+            ->pluck('id')
+            ->all();
+
+        $team = $candidates->whereIn('id', $onProject)->values();
 
         return $team->isEmpty() ? null : $team;
+    }
+
+    /**
+     * The reps who sell in the lead's city.
+     *
+     * Null when the lead has no city, or when nobody has said which cities they
+     * cover, or when none of the remaining candidates covers it — a lead from a
+     * city nobody claims still needs an owner, and giving it to somebody is
+     * better than giving it to no one.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoSellsThere(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        if (blank($lead?->city)) {
+            return null;
+        }
+
+        $covering = $candidates->filter(fn (User $user) => $user->coversCity($lead->city))->values();
+
+        /*
+         * Everybody "covers" a city when nobody has set coverage, so this only
+         * narrows anything once somebody has. Returning null in that case keeps
+         * the next step working on the same set rather than a copy.
+         */
+        return $covering->isEmpty() || $covering->count() === $candidates->count()
+            ? null
+            : $covering;
+    }
+
+    /**
+     * Takes turns, counting a rep with a weight of three as three places in the
+     * rotation — so the weight means the same thing under either strategy.
+     *
+     * @param  Collection<int,User>  $candidates
+     */
+    private function rotateAmong(Tenant $tenant, Collection $candidates): ?User
+    {
+        $settings = $tenant->settings;
+
+        if (! $settings || $candidates->isEmpty()) {
+            return null;
+        }
+
+        $slots = $candidates->flatMap(
+            fn (User $user) => array_fill(0, $user->assignmentWeight(), $user)
+        )->values();
+
+        // Advance the cursor atomically so two concurrent webhooks never pick the
+        // same rep twice in a row.
+        return DB::transaction(function () use ($slots, $settings) {
+            $fresh = $settings->newQuery()->lockForUpdate()->find($settings->id);
+            $index = $fresh->round_robin_cursor % $slots->count();
+            $fresh->increment('round_robin_cursor');
+
+            return $slots[$index];
+        });
     }
 
     /**

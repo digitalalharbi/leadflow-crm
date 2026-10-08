@@ -72,9 +72,16 @@ class ProjectTeamRoutingTest extends TestCase
         $this->assertNotSame($elsewhere->id, $chosen?->id);
     }
 
-    /** Within the team, still the least busy — one rep must not take everything. */
-    public function test_it_picks_the_freest_member_of_that_team(): void
+    /**
+     * Narrowing decides who is eligible; the workspace's own strategy decides
+     * how to choose among them. So a workspace on workload gets the least busy
+     * member of the project team, and one on round robin gets the next turn —
+     * one rep must not take everything either way.
+     */
+    public function test_a_workload_workspace_picks_the_freest_member_of_that_team(): void
     {
+        $this->t['tenant']->settings->forceFill(['assignment_strategy' => 'workload'])->save();
+
         $busy = $this->makeUser($this->t['tenant']);
         $free = $this->makeUser($this->t['tenant']);
 
@@ -85,6 +92,25 @@ class ProjectTeamRoutingTest extends TestCase
         }
 
         $this->assertSame($free->id, $this->pickFor($this->lead(['project_id' => $this->narjis->id]))?->id);
+    }
+
+    public function test_a_round_robin_workspace_takes_turns_within_that_team(): void
+    {
+        $this->t['tenant']->settings->forceFill(['assignment_strategy' => 'round_robin'])->save();
+
+        $first = $this->makeUser($this->t['tenant']);
+        $second = $this->makeUser($this->t['tenant']);
+        $this->narjis->team()->sync([$first->id, $second->id]);
+
+        // Somebody outside the team, who must never come up.
+        $outside = $this->makeUser($this->t['tenant']);
+
+        $picked = collect(range(1, 4))
+            ->map(fn () => $this->pickFor($this->lead(['project_id' => $this->narjis->id]))?->id)
+            ->all();
+
+        $this->assertNotContains($outside->id, $picked);
+        $this->assertSame([$first->id, $second->id, $first->id, $second->id], $picked);
     }
 
     /** No team means no opinion: the workspace's own strategy decides. */

@@ -20,6 +20,9 @@ class UserResource extends JsonResource
             // Null once the date has passed, so the interface never has to work
             // out whether "away until last Tuesday" still means anything.
             'away_until' => $this->away_until?->isFuture() ? $this->away_until->toIso8601String() : null,
+            // Empty means every city; one means an equal share.
+            'covers_cities' => $this->covers_cities ?? [],
+            'assignment_weight' => (int) ($this->assignment_weight ?? 1),
             'locale' => $this->locale,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

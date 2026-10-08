@@ -746,6 +746,10 @@ export default {
     rows: 'rows', done: 'Import complete', failedRows: 'Rows that failed', row: 'Row',
   },
   users: {
+    coversCities: 'Cities covered',
+    coversCitiesHint: 'Comma separated. Leave empty to cover every city.',
+    weight: 'Share of leads',
+    weightHint: 'How many leads they take for every one an ordinary rep takes (1 = equal share)',
     away: 'Away',
     awayHint: 'No new leads will be assigned to you until you are back',
     awayUntil: 'Back on',

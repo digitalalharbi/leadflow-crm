@@ -24,6 +24,8 @@ export function UsersPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'sales', phone: '' })
+  const [cities, setCities] = useState('')
+  const [weight, setWeight] = useState('1')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
 
@@ -58,6 +60,18 @@ export function UsersPage() {
 
       if (form.password) payload.password = form.password
 
+      /*
+       * Only when editing: these are the workspace's policy about an existing
+       * rep, and the create endpoint does not take them.
+       */
+      if (editing) {
+        payload.covers_cities = cities
+          .split(/[,،\n]/)
+          .map((city) => city.trim())
+          .filter(Boolean)
+        payload.assignment_weight = Number(weight) || 1
+      }
+
       return editing ? apiPatch(`/users/${editing.id}`, payload) : apiPost('/users', payload)
     },
     onSuccess: () => {
@@ -91,6 +105,8 @@ export function UsersPage() {
   function openCreate() {
     setEditing(null)
     setForm({ name: '', email: '', password: '', role: 'sales', phone: '' })
+    setCities('')
+    setWeight('1')
     setFieldErrors({})
     setOpen(true)
   }
@@ -98,6 +114,8 @@ export function UsersPage() {
   function openEdit(user: User) {
     setEditing(user)
     setForm({ name: user.name, email: user.email, password: '', role: user.role, phone: user.phone ?? '' })
+    setCities((user.covers_cities ?? []).join('، '))
+    setWeight(String(user.assignment_weight ?? 1))
     setFieldErrors({})
     setOpen(true)
   }
@@ -275,6 +293,39 @@ export function UsersPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
             />
           </div>
+
+          {/*
+            How this rep's share of the leads is decided.
+
+            Only when editing somebody who exists: these are the workspace's
+            policy about a rep rather than part of creating an account, and a
+            form that asks for them up front implies they are required when the
+            honest answer for almost everyone is "leave both alone".
+          */}
+          {editing && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label={t('users.coversCities')}
+                hint={t('users.coversCitiesHint')}
+                value={cities}
+                data-testid="covers-cities"
+                error={fieldErrors.covers_cities}
+                onChange={(e) => setCities(e.target.value)}
+              />
+              <Input
+                type="number"
+                min="1"
+                max="10"
+                dir="ltr"
+                label={t('users.weight')}
+                hint={t('users.weightHint')}
+                value={weight}
+                data-testid="assignment-weight"
+                error={fieldErrors.assignment_weight}
+                onChange={(e) => setWeight(e.target.value)}
+              />
+            </div>
+          )}
         </form>
       </Modal>
     </>

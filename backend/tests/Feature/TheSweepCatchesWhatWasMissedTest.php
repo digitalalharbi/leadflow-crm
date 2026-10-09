@@ -7,6 +7,7 @@ use App\Domain\Git\GitProviderRegistry;
 use App\Domain\Git\RepositoryStateReducer;
 use App\Events\RepositoryFeedUpdate;
 use App\Jobs\ReconcileRepository;
+use App\Listeners\TellSomebodyAboutTheRepository;
 use App\Models\Integration;
 use App\Models\Project;
 use App\Models\ProjectRepository;
@@ -127,6 +128,7 @@ class TheSweepCatchesWhatWasMissedTest extends TestCase
                 app(RepositoryStateReducer::class),
                 app(GitHubClient::class),
                 app(TenantContext::class),
+                app(TellSomebodyAboutTheRepository::class),
             );
     }
 

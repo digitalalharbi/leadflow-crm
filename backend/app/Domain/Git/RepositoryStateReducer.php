@@ -29,11 +29,23 @@ use Illuminate\Support\Carbon;
 class RepositoryStateReducer
 {
     /**
-     * @return array{handled:bool,summary:array}
+     * Timeline rows this pass created, as opposed to re-wrote.
+     *
+     * Kept so the caller can tell somebody about them: a redelivery and a sweep
+     * both re-write rows they have seen, and neither is news.
+     *
+     * @var array<int,RepositoryActivity>
+     */
+    private array $created = [];
+
+    /**
+     * @return array{handled:bool,summary:array,created:array<int,RepositoryActivity>}
      */
     public function apply(ProjectRepository $repository, string $event, array $payload): array
     {
-        return match ($event) {
+        $this->created = [];
+
+        $result = match ($event) {
             'pull_request' => $this->pullRequest($repository, $payload),
             'pull_request_review' => $this->review($repository, $payload),
             'workflow_run' => $this->workflowRun($repository, $payload),
@@ -44,6 +56,8 @@ class RepositoryStateReducer
             'push' => $this->push($repository, $payload),
             default => ['handled' => false, 'summary' => ['event' => $event]],
         };
+
+        return $result + ['created' => $this->created];
     }
 
     // ------------------------------------------------------------------ PRs
@@ -406,7 +420,7 @@ class RepositoryStateReducer
      */
     private function remember(ProjectRepository $repository, string $kind, string $title, array $attributes): void
     {
-        RepositoryActivity::updateOrCreate(
+        $row = RepositoryActivity::updateOrCreate(
             [
                 'project_repository_id' => $repository->id,
                 'kind' => $kind,
@@ -421,6 +435,13 @@ class RepositoryStateReducer
                 'happened_at' => $attributes['happened_at'] ?? now(),
             ],
         );
+
+        // `wasRecentlyCreated` is the only honest signal: a redelivery and a
+        // sweep both rewrite rows they have already seen, and rewriting is not
+        // news to tell anybody about.
+        if ($row->wasRecentlyCreated) {
+            $this->created[] = $row;
+        }
     }
 
     private function firstLine(string $message): string

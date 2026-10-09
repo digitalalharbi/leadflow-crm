@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\FollowUpController;
+use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
@@ -173,6 +174,12 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('projects', ProjectController::class)
                 ->parameters(['projects' => 'uuid']);
 
+            // Which repository a project is built in, and what has happened in
+            // it. Nested under the project because that is whose question it is.
+            Route::get('/projects/{uuid}/repository', [GitHubController::class, 'forProject']);
+            Route::post('/projects/{uuid}/repository', [GitHubController::class, 'link']);
+            Route::delete('/projects/{uuid}/repository', [GitHubController::class, 'unlink']);
+
             // Users
             Route::get('/users/assignable', [UserController::class, 'assignable']);
             Route::get('/users', [UserController::class, 'index']);
@@ -203,6 +210,19 @@ Route::prefix('v1')->group(function () {
             Route::get('/integrations/ingestion', [IntegrationController::class, 'ingestion']);
             Route::post('/integrations', [IntegrationController::class, 'store']);
             // WhatsApp Business. Secrets are written here and never read back.
+            /*
+             * GitHub, for the development activity a project manager needs to
+             * see. Under `integrations` because it is one — same health, same
+             * credentials handling, same audit trail — even though it brings in
+             * no leads.
+             */
+            Route::get('/integrations/github', [GitHubController::class, 'show']);
+            Route::post('/integrations/github', [GitHubController::class, 'connect']);
+            Route::post('/integrations/github/test', [GitHubController::class, 'test']);
+            Route::delete('/integrations/github', [GitHubController::class, 'disconnect']);
+            Route::get('/integrations/github/repositories', [GitHubController::class, 'repositories']);
+            Route::get('/integrations/github/discover', [GitHubController::class, 'discover']);
+
             Route::get('/integrations/whatsapp', [WhatsappSettingsController::class, 'show']);
             Route::patch('/integrations/whatsapp', [WhatsappSettingsController::class, 'update']);
             Route::post('/integrations/whatsapp/test', [WhatsappSettingsController::class, 'test']);

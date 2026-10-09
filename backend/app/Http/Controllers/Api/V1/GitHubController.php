@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ReconcileRepository;
 use App\Models\Integration;
 use App\Models\Project;
 use App\Models\ProjectRepository;
+use App\Models\RepositoryWebhookDelivery;
 use App\Services\AuditLogger;
 use App\Services\Git\GitHubConnectionManager;
 use App\Support\ApiResponse;
@@ -35,7 +37,68 @@ class GitHubController extends Controller
 
         return ApiResponse::success([
             'connection' => $this->present($connection),
+            'repositories' => $this->healthRows(),
         ]);
+    }
+
+    /**
+     * Run the repair sweep now.
+     *
+     * Named a sweep rather than "retry failed deliveries", because a delivery
+     * cannot be retried: the payload is deliberately never stored, so there is
+     * nothing to replay. What this does is ask GitHub what the state is and
+     * write it through the same reducer — which repairs the same gap without
+     * keeping a copy of the customer's repository in our tables.
+     */
+    public function sync(Request $request)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        $repositories = ProjectRepository::query()
+            ->when($request->filled('repository'), fn ($q) => $q->where('uuid', $request->string('repository')))
+            ->get();
+
+        foreach ($repositories as $repository) {
+            ReconcileRepository::dispatch($repository->id);
+        }
+
+        return ApiResponse::success([
+            'queued' => $repositories->count(),
+        ], 'Sweep queued.');
+    }
+
+    /**
+     * What the health centre shows per repository, without asking GitHub.
+     *
+     * Everything here was learned by the last delivery or the last sweep. A
+     * health screen that spent an API call per repository to render would be
+     * the thing most likely to exhaust the budget it is reporting on.
+     */
+    private function healthRows(): array
+    {
+        return ProjectRepository::with('project')->get()->map(function (ProjectRepository $repository) {
+            $deliveries = RepositoryWebhookDelivery::where('project_repository_id', $repository->id);
+
+            return [
+                'id' => $repository->uuid,
+                'project' => $repository->project?->name,
+                'project_id' => $repository->project?->uuid,
+                'full_name' => $repository->repository_full_name,
+                'readiness' => $repository->readiness(),
+                'webhook_status' => $repository->webhook_status,
+                'signature_failures' => $repository->signature_failures,
+                'last_webhook_at' => $repository->last_webhook_at?->toIso8601String(),
+                'last_sync_at' => $repository->last_sync_at?->toIso8601String(),
+                'last_error' => $repository->last_error,
+                /*
+                 * A delivery that arrived and was never processed is the one
+                 * number that means "the queue is not running" — which looks
+                 * exactly like a healthy integration from every other angle.
+                 */
+                'pending_deliveries' => (clone $deliveries)->where('status', RepositoryWebhookDelivery::RECEIVED)->count(),
+                'failed_deliveries' => (clone $deliveries)->where('status', RepositoryWebhookDelivery::FAILED)->count(),
+            ];
+        })->values()->all();
     }
 
     /**

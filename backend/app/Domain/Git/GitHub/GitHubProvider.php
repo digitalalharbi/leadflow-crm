@@ -3,6 +3,7 @@
 namespace App\Domain\Git\GitHub;
 
 use App\Domain\Git\Contracts\GitProviderInterface;
+use App\Domain\Git\DTO\ChangeSet;
 use App\Domain\Git\DTO\ConnectionCheck;
 use App\Domain\Git\DTO\RepositoryDiscovery;
 use App\Domain\Git\DTO\RepositorySummary;
@@ -128,6 +129,99 @@ class GitHubProvider implements GitProviderInterface
         }
 
         return WebhookState::created((int) ($created['json']['id'] ?? 0));
+    }
+
+    /**
+     * The REST equivalents of the deliveries we might have missed.
+     *
+     * Each one is wrapped to look exactly like the webhook that would have
+     * carried it, so the reducer cannot tell the difference. GitHub's REST
+     * objects and its webhook payloads are the same objects — a pull request
+     * from `/pulls` has the fields `payload.pull_request` has — which is what
+     * makes this honest rather than a second, nearly-identical mapping.
+     */
+    public function changesSince(Integration $connection, ProjectRepository $repository, ?\DateTimeInterface $since): ChangeSet
+    {
+        $full = $repository->repository_full_name;
+        $changes = [];
+        $error = null;
+
+        /*
+         * Pull requests, newest change first, stopping at the cursor.
+         *
+         * `state=all` because a PR merged while we were not listening is
+         * exactly what this is for, and a merged PR is not in `state=open`.
+         */
+        $pulls = $this->client->paginate($connection, "/repos/{$full}/pulls", [
+            'state' => 'all',
+            'sort' => 'updated',
+            'direction' => 'desc',
+        ], maxPages: 2);
+
+        $error ??= $pulls['error'];
+
+        foreach ($pulls['items'] as $pull) {
+            $updated = $pull['updated_at'] ?? null;
+
+            // The list is sorted, so the first row older than the cursor means
+            // every row after it is too.
+            if ($since && $updated && strtotime($updated) <= $since->getTimestamp()) {
+                break;
+            }
+
+            $changes[] = [
+                'event' => 'pull_request',
+                'payload' => [
+                    // `closed` covers merged too — the reducer reads `merged`,
+                    // not the action, exactly as it does for a real delivery.
+                    'action' => ($pull['state'] ?? 'open') === 'open' ? 'opened' : 'closed',
+                    'pull_request' => $pull,
+                ],
+            ];
+        }
+
+        $runs = $this->client->get($connection, "/repos/{$full}/actions/runs", [
+            'per_page' => 50,
+        ] + ($since ? ['created' => '>='.$since->format('Y-m-d')] : []));
+
+        $error ??= $runs['error'];
+
+        foreach ($runs['json']['workflow_runs'] ?? [] as $run) {
+            $changes[] = ['event' => 'workflow_run', 'payload' => ['action' => 'completed', 'workflow_run' => $run]];
+        }
+
+        /*
+         * Deployments carry their state on a separate resource, so each one
+         * costs a second request. Capped at the most recent few: the sweep is
+         * repairing a gap, not rebuilding a year.
+         */
+        $deployments = $this->client->get($connection, "/repos/{$full}/deployments", ['per_page' => 10]);
+
+        $error ??= $deployments['error'];
+
+        foreach (array_slice($deployments['json'] ?? [], 0, 10) as $deployment) {
+            $statuses = $this->client->get($connection, "/repos/{$full}/deployments/{$deployment['id']}/statuses", ['per_page' => 1]);
+            $latest = $statuses['json'][0] ?? null;
+
+            $changes[] = $latest
+                ? ['event' => 'deployment_status', 'payload' => ['deployment' => $deployment, 'deployment_status' => $latest]]
+                : ['event' => 'deployment', 'payload' => ['deployment' => $deployment]];
+        }
+
+        $releases = $this->client->get($connection, "/repos/{$full}/releases", ['per_page' => 5]);
+
+        // A repository with no releases answers 404, which is a fact about it.
+        $error ??= $releases['error'] === 'not_found' ? null : $releases['error'];
+
+        foreach ($releases['json'] ?? [] as $release) {
+            if ($release['draft'] ?? false) {
+                continue;
+            }
+
+            $changes[] = ['event' => 'release', 'payload' => ['action' => 'published', 'release' => $release]];
+        }
+
+        return new ChangeSet($changes, $error);
     }
 
     public function removeWebhook(Integration $connection, ProjectRepository $repository): void

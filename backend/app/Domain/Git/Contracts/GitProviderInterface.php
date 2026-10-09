@@ -2,6 +2,7 @@
 
 namespace App\Domain\Git\Contracts;
 
+use App\Domain\Git\DTO\ChangeSet;
 use App\Domain\Git\DTO\ConnectionCheck;
 use App\Domain\Git\DTO\RepositoryDiscovery;
 use App\Domain\Git\DTO\RepositorySummary;
@@ -62,4 +63,17 @@ interface GitProviderInterface
 
     /** Remove the webhook we created, if it is still ours to remove. */
     public function removeWebhook(Integration $connection, ProjectRepository $repository): void;
+
+    /**
+     * What has changed since we last looked, in the shape a delivery arrives in.
+     *
+     * Deliberately the same shape. The sweep exists because webhooks get
+     * missed — a deploy while the queue was down, a secret rotated on one side,
+     * an outage — and a repair that wrote subtly different rows from the thing
+     * it was repairing would be worse than the gap. One reducer, two sources.
+     *
+     * A partial read is reported as a failure: the caller must not move its
+     * cursor past a window it could not see.
+     */
+    public function changesSince(Integration $connection, ProjectRepository $repository, ?\DateTimeInterface $since): ChangeSet;
 }

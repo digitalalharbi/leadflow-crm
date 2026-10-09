@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Domain\Git\RepositoryStateReducer;
+use App\Events\RepositoryFeedUpdate;
 use App\Models\ProjectRepository;
 use App\Models\RepositoryWebhookDelivery;
 use App\Support\TenantContext;
@@ -49,7 +50,7 @@ class ProcessRepositoryDelivery implements ShouldQueue
         }
 
         $repository = ProjectRepository::withoutGlobalScopes()
-            ->with('tenant')
+            ->with(['tenant', 'project'])
             ->find($delivery->project_repository_id);
 
         if (! $repository || ! $repository->tenant) {
@@ -73,6 +74,20 @@ class ProcessRepositoryDelivery implements ShouldQueue
                     'summary' => $result['summary'],
                     'processed_at' => now(),
                 ])->save();
+
+                /*
+                 * Only when something actually changed. An `issues` delivery we
+                 * ignore is not a reason to make every open Development tab
+                 * refetch, and a feed that fires on nothing is one people turn
+                 * off.
+                 */
+                if ($result['handled']) {
+                    RepositoryFeedUpdate::dispatch(
+                        $repository->tenant->uuid,
+                        $repository->project?->uuid ?? '',
+                        $delivery->event,
+                    );
+                }
             } catch (\Throwable $e) {
                 // The message can carry a branch name, a commit message or a
                 // private repository's path, so the class and the line go to the

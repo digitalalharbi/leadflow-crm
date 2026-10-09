@@ -2,6 +2,7 @@
 
 namespace App\Domain\Git;
 
+use App\Jobs\VerifyDeployment;
 use App\Models\ProjectRepository;
 use App\Models\RepositoryActivity;
 use App\Models\RepositoryDeployment;
@@ -316,6 +317,22 @@ class RepositoryStateReducer
                 'updated_at_github' => $this->time($status['updated_at'] ?? null),
             ],
         );
+
+        /*
+         * A deployer that says it succeeded has earned a question, not a
+         * conclusion. Queued rather than asked here: the request is to somebody
+         * else's server, and a webhook GitHub is waiting ten seconds for is not
+         * where that belongs.
+         */
+        /*
+         * `wasRecentlyCreated` as well as `wasChanged`: an insert does not
+         * populate the changed-attribute list, so a deployment whose very first
+         * status is `success` — which is most of them — would never be checked
+         * if only the second were asked.
+         */
+        if ($row->state === 'success' && ($row->wasRecentlyCreated || $row->wasChanged('state'))) {
+            VerifyDeployment::dispatch($row->id)->delay(now()->addSeconds(20));
+        }
 
         if (in_array($row->state, ['success', 'failure', 'error'], true)) {
             $this->remember($repository, $row->state === 'success' ? 'deployed' : 'deploy_failed', $row->environment, [

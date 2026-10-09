@@ -5,7 +5,9 @@ namespace App\Domain\Git\Contracts;
 use App\Domain\Git\DTO\ConnectionCheck;
 use App\Domain\Git\DTO\RepositoryDiscovery;
 use App\Domain\Git\DTO\RepositorySummary;
+use App\Domain\Git\DTO\WebhookState;
 use App\Models\Integration;
+use App\Models\ProjectRepository;
 
 /**
  * What مهتم needs from a code host, and nothing more.
@@ -47,4 +49,17 @@ interface GitProviderInterface
      * what was last released.
      */
     public function discover(Integration $connection, string $fullName): RepositoryDiscovery;
+
+    /**
+     * Make sure this repository will tell us when something happens.
+     *
+     * Asked to create the webhook rather than printing instructions, because an
+     * integration whose first step is "now go and paste this into GitHub" is one
+     * most workspaces never finish. A token that may not manage hooks is not a
+     * failure — it answers `manual`, and the screen shows what to add by hand.
+     */
+    public function ensureWebhook(Integration $connection, ProjectRepository $repository, string $url): WebhookState;
+
+    /** Remove the webhook we created, if it is still ours to remove. */
+    public function removeWebhook(Integration $connection, ProjectRepository $repository): void;
 }

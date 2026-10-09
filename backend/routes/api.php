@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\GitHubController;
+use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
@@ -64,6 +65,15 @@ Route::prefix('v1')->group(function () {
      * the payload, after the signature has been checked against that tenant's
      * own app secret.
      */
+    /*
+     * GitHub deliveries. Public, like lead ingestion, and throttled the same
+     * way: the key in the path establishes the workspace, the signature is
+     * checked against that workspace's own secret, and nothing in the body is
+     * trusted before it verifies.
+     */
+    Route::post('integrations/github/webhook/{key}', GitHubWebhookController::class)
+        ->middleware('throttle:webhook');
+
     Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:whatsapp-webhook')->group(function () {
         Route::post('/', [WhatsappWebhookController::class, 'receive']);
         Route::get('/', [WhatsappWebhookController::class, 'verify']);

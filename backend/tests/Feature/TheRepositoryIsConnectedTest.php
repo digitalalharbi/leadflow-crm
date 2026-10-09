@@ -62,6 +62,7 @@ class TheRepositoryIsConnectedTest extends TestCase
             ], 200),
             'api.github.com/repos/acme/portal/environments' => Http::response(['environments' => [['name' => 'production']]], 200),
             'api.github.com/repos/acme/portal/releases/latest' => Http::response(['tag_name' => 'v1.4.0'], 200),
+            'api.github.com/repos/acme/portal/hooks' => Http::response([], 200),
         ], $overrides));
     }
 
@@ -271,6 +272,127 @@ class TheRepositoryIsConnectedTest extends TestCase
             ->getJson('/api/v1/integrations/github')
             ->assertOk()
             ->assertJsonPath('data.connection.state', 'disconnected');
+    }
+
+    // -------------------------------------------------------- the webhook
+
+    /**
+     * Set up for the workspace rather than printed as an instruction.
+     *
+     * An integration whose first step is "now go and paste this into GitHub" is
+     * one most workspaces never finish, and a repository that was linked but
+     * never wired up looks connected while telling us nothing.
+     */
+    public function test_linking_asks_github_to_start_telling_us_things(): void
+    {
+        $this->fakeGitHub([
+            'api.github.com/repos/acme/portal/hooks' => Http::sequence()
+                ->push([], 200)
+                ->push(['id' => 31337], 201),
+        ]);
+        $this->connect()->assertOk();
+
+        $project = $this->linkProject();
+        $mapping = ProjectRepository::withoutGlobalScopes()->where('project_id', $project->id)->firstOrFail();
+
+        $this->assertSame('ok', $mapping->webhook_status);
+        $this->assertSame(31337, $mapping->webhook_id);
+        $this->assertNotNull($mapping->webhook_key);
+
+        // Asked for the events we reduce, and not for `*`: every comment, star
+        // and issue edit on a busy repository would otherwise arrive at a URL
+        // that throws them away.
+        Http::assertSent(function ($request) {
+            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/hooks')) {
+                return false;
+            }
+
+            $events = $request->data()['events'] ?? [];
+
+            return in_array('pull_request', $events, true)
+                && in_array('workflow_run', $events, true)
+                && in_array('deployment_status', $events, true)
+                && ! in_array('*', $events, true);
+        });
+    }
+
+    /** The secret signs the body; it is sent to GitHub and never shown again. */
+    public function test_the_webhook_secret_is_not_handed_back_to_the_screen(): void
+    {
+        $this->fakeGitHub([
+            'api.github.com/repos/acme/portal/hooks' => Http::sequence()->push([], 200)->push(['id' => 1], 201),
+        ]);
+        $this->connect()->assertOk();
+
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'بوابة']));
+
+        $body = $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/projects/{$project->uuid}/repository", ['full_name' => 'acme/portal'])
+            ->assertOk()
+            ->json();
+
+        $secret = ProjectRepository::withoutGlobalScopes()->where('project_id', $project->id)->value('webhook_secret');
+
+        $this->assertNotEmpty($secret);
+        $this->assertStringNotContainsString($secret, json_encode($body));
+        // The URL is shown, because a workspace that must add the hook by hand
+        // needs somewhere to point it.
+        $this->assertStringContainsString('/integrations/github/webhook/', $body['data']['repository']['webhook']['url']);
+    }
+
+    /**
+     * A read-only token is a reasonable thing for a careful workspace to issue.
+     * It is not an error — it is a different setup path, and the readiness
+     * panel has to say which.
+     */
+    public function test_a_token_that_may_not_manage_hooks_is_partial_not_broken(): void
+    {
+        $this->fakeGitHub([
+            'api.github.com/repos/acme/portal/hooks' => Http::response(['message' => 'Resource not accessible'], 403, ['x-ratelimit-remaining' => '900']),
+        ]);
+        $this->connect()->assertOk();
+
+        $project = $this->linkProject();
+        $mapping = ProjectRepository::withoutGlobalScopes()->where('project_id', $project->id)->firstOrFail();
+
+        $this->assertSame('manual', $mapping->webhook_status);
+
+        $readiness = $mapping->readiness();
+        $this->assertSame('partial', $readiness['state']);
+        $this->assertContains('webhook_manual', $readiness['reasons']);
+    }
+
+    public function test_a_fully_wired_repository_reads_as_ready(): void
+    {
+        $this->fakeGitHub([
+            'api.github.com/repos/acme/portal/hooks' => Http::sequence()->push([], 200)->push(['id' => 7], 201),
+        ]);
+        $this->connect()->assertOk();
+
+        $project = $this->linkProject();
+        $mapping = ProjectRepository::withoutGlobalScopes()->where('project_id', $project->id)->firstOrFail();
+
+        $this->assertSame('ready', $mapping->readiness()['state']);
+    }
+
+    /** A hook left behind keeps posting to a key that no longer resolves. */
+    public function test_unlinking_takes_the_webhook_with_it(): void
+    {
+        $this->fakeGitHub([
+            'api.github.com/repos/acme/portal/hooks' => Http::sequence()->push([], 200)->push(['id' => 99], 201),
+            'api.github.com/repos/acme/portal/hooks/99' => Http::response('', 204),
+        ]);
+        $this->connect()->assertOk();
+        $project = $this->linkProject();
+
+        $this->actingAs($this->t['admin'])
+            ->deleteJson("/api/v1/projects/{$project->uuid}/repository")
+            ->assertOk();
+
+        Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+            && str_ends_with($request->url(), '/hooks/99'));
+
+        $this->assertSame(0, ProjectRepository::withoutGlobalScopes()->where('project_id', $project->id)->count());
     }
 
     // -------------------------------------------------------- the budget

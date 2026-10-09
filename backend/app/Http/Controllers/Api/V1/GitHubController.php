@@ -10,6 +10,7 @@ use App\Services\AuditLogger;
 use App\Services\Git\GitHubConnectionManager;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -195,8 +196,17 @@ class GitHubController extends Controller
             ],
         );
 
+        /*
+         * The webhook is set up here rather than offered as an instruction.
+         * An integration whose first step is "now paste this into GitHub" is one
+         * most workspaces never finish — and a repository that was linked but
+         * never wired up looks connected while telling us nothing.
+         */
+        $this->ensureWebhook($connection, $mapping);
+
         $this->audit->log('github.repository_linked', $request->user(), $project, [
             'repository' => $mapping->repository_full_name,
+            'webhook' => $mapping->webhook_status,
         ]);
 
         return ApiResponse::success(['repository' => $this->presentMapping($mapping)]);
@@ -210,6 +220,12 @@ class GitHubController extends Controller
         $mapping = ProjectRepository::where('project_id', $project->id)->first();
 
         if ($mapping) {
+            // Best effort, and before the row goes: a hook left behind would
+            // keep posting to a key that no longer resolves, and GitHub would
+            // eventually disable it with an email to somebody who has no idea
+            // what it is.
+            $this->manager->provider()->removeWebhook($this->manager->connection() ?? new Integration, $mapping);
+
             $mapping->delete();
             $this->audit->log('github.repository_unlinked', $request->user(), $project, [
                 'repository' => $mapping->repository_full_name,
@@ -231,6 +247,31 @@ class GitHubController extends Controller
             'repository' => $mapping ? $this->presentMapping($mapping) : null,
             'connection' => $this->present($this->manager->connection()),
         ]);
+    }
+
+    /**
+     * Give this repository a key and a secret of its own, then ask GitHub to
+     * use them.
+     *
+     * One secret per repository, not per workspace: a secret shared across
+     * repositories is one that cannot be rotated for a single project, and the
+     * usual reason to rotate is that one of them leaked.
+     */
+    private function ensureWebhook(Integration $connection, ProjectRepository $mapping): void
+    {
+        if (blank($mapping->webhook_key)) {
+            $mapping->forceFill([
+                'webhook_key' => (string) Str::uuid(),
+                'webhook_secret' => Str::random(48),
+            ])->save();
+        }
+
+        $state = $this->manager->provider()->ensureWebhook($connection, $mapping->refresh(), $mapping->webhookUrl());
+
+        $mapping->forceFill([
+            'webhook_id' => $state->id,
+            'webhook_status' => $state->status === 'ok' ? 'ok' : ($state->status === 'manual' ? 'manual' : 'missing'),
+        ])->save();
     }
 
     private function requireConnection(): Integration
@@ -283,6 +324,15 @@ class GitHubController extends Controller
             'last_sync_at' => $mapping->last_sync_at?->toIso8601String(),
             'last_webhook_at' => $mapping->last_webhook_at?->toIso8601String(),
             'discovery' => $mapping->discovery,
+            'readiness' => $mapping->readiness(),
+            'webhook' => [
+                'status' => $mapping->webhook_status,
+                // Shown so a workspace whose token may not manage hooks can add
+                // one by hand. The secret is not: it is written into GitHub's
+                // own form by us, or regenerated if somebody needs it again.
+                'url' => $mapping->webhookUrl(),
+                'signature_failures' => $mapping->signature_failures,
+            ],
         ];
     }
 }

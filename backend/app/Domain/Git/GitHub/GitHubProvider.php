@@ -6,7 +6,9 @@ use App\Domain\Git\Contracts\GitProviderInterface;
 use App\Domain\Git\DTO\ConnectionCheck;
 use App\Domain\Git\DTO\RepositoryDiscovery;
 use App\Domain\Git\DTO\RepositorySummary;
+use App\Domain\Git\DTO\WebhookState;
 use App\Models\Integration;
+use App\Models\ProjectRepository;
 
 /**
  * GitHub, answering the four questions مهتم actually asks.
@@ -66,6 +68,80 @@ class GitHubProvider implements GitProviderInterface
         }
 
         return $rows->values()->all();
+    }
+
+    /**
+     * The events مهتم asks for, and no more.
+     *
+     * Asking for `*` would be easier and would also mean every comment, every
+     * star and every issue edit arriving at a URL that throws them away — on a
+     * busy repository that is thousands of deliveries a day to ignore, and a
+     * rate limit for the retries.
+     *
+     * @var array<int,string>
+     */
+    private const EVENTS = [
+        'push',
+        'pull_request',
+        'pull_request_review',
+        'workflow_run',
+        'check_suite',
+        'deployment',
+        'deployment_status',
+        'release',
+    ];
+
+    public function ensureWebhook(Integration $connection, ProjectRepository $repository, string $url): WebhookState
+    {
+        $existing = $this->client->get($connection, "/repos/{$repository->repository_full_name}/hooks");
+
+        if ($existing['error'] === 'forbidden' || $existing['error'] === 'not_found') {
+            // A read-only token is a reasonable thing for a careful workspace to
+            // issue. It is not an error, it is a different setup path.
+            return WebhookState::manual($existing['error']);
+        }
+
+        foreach ($existing['json'] ?? [] as $hook) {
+            if (($hook['config']['url'] ?? null) === $url) {
+                return WebhookState::existing((int) $hook['id']);
+            }
+        }
+
+        $created = $this->client->post($connection, "/repos/{$repository->repository_full_name}/hooks", [
+            'name' => 'web',
+            'active' => true,
+            'events' => self::EVENTS,
+            'config' => [
+                'url' => $url,
+                'content_type' => 'json',
+                'secret' => $repository->webhook_secret,
+                'insecure_ssl' => '0',
+            ],
+        ]);
+
+        if ($created['error'] === 'forbidden') {
+            return WebhookState::manual('forbidden');
+        }
+
+        if ($created['error'] !== null) {
+            return WebhookState::failed($created['error']);
+        }
+
+        return WebhookState::created((int) ($created['json']['id'] ?? 0));
+    }
+
+    public function removeWebhook(Integration $connection, ProjectRepository $repository): void
+    {
+        if (! $repository->webhook_id) {
+            return;
+        }
+
+        // Best effort on purpose: a repository we can no longer reach, or a hook
+        // somebody has already deleted, must not stop a project being unlinked.
+        $this->client->delete(
+            $connection,
+            "/repos/{$repository->repository_full_name}/hooks/{$repository->webhook_id}",
+        );
     }
 
     public function discover(Integration $connection, string $fullName): RepositoryDiscovery

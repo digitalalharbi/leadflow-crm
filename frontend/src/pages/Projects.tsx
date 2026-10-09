@@ -320,7 +320,12 @@ function ProjectCard({
     >
       <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-4 py-3">
         <div className="min-w-0">
-          <h2 className="t-card-title truncate">{project.name}</h2>
+          {/* The name is the way in: everything about a project that is not on
+              this card — its development activity, its own tabs — lives behind
+              it, and a card with no link is a dead end people stop clicking. */}
+          <Link to={`/projects/${project.id}`} className="t-card-title truncate hover:underline">
+            {project.name}
+          </Link>
           <p className="t-caption mt-0.5 truncate">
             {[project.location, project.developer_name].filter(Boolean).join(' · ') || '—'}
           </p>

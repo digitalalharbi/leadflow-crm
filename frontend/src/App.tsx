@@ -26,6 +26,7 @@ const LeadDetailPage = lazy(() => import('@/pages/LeadDetail').then((m) => ({ de
 const PipelinePage = lazy(() => import('@/pages/Pipeline').then((m) => ({ default: m.PipelinePage })))
 const FollowUpsPage = lazy(() => import('@/pages/FollowUps').then((m) => ({ default: m.FollowUpsPage })))
 const ProjectsPage = lazy(() => import('@/pages/Projects').then((m) => ({ default: m.ProjectsPage })))
+const ProjectDetailPage = lazy(() => import('@/pages/ProjectDetail').then((m) => ({ default: m.ProjectDetailPage })))
 const ReportsPage = lazy(() => import('@/pages/Reports').then((m) => ({ default: m.ReportsPage })))
 const IntegrationsPage = lazy(() => import('@/pages/Integrations').then((m) => ({ default: m.IntegrationsPage })))
 const UsersPage = lazy(() => import('@/pages/Users').then((m) => ({ default: m.UsersPage })))
@@ -124,6 +125,7 @@ export function App() {
                   <Route path="/pipeline" element={<PipelinePage />} />
                   <Route path="/follow-ups" element={<FollowUpsPage />} />
                   <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/integrations" element={<IntegrationsPage />} />
                   <Route path="/users" element={<UsersPage />} />

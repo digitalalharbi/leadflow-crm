@@ -9,6 +9,10 @@ import type { Branding } from '@/types/api'
  */
 const PLATFORM_NAME = 'مهتم'
 const PLATFORM_FAVICON = '/favicon.svg'
+const PLATFORM_MANIFEST = '/site.webmanifest'
+
+/** The blob the last tenant's manifest lives in, so it can be released. */
+let manifestUrl: string | null = null
 
 function setIcon(selector: string, href: string) {
   let link = document.querySelector<HTMLLinkElement>(selector)
@@ -70,7 +74,71 @@ export function useBrandingTheme(branding: Branding | null) {
      * which is the one white-label leak a user can see without looking.
      */
     setIcon("link[rel='icon']", branding.favicon_url || PLATFORM_FAVICON)
+    setManifest(branding)
   }, [branding, appearance])
+}
+
+/**
+ * The installed app's own name and colour.
+ *
+ * A manifest is the one branding surface that outlives the tab: a customer who
+ * adds this to a home screen keeps whatever it said at that moment. Shipping
+ * only the static file would put مهتم on their phone, which is the same leak
+ * the title and the favicon are already careful about — so it is rebuilt from
+ * the tenant's branding and swapped in, and a tenant with none of their own
+ * falls back to the file.
+ */
+function setManifest(branding: Branding): void {
+  const link = document.querySelector<HTMLLinkElement>("link[rel='manifest']")
+
+  if (!link) {
+    return
+  }
+
+  const name = branding.system_name || PLATFORM_NAME
+
+  const manifest = {
+    name,
+    short_name: name,
+    lang: branding.locale || 'ar',
+    dir: (branding.locale || 'ar') === 'ar' ? 'rtl' : 'ltr',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: branding.primary_color,
+    icons: [
+      {
+        src: branding.favicon_url || PLATFORM_FAVICON,
+        sizes: 'any',
+        type: (branding.favicon_url ?? PLATFORM_FAVICON).endsWith('.svg')
+          ? 'image/svg+xml'
+          : 'image/png',
+        purpose: 'any',
+      },
+    ],
+  }
+
+  try {
+    const next = URL.createObjectURL(
+      new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }),
+    )
+
+    link.href = next
+
+    // Signing in and out of several tenants in one session would otherwise
+    // leak a blob per tenant for as long as the page is open.
+    if (manifestUrl) {
+      URL.revokeObjectURL(manifestUrl)
+    }
+
+    manifestUrl = next
+  } catch {
+    // A browser that will not make a blob URL keeps the static file, which is
+    // the platform default — worse than the tenant's own name, better than a
+    // page that throws while painting the chrome.
+    link.href = PLATFORM_MANIFEST
+  }
 }
 
 /**

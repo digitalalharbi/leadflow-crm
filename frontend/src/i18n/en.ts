@@ -452,7 +452,9 @@ export default {
       rule: 'Rule',
     },
     leadFlow: {
-      title: 'Lead flow',
+      // Not "Lead flow": in English that reads as a product name, and the
+      // product has one of those already. This says what the chart shows.
+      title: 'Leads over time',
       hint: 'Arriving, qualified and closed — each on its own day',
       aria: 'Time series of leads arriving, leads qualified and deals won',
       leads: 'Arrived',

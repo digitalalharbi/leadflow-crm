@@ -1,0 +1,16 @@
+{
+  "name": "مهتم",
+  "short_name": "مهتم",
+  "description": "أتمتة المبيعات وإدارة العملاء المحتملين",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#12A594",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

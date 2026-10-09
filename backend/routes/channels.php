@@ -38,6 +38,18 @@ Broadcast::channel('tenant.{tenantUuid}.leads', function (User $user, string $te
 }, $guards);
 
 /**
+ * The workspace's development feed: a pull request, a build, a deployment.
+ *
+ * Anyone who can open a project can watch it. Unlike the lead feed, there is
+ * nothing here about a particular customer — a merged pull request is not
+ * somebody's phone number — so the narrower rule would only mean a rep looking
+ * at a project whose screen never updates.
+ */
+Broadcast::channel('tenant.{tenantUuid}.development', function (User $user, string $tenantUuid) {
+    return $user->tenant?->uuid === $tenantUuid && ! $user->isSuperAdmin();
+}, $guards);
+
+/**
  * One person's own feed: a lead landed on your queue, your customer replied.
  *
  * Keyed by uuid rather than the primary key. The database id is an internal

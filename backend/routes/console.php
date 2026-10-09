@@ -49,6 +49,23 @@ Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping
  */
 Schedule::command('leadflow:daily-digest')->hourly()->withoutOverlapping();
 
+/*
+ * The repair pass for repository activity.
+ *
+ * Webhooks are the primary path; this catches what they missed — a queue that
+ * was down, a rotated secret, a hook GitHub disabled after too many failures.
+ * Every ten minutes is frequent enough that a gap is measured in minutes, and
+ * each sweep is incremental and conditional, so a quiet repository costs a
+ * handful of 304s rather than any of the hourly budget.
+ *
+ * `withoutOverlapping` because a sweep that is still running has not finished
+ * finding things, and starting a second one would double the spend to discover
+ * the same changes.
+ */
+Schedule::command('leadflow:reconcile-repositories')
+    ->everyTenMinutes()
+    ->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 /*

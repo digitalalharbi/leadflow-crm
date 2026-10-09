@@ -229,6 +229,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/integrations/github', [GitHubController::class, 'show']);
             Route::post('/integrations/github', [GitHubController::class, 'connect']);
             Route::post('/integrations/github/test', [GitHubController::class, 'test']);
+            Route::post('/integrations/github/sync', [GitHubController::class, 'sync']);
             Route::delete('/integrations/github', [GitHubController::class, 'disconnect']);
             Route::get('/integrations/github/repositories', [GitHubController::class, 'repositories']);
             Route::get('/integrations/github/discover', [GitHubController::class, 'discover']);

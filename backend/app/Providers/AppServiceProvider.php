@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\Git\GitHub\GitHubClient;
+use App\Domain\Git\GitHub\GitHubProvider;
+use App\Domain\Git\GitProviderRegistry;
 use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Listeners\BroadcastLeadChange;
@@ -39,6 +42,23 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+
+        /*
+         * One client, one registry, for every code host. Bound here rather than
+         * resolved where they are used so that the base URL comes from config —
+         * which is what lets the tests point GitHub at a fake without any class
+         * knowing it is being tested.
+         */
+        $this->app->singleton(GitHubClient::class, fn () => new GitHubClient(
+            (string) config('services.github.api_url', 'https://api.github.com'),
+        ));
+
+        $this->app->singleton(GitProviderRegistry::class, function ($app) {
+            $registry = new GitProviderRegistry;
+            $registry->register($app->make(GitHubProvider::class));
+
+            return $registry;
+        });
     }
 
     public function boot(): void

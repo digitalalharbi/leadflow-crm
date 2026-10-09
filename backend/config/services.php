@@ -49,4 +49,18 @@ return [
         ],
     ],
 
+    /*
+     * GitHub, for the development activity shown inside a project.
+     *
+     * No client id or secret: a workspace connects with its own fine-grained
+     * token, which is granted repository by repository and stored encrypted on
+     * the integration row. There is nothing here for the platform to own, and
+     * nothing that would need a GitHub App to be registered before anybody can
+     * use it.
+     */
+    'github' => [
+        'api_url' => env('GITHUB_API_URL', 'https://api.github.com'),
+        'timeout' => (int) env('GITHUB_TIMEOUT', 15),
+    ],
+
 ];

@@ -137,6 +137,63 @@ class GitHubClient
         return ['items' => $items, 'error' => null, 'truncated' => $page > $maxPages];
     }
 
+    /**
+     * A write. Never conditional and never cached: the point of a POST is that
+     * something changes, and an ETag would be answering a question nobody asked.
+     *
+     * @return array{status:int,json:array|null,error:?string}
+     */
+    public function post(Integration $connection, string $path, array $body, string $method = 'post'): array
+    {
+        $response = $this->sendJson($connection, $method, $path, $body);
+
+        if ($response === null) {
+            return ['status' => 0, 'json' => null, 'error' => 'unreachable'];
+        }
+
+        $this->recordBudget($connection, $response);
+
+        if ($response->successful()) {
+            return ['status' => $response->status(), 'json' => $response->json(), 'error' => null];
+        }
+
+        return ['status' => $response->status(), 'json' => null, 'error' => $this->classify($response)];
+    }
+
+    /** As `post`, for a request that carries no body. */
+    public function delete(Integration $connection, string $path): array
+    {
+        return $this->post($connection, $path, [], 'delete');
+    }
+
+    private function sendJson(Integration $connection, string $method, string $path, array $body): ?Response
+    {
+        $token = $connection->credentials['access_token'] ?? null;
+
+        if (! $token) {
+            return null;
+        }
+
+        try {
+            return Http::withToken($token)
+                ->withHeaders([
+                    'Accept' => 'application/vnd.github+json',
+                    'X-GitHub-Api-Version' => '2022-11-28',
+                ])
+                ->timeout((int) config('services.github.timeout', 15))
+                ->retry(2, 500, throw: false)
+                ->{$method}(rtrim($this->baseUrl, '/').'/'.ltrim($path, '/'), $body);
+        } catch (\Throwable $e) {
+            Log::warning('github.transport_failed', [
+                'integration' => $connection->uuid,
+                'path' => $path,
+                'exception' => $e::class,
+            ]);
+
+            return null;
+        }
+    }
+
     /** What is left of this connection's hourly budget, for the health screen. */
     public function budget(Integration $connection): array
     {

@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Domain\Git\RepositoryStateReducer;
 use App\Events\RepositoryFeedUpdate;
+use App\Listeners\TellSomebodyAboutTheRepository;
+use App\Models\Project;
 use App\Models\ProjectRepository;
 use App\Models\RepositoryWebhookDelivery;
 use App\Support\TenantContext;
@@ -36,8 +38,11 @@ class ProcessRepositoryDelivery implements ShouldQueue
         private readonly array $payload,
     ) {}
 
-    public function handle(RepositoryStateReducer $reducer, TenantContext $context): void
-    {
+    public function handle(
+        RepositoryStateReducer $reducer,
+        TenantContext $context,
+        TellSomebodyAboutTheRepository $teller,
+    ): void {
         /*
          * Read without the tenant scope, which fails closed outside a request.
          * Scoped, a queued job would find no delivery at all and the whole
@@ -50,8 +55,18 @@ class ProcessRepositoryDelivery implements ShouldQueue
         }
 
         $repository = ProjectRepository::withoutGlobalScopes()
-            ->with(['tenant', 'project'])
+            ->with('tenant')
             ->find($delivery->project_repository_id);
+
+        /*
+         * Loaded without the tenant scope, like the tenant above. Eager-loading
+         * the relation applies it, and outside a request it fails closed — the
+         * project would come back null for a repository that plainly has one,
+         * and nobody would ever be told the build broke.
+         */
+        $project = $repository
+            ? Project::withoutGlobalScopes()->find($repository->project_id)
+            : null;
 
         if (! $repository || ! $repository->tenant) {
             $delivery->forceFill([
@@ -63,7 +78,7 @@ class ProcessRepositoryDelivery implements ShouldQueue
             return;
         }
 
-        $context->withTenant($repository->tenant, function () use ($reducer, $repository, $delivery) {
+        $context->withTenant($repository->tenant, function () use ($reducer, $repository, $delivery, $teller, $project) {
             try {
                 $result = $reducer->apply($repository, $delivery->event, $this->payload);
 
@@ -81,10 +96,26 @@ class ProcessRepositoryDelivery implements ShouldQueue
                  * refetch, and a feed that fires on nothing is one people turn
                  * off.
                  */
+                /*
+                 * Only things that happened in the last hour.
+                 *
+                 * The first sweep on a repository with history would otherwise
+                 * tell everybody about a build that broke last March, and a
+                 * notification about something nobody can act on is how people
+                 * learn to ignore the one that matters.
+                 */
+                if ($project) {
+                    foreach ($result['created'] ?? [] as $activity) {
+                        if ($activity->happened_at?->greaterThan(now()->subHour())) {
+                            $teller->handle($activity, $project);
+                        }
+                    }
+                }
+
                 if ($result['handled']) {
                     RepositoryFeedUpdate::dispatch(
                         $repository->tenant->uuid,
-                        $repository->project?->uuid ?? '',
+                        $project?->uuid ?? '',
                         $delivery->event,
                     );
                 }

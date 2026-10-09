@@ -5,7 +5,9 @@ namespace App\Jobs;
 use App\Domain\Git\GitHub\GitHubClient;
 use App\Domain\Git\GitProviderRegistry;
 use App\Domain\Git\RepositoryStateReducer;
+use App\Listeners\TellSomebodyAboutTheRepository;
 use App\Models\Integration;
+use App\Models\Project;
 use App\Models\ProjectRepository;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -41,10 +43,16 @@ class ReconcileRepository implements ShouldQueue
         RepositoryStateReducer $reducer,
         GitHubClient $client,
         TenantContext $context,
+        TellSomebodyAboutTheRepository $teller,
     ): void {
         $repository = ProjectRepository::withoutGlobalScopes()
             ->with('tenant')
             ->find($this->repositoryId);
+
+        // Without the scope, for the same reason as the connection below.
+        $project = $repository
+            ? Project::withoutGlobalScopes()->find($repository->project_id)
+            : null;
 
         if (! $repository || ! $repository->tenant) {
             return;
@@ -76,7 +84,7 @@ class ReconcileRepository implements ShouldQueue
             return;
         }
 
-        $context->withTenant($repository->tenant, function () use ($providers, $reducer, $repository, $connection) {
+        $context->withTenant($repository->tenant, function () use ($providers, $reducer, $repository, $connection, $teller, $project) {
             $since = $repository->sync_cursor;
 
             try {
@@ -96,7 +104,21 @@ class ReconcileRepository implements ShouldQueue
             // not reach the pull requests but did see a failed deployment
             // should still show the failed deployment.
             foreach ($result->changes as $change) {
-                $reducer->apply($repository, $change['event'], $change['payload']);
+                $applied = $reducer->apply($repository, $change['event'], $change['payload']);
+
+                /*
+                 * The same hour-old rule the webhook path uses. A sweep is
+                 * usually catching up, and catching up is not news: telling
+                 * everybody about a build that broke last March is how people
+                 * learn to ignore the notification that matters.
+                 */
+                if ($project) {
+                    foreach ($applied['created'] ?? [] as $activity) {
+                        if ($activity->happened_at?->greaterThan(now()->subHour())) {
+                            $teller->handle($activity, $project);
+                        }
+                    }
+                }
             }
 
             /*

@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PipelineController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
@@ -186,6 +187,7 @@ Route::prefix('v1')->group(function () {
 
             // Which repository a project is built in, and what has happened in
             // it. Nested under the project because that is whose question it is.
+            Route::get('/projects/{uuid}/development', ProjectDevelopmentController::class);
             Route::get('/projects/{uuid}/repository', [GitHubController::class, 'forProject']);
             Route::post('/projects/{uuid}/repository', [GitHubController::class, 'link']);
             Route::delete('/projects/{uuid}/repository', [GitHubController::class, 'unlink']);

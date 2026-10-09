@@ -53,6 +53,14 @@ export function useLiveFeed(): void {
     }
 
     /*
+     * Development activity has its own channel and its own rule: anyone who can
+     * open a project can watch it. A merged pull request is not somebody's
+     * phone number, so the lead feed's narrower rule would only mean a rep
+     * looking at a project screen that never updates.
+     */
+    const developmentChannel = tenantId ? `tenant.${tenantId}.development` : null
+
+    /*
      * A lead assigned to a manager arrives on both of their channels. Without
      * this the screen refetches twice and says "a lead arrived" twice for one
      * lead, which is how people learn to distrust a notification.
@@ -105,15 +113,28 @@ export function useLiveFeed(): void {
       }
     }
 
+    const onDevelopment = (payload: { project_id: string }) => {
+      void queryClient.invalidateQueries({ queryKey: ['development', payload.project_id] })
+      void queryClient.invalidateQueries({ queryKey: ['github'] })
+    }
+
     for (const name of channels) {
       // The leading dot means "this exact name", not one namespaced under the
       // backend's PHP namespace — which is what broadcastAs() produces.
       echo.private(name).listen('.lead.feed', onFeed)
     }
 
+    if (developmentChannel) {
+      echo.private(developmentChannel).listen('.repository.feed', onDevelopment)
+    }
+
     return () => {
       for (const name of channels) {
         echo.leave(name)
+      }
+
+      if (developmentChannel) {
+        echo.leave(developmentChannel)
       }
     }
   }, [user, tenantId, queryClient, toast, t])

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Calls\CallProviderRegistry;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -16,6 +17,7 @@ use App\Http\Resources\LeadActivityResource;
 use App\Http\Resources\LeadListResource;
 use App\Http\Resources\LeadNoteResource;
 use App\Http\Resources\LeadResource;
+use App\Models\Call;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
@@ -50,6 +52,7 @@ class LeadController extends Controller
         private LeadScoringService $scoring,
         private PhoneNormalizer $phones,
         private AuditLogger $audit,
+        private CallProviderRegistry $calls,
     ) {}
 
     public function index(Request $request)
@@ -395,7 +398,59 @@ class LeadController extends Controller
 
         $this->activities->log($lead, $type, $request->user());
 
-        return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project']))]);
+        /*
+         * A call also becomes a record of its own, not only a line in the
+         * timeline.
+         *
+         * The timeline answers "what happened to this lead"; this answers "how
+         * many calls did we make, to whom, and what came of them" — which is a
+         * manager's question and a report's, and an activity row cannot carry a
+         * duration or an outcome without becoming something else.
+         *
+         * Through the provider registry even though today's provider places no
+         * call: when a real one is connected, the same button starts a real
+         * call and nothing above here changes.
+         */
+        $call = $data['channel'] === 'call'
+            ? $this->calls->forTenant()->place($lead, $request->user())
+            : null;
+
+        return ApiResponse::success([
+            'lead' => new LeadResource($lead->fresh(['assignee', 'project'])),
+            'call' => $call === null ? null : ['id' => $call->uuid, 'status' => $call->status],
+        ]);
+    }
+
+    /**
+     * What came of a call, once the rep knows.
+     *
+     * Separate from placing it because nothing is watching a rep's phone: the
+     * product learns how a call went when a person says so, and a status that
+     * advanced on its own would be a guess printed as a fact.
+     */
+    public function recordCall(Request $request, string $uuid, string $callUuid)
+    {
+        $lead = $this->findLead($uuid);
+        $this->authorize('update', $lead);
+
+        $call = Call::where('lead_id', $lead->id)->where('uuid', $callUuid)->firstOrFail();
+
+        $data = $request->validate([
+            'status' => ['required', 'in:answered,no_answer,failed,completed'],
+            'outcome' => ['sometimes', 'nullable', 'string', 'max:32'],
+            // Accepted when a provider or a person supplies it, never invented.
+            'duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:86400'],
+        ]);
+
+        $call->forceFill($data + ['ended_at' => now()])->save();
+
+        return ApiResponse::success(['call' => [
+            'id' => $call->uuid,
+            'status' => $call->status,
+            'outcome' => $call->outcome,
+            'duration_seconds' => $call->duration_seconds,
+            'measured' => $call->wasMeasured(),
+        ]]);
     }
 
     /** CSV export of the current filter selection. Streamed so large tenants work. */

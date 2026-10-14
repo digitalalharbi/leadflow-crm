@@ -119,6 +119,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/temperature', [LeadController::class, 'changeTemperature']);
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);
+            // What came of a call, once the rep knows. Nothing watches a rep's
+            // phone, so the product learns it when a person says so.
+            Route::post('/leads/{uuid}/calls/{call}', [LeadController::class, 'recordCall']);
 
             // Whether messaging is available at all, for anyone who works leads.
             Route::get('/whatsapp/capability', [WhatsappSettingsController::class, 'capability']);

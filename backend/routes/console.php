@@ -66,6 +66,18 @@ Schedule::command('leadflow:reconcile-repositories')
     ->everyTenMinutes()
     ->withoutOverlapping();
 
+/*
+ * Leads that arrive in a spreadsheet.
+ *
+ * Every fifteen minutes, incremental from each sheet's own cursor. A team
+ * running its campaign through a sheet gets the same speed-to-lead as one
+ * running it through a webhook, which is the entire reason this is scheduled
+ * rather than a button somebody remembers to press.
+ */
+Schedule::command('leadflow:sync-sheets')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 /*

@@ -47,6 +47,14 @@ export function MetricCard({
 
   const good = change === null ? null : invertChange ? change <= 0 : change >= 0
 
+  const iconChip = {
+    neutral: 'bg-[var(--color-surface-muted)] text-[var(--color-ink-muted)]',
+    brand: 'bg-[var(--brand-soft)] text-[var(--brand)]',
+    warning: 'bg-[color-mix(in_srgb,var(--color-warning)_12%,transparent)] text-[var(--color-warning)]',
+    danger: 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]',
+    success: 'bg-[color-mix(in_srgb,var(--color-success)_12%,transparent)] text-[var(--color-success)]',
+  }[tone]
+
   const valueTone = {
     neutral: 'text-[var(--color-ink)]',
     brand: 'text-[var(--brand)]',
@@ -59,7 +67,23 @@ export function MetricCard({
     <>
       <div className="flex items-start justify-between gap-2">
         <p className="t-caption leading-snug font-medium text-balance">{label}</p>
-        {icon && <span className="mt-0.5 shrink-0 text-[var(--color-ink-subtle)]">{icon}</span>}
+        {/*
+          A soft tinted chip rather than a bare glyph.
+          The icon is not information — the label already says what the number
+          is — so it should read as a marker that helps the eye find the card
+          again, and a tinted square does that without competing with the
+          number for attention.
+        */}
+        {icon && (
+          <span
+            className={cn(
+              'grid size-7 shrink-0 place-items-center rounded-[var(--radius-control)]',
+              iconChip,
+            )}
+          >
+            {icon}
+          </span>
+        )}
       </div>
 
       <div className="mt-2 flex items-end justify-between gap-3">

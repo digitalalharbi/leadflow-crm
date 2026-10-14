@@ -34,15 +34,23 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-7 px-2.5 text-[0.75rem] gap-1',
-  md: 'h-8 px-3 text-[0.8125rem] gap-1.5',
-  lg: 'h-9 px-4 text-[0.875rem] gap-2',
-  icon: 'size-9',
+  sm: 'h-8 px-3 text-[0.75rem] gap-1.5',
+  md: 'h-9 px-4 text-[0.8125rem] gap-2',
+  lg: 'h-10 px-5 text-[0.875rem] gap-2',
+  icon: 'size-9 rounded-[var(--radius-control)]',
 }
 
+/*
+ * Pill-shaped, which is the one decision that carries most of this theme.
+ *
+ * A rounded rectangle reads as a form control; a pill reads as an action. On a
+ * dashboard where most buttons are verbs — call, send, sync — the second is
+ * what they are, and it is also what stops a row of them looking like a
+ * toolbar.
+ */
 const base = [
   'pressable inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
-  'rounded-[var(--radius-control)]',
+  'rounded-[var(--radius-pill)]',
   'disabled:pointer-events-none disabled:opacity-45',
 ].join(' ')
 

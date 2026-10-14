@@ -24,15 +24,26 @@ let nextToastId = 1
 
 const APPEARANCE_KEY = 'leadflow.appearance'
 
+/*
+ * Light, not system.
+ *
+ * The product has a look now, and it is a light one — white cards on a shaded
+ * canvas, which is what the whole theme is built around. Following the device
+ * meant half the people who opened it for the first time saw the dark variant,
+ * which is a fallback rather than the design. Anybody who prefers dark still
+ * chooses it, and the choice sticks.
+ */
+const DEFAULT_APPEARANCE: Appearance = 'light'
+
 function storedAppearance(): Appearance {
   try {
     const value = localStorage.getItem(APPEARANCE_KEY)
 
-    return value === 'light' || value === 'dark' ? value : 'system'
+    return value === 'light' || value === 'dark' || value === 'system' ? value : DEFAULT_APPEARANCE
   } catch {
     // Private browsing and blocked storage both throw here; following the
     // device is a perfectly good answer when we cannot remember a choice.
-    return 'system'
+    return DEFAULT_APPEARANCE
   }
 }
 

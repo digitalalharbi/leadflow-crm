@@ -8,10 +8,9 @@ import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen } from '@/lib/format'
-import { cn } from '@/lib/cn'
 import {
   Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState, Input,
-  PageHeader, Skeleton, Table, TableWrap, Td, Th, Tr,
+  PageHeader, Skeleton, Table, TableWrap, Tabs, Td, Th, Tr,
 } from '@/components/ui'
 import {
   fetchDevelopment, fetchRepositories, linkRepository, syncGitHub,
@@ -43,26 +42,16 @@ export function ProjectDetailPage() {
         subtitle={project?.location ?? undefined}
       />
 
-      <div className="mb-4 flex flex-wrap gap-2" role="tablist">
-        {(['overview', 'development'] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            data-testid={`project-tab-${key}`}
-            onClick={() => setTab(key)}
-            className={cn(
-              'pressable rounded-full border px-4 py-1.5 text-[0.875rem]',
-              tab === key
-                ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
-                : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
-            )}
-          >
-            {t(`projects.tabs.${key}`)}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="mb-3"
+        testId="project-tabs"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { key: 'overview' as const, label: t('projects.tabs.overview') },
+          { key: 'development' as const, label: t('projects.tabs.development') },
+        ]}
+      />
 
       {tab === 'overview' ? (
         <Card>

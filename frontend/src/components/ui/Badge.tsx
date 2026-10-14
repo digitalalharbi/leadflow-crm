@@ -38,9 +38,16 @@ const tempTone: Record<LeadTemperature, string> = {
   cold: toneFor('--color-temp-cold'),
 }
 
+/*
+ * A tinted token, not an outline.
+ *
+ * The ring was doing the work of saying "this is a thing"; a soft fill says it
+ * more quietly and survives being next to five others, which is what a status
+ * column actually is.
+ */
 const base = [
   'inline-flex items-center gap-1.5 whitespace-nowrap',
-  'rounded-full px-2.5 py-0.5 text-[0.75rem] font-medium',
+  'rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[0.75rem] font-medium',
   'ring-1 ring-inset',
 ].join(' ')
 

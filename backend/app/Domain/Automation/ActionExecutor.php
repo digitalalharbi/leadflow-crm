@@ -2,18 +2,24 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Files\FileForTheLead;
+use App\Domain\Files\ShareFile;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Enums\Role;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\LostReason;
+use App\Models\MessageTemplate;
 use App\Models\User;
 use App\Notifications\AutomationNotification;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Services\Leads\LeadScoringService;
+use App\Services\Whatsapp\TemplateRenderer;
+use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 
 /**
  * Carries out what a rule decided.
@@ -37,6 +43,10 @@ class ActionExecutor
         private LeadAssignmentService $assignment,
         private LeadScoringService $scoring,
         private ActivityLogger $activities,
+        private WhatsappSender $whatsapp,
+        private TemplateRenderer $renderer,
+        private FileForTheLead $chooser,
+        private ShareFile $sharer,
     ) {}
 
     /**
@@ -56,6 +66,8 @@ class ActionExecutor
                 'schedule_follow_up' => $this->scheduleFollowUp($lead, $action),
                 'add_note' => $this->addNote($lead, $action),
                 'notify' => $this->notify($lead, $action),
+                'send_whatsapp' => $this->sendWhatsapp($lead, $action),
+                'share_file' => $this->shareFile($lead, $action),
                 'stop_follow_ups' => $this->stopFollowUps($lead, $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
@@ -314,6 +326,104 @@ class ActionExecutor
      * no. Nothing else in the product cancels a step automatically, so a rule
      * is the only way a workspace can express "stop".
      */
+    /**
+     * Sends the workspace's own saved message to the lead.
+     *
+     * The mechanism for this existed and only a person could reach it: every
+     * send went through `LeadMessageController`, so a qualification sequence —
+     * the thing automation is for — was a rep doing it by hand twenty times a
+     * day. The sender is unchanged, which is the point: a rule sending a
+     * message obeys the same opt-out, the same per-lead rate limit and the same
+     * "record it before the provider is called" ordering a rep does, because it
+     * is the same code.
+     *
+     * The wording lives in a template rather than in the rule. A manager who
+     * wants to change what the product says to people should change it in the
+     * one place that lists what the product says to people, not by opening six
+     * rules to find which of them carries that sentence.
+     */
+    private function sendWhatsapp(Lead $lead, array $action): array
+    {
+        $uuid = (string) ($action['template_uuid'] ?? '');
+
+        if ($uuid === '') {
+            return ['ok' => false, 'description' => 'لم تُحدَّد رسالة — لم يُرسل شيء.'];
+        }
+
+        $template = MessageTemplate::where('uuid', $uuid)->first();
+
+        if (! $template) {
+            return ['ok' => false, 'description' => 'الرسالة المحددة غير موجودة — لم يُرسل شيء.'];
+        }
+
+        if (! $template->is_active) {
+            return ['ok' => false, 'description' => "الرسالة '{$template->name}' موقوفة — لم تُرسل."];
+        }
+
+        /*
+         * No actor. A rule is not a person, and attributing the message to the
+         * lead's owner would put their name on something they did not write —
+         * on the screen and in the audit trail both.
+         */
+        $body = $this->renderer->render($template->body, $lead, null);
+
+        try {
+            $this->whatsapp->send($lead, $body, null, $template->name);
+        } catch (RuntimeException $e) {
+            /*
+             * Reported, not thrown. The reasons a send is refused are ordinary
+             * operational facts — the lead opted out, the workspace has not
+             * connected WhatsApp, there is no usable number — and each one is
+             * something a manager reading the trace can act on. None of them is
+             * a reason to abandon the rest of the rule.
+             */
+            return ['ok' => false, 'description' => 'لم تُرسل الرسالة: '.$e->getMessage()];
+        }
+
+        // The sender writes the timeline entry itself, so there is one record
+        // of a message whether a rep or a rule sent it.
+        return ['ok' => true, 'description' => "أُرسلت رسالة واتساب '{$template->name}'."];
+    }
+
+    /**
+     * Hands the lead the file their own answers point at.
+     *
+     * `FileForTheLead` already decides which one and says why; it was reachable
+     * only from the button a rep presses. A share is created either way, so the
+     * link is on the lead screen and its opens are counted, and the delivery is
+     * reported separately from the choice — a workspace with no WhatsApp still
+     * gets the link, and is told that is all it got.
+     */
+    private function shareFile(Lead $lead, array $action): array
+    {
+        $kind = ($action['kind'] ?? null) ?: null;
+
+        ['file' => $file, 'reason' => $reason] = $this->chooser->pick($lead, $kind);
+
+        if (! $file) {
+            return ['ok' => false, 'description' => match ($reason) {
+                'no_files_of_kind' => 'لا يوجد ملف من هذا النوع لمشروع العميل.',
+                default => 'لا توجد ملفات لمشروع هذا العميل — لم يُرسل شيء.',
+            }];
+        }
+
+        $share = $this->sharer->forLead($file, $lead, null, 'automation');
+
+        if (! ($action['send'] ?? true)) {
+            return ['ok' => true, 'description' => "جُهِّز رابط '{$file->name}' للعميل."];
+        }
+
+        try {
+            $this->whatsapp->send($lead, trim($file->name."\n".$share->url()), null);
+        } catch (RuntimeException $e) {
+            // The share stands. It is on the lead's screen for a rep to send by
+            // hand, which is strictly better than having neither.
+            return ['ok' => false, 'description' => "جُهِّز رابط '{$file->name}' ولم يُرسل: ".$e->getMessage()];
+        }
+
+        return ['ok' => true, 'description' => "أُرسل '{$file->name}' إلى العميل."];
+    }
+
     private function stopFollowUps(Lead $lead, array $action): array
     {
         // One at a time rather than a mass update: a query-builder update fires

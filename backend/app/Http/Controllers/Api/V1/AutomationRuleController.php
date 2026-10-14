@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Lead;
+use App\Models\ProjectFile;
 use App\Models\ScheduledAction;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -57,6 +58,7 @@ class AutomationRuleController extends Controller
     private const ACTIONS = [
         'assign', 'change_stage', 'adjust_score', 'add_tag',
         'schedule_follow_up', 'add_note', 'notify', 'stop_follow_ups',
+        'send_whatsapp', 'share_file',
     ];
 
     public function index(Request $request)
@@ -374,6 +376,26 @@ class AutomationRuleController extends Controller
             'actions.*.body' => ['required_if:actions.*.type,add_note', 'string', 'max:2000'],
             'actions.*.audience' => ['required_if:actions.*.type,notify', Rule::in(['owner', 'managers'])],
             'actions.*.in_hours' => ['required_if:actions.*.type,schedule_follow_up', 'integer', 'min:1', 'max:8760'],
+
+            /*
+             * A rule that messages people names the message it sends.
+             *
+             * The wording is a template rather than a line typed into the rule,
+             * so a workspace changing what it says to customers changes it
+             * where the messages are listed — not by opening every rule to find
+             * which one carries that sentence. Required, because a send_whatsapp
+             * with no template is a rule that reports a failure on every run.
+             */
+            'actions.*.template_uuid' => ['required_if:actions.*.type,send_whatsapp', 'uuid'],
+
+            /*
+             * Optional on purpose. Left out, the chooser reads the lead's own
+             * answers — investment buyers get the numbers, somebody who said
+             * they need financing gets the guide — which is the behaviour worth
+             * having by default.
+             */
+            'actions.*.kind' => ['sometimes', 'nullable', Rule::in(ProjectFile::KINDS)],
+            'actions.*.send' => ['sometimes', 'boolean'],
 
             /*
              * The parameters that used to fall off the rule on the way in.

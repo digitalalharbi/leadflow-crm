@@ -20,6 +20,7 @@ import {
   Input, Modal, Select, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
+import { LeadFiles } from '@/components/leads/LeadFiles'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
 import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
@@ -478,6 +479,13 @@ export function LeadDetailPage() {
           <QualificationCard lead={lead} />
 
           <Conversation lead={lead} />
+
+          {/*
+            Under the conversation, because sending a brochure is the same kind
+            of act as sending a message, and the answer to "did they open it"
+            belongs next to "did they reply".
+          */}
+          <LeadFiles lead={lead} />
 
           <Card>
             <CardHeader

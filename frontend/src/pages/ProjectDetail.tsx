@@ -16,6 +16,7 @@ import {
   fetchDevelopment, fetchRepositories, linkRepository, syncGitHub,
   type DevelopmentActivity, type DevelopmentDeployment, type DevelopmentRun,
 } from '@/features/development'
+import { ProjectFiles } from '@/components/projects/ProjectFiles'
 import type { Project } from '@/types/api'
 
 /**
@@ -35,7 +36,7 @@ export function ProjectDetailPage() {
    * CI runs and deployments, with the tab row pointing at the tab they were not
    * on.
    */
-  const [tab, setTab] = useState<'overview' | 'development'>('overview')
+  const [tab, setTab] = useState<'overview' | 'files' | 'development'>('overview')
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -56,6 +57,7 @@ export function ProjectDetailPage() {
         onChange={setTab}
         items={[
           { key: 'overview' as const, label: t('projects.tabs.overview') },
+          { key: 'files' as const, label: t('projects.tabs.files') },
           { key: 'development' as const, label: t('projects.tabs.development') },
         ]}
       />
@@ -77,6 +79,8 @@ export function ProjectDetailPage() {
             )}
           </CardBody>
         </Card>
+      ) : tab === 'files' ? (
+        <ProjectFiles projectId={id} />
       ) : (
         <Development projectId={id} />
       )}

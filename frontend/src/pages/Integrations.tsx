@@ -4,7 +4,7 @@ import {
   Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { IntegrationHealth } from '@/components/integrations/IntegrationHealth'
+import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
 import { SheetSources } from '@/components/integrations/SheetSources'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
@@ -37,6 +37,8 @@ export function IntegrationsPage() {
 
   const [secret, setSecret] = useState<{ url: string; secret: string } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  /** Detail starts closed: the grid above is the answer, this is the evidence. */
+  const [detailOpen, setDetailOpen] = useState(false)
   const demoMode = useAuth((s) => s.demoMode)
 
   /*
@@ -141,15 +143,40 @@ export function IntegrationsPage() {
 
       {/* Leads that arrive in a spreadsheet, on the same page as every other
           source — because that is what it is. */}
-      <div className="mb-4">
+      <div className="mb-3">
         <SheetSources />
       </div>
 
-      {/* What has actually worked, above the list of what is connected. */}
-      <div className="mb-4">
-        <IntegrationHealth />
+      {/* Every source on one screen, above everything else: the question
+          anybody opens this page with is whether anything is still arriving. */}
+      <div className="mb-3">
+        <IntegrationGrid />
       </div>
 
+      {/*
+        Everything below is detail, and detail is one press away rather than a
+        screen to scroll past.
+
+        The question anybody opens this page with is whether leads are still
+        arriving, and the grid above answers it in the first viewport. The
+        chart, the connection cards, the webhook secrets and the delivery log
+        are what you open *after* the grid has told you something is wrong —
+        so they start closed.
+      */}
+      <div className="mb-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setDetailOpen((open) => !open)}
+          data-testid="toggle-integration-detail"
+          aria-expanded={detailOpen}
+        >
+          {detailOpen ? t('integrations.hideDetail') : t('integrations.showDetail')}
+        </Button>
+      </div>
+
+      {detailOpen && (
+        <div className="space-y-3" data-testid="integration-detail">
       {/*
         Arrivals come first, above the list of connections.
         The list cannot answer the question anybody actually opens this page
@@ -382,6 +409,9 @@ export function IntegrationsPage() {
           </TableWrap>
         )}
       </Card>
+
+        </div>
+      )}
 
       {/* The secret is shown exactly once; the dialog says so plainly. */}
       <CredentialsModal

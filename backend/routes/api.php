@@ -227,6 +227,7 @@ Route::prefix('v1')->group(function () {
             // Which integrations have ever actually worked, as opposed to which
             // ones are written. Computed from evidence, never asserted.
             Route::get('/integrations/health', [IntegrationController::class, 'health']);
+            Route::post('/integrations/sync', [IntegrationController::class, 'syncAll']);
             Route::post('/integrations', [IntegrationController::class, 'store']);
             // WhatsApp Business. Secrets are written here and never read back.
             /*

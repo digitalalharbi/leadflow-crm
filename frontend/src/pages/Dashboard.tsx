@@ -148,21 +148,21 @@ export function DashboardPage() {
       {isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
       ) : isLoading || !data ? (
-        <div className="space-y-5">
+        <div className="space-y-3">
           <SkeletonCards count={5} />
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <Skeleton className="h-72" />
             <Skeleton className="h-72" />
           </div>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-3">
           {/*
             The five figures a sales manager quotes in a meeting. Each carries
             its change against the previous period of equal length — which is
             absent, rather than invented, when no range is set.
           */}
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
             <MetricCard
               label={t('dashboard.totalLeads')}
               value={data.summary.total_leads}
@@ -259,10 +259,14 @@ export function DashboardPage() {
           <TodayStrip data={data} today={today} />
 
           {/*
-            The six analytics cards stack to roughly sixteen screens on a phone,
-            which buries the two lists at the bottom that a rep actually opens
-            the app for. They are the manager's half of this page, so below `sm`
-            they fold behind one tap; from `sm` up the page is unchanged.
+            The six analytics cards stack to roughly sixteen screens on a phone
+            and four on a laptop, which buries the two lists at the bottom that
+            a rep actually opens the app for.
+
+            They now fold at every size, not only below `sm`. A manager reading
+            the funnel opens it deliberately; a rep opening the app at 9am wants
+            the numbers and the two lists, and should not scroll past eight
+            charts to reach them. One press, and it stays open for the session.
           */}
           <button
             type="button"
@@ -270,9 +274,9 @@ export function DashboardPage() {
             aria-expanded={analyticsOpen}
             data-testid="toggle-analytics"
             className={cn(
-              'pressable flex w-full items-center justify-between gap-2 sm:hidden',
+              'pressable flex w-full items-center justify-between gap-2',
               'rounded-[var(--radius-card)] border border-[var(--color-line)]',
-              'bg-[var(--color-surface)] px-4 py-3 text-[0.8125rem] font-medium',
+              'bg-[var(--color-surface)] px-3 py-2 text-[0.8125rem] font-medium',
             )}
           >
             {t('dashboard.analytics')}
@@ -282,8 +286,8 @@ export function DashboardPage() {
             />
           </button>
 
-          <div className={cn('space-y-4', !analyticsOpen && 'max-sm:hidden')}>
-          <section className="grid gap-4 lg:grid-cols-2">
+          <div className={cn('space-y-3', !analyticsOpen && 'hidden')}>
+          <section className="grid gap-3 lg:grid-cols-2">
             <ChartCard
               title={t('dashboard.funnelTitle')}
               description={t('dashboard.funnelHint')}
@@ -358,7 +362,7 @@ export function DashboardPage() {
             </ChartCard>
           )}
 
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="grid gap-3 lg:grid-cols-2">
             {canViewReports && (
               <ChartCard
                 title={t('dashboard.platformsTitle')}
@@ -373,7 +377,7 @@ export function DashboardPage() {
               </ChartCard>
             )}
 
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               <ChartCard
                 title={t('dashboard.qualityTitle')}
                 description={t('dashboard.qualityHint')}
@@ -409,7 +413,7 @@ export function DashboardPage() {
           </section>
           </div>
 
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="grid gap-3 lg:grid-cols-2">
             <LeadMiniList
               title={t('dashboard.hotLeadsList')}
               leads={data.hot_leads}

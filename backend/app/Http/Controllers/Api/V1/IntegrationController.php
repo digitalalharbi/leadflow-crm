@@ -7,8 +7,12 @@ use App\Domain\Integrations\IntegrationHealthReport;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IntegrationResource;
+use App\Jobs\ReconcileRepository;
+use App\Jobs\SyncSheetSource;
 use App\Models\Integration;
 use App\Models\Project;
+use App\Models\ProjectRepository;
+use App\Models\SheetSource;
 use App\Models\User;
 use App\Models\WebhookEndpoint;
 use App\Models\WebhookLog;
@@ -34,6 +38,36 @@ class IntegrationController extends Controller
      * So this is computed from evidence: something real came through, or it has
      * not yet.
      */
+    /**
+     * Sweep everything that is pulled rather than pushed.
+     *
+     * Only those: a source that arrives by webhook has nothing to sync, and a
+     * button that appeared to sync one would be a button that looks like it did
+     * something. The count comes back so the screen can say what was queued
+     * instead of claiming success for an empty list.
+     */
+    public function syncAll(Request $request)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        $sheets = SheetSource::where('is_active', true)->get();
+
+        foreach ($sheets as $source) {
+            SyncSheetSource::dispatch($source->id, 'manual');
+        }
+
+        $repositories = ProjectRepository::all();
+
+        foreach ($repositories as $repository) {
+            ReconcileRepository::dispatch($repository->id);
+        }
+
+        return ApiResponse::success([
+            'sheets' => $sheets->count(),
+            'repositories' => $repositories->count(),
+        ], 'Sweep queued.');
+    }
+
     public function health(Request $request, IntegrationHealthReport $report)
     {
         $this->authorize('viewAny', Integration::class);

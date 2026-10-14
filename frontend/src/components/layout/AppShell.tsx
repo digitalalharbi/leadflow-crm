@@ -26,9 +26,9 @@ export function AppShell() {
       <Sidebar />
 
       {/* The sidebar is fixed, so the content is offset logically (works in RTL). */}
-      <div className="lg:ms-[17rem]">
+      <div className="lg:ms-[13.5rem]">
         <Topbar />
-        <main className="mx-auto w-full max-w-[90rem] px-4 py-5 sm:px-6 sm:py-6">
+        <main className="mx-auto w-full max-w-[110rem] px-3 py-3 sm:px-4 sm:py-4">
           <Outlet />
         </main>
       </div>

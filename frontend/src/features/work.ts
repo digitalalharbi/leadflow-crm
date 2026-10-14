@@ -27,10 +27,37 @@ export interface NextAction {
   due_in_minutes: number | null
 }
 
+/** One line of the queue behind the current card. */
+export interface QueuedLead {
+  id: string
+  name: string
+  city: string | null
+  status: string
+  temperature: string | null
+  action: string | null
+  urgency: NextAction['urgency'] | null
+  waiting_since: string | null
+}
+
+/** The last few things that happened to the lead on the card. */
+export interface QueueTimelineEntry {
+  id: string
+  type: string
+  actor: string | null
+  at: string | null
+}
+
 export interface NextInQueue {
   lead: LeadListItem | null
   action: NextAction | null
   remaining: number
+  /*
+   * What is behind this card and what already happened to it. Both arrive with
+   * the card because both are on the screen beside it: a rep who has to click
+   * to find out why a lead is urgent has lost the time the queue was saving.
+   */
+  queue: QueuedLead[]
+  timeline: QueueTimelineEntry[]
 }
 
 /** `skip` carries the leads passed over in this sitting, so "skip" actually

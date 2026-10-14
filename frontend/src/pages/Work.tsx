@@ -5,14 +5,14 @@ import { CalendarPlus, MessageCircle, PartyPopper, Phone, SkipForward } from 'lu
 import { useTranslation } from 'react-i18next'
 import {
   fetchNextInQueue, fetchWorkSummary, logContact, recordCall, recordOutcome,
-  OUTCOMES, type NextAction, type Outcome,
+  OUTCOMES, type NextAction, type Outcome, type QueuedLead, type QueueTimelineEntry,
 } from '@/features/work'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen, telLink, whatsappLink } from '@/lib/format'
 import {
-  Badge, Button, ButtonLink, buttonClasses, Card, CardBody, EmptyState, ErrorState,
+  Badge, Button, ButtonLink, buttonClasses, Card, CardBody, CardHeader, EmptyState, ErrorState,
   PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -198,7 +198,7 @@ export function WorkPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-3">
         <PageHeader title={t('work.title')} subtitle={t('work.subtitle')} />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -207,15 +207,18 @@ export function WorkPage() {
 
   if (isError) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-3">
         <PageHeader title={t('work.title')} />
         <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
       </div>
     )
   }
 
+  const queue = data?.queue ?? []
+  const timeline = data?.timeline ?? []
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       <PageHeader
         title={t('work.title')}
         subtitle={
@@ -225,8 +228,10 @@ export function WorkPage() {
         }
       />
 
+      {/* Four numbers on one line. They are the reason the rep is here, so they
+          cost one row and never a card each. */}
       {summary.data && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <QueueStat label={t('work.stats.uncontacted')} value={summary.data.uncontacted} />
           <QueueStat
             label={t('work.stats.overdueFirstContact')}
@@ -253,145 +258,215 @@ export function WorkPage() {
           </CardBody>
         </Card>
       ) : (
-        <Card className={cn('border-2', URGENCY[action.urgency])} data-testid="work-card">
-          <CardBody className="space-y-5">
-            {/* Why this lead, before who it is. The reason is the product. */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={URGENCY_BADGE[action.urgency]} testId="work-urgency">
-                {t(`work.urgency.${action.urgency}`)}
-              </Badge>
-              <span className="t-body font-medium" data-testid="work-action">
-                {t(`work.action.${action.action}`)}
-              </span>
-              {/*
-                No overdue chip here. It said the same words as the reason line
-                directly beneath it — "متأخر 3 أيام" above "متابعة متأخرة بـ 3
-                أيام" — and a card that says a thing twice reads as a card that
-                is padding. The urgency badge carries the alarm; the reason
-                carries the detail.
-              */}
-            </div>
+        /*
+         * Three columns, one screen.
+         *
+         * The card is the work; the queue beside it answers "is the order
+         * sane", and the history answers "has anybody already tried today" —
+         * both of which a rep used to get by clicking away from the card and
+         * losing their place. On a laptop none of it scrolls; below `lg` the
+         * two rails fall underneath, because a 3-column layout on a narrow
+         * screen is three columns of nothing.
+         */
+        <div className="grid grid-cols-1 items-start gap-2.5 lg:grid-cols-12">
+          <aside className="order-2 lg:order-1 lg:col-span-3">
+            <Card className="h-full">
+              <CardHeader title={t('work.queue.title')} />
+              <CardBody className="max-h-[22rem] space-y-1 overflow-y-auto p-2 lg:max-h-[calc(100dvh-19rem)]">
+                {queue.length === 0 ? (
+                  <p className="t-caption px-1.5 py-1">{t('work.queue.empty')}</p>
+                ) : (
+                  queue.map((item: QueuedLead) => (
+                    <div
+                      key={item.id}
+                      data-testid={`queue-item-${item.id}`}
+                      className="rounded-[var(--radius-control)] border border-[var(--color-line)] px-2 py-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="t-small truncate font-medium">{item.name}</span>
+                        {item.urgency && item.urgency !== 'none' && (
+                          <Badge tone={URGENCY_BADGE[item.urgency]}>
+                            {t(`work.urgency.${item.urgency}`)}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="t-caption truncate">
+                        {[item.action ? t(`work.action.${item.action}`) : null, item.city]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardBody>
+            </Card>
+          </aside>
 
-            <p className="t-caption" data-testid="work-reason">
-              {action.reason}
-            </p>
-
-            <div className="flex flex-wrap items-start justify-between gap-4 border-t border-[var(--color-border)] pt-4">
-              <div className="min-w-0 space-y-1.5">
-                <Link to={`/leads/${lead.id}`} className="t-h3 hover:underline" data-testid="work-lead-name">
-                  {lead.full_name}
-                </Link>
+          <section className="order-1 lg:order-2 lg:col-span-6">
+            <Card className={cn('border-2', URGENCY[action.urgency])} data-testid="work-card">
+              <CardBody className="space-y-2.5">
+                {/* Why this lead, before who it is. The reason is the product. */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={lead.status} />
-                  <TemperatureBadge temperature={lead.temperature} />
-                  {/*
-                    Which language to open the call in — read off the number's
-                    country code, and shown only when it is not the one this
-                    workspace works in. Before dialling is the only moment this
-                    is useful: finding out afterwards that the customer does not
-                    speak Arabic is finding out too late.
-                  */}
-                  {lead.language && lead.language !== workspaceLanguage && (
-                    <Badge tone="info" testId="work-language">
-                      {t(`languages.${lead.language}`, { defaultValue: lead.language })}
-                    </Badge>
-                  )}
-                  {lead.city && <span className="t-caption">{lead.city}</span>}
+                  <Badge tone={URGENCY_BADGE[action.urgency]} testId="work-urgency">
+                    {t(`work.urgency.${action.urgency}`)}
+                  </Badge>
+                  <span className="t-small font-medium" data-testid="work-action">
+                    {t(`work.action.${action.action}`)}
+                  </span>
+                  <span className="t-caption truncate" data-testid="work-reason">
+                    {action.reason}
+                  </span>
                 </div>
-                <p className="t-caption">
-                  {[lead.project?.name, lead.campaign_name, lead.platform]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-                <p className="t-caption">
-                  {t('work.arrived', { when: formatLastSeen(lead.created_at, i18n.language) })}
-                </p>
-              </div>
 
-              {/* The phone number, large and tappable: this screen exists to
-                  get a rep onto a call, not to be read. */}
-              {lead.phone && (
-                <a href={telLink(lead.phone) ?? '#'} className="t-h3 tabular-nums hover:underline">
-                  <bdi dir="ltr">{lead.phone}</bdi>
-                </a>
-              )}
-            </div>
+                <div className="flex flex-wrap items-start justify-between gap-3 border-t border-[var(--color-border)] pt-2.5">
+                  <div className="min-w-0 space-y-1">
+                    <Link
+                      to={`/leads/${lead.id}`}
+                      className="t-section-title hover:underline"
+                      data-testid="work-lead-name"
+                    >
+                      {lead.full_name}
+                    </Link>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={lead.status} />
+                      <TemperatureBadge temperature={lead.temperature} />
+                      {/*
+                        Which language to open the call in — read off the
+                        number's country code, and shown only when it is not the
+                        one this workspace works in.
+                      */}
+                      {lead.language && lead.language !== workspaceLanguage && (
+                        <Badge tone="info" testId="work-language">
+                          {t(`languages.${lead.language}`, { defaultValue: lead.language })}
+                        </Badge>
+                      )}
+                      {lead.city && <span className="t-caption">{lead.city}</span>}
+                    </div>
+                    <p className="t-caption truncate">
+                      {[lead.project?.name, lead.campaign_name, lead.platform]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      {' · '}
+                      {t('work.arrived', { when: formatLastSeen(lead.created_at, i18n.language) })}
+                    </p>
+                  </div>
 
-            <div className="flex flex-wrap gap-2">
-              {lead.phone && (
-                <ButtonLink
-                  href={telLink(lead.phone) ?? undefined}
-                  icon={<Phone className="size-4" aria-hidden />}
-                  onClick={() => log.mutate({ channel: 'call', note: note || undefined })}
-                >
-                  {t('work.buttons.call')}
-                </ButtonLink>
-              )}
+                  {/* The number, still the biggest thing on the card: this
+                      screen exists to get a rep onto a call. */}
+                  {lead.phone && (
+                    <a
+                      href={telLink(lead.phone) ?? '#'}
+                      className="t-section-title tabular-nums hover:underline"
+                    >
+                      <bdi dir="ltr">{lead.phone}</bdi>
+                    </a>
+                  )}
+                </div>
 
-              {lead.whatsapp && (
-                <ButtonLink
-                  variant="secondary"
-                  href={whatsappLink(lead.whatsapp) ?? undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  icon={<MessageCircle className="size-4" aria-hidden />}
-                  onClick={() => log.mutate({ channel: 'whatsapp', note: note || undefined })}
-                >
-                  {t('work.buttons.whatsapp')}
-                </ButtonLink>
-              )}
+                <div className="flex flex-wrap gap-1.5">
+                  {lead.phone && (
+                    <ButtonLink
+                      size="sm"
+                      href={telLink(lead.phone) ?? undefined}
+                      icon={<Phone className="size-3.5" aria-hidden />}
+                      onClick={() => log.mutate({ channel: 'call', note: note || undefined })}
+                    >
+                      {t('work.buttons.call')}
+                    </ButtonLink>
+                  )}
 
-              <Button
-                variant="ghost"
-                icon={<SkipForward className="size-4" aria-hidden />}
-                onClick={skip}
-                disabled={outcome.isPending}
-                data-testid="work-skip"
-              >
-                {t('work.buttons.skip')}
-                <Kbd>S</Kbd>
-              </Button>
+                  {lead.whatsapp && (
+                    <ButtonLink
+                      size="sm"
+                      variant="secondary"
+                      href={whatsappLink(lead.whatsapp) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      icon={<MessageCircle className="size-3.5" aria-hidden />}
+                      onClick={() => log.mutate({ channel: 'whatsapp', note: note || undefined })}
+                    >
+                      {t('work.buttons.whatsapp')}
+                    </ButtonLink>
+                  )}
 
-              <Link to={`/leads/${lead.id}`} className={buttonClasses('ghost')} data-testid="work-open-lead">
-                <CalendarPlus className="size-4" aria-hidden />
-                {t('work.buttons.openLead')}
-              </Link>
-            </div>
-
-            {/*
-              What happened, in the words a rep would use. Pressing one of these
-              is the whole interaction: the stage, the next step and the next
-              lead all follow from it, so nothing else on this screen needs to
-              be touched afterwards.
-            */}
-            <div className="space-y-2 border-t border-[var(--color-border)] pt-4">
-              <p className="t-caption">{t('work.outcomePrompt')}</p>
-              <div className="flex flex-wrap gap-2">
-                {OUTCOMES.map((choice, index) => (
                   <Button
-                    key={choice}
-                    variant={choice === 'won' ? 'primary' : choice === 'lost' ? 'danger' : 'outline'}
+                    variant="ghost"
                     size="sm"
+                    icon={<SkipForward className="size-3.5" aria-hidden />}
+                    onClick={skip}
                     disabled={outcome.isPending}
-                    data-testid={`outcome-${choice}`}
-                    onClick={() => outcome.mutate(choice)}
+                    data-testid="work-skip"
                   >
-                    {t(`work.outcome.${choice}`)}
-                    <Kbd>{index + 1}</Kbd>
+                    {t('work.buttons.skip')}
+                    <Kbd>S</Kbd>
                   </Button>
-                ))}
-              </div>
-            </div>
 
-            <Textarea
-              label={t('work.noteLabel')}
-              hint={t('work.noteHint')}
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </CardBody>
-        </Card>
+                  <Link
+                    to={`/leads/${lead.id}`}
+                    className={buttonClasses('ghost', 'sm')}
+                    data-testid="work-open-lead"
+                  >
+                    <CalendarPlus className="size-3.5" aria-hidden />
+                    {t('work.buttons.openLead')}
+                  </Link>
+                </div>
+
+                {/*
+                  What happened, in the words a rep would use. Pressing one of
+                  these is the whole interaction: the stage, the next step and
+                  the next lead all follow from it.
+                */}
+                <div className="space-y-1.5 border-t border-[var(--color-border)] pt-2.5">
+                  <p className="t-caption">{t('work.outcomePrompt')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {OUTCOMES.map((choice, index) => (
+                      <Button
+                        key={choice}
+                        variant={choice === 'won' ? 'primary' : choice === 'lost' ? 'danger' : 'outline'}
+                        size="sm"
+                        disabled={outcome.isPending}
+                        data-testid={`outcome-${choice}`}
+                        onClick={() => outcome.mutate(choice)}
+                      >
+                        {t(`work.outcome.${choice}`)}
+                        <Kbd>{index + 1}</Kbd>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <Textarea
+                  label={t('work.noteLabel')}
+                  rows={2}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </CardBody>
+            </Card>
+          </section>
+
+          <aside className="order-3 lg:col-span-3">
+            <Card className="h-full">
+              <CardHeader title={t('work.timeline.title')} />
+              <CardBody className="max-h-[22rem] space-y-1.5 overflow-y-auto p-2.5 lg:max-h-[calc(100dvh-19rem)]">
+                {timeline.length === 0 ? (
+                  <p className="t-caption">{t('work.timeline.empty')}</p>
+                ) : (
+                  timeline.map((entry: QueueTimelineEntry) => (
+                    <div key={entry.id} className="flex items-baseline justify-between gap-2">
+                      <span className="t-small truncate">
+                        {t(`activity.${entry.type}`, { defaultValue: entry.type })}
+                      </span>
+                      <span className="t-caption shrink-0">
+                        {entry.at ? formatLastSeen(entry.at, i18n.language) : ''}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </CardBody>
+            </Card>
+          </aside>
+        </div>
       )}
     </div>
   )
@@ -420,11 +495,11 @@ function QueueStat({
   alarming?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-      <p className="t-caption">{label}</p>
+    <div className="flex items-baseline justify-between gap-2 rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5">
+      <p className="t-caption truncate">{label}</p>
       <p
         className={cn(
-          't-h3 mt-0.5 tabular-nums',
+          'text-[1.0625rem] font-semibold leading-none tabular-nums',
           alarming && value > 0 && 'text-[var(--color-danger)]',
         )}
       >

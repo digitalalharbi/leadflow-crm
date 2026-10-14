@@ -10,7 +10,7 @@ export function PageHeader({
   actions?: ReactNode
 }) {
   return (
-    <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <header className="mb-3 flex flex-wrap items-end justify-between gap-2">
       <div className="min-w-0">
         {/*
           `t-page-title` rather than a size plus `tracking-tight`: the class is
@@ -19,7 +19,7 @@ export function PageHeader({
         */}
         <h1 className="t-page-title" data-testid="page-title">{title}</h1>
         {subtitle && (
-          <p className="t-caption mt-1" data-testid="page-subtitle">
+          <p className="t-caption mt-0.5" data-testid="page-subtitle">
             {subtitle}
           </p>
         )}

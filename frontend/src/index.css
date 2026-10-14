@@ -166,9 +166,9 @@
     0 24px 48px -16px color-mix(in srgb, var(--color-neutral-900) 18%, transparent);
 
   /* Radii step with the size of the thing, so nothing looks over-rounded. */
-  --radius-control: 0.625rem;
-  --radius-card: 0.875rem;
-  --radius-panel: 1.125rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+  --radius-panel: 0.75rem;
 
   /*
    * One curve for everything. It starts fast and settles, which is what makes
@@ -476,36 +476,44 @@
    * has to win against its own label at a glance, so it is large, tight and
    * tabular while the label stays small and quiet.
    */
+  /*
+   * Tightened for density, April pass.
+   *
+   * The sizes came down; the floor did not. Nothing here is below 0.75rem,
+   * because Arabic loses its cursive joins before Latin loses its counters and
+   * a 10px Arabic label is a smear rather than a word. What a dense dashboard
+   * buys is bought from padding and from line-height, not from the alphabet.
+   */
   .t-display {
-    font-size: 1.875rem;
+    font-size: 1.5rem;
     line-height: 1.2;
     font-weight: 600;
     letter-spacing: -0.025em;
   }
 
   .t-page-title {
-    font-size: 1.375rem;
+    font-size: 1.125rem;
     line-height: 1.25;
     font-weight: 600;
     letter-spacing: -0.02em;
   }
 
   .t-section-title {
-    font-size: 1rem;
+    font-size: 0.875rem;
     line-height: 1.35;
     font-weight: 600;
     letter-spacing: -0.01em;
   }
 
   .t-card-title {
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     line-height: 1.4;
     font-weight: 600;
   }
 
   .t-body {
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: 0.8125rem;
+    line-height: 1.5;
   }
 
   .t-small {
@@ -520,7 +528,7 @@
   }
 
   .t-metric {
-    font-size: 1.75rem;
+    font-size: 1.375rem;
     line-height: 1.1;
     font-weight: 650;
     letter-spacing: -0.03em;
@@ -772,7 +780,7 @@
   }
 
   /* The sidebar's offset goes with the sidebar. */
-  .lg\:ms-\[17rem\] {
+  .lg\:ms-\[13\.5rem\] {
     margin-inline-start: 0 !important;
   }
 

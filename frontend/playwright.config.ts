@@ -47,7 +47,22 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
       // The mobile spec asserts drawer behaviour and stacked layouts that only
       // exist below the `lg` breakpoint, so it belongs to the mobile project.
-      testIgnore: /mobile\.spec\.ts/,
+      // The density spec runs at a smaller laptop size of its own, below.
+      testIgnore: /mobile\.spec\.ts|density\.spec\.ts/,
+    },
+    {
+      /*
+       * The screen most of this product is actually used on.
+       *
+       * 1366×768 is still the commonest laptop in the market this sells into,
+       * and it is the size everything was quietly too big for: a layout that
+       * fits 1440×900 can be a page and a half here. Small project, one spec,
+       * because the whole suite at a second desktop size would double the run
+       * to catch one class of problem.
+       */
+      name: 'laptop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 } },
+      testMatch: /density\.spec\.ts/,
     },
     {
       // A sales rep works the phone far more than a desktop, so the layouts that

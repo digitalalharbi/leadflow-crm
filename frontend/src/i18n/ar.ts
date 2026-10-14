@@ -93,6 +93,14 @@ export default {
     profile: 'الملف الشخصي',
   },
   work: {
+    queue: {
+      title: 'الدور',
+      empty: 'لا أحد بعد هذا العميل.',
+    },
+    timeline: {
+      title: 'ما حدث سابقًا',
+      empty: 'لا شيء بعد.',
+    },
     title: 'اعمل الآن',
     subtitle: 'عميل واحد في كل مرة، بالترتيب الذي يستحقه',
     /*
@@ -620,6 +628,22 @@ export default {
   },
 
   health: {
+    connected: 'مربوط',
+    verifiedCount: 'مُجرَّب فعليًا',
+    lastEventAny: 'آخر حدث',
+    lastSync: 'آخر مزامنة',
+    syncAll: 'مزامنة الكل',
+    syncQueued: 'بدأت المزامنة.',
+    short: {
+      externally_verified: 'مُجرَّب',
+      implemented: 'لم يُجرَّب',
+      manual_only: 'يدوي',
+    },
+    flow: {
+      webhook: 'يصل تلقائيًا',
+      pull: 'نقرأه كل فترة',
+      manual: 'المندوب ينفّذه',
+    },
     title: 'حالة التكاملات',
     hint: 'المكتوب والمُختبَر شيء، والمُجرَّب فعليًا مع الطرف الآخر شيء آخر. هذه الشاشة تقول أيّهما.',
     integration: 'التكامل',
@@ -1206,6 +1230,8 @@ export default {
   },
 
   integrations: {
+    showDetail: 'عرض التفاصيل',
+    hideDetail: 'إخفاء التفاصيل',
     lastSync: 'آخر مزامنة',
     title: 'مصادر العملاء',
     subtitle: 'اربط حملاتك ونماذجك لتصل العملاء تلقائياً',

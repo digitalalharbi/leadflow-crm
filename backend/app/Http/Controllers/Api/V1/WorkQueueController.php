@@ -10,6 +10,7 @@ use App\Http\Resources\LeadListResource;
 use App\Models\Lead;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
@@ -82,7 +83,66 @@ class WorkQueueController extends Controller
             'lead' => new LeadListResource($top['lead']),
             'action' => $top['action'],
             'remaining' => $ranked->count(),
+            /*
+             * The few behind this one, and the last few things that happened to
+             * this one. Both are on the screen beside the card, so both come
+             * back with it: a rep who has to click to find out why a lead is
+             * urgent has already lost the time the queue was saving them.
+             */
+            'queue' => $this->queue($ranked),
+            'timeline' => $this->timeline($top['lead']),
         ]);
+    }
+
+    /**
+     * What is behind the current card, in the order it will be worked.
+     *
+     * Six, not forty. The point of the queue is that nobody is choosing from a
+     * list; this is here so a rep can see that the order is sane and that the
+     * one they are thinking about is coming, not so they can pick.
+     *
+     * @param  Collection<int,array{lead:Lead,action:array}>  $ranked
+     */
+    private function queue($ranked): array
+    {
+        return $ranked
+            ->skip(1)
+            ->take(6)
+            ->map(fn (array $row) => [
+                'id' => $row['lead']->uuid,
+                'name' => $row['lead']->full_name,
+                'city' => $row['lead']->city,
+                'status' => $row['lead']->status?->value,
+                'temperature' => $row['lead']->temperature?->value,
+                'action' => $row['action']['action'] ?? null,
+                'urgency' => $row['action']['urgency'] ?? null,
+                'waiting_since' => $row['lead']->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The last few things that happened to this lead.
+     *
+     * Short on purpose: it answers "has anybody already tried today" before a
+     * rep dials, which is the one piece of history that changes what they say
+     * when the call connects.
+     */
+    private function timeline(Lead $lead): array
+    {
+        return $lead->activities()
+            ->with('user:id,name')
+            ->limit(6)
+            ->get()
+            ->map(fn ($activity) => [
+                'id' => $activity->uuid ?? (string) $activity->id,
+                'type' => $activity->type?->value ?? (string) $activity->type,
+                'actor' => $activity->user?->name,
+                'at' => $activity->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 
     /** Counts for the workspace's own summary, in one grouped pass. */

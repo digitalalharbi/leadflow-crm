@@ -17,6 +17,18 @@ test.describe('ربط المصادر — connecting a source', () => {
   test.beforeEach(async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
     await page.goto('/integrations')
+
+    /*
+     * The connection cards moved behind one press.
+     *
+     * The page now opens on the grid, which answers the question anybody
+     * arrives with — is anything still coming in — and the cards, the secrets
+     * and the delivery log are the evidence you open after it has told you
+     * something is wrong. The capability is unchanged; it is one click further
+     * in, so the tests go through that click rather than around it.
+     */
+    await page.getByTestId('toggle-integration-detail').click()
+    await expect(page.getByTestId('integration-detail')).toBeVisible()
   })
 
   test('every source that needs credentials offers somewhere to put them', async ({ page }) => {

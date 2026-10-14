@@ -247,9 +247,12 @@ function PipelineColumn({ column }: { column: Column }) {
       ref={setNodeRef}
       data-testid={`pipeline-column-${column.status}`}
       className={cn(
-        // Narrower than before: six columns at 17rem forced a scroll on a
-        // 1440px screen, which defeats the one thing a board is for.
-        'flex w-[15.5rem] shrink-0 flex-col rounded-[var(--radius-card)] border',
+        /*
+         * Narrower again with the rail. Six columns at 15.5rem plus a 17rem
+         * sidebar still ran past a 1366px screen, and a board you have to
+         * scroll sideways is a list with extra steps.
+         */
+        'flex w-[13rem] shrink-0 flex-col rounded-[var(--radius-card)] border',
         'max-sm:w-[min(19rem,82vw)] max-sm:snap-start',
         'bg-[var(--color-surface-muted)] transition-colors',
         isOver

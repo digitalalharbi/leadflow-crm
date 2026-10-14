@@ -42,6 +42,14 @@ export default {
     platformConsole: 'Platform console',
   },
   work: {
+    queue: {
+      title: 'Up next',
+      empty: 'Nobody behind this one.',
+    },
+    timeline: {
+      title: 'What happened before',
+      empty: 'Nothing yet.',
+    },
     title: 'Work now',
     subtitle: 'One lead at a time, in the order it deserves',
     remaining_one: '1 left in your queue',
@@ -503,6 +511,22 @@ export default {
   },
 
   health: {
+    connected: 'Connected',
+    verifiedCount: 'Verified',
+    lastEventAny: 'Last event',
+    lastSync: 'Last sync',
+    syncAll: 'Sync all',
+    syncQueued: 'Sweep queued.',
+    short: {
+      externally_verified: 'Verified',
+      implemented: 'Unproven',
+      manual_only: 'Manual',
+    },
+    flow: {
+      webhook: 'Arrives on its own',
+      pull: 'We read it on a schedule',
+      manual: 'The rep does it',
+    },
     title: 'Integration status',
     hint: 'Written and tested is one thing; actually exercised against the other end is another. This says which.',
     integration: 'Integration',
@@ -919,6 +943,8 @@ export default {
   },
 
   integrations: {
+    showDetail: 'Show detail',
+    hideDetail: 'Hide detail',
     lastSync: 'Last sync',
     title: 'Lead sources', subtitle: 'Connect your campaigns and forms so leads arrive automatically',
     connected: 'Connected', notConnected: 'Not connected',

@@ -75,8 +75,12 @@ class IntegrationHealthReport
                 'connected' => $integration !== null && $integration->status === Integration::CONNECTED,
                 'configured' => $integration !== null && $integration->configuredCredentialKeys() !== [],
                 'last_event_at' => $lastEvent?->received_at?->toIso8601String(),
+                'last_sync_at' => $integration?->last_synced_at?->toIso8601String(),
                 'last_error' => $integration?->last_error,
                 'events' => (int) ($integration?->leads_received ?? 0),
+                // How this one arrives, which is what a reader needs to know
+                // before asking why nothing has.
+                'flow' => $provider === IntegrationProvider::GoogleAds ? 'pull' : 'webhook',
                 'verification' => $lastEvent ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
             ];
         }
@@ -100,8 +104,10 @@ class IntegrationHealthReport
             'connected' => filled($connection?->credentials['refresh_token'] ?? null),
             'configured' => filled(config('integrations.google_sheets.client_id')),
             'last_event_at' => $lastRun?->started_at?->toIso8601String(),
+            'last_sync_at' => SheetSyncRun::max('started_at'),
             'last_error' => $connection?->last_error,
             'events' => (int) SheetSyncRun::sum('imported'),
+            'flow' => 'pull',
             'verification' => $lastRun ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
         ];
     }
@@ -131,8 +137,10 @@ class IntegrationHealthReport
             'connected' => filled($integration?->credentials['access_token'] ?? null),
             'configured' => $integration !== null,
             'last_event_at' => $evidence?->created_at?->toIso8601String(),
+            'last_sync_at' => $integration?->last_synced_at?->toIso8601String(),
             'last_error' => $integration?->last_error,
             'events' => (int) LeadMessage::where('channel', 'whatsapp')->count(),
+            'flow' => 'webhook',
             'verification' => $evidence ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
         ];
     }
@@ -155,8 +163,10 @@ class IntegrationHealthReport
             'connected' => $provider !== null,
             'configured' => $provider !== null,
             'last_event_at' => $provider?->started_at?->toIso8601String(),
+            'last_sync_at' => null,
             'last_error' => null,
             'events' => (int) Call::count(),
+            'flow' => 'manual',
             // Without a provider this is not "implemented but unproven" — it is
             // the product telling you the rep dials, which is a different state
             // and deserves its own word.
@@ -180,8 +190,10 @@ class IntegrationHealthReport
             'connected' => filled($connection?->credentials['access_token'] ?? null),
             'configured' => $connection !== null,
             'last_event_at' => $delivery?->received_at?->toIso8601String(),
+            'last_sync_at' => $connection?->last_synced_at?->toIso8601String(),
             'last_error' => $connection?->last_error,
             'events' => (int) RepositoryWebhookDelivery::where('signature_valid', true)->count(),
+            'flow' => 'webhook',
             'verification' => $delivery ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
         ];
     }

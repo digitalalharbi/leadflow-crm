@@ -84,7 +84,7 @@ export function Sidebar() {
       <aside
         data-open={sidebarOpen}
         className={cn(
-          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[17rem] flex-col',
+          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[13.5rem] flex-col',
           'border-e border-[var(--color-line)] bg-[var(--color-surface)]',
         )}
       >

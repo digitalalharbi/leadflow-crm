@@ -70,6 +70,29 @@ class TheRightFileFindsTheLeadTest extends TestCase
         return $this->asTenant($this->t['tenant'], fn () => app(FileForTheLead::class)->pick($lead, $kind));
     }
 
+    /**
+     * The file comes back active, because it is.
+     *
+     * `is_active` defaults to true in the column and the column is not what the
+     * caller is handed — the model that was created without naming it carries
+     * null, so the upload response said the file was paused while the database
+     * said it was active. The screen offered to resume a file nobody had
+     * stopped, and the chooser was serving it the whole time.
+     */
+    public function test_an_uploaded_file_is_returned_as_active(): void
+    {
+        $response = $this->actingAs($this->t['admin'])->postJson(
+            "/api/v1/projects/{$this->project->uuid}/files",
+            [
+                'file' => UploadedFile::fake()->create('brochure.pdf', 12, 'application/pdf'),
+                'kind' => 'brochure',
+            ],
+        );
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.file.is_active', true);
+    }
+
     // ------------------------------------------------------------- choosing
 
     /**

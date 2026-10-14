@@ -42,6 +42,17 @@ it is removed. Where something is partial, the row says what is absent.
 Not started, and nothing above depends on them: AI assist, calendar sync,
 further provider adapters, cohort and forecast analytics.
 
+## Closed since this was written (2026-10-15)
+
+| Feature | What was wrong | Where |
+| --- | --- | --- |
+| Files automation | The whole feature was unreachable. Six endpoints, a chooser that reads a lead's own answers, a per-lead link whose opens feed the engagement score, twenty-five passing backend tests — and no screen called any of it, so no workspace could upload a file for the chooser to choose. | `components/projects/ProjectFiles`, `components/leads/LeadFiles`, `features/files.ts` |
+| A rule can contact the customer | `WhatsappSender` was reachable from one controller and `FileForTheLead` from one more, both of them a person pressing a button. The automation engine had eight actions and none of them could send anything, so "WhatsApp qualification sequences" and "files automation" existed as machinery and as nothing else. | `send_whatsapp` and `share_file` in `Domain/Automation/ActionExecutor` |
+
+The shape is the same one row 43 of `NEXT_SESSION.md` describes: a capability
+built, tested, and called by nothing. It is worth checking for deliberately,
+because every test passes the whole time.
+
 ## What is actually left
 
 1. **A server.** Everything deploys; nothing is deployed. `EXTERNAL_SETUP.md`

@@ -80,6 +80,14 @@ class ProjectFileController extends Controller
             'mime' => $upload->getClientMimeType(),
             'size_bytes' => $upload->getSize(),
             'sort' => $data['sort'] ?? 0,
+            /*
+             * Named even though the column defaults to it. A database default
+             * never reaches a model created without mentioning the column, so
+             * the row that goes back to the browser carried `is_active: null` —
+             * and the screen read that as paused and offered to resume a file
+             * it had just uploaded and which was, in the database, active.
+             */
+            'is_active' => true,
         ]);
 
         $this->audit->log('project_file.uploaded', $request->user(), $project, [

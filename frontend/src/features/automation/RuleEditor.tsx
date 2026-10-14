@@ -4,6 +4,7 @@ import { Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Select } from '@/components/ui'
 import { fetchAssignableUsers, fetchLostReasons } from '@/features/leads'
+import { fetchMessageTemplates } from '@/features/conversations'
 import type { AutomationRule, AutomationSchema, RuleAction, RuleCondition } from '@/features/automation'
 
 /**
@@ -39,6 +40,15 @@ const ACTION_DEFAULTS: Record<string, Record<string, unknown>> = {
   add_note: { body: '' },
   notify: { audience: 'owner', message: '' },
   stop_follow_ups: {},
+  /*
+   * No template id until one is chosen, which is what the required-field error
+   * is for. Seeding the first template instead would send whichever message
+   * happened to be at the top of somebody's list to real customers.
+   */
+  send_whatsapp: { template_uuid: '' },
+  // Left empty on purpose: with no kind, the chooser reads the lead's own
+  // answers, which is the behaviour worth having by default.
+  share_file: { kind: '', send: true },
 }
 
 function withDefaults(type: string): RuleAction {
@@ -54,6 +64,17 @@ function withDefaults(type: string): RuleAction {
  * written elsewhere is still honoured.
  */
 const DELAYS = [60, 240, 1440, 2880, 4320, 10080, 20160, 43200] as const
+
+/**
+ * What a project file can be, for the one action that may ask for a kind.
+ *
+ * A closed list rather than a free field, and the same list the API validates
+ * against — a kind nobody uploads is a rule that reports "no file of this kind"
+ * forever.
+ */
+const FILE_KINDS = [
+  'brochure', 'profile', 'price_list', 'investment_deck', 'financing_guide', 'other',
+] as const
 
 /** Operators that need no value at all. */
 const VALUELESS = new Set(['exists', 'not_exists'])
@@ -86,6 +107,17 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const { data: assignees = [] } = useQuery({
     queryKey: ['assignable-users'],
     queryFn: fetchAssignableUsers,
+  })
+
+  /*
+   * Active templates only, for the same reason as the lost reasons above: a
+   * rule pointing at a message somebody has since paused reports a failure on
+   * every run, in a trace nobody reads until a customer says they heard
+   * nothing.
+   */
+  const { data: templates } = useQuery({
+    queryKey: ['message-templates'],
+    queryFn: () => fetchMessageTemplates(),
   })
 
   const [name, setName] = useState(rule?.name ?? '')
@@ -351,6 +383,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                 labelled={index === 0}
                 lostReasons={lostReasons}
                 assignees={assignees}
+                templates={templates?.templates ?? []}
                 onChange={(patch) => patchAction(index, patch)}
               />
 
@@ -411,6 +444,7 @@ function ActionDetail({
   labelled,
   lostReasons,
   assignees,
+  templates,
   onChange,
 }: {
   action: RuleAction
@@ -418,6 +452,7 @@ function ActionDetail({
   labelled: boolean
   lostReasons: { id: string; label: string }[]
   assignees: { id: string; name: string }[]
+  templates: { id: string; name: string }[]
   onChange: (patch: Partial<RuleAction>) => void
 }) {
   const { t } = useTranslation()
@@ -535,6 +570,69 @@ function ActionDetail({
             value={String(action.message ?? '')}
             onChange={(e) => onChange({ message: e.target.value })}
           />
+        </>
+      )
+
+    /*
+      The wording lives in the workspace's saved messages, not in the rule.
+      A manager changing what the product says to customers should change it
+      where the messages are listed — not by opening six rules to find which of
+      them carries that sentence.
+    */
+    case 'send_whatsapp':
+      return (
+        <Select
+          className="min-w-48 flex-1"
+          label={labelled ? t('automation.template') : undefined}
+          value={String(action.template_uuid ?? '')}
+          onChange={(e) => onChange({ template_uuid: e.target.value })}
+        >
+          {/*
+            Unselectable until there is one to name, which also covers the
+            moment before the list has loaded. A rule saved with no message
+            reports a failure on every run.
+          */}
+          <option value="" disabled>
+            {templates.length === 0 ? t('automation.noTemplates') : t('automation.pickTemplate')}
+          </option>
+          {templates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {template.name}
+            </option>
+          ))}
+        </Select>
+      )
+
+    case 'share_file':
+      return (
+        <>
+          <Select
+            className="min-w-40 flex-1"
+            label={labelled ? t('automation.fileKind') : undefined}
+            value={String(action.kind ?? '')}
+            onChange={(e) => onChange({ kind: e.target.value || undefined })}
+          >
+            {/*
+              The default is not "brochure" — it is "whatever this lead's own
+              answers point at". Someone buying to invest wants the numbers.
+            */}
+            <option value="">{t('automation.fileKindAuto')}</option>
+            {FILE_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {t(`files.kind.${kind}`, { defaultValue: kind })}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            className="min-w-36"
+            label={labelled ? t('automation.delivery') : undefined}
+            value={action.send === false ? 'prepare' : 'send'}
+            onChange={(e) => onChange({ send: e.target.value === 'send' })}
+          >
+            <option value="send">{t('automation.deliverySend')}</option>
+            <option value="prepare">{t('automation.deliveryPrepare')}</option>
+          </Select>
         </>
       )
 

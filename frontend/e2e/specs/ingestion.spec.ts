@@ -16,6 +16,15 @@ test.describe('وصول العملاء — ingestion health', () => {
   test.beforeEach(async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
     await page.goto('/integrations')
+
+    /*
+     * The arrivals chart lives behind the page's detail toggle, which the
+     * density work closed by default: the grid of sources answers "is anything
+     * wrong" in the first viewport, and this card is what you open after it
+     * has. Opening it here is part of reaching the screen under test — the
+     * assertions below are unchanged.
+     */
+    await page.getByTestId('toggle-integration-detail').click()
   })
 
   test('it shows arrivals over time with the duplicate share', async ({ page }) => {

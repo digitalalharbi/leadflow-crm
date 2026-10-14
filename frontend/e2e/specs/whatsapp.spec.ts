@@ -17,6 +17,9 @@ test.describe('WhatsApp', () => {
   test('the settings screen shows what is connected without showing any secret', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/integrations')
+    // The connection cards sit behind the page's detail toggle, closed by
+    // default so the source grid owns the first viewport.
+    await page.getByTestId('toggle-integration-detail').click()
 
     const card = page.getByTestId('whatsapp-settings')
     await expect(card).toBeVisible()
@@ -34,6 +37,7 @@ test.describe('WhatsApp', () => {
   test('an admin can save the connection', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/integrations')
+    await page.getByTestId('toggle-integration-detail').click()
 
     await page.getByTestId('wa-business-account-id').fill('900900900')
     await page.getByTestId('wa-save').click()
@@ -44,6 +48,21 @@ test.describe('WhatsApp', () => {
   test('a sales rep never sees the connection settings', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
     await page.goto('/integrations')
+
+    /*
+     * Opened first, deliberately.
+     *
+     * The card lives inside this section, and a closed section would make this
+     * test pass whether or not the rule holds — the one failure mode a deny
+     * test has. If the toggle is not there for a rep either, the rep cannot
+     * reach the card by any route, which is the same guarantee.
+     */
+    const toggle = page.getByTestId('toggle-integration-detail')
+
+    if (await toggle.count()) {
+      await toggle.click()
+      await expect(page.getByTestId('integration-detail')).toBeVisible()
+    }
 
     // Credentials are admin-only; the rep still gets the page.
     await expect(page.getByTestId('whatsapp-settings')).toHaveCount(0)

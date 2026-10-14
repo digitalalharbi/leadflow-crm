@@ -9,6 +9,10 @@ test.describe('Dashboard', () => {
 
   test('shows the daily task row and the funnel summary', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'مهام اليوم' })).toBeVisible()
+
+    // The task row is on the page; the funnel is in the analytics section,
+    // which folds by default so the morning numbers own the first viewport.
+    await page.getByTestId('toggle-analytics').click()
     await expect(page.getByRole('heading', { name: 'ملخص المسار' })).toBeVisible()
 
     // The questions a rep opens the app to answer. Bound to the tiles rather

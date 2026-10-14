@@ -85,10 +85,17 @@ export function Sidebar() {
         data-open={sidebarOpen}
         className={cn(
           'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[13.5rem] flex-col',
-          'border-e border-[var(--color-line)] bg-[var(--color-surface)]',
+          /*
+           * The canvas colour, not white.
+           *
+           * With a white rail against a white card there is nothing to see;
+           * the whole theme rests on cards being the only white things on the
+           * screen, so the chrome has to recede for them to read as objects.
+           */
+          'bg-[var(--color-canvas)]',
         )}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--color-line)] px-4">
+        <div className="flex h-14 items-center justify-between gap-2 px-3">
           {/* One component decides whose identity this is — see BrandLockup. */}
           <BrandLockup to="/" size="md" />
 
@@ -124,18 +131,26 @@ export function Sidebar() {
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex items-center gap-3 px-3 py-2 text-[0.875rem] font-medium',
-                    'rounded-[var(--radius-control)] transition-colors duration-[var(--duration-fast)]',
-                    // The active item gets a filled pill and a marker on the
-                    // inline-start edge, so which page you are on survives a
-                    // tenant whose brand colour is almost the text colour.
+                    'relative flex items-center gap-2.5 px-3 py-2 text-[0.8125rem] font-medium',
+                    'rounded-[var(--radius-pill)] transition-colors duration-[var(--duration-fast)]',
+                    /*
+                     * The active item is a white pill, which is the same
+                     * relationship every card on the canvas has — so "where am
+                     * I" is answered by the one visual rule the whole theme is
+                     * built on rather than by a second one invented here.
+                     *
+                     * The brand marker stays: a tenant whose colour is close to
+                     * the ink would otherwise have an active state nobody can
+                     * see, and that is the one state that must never be subtle.
+                     */
                     isActive
                       ? [
-                          'bg-[var(--brand-soft)] font-semibold text-[var(--brand)]',
-                          'before:absolute before:inset-y-1.5 before:start-0 before:w-0.5',
+                          'bg-[var(--color-surface)] font-semibold text-[var(--brand)]',
+                          'shadow-[var(--shadow-card)]',
+                          'before:absolute before:inset-y-2 before:start-0 before:w-0.5',
                           'before:rounded-full before:bg-[var(--brand)]',
                         ].join(' ')
-                      : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]',
+                      : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]',
                   )
                 }
               >

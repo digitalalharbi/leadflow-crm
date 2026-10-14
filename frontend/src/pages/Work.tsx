@@ -280,7 +280,7 @@ export function WorkPage() {
                     <div
                       key={item.id}
                       data-testid={`queue-item-${item.id}`}
-                      className="rounded-[var(--radius-control)] border border-[var(--color-line)] px-2 py-1.5"
+                      className="rounded-[var(--radius-control)] px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-muted)]"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="t-small truncate font-medium">{item.name}</span>
@@ -495,7 +495,7 @@ function QueueStat({
   alarming?: boolean
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5">
+    <div className="flex items-baseline justify-between gap-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-card)]">
       <p className="t-caption truncate">{label}</p>
       <p
         className={cn(

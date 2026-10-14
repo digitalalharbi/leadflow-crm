@@ -44,7 +44,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="material sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-[var(--color-line)] px-4">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 bg-[var(--color-canvas)] px-3">
       <button
         type="button"
         onClick={toggleSidebar}

@@ -21,7 +21,7 @@ export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
         'whitespace-nowrap border-b border-[var(--color-line)] bg-[var(--color-surface-muted)]',
         // `.label-caps` reads as a label rather than another row of data, and
         // leaves Arabic alone — see the comment on the class.
-        'label-caps px-3 py-1.5 text-start text-[var(--color-ink-subtle)]',
+        'label-caps px-4 py-2 text-start text-[var(--color-ink-subtle)]',
         className,
       )}
       {...props}
@@ -32,7 +32,7 @@ export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
 export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
     <td
-      className={cn('border-b border-[var(--color-line)] px-3 py-1.5 align-middle', className)}
+      className={cn('border-b border-[var(--color-line)] px-4 py-2 align-middle', className)}
       {...props}
     />
   )

@@ -2,6 +2,13 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
 /*
+ * A white object on a shaded canvas.
+ *
+ * The header has no rule under it. A line between a title and the thing it
+ * titles is a seam, and on a card that is already separated from the page by
+ * its own edge it is one separation too many — the whitespace says it better
+ * and costs less.
+ *
  * Dense by default.
  *
  * A card used to cost 40px of padding before it said anything. On a 768px-tall
@@ -15,8 +22,12 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'rounded-[var(--radius-card)] border border-[var(--color-line)]',
-        'bg-[var(--color-surface)] shadow-[var(--shadow-card)]',
+        /*
+         * No border. The shadow already carries a 1px ring, and a border on
+         * top of it reads as two edges — which is the difference between a
+         * card that sits on the canvas and one that is drawn on it.
+         */
+        'rounded-[var(--radius-card)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]',
         className,
       )}
       {...props}
@@ -38,12 +49,12 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)] px-3.5 py-2',
+        'flex flex-wrap items-center justify-between gap-2 px-4 pb-1 pt-3',
         className,
       )}
     >
       <div className="min-w-0">
-        <h3 className="truncate text-[0.875rem] font-semibold leading-tight">{title}</h3>
+        <h3 className="truncate text-[0.9375rem] font-semibold leading-tight">{title}</h3>
         {description && (
           <p className="mt-0.5 text-[0.75rem] leading-snug text-[var(--color-ink-muted)]">{description}</p>
         )}
@@ -54,5 +65,5 @@ export function CardHeader({
 }
 
 export function CardBody({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-3.5', className)} {...props} />
+  return <div className={cn('px-4 pb-4 pt-2', className)} {...props} />
 }

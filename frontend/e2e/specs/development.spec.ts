@@ -15,7 +15,9 @@ test.describe('Development', () => {
     await signInAs(page, ALPHA.admin.email)
     await page.goto('/projects')
     await page.getByRole('link', { name: ALPHA.projects[0] }).first().click()
-    await page.getByTestId('project-tab-development').click()
+    // `tab-<key>`, which is what the shared Tabs primitive emits since the
+    // project screen moved onto it.
+    await page.getByTestId('tab-development').click()
   })
 
   test('it shows the repository and whether it is wired up', async ({ page }) => {
@@ -66,7 +68,9 @@ test.describe('Development', () => {
     })
 
     await page.reload()
-    await page.getByTestId('project-tab-development').click()
+    // `tab-<key>`, which is what the shared Tabs primitive emits since the
+    // project screen moved onto it.
+    await page.getByTestId('tab-development').click()
     await expect(page.getByText('acme/portal')).toBeVisible()
 
     expect(calls).toEqual([])

@@ -28,7 +28,14 @@ import type { Project } from '@/types/api'
 export function ProjectDetailPage() {
   const { id = '' } = useParams()
   const { t } = useTranslation()
-  const [tab, setTab] = useState<'overview' | 'development'>('development')
+  /*
+   * Overview, which is both the first tab in the row and the one this screen is
+   * about. It opened on Development — a convenience from the week that view was
+   * built, left in: a sales manager clicking a project landed on repositories,
+   * CI runs and deployments, with the tab row pointing at the tab they were not
+   * on.
+   */
+  const [tab, setTab] = useState<'overview' | 'development'>('overview')
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],

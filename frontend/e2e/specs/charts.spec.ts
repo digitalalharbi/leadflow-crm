@@ -97,6 +97,11 @@ test.describe('الرسوم البيانية — charts', () => {
    * forty reached an appointment, this says how long the ten waited.
    */
   test('the dashboard says where deals stall', async ({ page }) => {
+    // The analytics section folds by default — a rep opening the app at 9am
+    // wants the numbers and the two lists, not eight charts. A manager reading
+    // the funnel opens it, and so does this test.
+    await page.getByTestId('toggle-analytics').click()
+
     const card = page.getByTestId('velocity-card')
 
     await expect(card).toBeVisible()
@@ -114,6 +119,8 @@ test.describe('الرسوم البيانية — charts', () => {
    * VelocityChart.test.tsx; what belongs here is that real data arrives.
    */
   test('every step of the velocity chart carries a median', async ({ page }) => {
+    await page.getByTestId('toggle-analytics').click()
+
     const steps = page.getByTestId('velocity-card').getByTestId('velocity-steps')
 
     await expect(steps).toBeVisible()

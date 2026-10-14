@@ -12,6 +12,10 @@ export default defineConfig({
   testDir: './e2e/specs',
   outputDir: './e2e/.results',
 
+  // One page load before the suite, so the dev server's first compile is not
+  // charged to whichever test happens to run first. See the file.
+  globalSetup: './e2e/global-setup.ts',
+
   // Each spec file resets the fixtures it needs, so files must not interleave.
   fullyParallel: false,
   workers: 1,

@@ -4,6 +4,7 @@ import {
   Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { SheetSources } from '@/components/integrations/SheetSources'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -136,6 +137,12 @@ export function IntegrationsPage() {
           </>
         }
       />
+
+      {/* Leads that arrive in a spreadsheet, on the same page as every other
+          source — because that is what it is. */}
+      <div className="mb-4">
+        <SheetSources />
+      </div>
 
       {/*
         Arrivals come first, above the list of connections.

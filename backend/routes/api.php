@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SettingsController;
+use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\UserController;
@@ -235,6 +236,20 @@ Route::prefix('v1')->group(function () {
             Route::delete('/integrations/github', [GitHubController::class, 'disconnect']);
             Route::get('/integrations/github/repositories', [GitHubController::class, 'repositories']);
             Route::get('/integrations/github/discover', [GitHubController::class, 'discover']);
+
+            /*
+             * Leads that arrive in a spreadsheet. A source per tab, mapped
+             * once, then read on a schedule — the same pipeline a webhook
+             * feeds, never a second one.
+             */
+            Route::get('/integrations/sheets', [SheetSourceController::class, 'index']);
+            Route::post('/integrations/sheets', [SheetSourceController::class, 'store']);
+            Route::get('/integrations/sheets/spreadsheets', [SheetSourceController::class, 'spreadsheets']);
+            Route::get('/integrations/sheets/tabs', [SheetSourceController::class, 'tabs']);
+            Route::post('/integrations/sheets/preview', [SheetSourceController::class, 'preview']);
+            Route::patch('/integrations/sheets/{uuid}', [SheetSourceController::class, 'update']);
+            Route::delete('/integrations/sheets/{uuid}', [SheetSourceController::class, 'destroy']);
+            Route::post('/integrations/sheets/{uuid}/sync', [SheetSourceController::class, 'sync']);
 
             Route::get('/integrations/whatsapp', [WhatsappSettingsController::class, 'show']);
             Route::patch('/integrations/whatsapp', [WhatsappSettingsController::class, 'update']);

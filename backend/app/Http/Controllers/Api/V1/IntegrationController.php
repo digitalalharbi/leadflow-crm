@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Ingestion\IngestionInsights;
+use App\Domain\Integrations\IntegrationHealthReport;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IntegrationResource;
@@ -24,6 +25,22 @@ use Illuminate\Validation\ValidationException;
 
 class IntegrationController extends Controller
 {
+    /**
+     * Which integrations have ever actually worked.
+     *
+     * Implemented and externally verified are not the same claim. Every adapter
+     * here has tests, and tests prove the code does what we think when the
+     * other end behaves as we think — they cannot prove the other end exists.
+     * So this is computed from evidence: something real came through, or it has
+     * not yet.
+     */
+    public function health(Request $request, IntegrationHealthReport $report)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        return ApiResponse::success(['integrations' => $report->all()]);
+    }
+
     public function __construct(
         private ProviderRegistry $registry,
         private AuditLogger $audit,

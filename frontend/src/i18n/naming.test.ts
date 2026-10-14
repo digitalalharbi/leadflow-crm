@@ -15,7 +15,7 @@ import ar from './ar'
  */
 const NOT_TRANSLATED = new Set([
   // Platforms and products, which are names.
-  'Meta', 'Facebook', 'Instagram', 'TikTok', 'Snapchat', 'Google Ads', 'LinkedIn',
+  'Meta', 'Facebook', 'Instagram', 'TikTok', 'Snapchat', 'Google Ads', 'LinkedIn', 'GitHub',
   'Google Sheets', 'WhatsApp', 'Webhook', 'CSV', 'SMS', 'API', 'URL', 'ID', 'CRM',
   'Horizon', 'Redis', 'PDF', 'Excel', 'JSON', 'UTM',
 ])

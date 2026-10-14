@@ -619,6 +619,33 @@ export default {
     },
   },
 
+  health: {
+    title: 'حالة التكاملات',
+    hint: 'المكتوب والمُختبَر شيء، والمُجرَّب فعليًا مع الطرف الآخر شيء آخر. هذه الشاشة تقول أيّهما.',
+    integration: 'التكامل',
+    state: 'الحالة',
+    lastEvent: 'آخر حدث حقيقي',
+    events: 'الأحداث',
+    never: 'لم يصل شيء بعد',
+    verification: {
+      externally_verified: 'مُجرَّب فعليًا',
+      implemented: 'مكتوب ومُختبَر — لم يُجرَّب مع الطرف الآخر',
+      manual_only: 'المندوب يتصل بنفسه',
+    },
+    name: {
+      meta: 'Meta',
+      tiktok: 'TikTok',
+      google_ads: 'Google Ads',
+      snapchat: 'Snapchat',
+      linkedin: 'LinkedIn',
+      generic_webhook: 'Webhook عام',
+      google_sheets: 'جداول Google',
+      whatsapp: 'واتساب',
+      calls: 'المكالمات',
+      github: 'GitHub',
+    },
+  },
+
   search: {
     open: 'بحث',
     title: 'بحث سريع',

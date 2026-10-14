@@ -224,6 +224,9 @@ Route::prefix('v1')->group(function () {
             // Integrations (admin only, enforced by policy)
             Route::get('/integrations', [IntegrationController::class, 'index']);
             Route::get('/integrations/ingestion', [IntegrationController::class, 'ingestion']);
+            // Which integrations have ever actually worked, as opposed to which
+            // ones are written. Computed from evidence, never asserted.
+            Route::get('/integrations/health', [IntegrationController::class, 'health']);
             Route::post('/integrations', [IntegrationController::class, 'store']);
             // WhatsApp Business. Secrets are written here and never read back.
             /*

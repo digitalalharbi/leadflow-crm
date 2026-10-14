@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PipelineController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
+use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
@@ -191,6 +192,15 @@ Route::prefix('v1')->group(function () {
 
             // Which repository a project is built in, and what has happened in
             // it. Nested under the project because that is whose question it is.
+            // The files a project sells with, and which one suits a lead.
+            Route::get('/projects/{uuid}/files', [ProjectFileController::class, 'index']);
+            Route::post('/projects/{uuid}/files', [ProjectFileController::class, 'store']);
+            Route::patch('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'update']);
+            Route::delete('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'destroy']);
+            Route::get('/leads/{uuid}/files', [ProjectFileController::class, 'forLead']);
+            Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
+            Route::get('/leads/{uuid}/shares', [ProjectFileController::class, 'sharesFor']);
+
             Route::get('/projects/{uuid}/development', ProjectDevelopmentController::class);
             Route::get('/projects/{uuid}/repository', [GitHubController::class, 'forProject']);
             Route::post('/projects/{uuid}/repository', [GitHubController::class, 'link']);

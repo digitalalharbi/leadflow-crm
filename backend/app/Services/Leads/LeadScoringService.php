@@ -6,6 +6,7 @@ use App\Enums\FollowUpOutcome;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
 use App\Models\Lead;
+use App\Models\LeadEngagement;
 
 /**
  * Why a lead is worth calling, as a number and as a list of reasons.
@@ -117,6 +118,8 @@ class LeadScoringService
             $score += $secondary['contacted'];
         }
 
+        $score += $this->engagement($lead, $add);
+
         return $this->finalise($score, $reasons);
     }
 
@@ -126,6 +129,56 @@ class LeadScoringService
      *
      * @return array{changed: bool, score: int, previous_score: int, temperature: LeadTemperature, previous_temperature: LeadTemperature, reasons: array}
      */
+    /**
+     * What the customer did, as opposed to what they told us.
+     *
+     * Behaviour is the better predictor: somebody who opened the brochure twice
+     * this morning is further along than somebody who ticked "within three
+     * months" in March. So this is the one part of the score that moves without
+     * anybody filling anything in.
+     *
+     * Only the last thirty days, and capped. A lead who opens a link eleven
+     * times is interested, not eleven times more interested — and without a
+     * ceiling the loudest signal in the product would be a mail client that
+     * prefetches images.
+     */
+    private function engagement(Lead $lead, callable $add): int
+    {
+        $weights = config('scoring.engagement');
+
+        $events = LeadEngagement::query()
+            ->where('lead_id', $lead->id)
+            ->where('happened_at', '>=', now()->subDays(LeadEngagement::RECENT_DAYS))
+            ->get()
+            ->groupBy('type');
+
+        $points = 0;
+
+        if (($opens = $events[LeadEngagement::FILE_OPENED] ?? collect())->isNotEmpty()) {
+            $add('file_opened', 'فتح الملف المرسل', $weights['file_opened']);
+            $points += $weights['file_opened'];
+
+            // Opening it a second time is a different fact from opening it.
+            if ($opens->count() > 1) {
+                $add('file_opened_again', 'فتح الملف أكثر من مرة', $weights['file_opened_again']);
+                $points += $weights['file_opened_again'];
+            }
+        }
+
+        foreach ([
+            LeadEngagement::EMAIL_OPENED => ['email_opened', 'فتح البريد'],
+            LeadEngagement::LINK_CLICKED => ['link_clicked', 'ضغط رابطًا'],
+            LeadEngagement::WHATSAPP_REPLIED => ['whatsapp_replied', 'ردّ على واتساب'],
+        ] as $type => [$key, $label]) {
+            if (($events[$type] ?? collect())->isNotEmpty()) {
+                $add($key, $label, $weights[$key]);
+                $points += $weights[$key];
+            }
+        }
+
+        return min($points, (int) $weights['max']);
+    }
+
     public function apply(Lead $lead): array
     {
         $previousScore = (int) $lead->score;

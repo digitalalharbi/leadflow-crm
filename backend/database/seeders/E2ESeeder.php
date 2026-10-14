@@ -20,11 +20,18 @@ use App\Models\LeadMessage;
 use App\Models\LeadSourceEvent;
 use App\Models\LostReason;
 use App\Models\Project;
+use App\Models\ProjectRepository;
+use App\Models\RepositoryActivity;
+use App\Models\RepositoryDeployment;
+use App\Models\RepositoryPullRequest;
+use App\Models\RepositoryRelease;
+use App\Models\RepositoryWorkflowRun;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantProvisioningService;
 use App\Support\TenantContext;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * A known, fixed starting state for the Playwright suite.
@@ -141,6 +148,8 @@ class E2ESeeder extends Seeder
             ]));
 
             $firstProject = $projects->first();
+
+            $this->seedDevelopment($tenant, $firstProject);
 
             /*
              * WhatsApp connected in demo mode: a phone number id so webhook
@@ -606,6 +615,121 @@ class E2ESeeder extends Seeder
             ]);
 
             $lead->forceFill(['assigned_to' => $owner->id, 'next_follow_up_at' => $schedule[$i]])->saveQuietly();
+        }
+    }
+
+    /**
+     * A repository on the first project, so the Development tab has something
+     * true to show.
+     *
+     * Every state the screen distinguishes appears exactly once: a build that
+     * passed and one that failed, a deployment that was reported and one that
+     * failed, a pull request ready to merge and one blocked by its build. A
+     * fixture that only showed the happy path would let the one distinction
+     * this feature exists for — reported is not verified — go untested.
+     */
+    private function seedDevelopment(Tenant $tenant, Project $project): void
+    {
+        $connection = Integration::create([
+            'tenant_id' => $tenant->id,
+            'provider' => IntegrationProvider::GitHub->value,
+            'name' => 'GitHub',
+            'status' => Integration::CONNECTED,
+            // Not a real token: the fixtures never call GitHub, and a string
+            // that looked like one would be the first thing somebody tried.
+            'credentials' => ['access_token' => 'e2e-not-a-real-token'],
+            'config' => ['account' => 'e2e-acme'],
+            'is_active' => true,
+        ]);
+
+        $repository = ProjectRepository::create([
+            'tenant_id' => $tenant->id,
+            'project_id' => $project->id,
+            'integration_id' => $connection->id,
+            'provider' => 'github',
+            'repository_id' => 900_100,
+            'repository_full_name' => 'acme/portal',
+            'default_branch' => 'main',
+            'develop_branch' => 'develop',
+            'production_branch' => 'main',
+            'webhook_key' => (string) Str::uuid(),
+            'webhook_secret' => Str::random(40),
+            'webhook_status' => 'ok',
+            'last_webhook_at' => now()->subMinutes(6),
+            'last_sync_at' => now()->subMinutes(3),
+            'discovery' => ['unavailable' => []],
+        ]);
+
+        RepositoryPullRequest::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'number' => 93, 'title' => 'feat: the development tab', 'author_login' => 'sara',
+            'head_branch' => 'feature/development-tab', 'base_branch' => 'develop',
+            'state' => 'open', 'checks_state' => 'passed', 'review_state' => 'approved',
+            'html_url' => 'https://github.com/acme/portal/pull/93',
+            'opened_at' => now()->subHours(2), 'updated_at_github' => now()->subMinutes(20),
+        ]);
+
+        RepositoryPullRequest::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'number' => 92, 'title' => 'fix: the thing that broke', 'author_login' => 'omar',
+            'head_branch' => 'fix/the-thing', 'base_branch' => 'develop',
+            'state' => 'open', 'checks_state' => 'failed', 'review_state' => 'none',
+            'html_url' => 'https://github.com/acme/portal/pull/92',
+            'opened_at' => now()->subHours(5), 'updated_at_github' => now()->subHour(),
+        ]);
+
+        RepositoryWorkflowRun::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'run_id' => 77_001, 'name' => 'Backend tests', 'event' => 'push',
+            'branch' => 'main', 'commit_sha' => str_repeat('a', 40),
+            'status' => 'completed', 'conclusion' => 'success', 'environment' => 'production',
+            'html_url' => 'https://github.com/acme/portal/actions/runs/77001',
+            'completed_at' => now()->subMinutes(25),
+        ]);
+
+        RepositoryWorkflowRun::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'run_id' => 77_002, 'name' => 'Frontend tests', 'event' => 'push',
+            'branch' => 'develop', 'commit_sha' => str_repeat('b', 40),
+            'status' => 'completed', 'conclusion' => 'failure', 'environment' => 'staging',
+            'html_url' => 'https://github.com/acme/portal/actions/runs/77002',
+            'completed_at' => now()->subMinutes(12),
+        ]);
+
+        // Reported, not verified. The whole point.
+        RepositoryDeployment::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'deployment_id' => 5_001, 'environment' => 'production', 'ref' => 'main',
+            'commit_sha' => str_repeat('a', 40), 'state' => 'success',
+            'verification_status' => 'unverifiable', 'updated_at_github' => now()->subMinutes(24),
+        ]);
+
+        RepositoryDeployment::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'deployment_id' => 5_002, 'environment' => 'staging', 'ref' => 'develop',
+            'state' => 'failure', 'updated_at_github' => now()->subMinutes(10),
+        ]);
+
+        RepositoryRelease::create([
+            'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+            'release_id' => 3_001, 'tag_name' => 'v1.6.0', 'name' => 'إصدار الاختبار',
+            'commit_sha' => 'main', 'author_login' => 'sara',
+            'html_url' => 'https://github.com/acme/portal/releases/tag/v1.6.0',
+            'published_at' => now()->subMinutes(30),
+        ]);
+
+        foreach ([
+            ['pr_merged', '#91 feat: the sweep', 'sara', '91', str_repeat('c', 40), 40],
+            ['ci_failed', 'Frontend tests', null, 'develop', str_repeat('b', 40), 12],
+            ['deployed', 'production', null, 'main', str_repeat('a', 40), 24],
+            ['released', 'إصدار الاختبار', 'sara', 'v1.6.0', '', 30],
+            ['commit', 'feat: something that shipped', 'omar', 'main', str_repeat('d', 40), 55],
+        ] as [$kind, $title, $actor, $ref, $sha, $minutes]) {
+            RepositoryActivity::create([
+                'tenant_id' => $tenant->id, 'project_repository_id' => $repository->id,
+                'kind' => $kind, 'title' => $title, 'actor' => $actor,
+                'ref' => $ref, 'commit_sha' => $sha, 'happened_at' => now()->subMinutes($minutes),
+            ]);
         }
     }
 }

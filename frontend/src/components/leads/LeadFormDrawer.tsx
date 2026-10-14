@@ -6,9 +6,17 @@ import { createLead, fetchAssignableUsers, fetchProjects } from '@/features/lead
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { Button, Input, Modal, Select } from '@/components/ui'
+import { Button, Drawer, Input, Select } from '@/components/ui'
 
-export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * The new-lead form.
+ *
+ * A drawer rather than a centred dialog: it is eight fields, not a question, and
+ * it opens over the list somebody was already reading. The list keeps its scroll
+ * position and its filters underneath, which matters because the usual reason to
+ * add a lead by hand is that you just looked for them and they were not there.
+ */
+export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
@@ -94,7 +102,8 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
   }
 
   return (
-    <Modal
+    <Drawer
+      testId="lead-form-drawer"
       open={open}
       onClose={() => {
         reset()
@@ -190,6 +199,6 @@ export function LeadFormModal({ open, onClose }: { open: boolean; onClose: () =>
           </Select>
         )}
       </form>
-    </Modal>
+    </Drawer>
   )
 }

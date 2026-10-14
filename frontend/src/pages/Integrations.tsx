@@ -12,7 +12,7 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
 import {
-  Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState,
+  Badge, Button, Card, CardBody, CardHeader, Drawer, EmptyState, ErrorState,
   Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import type { IntegrationCard, SyncResult } from '@/types/api'
@@ -144,7 +144,7 @@ export function IntegrationsPage() {
       {/* Leads that arrive in a spreadsheet, on the same page as every other
           source — because that is what it is. */}
       <div className="mb-3">
-        <SheetSources />
+        <SheetSources onImportFile={() => setImportOpen(true)} />
       </div>
 
       {/* Every source on one screen, above everything else: the question
@@ -605,9 +605,15 @@ function CredentialsModal({
   })
 
   return (
-    <Modal
+    /*
+      A source's settings are a drawer, not a dialog: the grid of sources stays
+      visible beside it, which is how somebody checks one source's keys against
+      the state of the rest without losing their place.
+    */
+    <Drawer
       open={Boolean(card)}
       onClose={onClose}
+      testId="credentials-drawer"
       title={t('integrations.credentialsTitle')}
       description={t('integrations.credentialsHint')}
       footer={
@@ -640,7 +646,7 @@ function CredentialsModal({
           )
         })}
       </div>
-    </Modal>
+    </Drawer>
   )
 }
 

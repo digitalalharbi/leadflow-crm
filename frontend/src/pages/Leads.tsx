@@ -8,9 +8,10 @@ import { fetchAssignableUsers, fetchLeads, fetchProjects, type LeadFilters } fro
 import { can, useAuth } from '@/stores/auth'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useApiError } from '@/hooks/useApiError'
+import { cn } from '@/lib/cn'
 import { formatDue, telLink, whatsappLink } from '@/lib/format'
 import { LeadFiltersBar } from '@/components/leads/LeadFilters'
-import { LeadFormModal } from '@/components/leads/LeadFormModal'
+import { LeadFormDrawer } from '@/components/leads/LeadFormDrawer'
 import {
   Button, Card, EmptyState, ErrorState, PageHeader, Pagination,
   SkeletonTable, StatusBadge, Table, TableWrap, Td, TemperatureBadge, Th, Tr,
@@ -165,8 +166,25 @@ export function LeadsPage() {
           />
         ) : (
           <>
-            <TableWrap className={isFetching ? 'opacity-60 transition-opacity' : undefined}>
-              <Table>
+            {/*
+              The list scrolls inside itself, so the page does not grow with it.
+              Twenty-five leads used to make this screen 1709px tall against a
+              768px laptop: the filters, the header and the pager all left the
+              viewport, and finding a lead meant scrolling back up to change the
+              filter that would have found it.
+
+              Capped from `md` up only — on a phone there is not enough height
+              left over for an inner scroller to be anything but a pinhole, and
+              the page scrolling normally is the right behaviour there.
+            */}
+            <TableWrap
+              className={cn(
+                'md:max-h-[calc(100dvh-18rem)] md:overflow-y-auto',
+                isFetching && 'opacity-60 transition-opacity',
+              )}
+              data-testid="leads-table-scroller"
+            >
+              <Table stickyHeader>
                 <thead>
                   <tr>
                     {/* The identity column carries name, phone and project
@@ -291,7 +309,7 @@ export function LeadsPage() {
         )}
       </Card>
 
-      <LeadFormModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <LeadFormDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   )
 }

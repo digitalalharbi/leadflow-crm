@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { LeadFormModal } from './LeadFormModal'
+import { LeadFormDrawer } from './LeadFormDrawer'
 import { renderWithProviders } from '@/test/utils'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -23,7 +23,7 @@ const admin: User = {
   last_login_at: null, created_at: new Date().toISOString(),
 }
 
-describe('LeadFormModal', () => {
+describe('LeadFormDrawer', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('ar')
     useAuth.setState({ user: admin, status: 'authenticated' })
@@ -35,7 +35,7 @@ describe('LeadFormModal', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
 
-    renderWithProviders(<LeadFormModal open onClose={onClose} />)
+    renderWithProviders(<LeadFormDrawer open onClose={onClose} />)
 
     await user.type(screen.getByLabelText(/الاسم/), 'تركي الدوسري')
     await user.type(screen.getByPlaceholderText('05xxxxxxxx'), '0501234567')
@@ -61,7 +61,7 @@ describe('LeadFormModal', () => {
     vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: true, restored: true })
     const user = userEvent.setup()
 
-    renderWithProviders(<LeadFormModal open onClose={vi.fn()} />)
+    renderWithProviders(<LeadFormDrawer open onClose={vi.fn()} />)
 
     await user.type(screen.getByLabelText(/الاسم/), 'سعود')
     await user.type(screen.getByPlaceholderText('05xxxxxxxx'), '0501234567')
@@ -79,7 +79,7 @@ describe('LeadFormModal', () => {
     vi.mocked(createLead).mockResolvedValueOnce({ lead: {} as never, duplicate: true, restored: false })
     const user = userEvent.setup()
 
-    renderWithProviders(<LeadFormModal open onClose={vi.fn()} />)
+    renderWithProviders(<LeadFormDrawer open onClose={vi.fn()} />)
 
     await user.type(screen.getByLabelText(/الاسم/), 'سعود')
     await user.type(screen.getByPlaceholderText('05xxxxxxxx'), '0501234567')
@@ -99,7 +99,7 @@ describe('LeadFormModal', () => {
     )
     const user = userEvent.setup()
 
-    renderWithProviders(<LeadFormModal open onClose={vi.fn()} />)
+    renderWithProviders(<LeadFormDrawer open onClose={vi.fn()} />)
 
     await user.type(screen.getByLabelText(/الاسم/), 'سعود')
     await user.type(screen.getByPlaceholderText('05xxxxxxxx'), '12')
@@ -113,7 +113,7 @@ describe('LeadFormModal', () => {
   it('hides the assignee picker from a sales rep', () => {
     useAuth.setState({ user: { ...admin, role: 'sales' } })
 
-    renderWithProviders(<LeadFormModal open onClose={vi.fn()} />)
+    renderWithProviders(<LeadFormDrawer open onClose={vi.fn()} />)
 
     expect(screen.queryByText('اختر موظف مبيعات')).not.toBeInTheDocument()
   })

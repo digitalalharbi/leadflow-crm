@@ -94,6 +94,93 @@ test.describe('A laptop screen', () => {
     }
   })
 
+  /**
+   * The lead list. A page of leads used to make this screen 1709px tall against
+   * a 768px laptop: the filters and the pager both left the viewport, so
+   * narrowing a search meant scrolling back up to the control that would do it.
+   *
+   * The table scrolls inside itself now. The page must not scroll at all, the
+   * pager must stay on screen, and the header must stay put while the rows move
+   * under it — a frozen header is the whole reason an inner scroller is better
+   * than a longer page, and it is one CSS property away from silently not
+   * working.
+   */
+  test('the lead list scrolls inside itself, not down the page', async ({ page }) => {
+    await page.goto('/leads')
+    await page.waitForLoadState('networkidle')
+
+    const scroller = page.getByTestId('leads-table-scroller')
+    await expect(scroller).toBeVisible()
+
+    const { scrollHeight, clientHeight } = await page.evaluate(() => ({
+      scrollHeight: document.documentElement.scrollHeight,
+      clientHeight: document.documentElement.clientHeight,
+    }))
+
+    expect(scrollHeight, 'the leads page grew past the viewport').toBeLessThanOrEqual(clientHeight + 1)
+
+    // The pager is reachable without scrolling, which is the point of capping
+    // the table rather than the page.
+    await expect(page.getByTestId('pagination')).toBeInViewport()
+
+    // There are more rows than fit, so the inner scroller has something to do.
+    const overflows = await scroller.evaluate((node) => node.scrollHeight > node.clientHeight + 1)
+    expect(overflows, 'the table did not overflow, so this proves nothing').toBe(true)
+
+    const headerTop = async () =>
+      scroller.locator('thead th').first().evaluate((node) => Math.round(node.getBoundingClientRect().top))
+
+    const before = await headerTop()
+    await scroller.evaluate((node) => { node.scrollTop = 240 })
+    expect(await headerTop()).toBe(before)
+  })
+
+  /**
+   * An integration card with nothing in it still has to offer something to do.
+   * It used to be one grey sentence naming a blocker, in a full-width panel.
+   */
+  test('the Google Sheets card offers a way in when it is empty', async ({ page }) => {
+    await page.goto('/integrations')
+    await page.waitForLoadState('networkidle')
+
+    const empty = page.getByTestId('sheets-empty')
+    await expect(empty).toBeVisible()
+
+    await expect(page.getByTestId('empty-connect-sheet')).toBeVisible()
+    await expect(page.getByTestId('empty-import-file')).toBeVisible()
+
+    // The mapping example is the one that answers the question that stops
+    // people connecting, so it opens without connecting anything first.
+    await page.getByTestId('empty-see-mapping').click()
+    await expect(page.getByTestId('mapping-example')).toBeVisible()
+  })
+
+  /**
+   * Details open beside the list, not on top of it. The list keeps its place
+   * underneath, which is the whole reason these stopped being dialogs.
+   */
+  test('a lead opens in a drawer against the inline edge', async ({ page }) => {
+    await page.goto('/leads')
+    await page.waitForLoadState('networkidle')
+
+    await page.getByRole('button', { name: /إضافة عميل/ }).click()
+
+    const drawer = page.getByTestId('lead-form-drawer')
+    await expect(drawer).toBeVisible()
+
+    // It slides in, so measuring it the moment it is visible measures it
+    // partway through the slide — the first version of this test read x as
+    // -211 and looked like a layout bug.
+    await drawer.evaluate((node) => Promise.all(node.getAnimations().map((a) => a.finished)))
+
+    const box = await drawer.boundingBox()
+    const viewport = page.viewportSize()
+
+    // Arabic is RTL, so the inline end is the left edge.
+    expect(box?.x).toBe(0)
+    expect(Math.round(box?.height ?? 0)).toBe(viewport?.height)
+  })
+
   /** Arabic reads right to left, including the chrome the layout is built on. */
   test('the page is still right to left', async ({ page }) => {
     await page.goto('/work')

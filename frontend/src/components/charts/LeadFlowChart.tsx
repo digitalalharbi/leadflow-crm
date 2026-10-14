@@ -102,7 +102,7 @@ export function LeadFlowChart({
               x={geometry.padding.left - 6}
               y={geometry.y(value) + 3}
               textAnchor="end"
-              className="fill-[var(--color-ink-subtle)] text-[9px] tabular-nums"
+              className="fill-[var(--color-ink-muted)] text-[10px] tabular-nums"
             >
               {value}
             </text>
@@ -171,7 +171,7 @@ export function LeadFlowChart({
             x={geometry.x(index)}
             y={height - 6}
             textAnchor={index === 0 ? 'start' : 'end'}
-            className="fill-[var(--color-ink-subtle)] text-[9px]"
+            className="fill-[var(--color-ink-muted)] text-[10px]"
           >
             {new Date(points[index].date).toLocaleDateString(i18n.language, {
               day: 'numeric',

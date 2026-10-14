@@ -608,6 +608,20 @@ export default {
     spreadsheet: 'الملف',
     tab: 'الورقة',
     preview: 'معاينة أول الصفوف',
+    empty: {
+      title: 'لا يوجد شيت مربوط بعد',
+      importFile: 'استيراد ملف',
+      seeMapping: 'مثال الربط',
+      mappingTitle: 'كيف تُربط أعمدة الشيت',
+      mappingHint: 'مثال فقط — الربط الحقيقي يُختار لكل شيت من عناوين أعمدته نفسها.',
+      column: {
+        full_name: 'الاسم الكامل',
+        phone: 'رقم الجوال',
+        city: 'المدينة',
+        project: 'المشروع المطلوب',
+        notes: 'ملاحظات المندوب',
+      },
+    },
     state: {
       connected: 'يعمل',
       error: 'خطأ',

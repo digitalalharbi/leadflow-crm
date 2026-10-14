@@ -10,6 +10,7 @@ import { applyLocale } from '@/i18n'
 import { Button, Input } from '@/components/ui'
 import type { Branding } from '@/types/api'
 import { BrandField, BrandMark } from '@/components/brand'
+import { cn } from '@/lib/cn'
 
 /**
  * The login screen renders the *customer's* brand, not ours: logo, colours and
@@ -80,6 +81,12 @@ export function LoginPage() {
 
   const systemName = branding?.system_name ?? t('common.appName')
   const logo = branding?.login_logo_url ?? branding?.logo_url
+  /*
+   * One name for the question the whole brand panel turns on: is the picture
+   * the tenant's or ours? A photograph they uploaded keeps the dark, white-type
+   * treatment; our own drawing follows the theme.
+   */
+  const ownBackground = Boolean(branding?.login_background_url)
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
@@ -172,42 +179,77 @@ export function LoginPage() {
 
       {/* Brand side — hidden on small screens where it would only cost scroll. */}
       <div
-        className="relative hidden overflow-hidden lg:block"
-        style={{
-          background: branding?.login_background_url
-            ? `url(${branding.login_background_url}) center/cover`
-            : [
-                // Two off-axis highlights over the brand colour. A flat
-                // two-stop gradient is the default every template ships with;
-                // light that falls from somewhere reads as a made thing.
-                'radial-gradient(110% 80% at 18% 8%, color-mix(in srgb, var(--brand) 55%, white) 0%, transparent 55%)',
-                'radial-gradient(90% 70% at 85% 95%, color-mix(in srgb, var(--brand-secondary) 70%, black) 0%, transparent 60%)',
-                'linear-gradient(145deg, var(--brand) 0%, var(--brand-secondary, #16181f) 100%)',
-              ].join(', '),
-        }}
+        className={cn(
+          'relative hidden overflow-hidden lg:block',
+          /*
+           * A tenant's own photograph keeps the dark treatment it was always
+           * given: white type over an image needs the scrim whatever the
+           * theme is. Everything else follows the theme — see `.login-art`.
+           */
+          ownBackground ? undefined : 'login-art',
+        )}
+        style={
+          ownBackground
+            ? { background: `url(${branding?.login_background_url}) center/cover` }
+            : undefined
+        }
       >
         {/*
           Not decoration: the field draws interests arriving, travelling, and a
           few of them resolving into opportunities. It is the product's claim,
           rendered — and it is suppressed when a tenant supplies its own
           background, because then the picture is theirs to choose.
+
+          Brand ink on the pale panel, white on the dark one. The drawing is the
+          same either way; only `currentColor` changes.
         */}
-        {!branding?.login_background_url && (
-          <BrandField className="absolute inset-0 h-full w-full text-white" />
+        {!ownBackground && (
+          <BrandField className="absolute inset-0 h-full w-full text-[var(--brand)] dark:text-white" />
         )}
 
-        <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />
+        {/*
+          The scrim exists to protect white text. In light mode, where this
+          panel has none, it would only grey the picture down — so it arrives
+          with dark mode rather than unconditionally.
+        */}
+        <div
+          className={cn(
+            'absolute inset-0',
+            ownBackground
+              ? 'bg-[var(--color-neutral-950)]/15'
+              : 'dark:bg-[var(--color-neutral-950)]/15',
+          )}
+        />
 
-        <div className="relative flex h-full flex-col justify-end p-12 text-white">
+        <div
+          className={cn(
+            'relative flex h-full flex-col justify-end p-12',
+            ownBackground ? 'text-white' : 'text-[var(--color-ink)] dark:text-white',
+          )}
+        >
           <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
             {branding?.company_name ?? systemName}
           </h2>
           {/* The tagline belongs to مهتم; a tenant's own name stands alone. */}
-          <p className="mt-2.5 text-[1.0625rem] font-medium text-white/90">
+          <p
+            className={cn(
+              'mt-2.5 text-[1.0625rem] font-medium',
+              ownBackground ? 'text-white/90' : 'text-[var(--color-ink-muted)] dark:text-white/90',
+            )}
+          >
             {branding?.company_name ? t('auth.welcomeSubtitle') : t('brand.tagline')}
           </p>
           {!branding?.company_name && (
-            <p className="mt-3 max-w-sm text-[0.9375rem] leading-relaxed text-white/70">
+            <p
+              className={cn(
+                'mt-3 max-w-sm text-[0.9375rem] leading-relaxed',
+                // Muted, not subtle: `--color-ink-subtle` is 2.58:1 on a pale
+                // panel, which is a caption colour being asked to carry a
+                // sentence. The size and weight already place it below the
+                // tagline without help from the contrast.
+                ownBackground ? 'text-white/70' : 'text-[var(--color-ink-muted)] dark:text-white/70',
+              )}
+            >
               {t('brand.subtext')}
             </p>
           )}

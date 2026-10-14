@@ -38,7 +38,7 @@ export function LostReasonsChart({ rows }: { rows: ReportRow[] }) {
             <span className="mb-1 flex items-baseline justify-between gap-3">
               <span className="t-small truncate">{row.label}</span>
               <span className="flex items-baseline gap-2">
-                <span className="tabular text-[0.75rem] text-[var(--color-ink-subtle)]" dir="ltr">
+                <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
                   {formatNumber(row.total, i18n.language)}
                 </span>
                 <span className="tabular text-[0.8125rem] font-semibold" dir="ltr">

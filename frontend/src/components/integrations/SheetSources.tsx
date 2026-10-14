@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Sheet, Trash2 } from 'lucide-react'
+import { ArrowRight, RefreshCw, Sheet, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -20,8 +20,13 @@ import {
  * say which column is which, and look at ten real rows mapped before anything
  * is imported. After that the schedule does the work, and this screen only has
  * to explain itself when something breaks.
+ *
+ * `onImportFile` is the page's CSV importer. The empty state offers it because
+ * somebody who has not connected Google still has the rows — usually in a file
+ * on their machine — and the worst thing an empty integration card can do is
+ * leave them with nothing to press.
  */
-export function SheetSources() {
+export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
@@ -50,6 +55,7 @@ export function SheetSources() {
   if (isLoading) return <Skeleton className="h-40" />
 
   const connection = data?.connection
+  const sources = data?.sources ?? []
 
   return (
     <Card>
@@ -57,7 +63,9 @@ export function SheetSources() {
         title={t('sheets.title')}
         description={t('sheets.hint')}
         action={
-          connection?.connected ? (
+          /* The empty state carries its own, so this would be the same button
+             twice a few pixels apart. */
+          connection?.connected && sources.length > 0 ? (
             <Button size="sm" variant="outline" onClick={() => setOpen(true)} data-testid="connect-sheet">
               {t('sheets.connect')}
             </Button>
@@ -65,24 +73,36 @@ export function SheetSources() {
         }
       />
       <CardBody>
-        {!connection?.connected && (
-          <p className="t-caption" data-testid="sheets-not-connected">
-            {/*
+        {sources.length === 0 && (
+          <SheetsEmptyState
+            /*
               Two different problems with one symptom, kept apart: the platform
               has no OAuth client (ours), or this workspace has not completed
               the grant (theirs). Showing the first as a customer error is how
               support tickets get opened against the wrong team.
-            */}
-            {connection?.oauth_configured ? t('sheets.notConnected') : t('sheets.oauthMissing')}
-          </p>
-        )}
-
-        {connection?.connected && (data?.sources ?? []).length === 0 && (
-          <p className="t-caption">{t('sheets.none')}</p>
+            */
+            reason={
+              connection?.connected
+                ? t('sheets.none')
+                : connection?.oauth_configured
+                  ? t('sheets.notConnected')
+                  : t('sheets.oauthMissing')
+            }
+            /*
+              Only when the workspace actually holds a Google token. With an
+              OAuth client but no grant, the picker opens onto an API call that
+              cannot succeed — an error dressed as a next step. The reason text
+              beside it already says which of the two is missing, and the other
+              two buttons still work.
+            */
+            canConnect={Boolean(connection?.connected)}
+            onConnect={() => setOpen(true)}
+            onImportFile={onImportFile}
+          />
         )}
 
         <ul className="space-y-3" data-testid="sheet-sources">
-          {data?.sources.map((source) => (
+          {sources.map((source) => (
             <li key={source.id} className="border-b border-[var(--color-line)] pb-3 last:border-0 last:pb-0">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -292,6 +312,121 @@ function ConnectSheet({ onClose, onConnected }: { onClose: () => void; onConnect
           </>
         )}
       </div>
+    </Modal>
+  )
+}
+
+/**
+ * What the card says when there is nothing in it yet.
+ *
+ * An integration card with no integrations used to be one grey sentence in a
+ * full-width panel — accurate, and a dead end: it named a blocker and offered
+ * no way past it. This gives the three things somebody in that state can
+ * actually do. Connecting is the real answer; importing a file is the answer
+ * for today, before anyone has approved an OAuth grant; and the mapping example
+ * answers the question that stops people connecting at all, which is what the
+ * product will do with their columns.
+ *
+ * It is laid out as one row rather than a stack: the card is full width, and a
+ * short sentence alone in it is exactly the hole this is here to close.
+ */
+function SheetsEmptyState({
+  reason,
+  canConnect,
+  onConnect,
+  onImportFile,
+}: {
+  reason: string
+  canConnect: boolean
+  onConnect: () => void
+  onImportFile?: () => void
+}) {
+  const { t } = useTranslation()
+  const [example, setExample] = useState(false)
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-3"
+      data-testid="sheets-empty"
+    >
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]">
+          <Sheet className="size-[1.125rem]" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="t-small font-medium">{t('sheets.empty.title')}</p>
+          {/* The honest reason, not a slogan — it is what decides which of the
+              buttons beside it is the one that will work. */}
+          <p className="t-caption">{reason}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {/*
+          Offered even when the platform has no OAuth client, and disabled with
+          the reason showing. Hiding it would leave the card looking as though
+          connecting a sheet were not a feature.
+        */}
+        <Button
+          size="sm"
+          disabled={!canConnect}
+          title={canConnect ? undefined : reason}
+          onClick={onConnect}
+          data-testid="empty-connect-sheet"
+        >
+          {t('sheets.connect')}
+        </Button>
+
+        {onImportFile && (
+          <Button size="sm" variant="outline" onClick={onImportFile} data-testid="empty-import-file">
+            {t('sheets.empty.importFile')}
+          </Button>
+        )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setExample(true)}
+          data-testid="empty-see-mapping"
+        >
+          {t('sheets.empty.seeMapping')}
+        </Button>
+      </div>
+
+      {example && <MappingExample onClose={() => setExample(false)} />}
+    </div>
+  )
+}
+
+/** The columns a sheet usually has, beside the field each one becomes. */
+const EXAMPLE_FIELDS = ['full_name', 'phone', 'city', 'project', 'notes'] as const
+
+/**
+ * The question that stops people connecting, answered before they connect.
+ *
+ * It is deliberately an example and not a configuration screen: the real
+ * mapping is chosen per sheet inside ConnectSheet, against that sheet's own
+ * headers. This is here so somebody can see what they are agreeing to first.
+ */
+function MappingExample({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <Modal open onClose={onClose} title={t('sheets.empty.mappingTitle')} description={t('sheets.empty.mappingHint')}>
+      <ul className="space-y-1.5" data-testid="mapping-example">
+        {EXAMPLE_FIELDS.map((field) => (
+          <li
+            key={field}
+            className="flex items-center justify-between gap-3 rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2"
+          >
+            <span className="t-small truncate">{t(`sheets.empty.column.${field}`)}</span>
+            {/* Points from the sheet's column to the field it becomes, which
+                is rightwards in English and leftwards in Arabic. */}
+            <ArrowRight className="size-3.5 shrink-0 text-[var(--color-ink-subtle)] rtl:rotate-180" aria-hidden />
+            <span className="t-small shrink-0 font-medium">{t(`sheets.field.${field}`)}</span>
+          </li>
+        ))}
+      </ul>
     </Modal>
   )
 }

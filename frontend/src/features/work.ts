@@ -56,7 +56,25 @@ export function logContact(
   leadId: string,
   payload: { channel: string; outcome?: string; note?: string; next_due_at?: string | null },
 ) {
-  return apiPost<{ lead: LeadListItem }>(`/leads/${leadId}/contact`, payload)
+  return apiPost<{ lead: LeadListItem; call: { id: string; status: string } | null }>(
+    `/leads/${leadId}/contact`,
+    payload,
+  )
+}
+
+/**
+ * What came of a call, once the rep knows.
+ *
+ * Separate from placing it because nothing is watching a rep's phone: the
+ * product learns how a call went when a person says so, and a status that
+ * advanced on its own would be a guess printed as a fact.
+ */
+export function recordCall(
+  leadId: string,
+  callId: string,
+  payload: { status: 'answered' | 'no_answer' | 'failed' | 'completed'; outcome?: string },
+) {
+  return apiPost(`/leads/${leadId}/calls/${callId}`, payload)
 }
 
 /**

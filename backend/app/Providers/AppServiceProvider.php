@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Domain\Calls\CallProviderRegistry;
+use App\Domain\Calls\Providers\ManualCallProvider;
 use App\Domain\Git\GitHub\GitHubClient;
 use App\Domain\Git\GitHub\GitHubProvider;
 use App\Domain\Git\GitProviderRegistry;
@@ -52,6 +54,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(GitHubClient::class, fn () => new GitHubClient(
             (string) config('services.github.api_url', 'https://api.github.com'),
         ));
+
+        $this->app->singleton(CallProviderRegistry::class, function ($app) {
+            $registry = new CallProviderRegistry;
+            // The one that places no calls. A real provider registers beside it.
+            $registry->register($app->make(ManualCallProvider::class));
+
+            return $registry;
+        });
 
         $this->app->singleton(GitProviderRegistry::class, function ($app) {
             $registry = new GitProviderRegistry;

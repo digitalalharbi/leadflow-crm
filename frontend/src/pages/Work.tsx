@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarPlus, MessageCircle, PartyPopper, Phone, SkipForward } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
-  fetchNextInQueue, fetchWorkSummary, logContact, recordOutcome,
+  fetchNextInQueue, fetchWorkSummary, logContact, recordCall, recordOutcome,
   OUTCOMES, type NextAction, type Outcome,
 } from '@/features/work'
 import { useAuth } from '@/stores/auth'
@@ -89,10 +89,21 @@ export function WorkPage() {
 
   /** Logging an outcome is what advances the queue — there is no "next" button
    *  that merely hides a lead, because a hidden lead is one nobody called. */
+  /*
+   * The call the rep has just started, so the outcome they press next can say
+   * how it went. Nothing watches a rep's phone, so this is the only moment the
+   * product can learn it — and only because the person is about to say.
+   */
+  const [openCall, setOpenCall] = useState<{ leadId: string; callId: string } | null>(null)
+
   const log = useMutation({
     mutationFn: (payload: { channel: string; outcome?: string; note?: string }) =>
       logContact(lead!.id, payload),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.call) {
+        setOpenCall({ leadId: lead!.id, callId: result.call.id })
+      }
+
       setNote('')
       toast(t('work.logged'), 'success')
       void queryClient.invalidateQueries({ queryKey: ['work-next'] })
@@ -118,6 +129,20 @@ export function WorkPage() {
         skip: skipped,
       }),
     onSuccess: (result, choice) => {
+      /*
+       * Close the call with what the rep just said. `answered` for everything
+       * except the two that mean nobody picked up — which is exactly what the
+       * rep is telling us by pressing them.
+       */
+      if (openCall && openCall.leadId === lead!.id) {
+        void recordCall(openCall.leadId, openCall.callId, {
+          status: choice === 'no_answer' ? 'no_answer' : 'answered',
+          outcome: choice,
+        })
+
+        setOpenCall(null)
+      }
+
       const advanced = [...skipped, lead!.id]
 
       queryClient.setQueryData(['work-next', advanced], result.next)

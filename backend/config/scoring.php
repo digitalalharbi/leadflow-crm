@@ -51,6 +51,28 @@ return [
     ],
 
     /*
+     * What the customer did, as opposed to what they told us.
+     *
+     * Everything above is a claim on a form; this is behaviour, and behaviour
+     * is the better predictor — somebody who opened the brochure twice this
+     * morning is further along than somebody who ticked "within three months"
+     * in March.
+     *
+     * Capped, and deliberately low per event. A lead who opens a link eleven
+     * times is interested, not eleven times more interested, and without a
+     * ceiling the loudest signal in the product would be a mail client that
+     * prefetches images.
+     */
+    'engagement' => [
+        'file_opened' => 8,
+        'file_opened_again' => 6,
+        'email_opened' => 4,
+        'link_clicked' => 6,
+        'whatsapp_replied' => 10,
+        'max' => 22,
+    ],
+
+    /*
      * The floor every lead that arrived through a real campaign starts from.
      * Someone who filled in a form is not a zero.
      */

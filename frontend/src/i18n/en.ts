@@ -491,6 +491,20 @@ export default {
     spreadsheet: 'Spreadsheet',
     tab: 'Sheet',
     preview: 'First rows, mapped',
+    empty: {
+      title: 'No sheet connected yet',
+      importFile: 'Import a file',
+      seeMapping: 'Mapping example',
+      mappingTitle: 'How sheet columns are mapped',
+      mappingHint: 'An example only — the real mapping is chosen per sheet, from that sheet’s own headers.',
+      column: {
+        full_name: 'Full name',
+        phone: 'Mobile number',
+        city: 'City',
+        project: 'Project of interest',
+        notes: 'Rep notes',
+      },
+    },
     state: {
       connected: 'Working',
       error: 'Error',

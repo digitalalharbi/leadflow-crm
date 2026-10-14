@@ -11,7 +11,7 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime } from '@/lib/format'
 import {
-  Badge, Button, Card, CardBody, EmptyState, ErrorState, Modal,
+  Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Modal,
   PageHeader, SkeletonCards,
 } from '@/components/ui'
 import { AutomationActivityChart, ChartCard, ChartLegend, SERIES } from '@/components/charts'
@@ -308,9 +308,15 @@ export function AutomationPage() {
         />
       )}
 
-      <Modal
+      {/*
+        What a rule would do, in a drawer: it is something to read against the
+        rule list, and the next question after reading it is almost always about
+        the rule beside it.
+      */}
+      <Drawer
         open={previewing !== null}
         onClose={() => setPreviewing(null)}
+        testId="automation-preview-drawer"
         title={t('automation.previewTitle', { name: previewing?.name ?? '' })}
       >
         {preview.isLoading ? (
@@ -333,7 +339,7 @@ export function AutomationPage() {
             <p className="t-caption">{t('automation.previewNote')}</p>
           </div>
         ) : null}
-      </Modal>
+      </Drawer>
 
       <Modal
         open={confirmDelete !== null}

@@ -72,7 +72,7 @@ export function CampaignQualityChart({
                   >
                     {row.qualification_rate}%
                   </span>
-                  <span className="tabular text-[0.75rem] text-[var(--color-ink-subtle)]" dir="ltr">
+                  <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
                     {formatNumber(row.leads, i18n.language)}
                   </span>
                 </span>

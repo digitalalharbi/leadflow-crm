@@ -85,7 +85,7 @@ export function StackedDayChart<K extends string>({
           x={geometry.padding.left - 6}
           y={geometry.padding.top + 8}
           textAnchor="end"
-          className="fill-[var(--color-ink-subtle)] text-[9px] tabular-nums"
+          className="fill-[var(--color-ink-muted)] text-[10px] tabular-nums"
         >
           {geometry.max}
         </text>
@@ -137,7 +137,7 @@ export function StackedDayChart<K extends string>({
             x={geometry.padding.left + index * geometry.slot + geometry.barWidth / 2}
             y={height - 5}
             textAnchor={index === 0 ? 'start' : 'end'}
-            className="fill-[var(--color-ink-subtle)] text-[9px]"
+            className="fill-[var(--color-ink-muted)] text-[10px]"
           >
             {day(days[index].date)}
           </text>

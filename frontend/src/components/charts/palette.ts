@@ -24,18 +24,25 @@
  * separately rather than lightened, because the warm hues converge as they
  * brighten.
  *
- * ## The obligations that come with it
+ * ## What it clears, and the one thing it does not
  *
- * Two checks pass only conditionally, and the conditions are not optional:
+ * Light passes every check outright, contrast included: the closest pair is
+ * ΔE 9.2 under simulated protanopia and ΔE 15.0 for normal vision, and the
+ * weakest slot is 3.22:1 against a white card. The magenta used to be the
+ * exception at 2.97:1, excused because `ChartCard` ships a table view; it was
+ * re-stepped down its own hue instead, which cost nothing, because the pair
+ * distances that bind this palette are all elsewhere.
  *
- *   - colour-vision separation sits in the 6–8 band, which is legal only with
- *     a second encoding — so every chart carries a legend, four or fewer series
- *     are also labelled directly, and fills are separated by a 2px gap;
- *   - one slot per theme is below 3:1 against the surface, which obliges
- *     visible labels or a table view — `ChartCard` ships the table.
+ * Dark keeps one exemption and is unlikely ever to lose it. Vermillion cannot
+ * reach 3:1 against the dark surface without being brightened into the amber:
+ * at the lightness that clears contrast the two sit at ΔE 14.5 for normal
+ * vision, under the floor. Contrast is recoverable with a label; two series a
+ * reader cannot separate are not. `palette.test.ts` names that slot, so a
+ * second one slipping below 3:1 fails the build rather than quietly joining it.
  *
- * Remove those and the palette stops being valid. They are the reason it is
- * allowed to be this vivid.
+ * The second encoding is not optional either way — every chart carries a
+ * legend, four or fewer series are also labelled directly, and fills are
+ * separated by a 2px gap.
  */
 
 /**
@@ -47,7 +54,7 @@
  * this list ever disagree. Two copies with a check between them beats one copy
  * nothing can verify.
  */
-export const LIGHT_HEXES = ['#007b59', '#025e94', '#bf8408', '#d875ad', '#a64906'] as const
+export const LIGHT_HEXES = ['#007b59', '#025e94', '#bf8408', '#ce64a2', '#a64906'] as const
 export const DARK_HEXES = ['#048560', '#0178bb', '#bc8207', '#b8528f', '#a63c0c'] as const
 
 /*

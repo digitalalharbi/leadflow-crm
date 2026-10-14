@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom'
 import { formatCurrency, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import {
-  Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
+  Badge, Button, Card, Drawer, EmptyState, ErrorState, Input, PageHeader,
   Select, SkeletonTable,
 } from '@/components/ui'
 import type { Project, ProjectMetrics } from '@/types/api'
@@ -168,9 +168,14 @@ export function ProjectsPage() {
         )}
       </Card>
 
-      <Modal
+      {/*
+        A drawer: this is a project's details, and it opens over the grid of
+        projects somebody is comparing it against.
+      */}
+      <Drawer
         open={open}
         onClose={close}
+        testId="project-drawer"
         title={editing ? t('common.edit') : t('projects.addProject')}
         footer={
           <>
@@ -270,7 +275,7 @@ export function ProjectsPage() {
             )}
           </fieldset>
         </form>
-      </Modal>
+      </Drawer>
     </>
   )
 }

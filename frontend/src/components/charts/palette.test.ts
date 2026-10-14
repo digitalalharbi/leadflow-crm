@@ -25,11 +25,15 @@ describe('chart palette', () => {
     expect([...DARK_HEXES]).not.toEqual([...LIGHT_HEXES])
   })
 
-  it('every pair is separable on light', () => {
-    // Contrast is a known, paid-for exception: one slot sits below 3:1 and is
-    // allowed only because ChartCard ships labels and a table view.
+  /*
+   * Light clears every check outright, contrast included. It did not always:
+   * the magenta slot sat at 2.97:1 against a white card and was excused on the
+   * grounds that ChartCard ships a table view. Re-stepping it down its own hue
+   * to 3.52:1 cost nothing — the pair distances that bind the palette are
+   * elsewhere — so the excuse is gone and this test no longer filters.
+   */
+  it('passes every check on light, with nothing excused', () => {
     const issues = checkPalette([...LIGHT_HEXES], { mode: 'light', surface: LIGHT_SURFACE })
-      .filter((issue) => issue.check !== 'contrast')
 
     expect(issues.map((i) => `${i.check}: ${i.detail}`)).toEqual([])
   })
@@ -39,6 +43,24 @@ describe('chart palette', () => {
       .filter((issue) => issue.check !== 'contrast')
 
     expect(issues.map((i) => `${i.check}: ${i.detail}`)).toEqual([])
+  })
+
+  /*
+   * Dark keeps one exemption, and this is what stops it spreading.
+   *
+   * Vermillion cannot reach 3:1 against the dark surface without being
+   * brightened into amber: at the lightness that clears contrast the two sit at
+   * ΔE 14.5 for normal vision, under the floor. Contrast is recoverable with a
+   * label; two series nobody can tell apart are not. So the trade is taken
+   * deliberately, for that slot only — naming it here means a second slot
+   * slipping below 3:1 fails the build instead of joining a blanket filter.
+   */
+  it('exempts exactly one dark slot from contrast, and says which', () => {
+    const below = checkPalette([...DARK_HEXES], { mode: 'dark', surface: DARK_SURFACE })
+      .filter((issue) => issue.check === 'contrast')
+      .map((issue) => issue.detail.split(' ')[0])
+
+    expect(below).toEqual([DARK_HEXES[4]])
   })
 
   /** The specific defect that prompted all of this. */

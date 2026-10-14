@@ -139,7 +139,7 @@
   --chart-1: #007b59;
   --chart-2: #025e94;
   --chart-3: #bf8408;
-  --chart-4: #d875ad;
+  --chart-4: #ce64a2;
   --chart-5: #a64906;
   --chart-other: #6b7280;
 
@@ -629,6 +629,48 @@
   }
 
   /*
+   * The login panel.
+   *
+   * Light mode gets a pale wash with the brand arriving as light from the
+   * corners, not a slab of saturated colour. The theme's one rule is that the
+   * workspace is light and colour is an accent, and the login screen is the
+   * first place anybody meets that rule — a brand-coloured half-screen there
+   * promises a different product than the one behind it.
+   *
+   * Dark mode keeps the saturated gradient, where it is the pale panel that
+   * would be the thing looking wrong.
+   */
+  .login-art {
+    background:
+      radial-gradient(
+        85% 65% at 82% 6%,
+        color-mix(in srgb, var(--brand) 20%, transparent) 0%,
+        transparent 62%
+      ),
+      radial-gradient(
+        75% 60% at 8% 98%,
+        color-mix(in srgb, var(--brand-secondary, var(--brand)) 14%, transparent) 0%,
+        transparent 68%
+      ),
+      linear-gradient(160deg, color-mix(in srgb, var(--brand) 7%, white) 0%, var(--color-canvas) 100%);
+  }
+
+  .dark .login-art {
+    background:
+      radial-gradient(
+        110% 80% at 18% 8%,
+        color-mix(in srgb, var(--brand) 55%, white) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        90% 70% at 85% 95%,
+        color-mix(in srgb, var(--brand-secondary) 70%, black) 0%,
+        transparent 60%
+      ),
+      linear-gradient(145deg, var(--brand) 0%, var(--brand-secondary, #16181f) 100%);
+  }
+
+  /*
    * Inline notices. Built from the status tokens rather than a palette, so one
    * variable swap carries them into dark mode — a hard-coded `bg-red-50` stays
    * bright white-pink on a dark surface and shouts.
@@ -693,6 +735,22 @@
   .scroll-x::-webkit-scrollbar-thumb {
     background: var(--color-border-strong);
     border-radius: 999px;
+  }
+
+  /*
+   * A header that stays while the rows move under it.
+   *
+   * The underline is an inset shadow, not the `border-b` the cell already
+   * carries: `border-collapse: collapse` hands collapsed borders to the table,
+   * and a sticky cell leaves its own behind — the header ends up floating with
+   * no edge the moment anybody scrolls. A shadow is painted by the cell, so it
+   * travels with it.
+   */
+  .table-sticky-head thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    box-shadow: inset 0 -1px 0 var(--color-line);
   }
 
   .scroll-x::-webkit-scrollbar-track {
@@ -769,6 +827,32 @@
   .animate-fade {
     animation: fade var(--duration-base) var(--ease-out-soft);
   }
+
+  /*
+   * The drawer arrives from the edge it is pinned to, which is the right edge
+   * in English and the left one in Arabic — so the offset is a variable the
+   * direction flips, not a hard-coded sign. Below `sm` the panel is a bottom
+   * sheet, and it rises like one.
+   */
+  @keyframes drawer-in {
+    from { opacity: 0; transform: translateX(var(--drawer-from)); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .drawer-panel {
+    --drawer-from: 100%;
+    animation: drawer-in var(--duration-base) var(--ease-out-soft);
+  }
+
+  [dir='rtl'] .drawer-panel {
+    --drawer-from: -100%;
+  }
+
+  @media (width < 40rem) {
+    .drawer-panel {
+      animation: rise var(--duration-base) var(--ease-out-soft);
+    }
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -812,6 +896,20 @@
   /* The sidebar's offset goes with the sidebar. */
   .lg\:ms-\[13\.5rem\] {
     margin-inline-start: 0 !important;
+  }
+
+  /*
+   * A capped, scrolling table prints as the part that happened to be in view —
+   * the other three quarters of the list are simply not on the paper. On paper
+   * there is no viewport to fit, so the cap comes off and the rows run on.
+   */
+  .scroll-x {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .table-sticky-head thead th {
+    position: static;
   }
 
   main {

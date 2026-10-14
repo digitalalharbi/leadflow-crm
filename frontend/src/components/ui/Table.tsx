@@ -9,8 +9,23 @@ export function TableWrap({ className, ...props }: HTMLAttributes<HTMLDivElement
   return <div className={cn('scroll-x', className)} {...props} />
 }
 
-export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
-  return <table className={cn('w-full border-collapse text-sm', className)} {...props} />
+/**
+ * `stickyHeader` is for a table whose wrapper scrolls vertically — it pins the
+ * header row to the top of that wrapper. It is opt-in rather than always on
+ * because a sticky header in a table that does not scroll pins itself to the
+ * *page* instead, which is a different and unwanted behaviour.
+ */
+export function Table({
+  stickyHeader = false,
+  className,
+  ...props
+}: HTMLAttributes<HTMLTableElement> & { stickyHeader?: boolean }) {
+  return (
+    <table
+      className={cn('w-full border-collapse text-sm', stickyHeader && 'table-sticky-head', className)}
+      {...props}
+    />
+  )
 }
 
 export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {

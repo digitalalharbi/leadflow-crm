@@ -502,6 +502,33 @@ export default {
     },
   },
 
+  health: {
+    title: 'Integration status',
+    hint: 'Written and tested is one thing; actually exercised against the other end is another. This says which.',
+    integration: 'Integration',
+    state: 'State',
+    lastEvent: 'Last real event',
+    events: 'Events',
+    never: 'Nothing yet',
+    verification: {
+      externally_verified: 'Externally verified',
+      implemented: 'Implemented and tested — never exercised against the real thing',
+      manual_only: 'The rep dials',
+    },
+    name: {
+      meta: 'Meta',
+      tiktok: 'TikTok',
+      google_ads: 'Google Ads',
+      snapchat: 'Snapchat',
+      linkedin: 'LinkedIn',
+      generic_webhook: 'Generic webhook',
+      google_sheets: 'Google Sheets',
+      whatsapp: 'WhatsApp',
+      calls: 'Calls',
+      github: 'GitHub',
+    },
+  },
+
   search: {
     open: 'Search',
     title: 'Quick search',

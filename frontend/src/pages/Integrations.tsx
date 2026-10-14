@@ -4,6 +4,7 @@ import {
   Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { IntegrationHealth } from '@/components/integrations/IntegrationHealth'
 import { SheetSources } from '@/components/integrations/SheetSources'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
@@ -142,6 +143,11 @@ export function IntegrationsPage() {
           source — because that is what it is. */}
       <div className="mb-4">
         <SheetSources />
+      </div>
+
+      {/* What has actually worked, above the list of what is connected. */}
+      <div className="mb-4">
+        <IntegrationHealth />
       </div>
 
       {/*

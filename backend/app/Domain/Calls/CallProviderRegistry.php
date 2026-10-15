@@ -30,9 +30,23 @@ class CallProviderRegistry
             ?? throw new InvalidArgumentException("No call provider registered for [{$key}].");
     }
 
-    /** What the workspace is actually using, which today is always `manual`. */
+    /**
+     * What this workspace can actually use right now.
+     *
+     * The first registered provider that reports it can place a call, and
+     * otherwise the one where the rep dials. Never an error: a workspace with no
+     * telephony connected is the normal case, and a connected one whose
+     * credentials have just been revoked should still be able to make a call —
+     * by hand — rather than find the button dead.
+     */
     public function forTenant(): CallProviderInterface
     {
+        foreach ($this->providers as $key => $provider) {
+            if ($key !== 'manual' && $provider->canPlace()) {
+                return $provider;
+            }
+        }
+
         return $this->get('manual');
     }
 

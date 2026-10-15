@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Providers\ManualCallProvider;
+use App\Domain\Calls\Providers\TwilioCallProvider;
 use App\Domain\Git\GitHub\GitHubClient;
 use App\Domain\Git\GitHub\GitHubProvider;
 use App\Domain\Git\GitProviderRegistry;
@@ -57,8 +58,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(CallProviderRegistry::class, function ($app) {
             $registry = new CallProviderRegistry;
-            // The one that places no calls. A real provider registers beside it.
+            // The one that places no calls, and the fallback for every other.
             $registry->register($app->make(ManualCallProvider::class));
+            // A real one, which is used only for a workspace that has given it
+            // credentials — see CallProviderRegistry::forTenant.
+            $registry->register($app->make(TwilioCallProvider::class));
 
             return $registry;
         });

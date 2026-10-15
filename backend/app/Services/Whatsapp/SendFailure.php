@@ -36,8 +36,23 @@ final class SendFailure
         '133016',   // Too many attempts, try later
     ];
 
+    /**
+     * Meta's "re-engagement message": free text sent outside the 24-hour window.
+     *
+     * Permanent, but not the same kind of permanent as an undeliverable number.
+     * Nothing is wrong with the lead or the workspace; the message simply has to
+     * be a template. Kept apart so the screen can say that instead of showing a
+     * bare code.
+     */
+    public const OUTSIDE_WINDOW = '131047';
+
     public static function isTransient(?string $code): bool
     {
         return $code !== null && in_array($code, self::TRANSIENT, true);
+    }
+
+    public static function isOutsideWindow(?string $code): bool
+    {
+        return $code === self::OUTSIDE_WINDOW;
     }
 }

@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Domain\Automation\ActionExecutor;
 use App\Enums\ActivityType;
+use App\Enums\MessageChannel;
+use App\Enums\MessageDirection;
+use App\Enums\MessageStatus;
 use App\Models\FileShare;
 use App\Models\Integration;
 use App\Models\Lead;
@@ -12,6 +15,7 @@ use App\Models\LeadMessage;
 use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\ProjectFile;
+use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -91,6 +95,23 @@ class ARuleCanReachTheCustomerTest extends TestCase
             'mime' => 'application/pdf',
             'size_bytes' => 1024,
         ], $attributes)));
+    }
+
+    /** The customer wrote to us a moment ago, which is what opens the window. */
+    private function openWindow(Lead $lead): Lead
+    {
+        $this->asTenant($this->t['tenant'], fn () => LeadMessage::create([
+            'lead_id' => $lead->id,
+            'direction' => MessageDirection::Inbound,
+            'channel' => MessageChannel::Whatsapp,
+            'provider' => 'whatsapp_cloud',
+            'provider_message_id' => 'wamid.in.'.uniqid(),
+            'message_type' => 'text',
+            'body' => 'نعم مهتم',
+            'status' => MessageStatus::Received,
+        ]));
+
+        return $lead;
     }
 
     /** Opting out is a timestamp, and it is not mass assignable. */
@@ -207,7 +228,7 @@ class ARuleCanReachTheCustomerTest extends TestCase
     {
         $this->file();
         $deck = $this->file(['kind' => 'investment_deck', 'name' => 'العرض الاستثماري']);
-        $lead = $this->lead(['purchase_purpose' => 'investment']);
+        $lead = $this->openWindow($this->lead(['purchase_purpose' => 'investment']));
 
         $result = $this->fire($lead, ['type' => 'share_file']);
 
@@ -219,16 +240,22 @@ class ARuleCanReachTheCustomerTest extends TestCase
         $this->assertSame($deck->id, $share->project_file_id, 'an investor was sent the brochure');
         $this->assertSame('automation', $share->channel);
 
-        // Delivered, with the link in the message.
-        $message = LeadMessage::withoutGlobalScopes()->where('lead_id', $lead->id)->first();
+        // Delivered as an attachment, with the tracked link in the caption.
+        $message = LeadMessage::withoutGlobalScopes()
+            ->where('lead_id', $lead->id)
+            ->where('direction', 'outbound')
+            ->first();
+
         $this->assertNotNull($message, 'the file was prepared and never sent');
+        $this->assertSame('document', $message->message_type);
+        $this->assertSame('document', $message->send_spec['kind']);
         $this->assertStringContainsString($share->token, $message->body);
     }
 
     public function test_the_hand_off_reaches_the_timeline_once(): void
     {
         $this->file();
-        $lead = $this->lead();
+        $lead = $this->openWindow($this->lead());
 
         $this->fire($lead, ['type' => 'share_file']);
         $this->fire($lead, ['type' => 'share_file']);
@@ -328,5 +355,37 @@ class ARuleCanReachTheCustomerTest extends TestCase
             'conditions' => [],
             'actions' => [['type' => 'send_whatsapp']],
         ])->assertStatus(422);
+    }
+    // ----------------------------------------------- the 24-hour window
+
+    /**
+     * A file is a free-form message, and Meta has no template shape for one.
+     * Outside the window it is prepared and reported, not attempted — an
+     * attempt would be refused and recorded as a failed contact.
+     */
+    public function test_a_file_is_not_sent_to_somebody_who_has_not_written_to_us(): void
+    {
+        $this->file();
+        $lead = $this->lead();
+
+        $result = $this->fire($lead, ['type' => 'share_file']);
+
+        $this->assertFalse($result['ok']);
+        $this->assertStringContainsString('24', $result['description']);
+        // The link survives, ready for a rep or a template.
+        $this->assertSame(1, FileShare::withoutGlobalScopes()->where('lead_id', $lead->id)->count());
+        $this->assertSame(0, LeadMessage::withoutGlobalScopes()->where('lead_id', $lead->id)->count());
+    }
+
+    public function test_the_window_closes_a_day_after_the_customers_last_message(): void
+    {
+        $lead = $this->openWindow($this->lead());
+        $sender = app(WhatsappSender::class);
+
+        $this->assertTrue($this->asTenant($this->t['tenant'], fn () => $sender->windowOpen($lead)));
+
+        $this->travel(25)->hours();
+
+        $this->assertFalse($this->asTenant($this->t['tenant'], fn () => $sender->windowOpen($lead)));
     }
 }

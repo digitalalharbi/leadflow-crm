@@ -173,6 +173,13 @@ export interface MessageTemplate {
   channel: string
   is_active: boolean
   sort_order: number
+  /** The Meta-approved twin of this message, if the workspace registered one. */
+  meta_template_name: string | null
+  meta_language: string | null
+  /** The lead fields that fill {{1}}, {{2}}, … in the approved template, in order. */
+  meta_parameters: string[]
+  /** Whether this message may open a conversation, rather than only answer one. */
+  can_start_conversation: boolean
 }
 
 /** Why a lead scores what it scores — one entry per rule that fired. */

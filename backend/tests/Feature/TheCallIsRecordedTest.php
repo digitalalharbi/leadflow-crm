@@ -171,6 +171,21 @@ class TheCallIsRecordedTest extends TestCase
     {
         // A fake that answers calls would be indistinguishable from a real one
         // in every report it touched.
-        $this->assertSame(['manual'], app(CallProviderRegistry::class)->keys());
+        //
+        // An allow-list rather than "manual only", now that a real provider is
+        // registered: adding another is a decision somebody makes by editing
+        // this line, not something that can arrive unnoticed under a name like
+        // `demo`. `twilio` is a real adapter — it places a call only for a
+        // workspace that gave it credentials, and reports nothing it was not
+        // told by Twilio.
+        $keys = app(CallProviderRegistry::class)->keys();
+
+        sort($keys);
+
+        $this->assertSame(['manual', 'twilio'], $keys);
+
+        foreach ($keys as $key) {
+            $this->assertDoesNotMatchRegularExpression('/mock|fake|demo|stub/i', $key);
+        }
     }
 }

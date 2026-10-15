@@ -90,8 +90,21 @@ export function addLeadNote(id: string, body: string) {
   return apiPost<{ note: LeadNote }>(`/leads/${id}/notes`, { body })
 }
 
+/**
+ * `bridge` means the workspace's telephony is ringing the rep's own phone;
+ * `manual` means the rep dials. A fallback reason is present when the first was
+ * wanted and could not happen, so the screen can say why instead of the button
+ * appearing to do nothing.
+ */
+export interface PlacedCall {
+  id: string
+  status: string
+  mode: 'bridge' | 'manual'
+  fallback_reason: string | null
+}
+
 export function logContact(id: string, channel: 'call' | 'whatsapp' | 'email' | 'no_answer') {
-  return apiPost<{ lead: Lead }>(`/leads/${id}/contact`, { channel })
+  return apiPost<{ lead: Lead; call: PlacedCall | null }>(`/leads/${id}/contact`, { channel })
 }
 
 export function fetchProjects() {

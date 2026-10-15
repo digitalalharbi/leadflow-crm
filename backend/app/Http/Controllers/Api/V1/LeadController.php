@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
+use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -411,13 +412,36 @@ class LeadController extends Controller
          * call: when a real one is connected, the same button starts a real
          * call and nothing above here changes.
          */
-        $call = $data['channel'] === 'call'
-            ? $this->calls->forTenant()->place($lead, $request->user())
-            : null;
+        $call = null;
+        $fallback = null;
+
+        if ($data['channel'] === 'call') {
+            try {
+                $call = $this->calls->forTenant()->place($lead, $request->user());
+            } catch (CallCannotBePlaced $e) {
+                /*
+                 * The provider could not start it — the rep has no number on
+                 * their profile, the lead has none, or the provider refused.
+                 * The call still happens: the rep dials, and this is recorded
+                 * the way a manual call always was. The reason is returned so
+                 * the screen can say why the workspace's own telephony stayed
+                 * quiet, rather than the button appearing to do nothing.
+                 */
+                $fallback = $e->reason;
+                $call = $this->calls->get('manual')->place($lead, $request->user());
+            }
+        }
 
         return ApiResponse::success([
             'lead' => new LeadResource($lead->fresh(['assignee', 'project'])),
-            'call' => $call === null ? null : ['id' => $call->uuid, 'status' => $call->status],
+            'call' => $call === null ? null : [
+                'id' => $call->uuid,
+                'status' => $call->status,
+                // `bridge` means the provider is ringing the rep; `manual` means
+                // the rep dials. The client opens tel: only for the second.
+                'mode' => $call->provider === 'manual' ? 'manual' : 'bridge',
+                'fallback_reason' => $fallback,
+            ],
         ]);
     }
 

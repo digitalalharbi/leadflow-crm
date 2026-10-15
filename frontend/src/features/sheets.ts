@@ -105,3 +105,20 @@ export function disconnectSheet(id: string) {
 export function syncSheet(id: string) {
   return apiPost(`/integrations/sheets/${id}/sync`, {})
 }
+
+/* ------------------------------------------------------------ the grant */
+
+/**
+ * Starts the Google consent flow.
+ *
+ * Returns a URL rather than redirecting: the state that proves the person came
+ * back is minted by the API against their session, and a link the browser
+ * builds for itself could not carry one.
+ */
+export function startGoogleAuthorization() {
+  return apiPost<{ url: string }>('/integrations/google/authorize')
+}
+
+export function disconnectGoogle() {
+  return apiPost('/integrations/google/disconnect')
+}

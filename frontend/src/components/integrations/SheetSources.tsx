@@ -9,8 +9,8 @@ import {
   Badge, Button, Card, CardBody, CardHeader, Input, Modal, Select, Skeleton,
 } from '@/components/ui'
 import {
-  connectSheet, disconnectSheet, fetchSheets, fetchSpreadsheets, fetchTabs,
-  previewSheet, syncSheet, type SheetSource,
+  connectSheet, disconnectGoogle, disconnectSheet, fetchSheets, fetchSpreadsheets,
+  fetchTabs, previewSheet, startGoogleAuthorization, syncSheet, type SheetSource,
 } from '@/features/sheets'
 
 /**
@@ -46,6 +46,29 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
+  /*
+   * Leaves the app on purpose.
+   *
+   * `window.location` rather than a new tab: a consent screen opened in a tab
+   * the browser blocks, or that the person closes without noticing, is a flow
+   * that silently does nothing. Google sends them back to this same screen
+   * with the answer in the query string.
+   */
+  const authorize = useMutation({
+    mutationFn: startGoogleAuthorization,
+    onSuccess: ({ url }) => { window.location.href = url },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const forget = useMutation({
+    mutationFn: disconnectGoogle,
+    onSuccess: () => {
+      toast(t('sheets.disconnected'), 'success')
+      refresh()
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
   const remove = useMutation({
     mutationFn: (id: string) => disconnectSheet(id),
     onSuccess: refresh,
@@ -66,9 +89,21 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
           /* The empty state carries its own, so this would be the same button
              twice a few pixels apart. */
           connection?.connected && sources.length > 0 ? (
-            <Button size="sm" variant="outline" onClick={() => setOpen(true)} data-testid="connect-sheet">
-              {t('sheets.connect')}
-            </Button>
+            <span className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setOpen(true)} data-testid="connect-sheet">
+                {t('sheets.connect')}
+              </Button>
+              {/* Hands the grant back to Google, so "disconnect" is true. */}
+              <Button
+                size="sm"
+                variant="ghost"
+                loading={forget.isPending}
+                onClick={() => forget.mutate()}
+                data-testid="disconnect-google"
+              >
+                {t('sheets.disconnectGoogle')}
+              </Button>
+            </span>
           ) : undefined
         }
       />
@@ -96,6 +131,15 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
               two buttons still work.
             */
             canConnect={Boolean(connection?.connected)}
+            /*
+             * Two different buttons behind one position: with a Google account
+             * connected this picks a spreadsheet, and without one it starts the
+             * grant that makes picking possible. They were the same button and
+             * it only ever did the first.
+             */
+            canAuthorize={Boolean(connection?.oauth_configured) && !connection?.connected}
+            authorizing={authorize.isPending}
+            onAuthorize={() => authorize.mutate()}
             onConnect={() => setOpen(true)}
             onImportFile={onImportFile}
           />
@@ -333,11 +377,17 @@ function ConnectSheet({ onClose, onConnected }: { onClose: () => void; onConnect
 function SheetsEmptyState({
   reason,
   canConnect,
+  canAuthorize,
+  authorizing,
+  onAuthorize,
   onConnect,
   onImportFile,
 }: {
   reason: string
   canConnect: boolean
+  canAuthorize: boolean
+  authorizing: boolean
+  onAuthorize: () => void
   onConnect: () => void
   onImportFile?: () => void
 }) {
@@ -367,15 +417,26 @@ function SheetsEmptyState({
           the reason showing. Hiding it would leave the card looking as though
           connecting a sheet were not a feature.
         */}
-        <Button
-          size="sm"
-          disabled={!canConnect}
-          title={canConnect ? undefined : reason}
-          onClick={onConnect}
-          data-testid="empty-connect-sheet"
-        >
-          {t('sheets.connect')}
-        </Button>
+        {canAuthorize ? (
+          <Button
+            size="sm"
+            loading={authorizing}
+            onClick={onAuthorize}
+            data-testid="authorize-google"
+          >
+            {t('sheets.authorize')}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            disabled={!canConnect}
+            title={canConnect ? undefined : reason}
+            onClick={onConnect}
+            data-testid="empty-connect-sheet"
+          >
+            {t('sheets.connect')}
+          </Button>
+        )}
 
         {onImportFile && (
           <Button size="sm" variant="outline" onClick={onImportFile} data-testid="empty-import-file">

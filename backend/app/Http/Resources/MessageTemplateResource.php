@@ -16,6 +16,12 @@ class MessageTemplateResource extends JsonResource
             'channel' => $this->channel?->value,
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
+            'meta_template_name' => $this->meta_template_name,
+            'meta_language' => $this->meta_language,
+            'meta_parameters' => $this->meta_parameters ?? [],
+            // Whether this message can start a conversation, which is the one
+            // thing the screen needs to know about it.
+            'can_start_conversation' => filled($this->meta_template_name),
         ];
     }
 }

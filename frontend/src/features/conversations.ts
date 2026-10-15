@@ -34,11 +34,20 @@ export function fetchMessageTemplates(all = false) {
   return apiGet<{ templates: MessageTemplate[]; variables: string[] }>('/message-templates', { all })
 }
 
-export function createMessageTemplate(payload: { name: string; body: string }) {
+export type TemplatePayload = {
+  name: string
+  body: string
+  is_active?: boolean
+  meta_template_name?: string | null
+  meta_language?: string | null
+  meta_parameters?: string[] | null
+}
+
+export function createMessageTemplate(payload: TemplatePayload) {
   return apiPost<{ template: MessageTemplate }>('/message-templates', payload)
 }
 
-export function updateMessageTemplate(id: string, payload: Partial<MessageTemplate>) {
+export function updateMessageTemplate(id: string, payload: Partial<TemplatePayload>) {
   return apiPatch<{ template: MessageTemplate }>(`/message-templates/${id}`, payload)
 }
 

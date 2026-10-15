@@ -17,6 +17,10 @@ import {
   type DevelopmentActivity, type DevelopmentDeployment, type DevelopmentRun,
 } from '@/features/development'
 import { ProjectFiles } from '@/components/projects/ProjectFiles'
+import {
+  ProjectActivities, ProjectAutomations, ProjectCampaigns, ProjectIntegrations,
+  ProjectLeads, ProjectNumbers, ProjectReports,
+} from '@/components/projects/ProjectWorkspace'
 import type { Project } from '@/types/api'
 
 /**
@@ -26,6 +30,19 @@ import type { Project } from '@/types/api'
  * doing. A row of tabs that mostly lead to "coming soon" teaches people not to
  * click tabs.
  */
+/**
+ * The project's workspace, in the order somebody works through it: the numbers,
+ * the people, the material, where the leads come from, what acts on them, what
+ * happened, how it is going — and, last, how the thing is being built, which is
+ * for a different reader and was the only tab there was.
+ */
+const TABS = [
+  'overview', 'leads', 'files', 'campaigns', 'automations',
+  'activities', 'reports', 'integrations', 'development',
+] as const
+
+type ProjectTab = (typeof TABS)[number]
+
 export function ProjectDetailPage() {
   const { id = '' } = useParams()
   const { t } = useTranslation()
@@ -36,7 +53,7 @@ export function ProjectDetailPage() {
    * CI runs and deployments, with the tab row pointing at the tab they were not
    * on.
    */
-  const [tab, setTab] = useState<'overview' | 'files' | 'development'>('overview')
+  const [tab, setTab] = useState<ProjectTab>('overview')
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -55,35 +72,40 @@ export function ProjectDetailPage() {
         testId="project-tabs"
         value={tab}
         onChange={setTab}
-        items={[
-          { key: 'overview' as const, label: t('projects.tabs.overview') },
-          { key: 'files' as const, label: t('projects.tabs.files') },
-          { key: 'development' as const, label: t('projects.tabs.development') },
-        ]}
+        items={TABS.map((key) => ({ key, label: t(`projects.tabs.${key}`) }))}
       />
 
-      {tab === 'overview' ? (
-        <Card>
-          <CardBody>
-            {isLoading ? (
-              <Skeleton className="h-24" />
-            ) : (
-              <dl className="grid gap-4 sm:grid-cols-3">
-                <Fact label={t('projects.location')} value={project?.location ?? '—'} />
-                <Fact label={t('projects.developer')} value={project?.developer_name ?? '—'} />
-                <Fact
-                  label={t('common.status')}
-                  value={project ? t(`projects.status.${project.status}`, { defaultValue: project.status }) : '—'}
-                />
-              </dl>
-            )}
-          </CardBody>
-        </Card>
-      ) : tab === 'files' ? (
-        <ProjectFiles projectId={id} />
-      ) : (
-        <Development projectId={id} />
+      {tab === 'overview' && (
+        <div className="space-y-3">
+          <ProjectNumbers projectId={id} />
+
+          <Card>
+            <CardBody>
+              {isLoading ? (
+                <Skeleton className="h-24" />
+              ) : (
+                <dl className="grid gap-4 sm:grid-cols-3">
+                  <Fact label={t('projects.location')} value={project?.location ?? '—'} />
+                  <Fact label={t('projects.developer')} value={project?.developer_name ?? '—'} />
+                  <Fact
+                    label={t('common.status')}
+                    value={project ? t(`projects.status.${project.status}`, { defaultValue: project.status }) : '—'}
+                  />
+                </dl>
+              )}
+            </CardBody>
+          </Card>
+        </div>
       )}
+
+      {tab === 'leads' && <ProjectLeads projectId={id} />}
+      {tab === 'files' && <ProjectFiles projectId={id} />}
+      {tab === 'campaigns' && <ProjectCampaigns projectId={id} />}
+      {tab === 'automations' && <ProjectAutomations projectId={id} />}
+      {tab === 'activities' && <ProjectActivities projectId={id} />}
+      {tab === 'reports' && <ProjectReports projectId={id} />}
+      {tab === 'integrations' && <ProjectIntegrations projectId={id} />}
+      {tab === 'development' && <Development projectId={id} />}
     </>
   )
 }

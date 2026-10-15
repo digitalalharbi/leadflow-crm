@@ -76,6 +76,22 @@ class MessageTemplateController extends Controller
             ],
             'body' => [$existing ? 'sometimes' : 'required', 'string', 'max:'.config('services.whatsapp.max_body_length')],
             'is_active' => ['nullable', 'boolean'],
+
+            /*
+             * The Meta-approved twin of this message.
+             *
+             * Meta's template names are lower-case letters, digits and
+             * underscores and nothing else — a name with a space or a capital
+             * is a template that does not exist, and the failure arrives as a
+             * bare error code on the first real send. Refused here, at the
+             * point it is typed.
+             */
+            'meta_template_name' => ['sometimes', 'nullable', 'string', 'max:512', 'regex:/^[a-z0-9_]+$/'],
+            'meta_language' => ['sometimes', 'nullable', 'string', 'max:16', 'regex:/^[a-z]{2}(_[A-Z]{2})?$/'],
+            // The lead fields that fill {{1}}, {{2}}, … in order. A closed list,
+            // so a template cannot ask for a value the renderer cannot supply.
+            'meta_parameters' => ['sometimes', 'nullable', 'array', 'max:10'],
+            'meta_parameters.*' => ['string', Rule::in(MessageTemplate::VARIABLES)],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
         ]);
     }

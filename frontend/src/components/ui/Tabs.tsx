@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
 /**
@@ -32,8 +32,31 @@ export function Tabs<T extends string>({
   className?: string
   testId?: string
 }) {
+  const strip = useRef<HTMLDivElement>(null)
+
+  /*
+   * Keeps the chosen tab in view.
+   *
+   * With nine tabs the strip scrolls inside itself on a phone, and the selected
+   * one can sit entirely off-screen — which reads as nothing being selected at
+   * all. Scrolled by hand rather than with `scrollIntoView`, which would also
+   * scroll the *page* to bring the strip into the viewport.
+   */
+  useEffect(() => {
+    const container = strip.current
+    const active = container?.querySelector<HTMLElement>('[aria-selected="true"]')
+
+    if (!container || !active) return
+
+    const left = active.offsetLeft - container.offsetLeft
+    const target = left - (container.clientWidth - active.offsetWidth) / 2
+
+    container.scrollTo({ left: target, behavior: 'auto' })
+  }, [value])
+
   return (
     <div
+      ref={strip}
       role="tablist"
       data-testid={testId}
       className={cn(

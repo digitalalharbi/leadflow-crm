@@ -14,6 +14,7 @@ enum IntegrationProvider: string
     case CsvImport = 'csv_import';
     case Whatsapp = 'whatsapp';
     case GitHub = 'github';
+    case TwilioVoice = 'twilio_voice';
     case Manual = 'manual';
 
     public static function values(): array
@@ -36,7 +37,7 @@ enum IntegrationProvider: string
             // the product got built — neither is a lead source. A lead that
             // first appears over WhatsApp keeps whatever platform brought it in,
             // and GitHub never creates one at all.
-            self::Whatsapp, self::GitHub, self::Manual => Platform::Manual,
+            self::Whatsapp, self::GitHub, self::TwilioVoice, self::Manual => Platform::Manual,
         };
     }
 }

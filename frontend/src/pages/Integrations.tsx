@@ -1,13 +1,15 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
 import { SheetSources } from '@/components/integrations/SheetSources'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
-import { useAuth } from '@/stores/auth'
+import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
@@ -18,6 +20,7 @@ import {
 import type { IntegrationCard, SyncResult } from '@/types/api'
 import { cn } from '@/lib/cn'
 import { ProviderMark } from '@/components/integrations/ProviderMark'
+import { MessageTemplates } from '@/components/whatsapp/MessageTemplates'
 import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
 import { ChartCard, IngestionChart, IngestionSources } from '@/components/charts'
 import { fetchIngestion } from '@/features/ingestion'
@@ -40,6 +43,39 @@ export function IntegrationsPage() {
   /** Detail starts closed: the grid above is the answer, this is the evidence. */
   const [detailOpen, setDetailOpen] = useState(false)
   const demoMode = useAuth((s) => s.demoMode)
+  const user = useAuth((s) => s.user)
+
+  /*
+   * What came back from Google.
+   *
+   * The consent screen is on Google's domain and the callback lands on the
+   * API, so the only way the answer reaches the interface is in this query
+   * string. Read once and then removed, so a refresh does not re-announce a
+   * connection somebody made ten minutes ago.
+   */
+  const [params, setParams] = useSearchParams()
+  const googleResult = params.get('google')
+
+  useEffect(() => {
+    if (!googleResult) return
+
+    if (googleResult === 'connected') {
+      toast(t('sheets.googleConnected'), 'success')
+      void queryClient.invalidateQueries({ queryKey: ['sheets'] })
+    } else {
+      const reason = params.get('reason') ?? 'refused'
+
+      // The reason is named, because the three that matter are three different
+      // people's jobs: ours, the customer's, and nobody's.
+      toast(t(`sheets.googleError.${reason}`, { defaultValue: t('sheets.googleError.refused') }), 'error')
+    }
+
+    const next = new URLSearchParams(params)
+
+    next.delete('google')
+    next.delete('reason')
+    setParams(next, { replace: true })
+  }, [googleResult, params, setParams, toast, t, queryClient])
 
   /*
    * Sales-demo helper. Pushes a lead through the real ingestion pipeline so a
@@ -192,6 +228,21 @@ export function IntegrationsPage() {
       <div className="mb-4">
         <WhatsappSettingsCard />
       </div>
+
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <CallSettingsCard />
+        </div>
+      )}
+
+      {/* What the workspace says, and which of it may open a conversation.
+          Admin-only like the card above: the same screen is where a number is
+          connected and where its messages are approved. */}
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <MessageTemplates />
+        </div>
+      )}
 
       {isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>

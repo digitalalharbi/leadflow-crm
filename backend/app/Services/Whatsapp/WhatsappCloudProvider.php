@@ -23,28 +23,136 @@ class WhatsappCloudProvider implements WhatsappProviderInterface
 
     public function sendText(Integration $integration, string $toPhone, string $body): SentMessage
     {
-        $credentials = $integration->credentials ?? [];
-        $phoneNumberId = $integration->config['phone_number_id'] ?? null;
-        $token = $credentials['access_token'] ?? null;
+        return $this->deliver($integration, [
+            'recipient_type' => 'individual',
+            'to' => ltrim($toPhone, '+'),
+            'type' => 'text',
+            'text' => ['preview_url' => false, 'body' => $body],
+        ]);
+    }
+
+    public function sendTemplate(
+        Integration $integration,
+        string $toPhone,
+        string $templateName,
+        string $language,
+        array $parameters = [],
+    ): SentMessage {
+        $template = [
+            'name' => $templateName,
+            'language' => ['code' => $language],
+        ];
+
+        /*
+         * Omitted when empty, not sent as an empty list: Meta validates the
+         * component against the template as approved, and a body component
+         * with no parameters is a mismatch for a template that has none.
+         */
+        if ($parameters !== []) {
+            $template['components'] = [[
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn (string $value) => ['type' => 'text', 'text' => $value],
+                    array_values($parameters),
+                ),
+            ]];
+        }
+
+        return $this->deliver($integration, [
+            'recipient_type' => 'individual',
+            'to' => ltrim($toPhone, '+'),
+            'type' => 'template',
+            'template' => $template,
+        ]);
+    }
+
+    public function sendDocument(
+        Integration $integration,
+        string $toPhone,
+        string $contents,
+        string $mime,
+        string $filename,
+        ?string $caption = null,
+    ): SentMessage {
+        $mediaId = $this->uploadMedia($integration, $contents, $mime, $filename);
+
+        if ($mediaId instanceof SentMessage) {
+            return $mediaId;
+        }
+
+        return $this->deliver($integration, [
+            'recipient_type' => 'individual',
+            'to' => ltrim($toPhone, '+'),
+            'type' => 'document',
+            'document' => array_filter([
+                'id' => $mediaId,
+                'filename' => $filename,
+                'caption' => $caption,
+            ], fn ($value) => $value !== null && $value !== ''),
+        ]);
+    }
+
+    /**
+     * Puts the bytes on Meta's side and returns what to refer to them by.
+     *
+     * Returns a failed `SentMessage` rather than throwing, so the caller's
+     * persist-then-call ordering and its retry classification apply to an
+     * upload failure exactly as they do to a send failure.
+     */
+    private function uploadMedia(Integration $integration, string $contents, string $mime, string $filename): string|SentMessage
+    {
+        [$phoneNumberId, $token] = $this->credentialsFor($integration);
 
         if (! $phoneNumberId || ! $token) {
             return SentMessage::failed('not_configured', 'WhatsApp is not configured for this workspace.');
         }
 
-        $version = config('services.whatsapp.graph_version');
-        $url = sprintf('%s/%s/%s/messages', rtrim(config('services.whatsapp.graph_url'), '/'), $version, $phoneNumberId);
+        $url = $this->endpoint($phoneNumberId, 'media');
 
         try {
             $response = Http::withToken($token)
                 ->timeout((int) config('services.whatsapp.timeout'))
                 ->acceptJson()
-                ->post($url, [
-                    'messaging_product' => 'whatsapp',
-                    'recipient_type' => 'individual',
-                    'to' => ltrim($toPhone, '+'),
-                    'type' => 'text',
-                    'text' => ['preview_url' => false, 'body' => $body],
-                ]);
+                ->attach('file', $contents, $filename, ['Content-Type' => $mime])
+                ->post($url, ['messaging_product' => 'whatsapp', 'type' => $mime]);
+        } catch (\Throwable $e) {
+            Log::warning('whatsapp.media_transport_failed', [
+                'integration' => $integration->uuid,
+                'exception' => $e::class,
+            ]);
+
+            return SentMessage::failed('transport_error', 'Could not reach WhatsApp. Try again.');
+        }
+
+        $json = $response->json() ?? [];
+
+        if ($response->failed() || blank($json['id'] ?? null)) {
+            $error = $json['error'] ?? [];
+
+            return SentMessage::failed(
+                (string) ($error['code'] ?? $response->status()),
+                (string) ($error['message'] ?? 'WhatsApp rejected this file.'),
+                $this->redact($json),
+            );
+        }
+
+        return (string) $json['id'];
+    }
+
+    /** One place that posts a message and reads what came back. */
+    private function deliver(Integration $integration, array $message): SentMessage
+    {
+        [$phoneNumberId, $token] = $this->credentialsFor($integration);
+
+        if (! $phoneNumberId || ! $token) {
+            return SentMessage::failed('not_configured', 'WhatsApp is not configured for this workspace.');
+        }
+
+        try {
+            $response = Http::withToken($token)
+                ->timeout((int) config('services.whatsapp.timeout'))
+                ->acceptJson()
+                ->post($this->endpoint($phoneNumberId, 'messages'), ['messaging_product' => 'whatsapp'] + $message);
         } catch (\Throwable $e) {
             // The message text is the customer's own words; the exception text
             // may repeat it, so neither goes to the log.
@@ -73,6 +181,26 @@ class WhatsappCloudProvider implements WhatsappProviderInterface
         return $id
             ? SentMessage::accepted($id, $this->redact($json))
             : SentMessage::failed('no_message_id', 'WhatsApp accepted the request without returning a message id.');
+    }
+
+    /** @return array{0:?string,1:?string} */
+    private function credentialsFor(Integration $integration): array
+    {
+        return [
+            $integration->config['phone_number_id'] ?? null,
+            ($integration->credentials ?? [])['access_token'] ?? null,
+        ];
+    }
+
+    private function endpoint(string $phoneNumberId, string $path): string
+    {
+        return sprintf(
+            '%s/%s/%s/%s',
+            rtrim((string) config('services.whatsapp.graph_url'), '/'),
+            config('services.whatsapp.graph_version'),
+            $phoneNumberId,
+            $path,
+        );
     }
 
     /**

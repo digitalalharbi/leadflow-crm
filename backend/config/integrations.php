@@ -70,6 +70,16 @@ return [
         'messages_per_lead_per_minute' => (int) env('WHATSAPP_MESSAGES_PER_LEAD', 10),
     ],
 
+    /*
+     * Where a browser is sent back to after an external consent screen.
+     *
+     * The API and the interface are one origin in production and two in
+     * development, and the OAuth callback is the one place that difference
+     * escapes the proxy: Google redirects the browser itself, so it lands on
+     * the API and has to be forwarded to wherever the app actually is.
+     */
+    'app_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
+
     'webhooks' => [
         'max_body_bytes' => (int) env('WEBHOOK_MAX_BODY_BYTES', 65536),
         'rate_limit_per_minute' => (int) env('WEBHOOK_RATE_LIMIT_PER_MINUTE', 120),

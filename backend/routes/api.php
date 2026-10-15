@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
+use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
+use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\Api\V1\LeadMessageController;
 use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PipelineController;
+use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
@@ -30,6 +33,7 @@ use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
+use App\Http\Controllers\Api\V1\TwilioStatusController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
@@ -75,6 +79,15 @@ Route::prefix('v1')->group(function () {
      * trusted before it verifies.
      */
     Route::post('integrations/github/webhook/{key}', GitHubWebhookController::class)
+        ->middleware('throttle:webhook');
+
+    /*
+     * Twilio call status. Public for the same reason as the two above: Twilio
+     * is not a signed-in user. The integration's uuid in the path names the
+     * workspace and `X-Twilio-Signature`, keyed with that workspace's own auth
+     * token, is what makes the name believable.
+     */
+    Route::post('integrations/calls/twilio/{integrationUuid}/status', TwilioStatusController::class)
         ->middleware('throttle:webhook');
 
     Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:whatsapp-webhook')->group(function () {
@@ -201,6 +214,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
             Route::get('/leads/{uuid}/shares', [ProjectFileController::class, 'sharesFor']);
 
+            Route::get('/projects/{uuid}/activity', ProjectActivityController::class);
             Route::get('/projects/{uuid}/development', ProjectDevelopmentController::class);
             Route::get('/projects/{uuid}/repository', [GitHubController::class, 'forProject']);
             Route::post('/projects/{uuid}/repository', [GitHubController::class, 'link']);
@@ -259,6 +273,19 @@ Route::prefix('v1')->group(function () {
              * once, then read on a schedule — the same pipeline a webhook
              * feeds, never a second one.
              */
+            /*
+             * Starting and ending a Google grant. The middle of it happens on
+             * Google's own screens, and the way back is a public web route.
+             */
+            // The workspace's own telephony account.
+            Route::get('/integrations/calls', [CallSettingsController::class, 'show']);
+            Route::put('/integrations/calls', [CallSettingsController::class, 'update']);
+            Route::post('/integrations/calls/test', [CallSettingsController::class, 'test']);
+            Route::delete('/integrations/calls', [CallSettingsController::class, 'destroy']);
+
+            Route::post('/integrations/google/authorize', [GoogleOAuthController::class, 'start']);
+            Route::post('/integrations/google/disconnect', [GoogleOAuthController::class, 'disconnect']);
+
             Route::get('/integrations/sheets', [SheetSourceController::class, 'index']);
             Route::post('/integrations/sheets', [SheetSourceController::class, 'store']);
             Route::get('/integrations/sheets/spreadsheets', [SheetSourceController::class, 'spreadsheets']);

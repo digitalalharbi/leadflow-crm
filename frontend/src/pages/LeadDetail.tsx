@@ -133,7 +133,32 @@ export function LeadDetailPage() {
 
   const contactMutation = useMutation({
     mutationFn: (channel: 'call' | 'whatsapp') => logContact(id, channel),
-    onSuccess: refresh,
+    onSuccess: (result, channel) => {
+      refresh()
+
+      if (channel !== 'call' || !result.call) return
+
+      if (result.call.mode === 'bridge') {
+        // The workspace's telephony is ringing the rep's own phone. Dialling
+        // as well would be a second call to the same customer.
+        toast(t('calls.ringingYou'), 'success')
+
+        return
+      }
+
+      /*
+       * The rep dials. This is also where a provider that could not place the
+       * call lands, with the reason, so the button never appears dead.
+       */
+      if (result.call.fallback_reason) {
+        toast(
+          t(`calls.fallback.${result.call.fallback_reason}`, { defaultValue: t('calls.fallback.default') }),
+          'info',
+        )
+      }
+
+      if (lead?.phone) window.location.href = `tel:${lead.phone}`
+    },
   })
 
   const followUpMutation = useMutation({
@@ -286,7 +311,20 @@ export function LeadDetailPage() {
           */}
           <div className="flex flex-wrap gap-2" data-testid="lead-quick-actions">
             {lead.phone && (
-              <a href={`tel:${lead.phone}`} onClick={() => contactMutation.mutate('call')}>
+              <a
+                href={`tel:${lead.phone}`}
+                onClick={(event) => {
+                  /*
+                   * Held until the product has answered. Whether this call is
+                   * placed by telephony or dialled by the rep is decided on the
+                   * server, and following the link first would dial in both
+                   * cases. The link stays a real `tel:` anchor so a long-press
+                   * still copies the number.
+                   */
+                  event.preventDefault()
+                  contactMutation.mutate('call')
+                }}
+              >
                 <Button variant="outline" icon={<Phone className="size-4" />} data-testid="action-call">
                   {t('leads.call')}
                 </Button>

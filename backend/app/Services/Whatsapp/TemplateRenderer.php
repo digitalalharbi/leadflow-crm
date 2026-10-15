@@ -15,9 +15,20 @@ use App\Models\User;
  */
 class TemplateRenderer
 {
-    public function render(string $template, Lead $lead, ?User $agent = null, ?string $company = null): string
+    /**
+     * What each placeholder resolves to for this lead, or null where nothing
+     * honest can be said.
+     *
+     * Exposed because a Meta template is not rendered by us at all — Meta
+     * substitutes the variables itself, and refuses any that are empty. The
+     * caller needs the raw values to decide whether the template can be sent
+     * rather than a sentence with the gaps already closed up.
+     *
+     * @return array<string,?string>
+     */
+    public function values(Lead $lead, ?User $agent = null, ?string $company = null): array
     {
-        $values = [
+        return [
             // A lead that arrived as a bare phone number has no first name, and
             // greeting someone by their own phone number is worse than not
             // greeting them — so an unusable name is dropped like any other
@@ -27,6 +38,11 @@ class TemplateRenderer
             'company' => $company ?: $lead->tenant?->branding?->company_name ?: $lead->tenant?->name,
             'project' => $lead->project?->name,
         ];
+    }
+
+    public function render(string $template, Lead $lead, ?User $agent = null, ?string $company = null): string
+    {
+        $values = $this->values($lead, $agent, $company);
 
         $rendered = $template;
 

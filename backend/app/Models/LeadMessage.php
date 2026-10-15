@@ -20,11 +20,11 @@ class LeadMessage extends Model
         'lead_id', 'user_id', 'direction', 'channel', 'provider',
         'provider_message_id', 'message_type', 'template_name', 'body',
         'status', 'attempts', 'sent_at', 'delivered_at', 'read_at', 'failed_at',
-        'failure_code', 'failure_reason', 'provider_payload',
+        'failure_code', 'failure_reason', 'provider_payload', 'send_spec',
     ];
 
     /** The raw provider envelope repeats the body and carries routing metadata. */
-    protected $hidden = ['provider_payload'];
+    protected $hidden = ['provider_payload', 'send_spec'];
 
     protected function casts(): array
     {
@@ -37,6 +37,7 @@ class LeadMessage extends Model
             'read_at' => 'datetime',
             'failed_at' => 'datetime',
             'provider_payload' => 'array',
+            'send_spec' => 'array',
         ];
     }
 

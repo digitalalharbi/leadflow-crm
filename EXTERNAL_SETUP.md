@@ -329,6 +329,34 @@ One URL serves every client, because Meta allows one callback per app. The
 tenant is decided by the phone number id inside each delivery and the signature
 is verified against that tenant's own app secret.
 
+### Templates, and the 24-hour window
+
+WhatsApp lets a business message a customer freely for 24 hours after the
+customer last wrote, and after that — or to start a conversation at all — only
+with a **template Meta approved in advance**. This matters for automation: a rule
+that messages a brand-new lead is, by definition, outside the window.
+
+1. Create and submit the template in Meta Business → WhatsApp Manager → Message
+   templates. Approval is Meta's, usually minutes to a day.
+2. In Integrations → Saved messages, open the message and enter the template's
+   exact name, its language and the lead fields that fill `{{1}}`, `{{2}}`, … in
+   order.
+
+A saved message with no template can still *answer* a lead; it is refused, with
+the reason, when it would have to start a conversation. Nothing is sent that
+Meta would reject.
+
+Files go as attachments, uploaded to Meta and sent by media id, with the tracked
+link in the caption — never as a public link Meta's servers would fetch, which
+would be counted as the customer opening it.
+
+### What "verified" means here
+
+The Integrations screen says **External verification required** until a real
+delivery receipt or inbound message has come through a workspace that holds live
+credentials. Entering a token does not change that; neither does anything the
+demo provider records. It changes when Meta says a message reached a phone.
+
 **Until a workspace has these**, it runs on the mock provider: messages are
 recorded, appear in the conversation, and carry real statuses, but nothing
 reaches a customer and the integration says *configuration required*. The mock
@@ -351,6 +379,47 @@ leads through Zapier, Make or a landing page anyway.
 | Google Sheets | `GOOGLE_SHEETS_CLIENT_ID`, `GOOGLE_SHEETS_CLIENT_SECRET` | Google Cloud Console → enable Sheets API |
 | LinkedIn | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | linkedin.com/developers → Lead Sync API access |
 | Snapchat | `SNAPCHAT_CLIENT_ID`, `SNAPCHAT_CLIENT_SECRET` | business.snapchat.com → Marketing API |
+
+### Google Sheets — the consent flow
+
+`GOOGLE_SHEETS_CLIENT_ID` and `GOOGLE_SHEETS_CLIENT_SECRET` belong to the
+**platform**; each client then connects its own Google account with one button in
+Integrations → Google Sheets. In the Google Cloud Console:
+
+1. Create an OAuth client of type *Web application*.
+2. Add this as an **authorised redirect URI**, exactly:
+
+   ```
+   https://<api-domain>/oauth/google/callback
+   ```
+3. Enable the *Google Sheets API* and the *Google Drive API*.
+4. Set `FRONTEND_URL` so the browser is returned to the app after consent.
+
+Two read-only scopes are requested — `spreadsheets.readonly` to read rows and
+`drive.metadata.readonly` to list file names for the picker. Neither can write
+or read a file's contents beyond cells.
+
+**Provider approval, and it is Google's, not ours.** Google classes both scopes
+as sensitive or restricted, so an OAuth app that more than a hundred accounts
+will use must pass Google's app verification before the consent screen stops
+showing "unverified app". Until then it works for up to 100 test users added in
+the console. If restricted-scope assessment is not wanted, the picker can be
+rebuilt on Google Picker with the non-sensitive `drive.file` scope — a change to
+how a sheet is chosen, not to anything downstream of it.
+
+### Telephony
+
+Entered by each client, in Integrations → Telephony, like WhatsApp: their own
+Twilio Account SID, Auth Token and the number calls come from. The screen shows
+the call-status URL to give Twilio and a **Test connection** button that asks
+Twilio to describe the account without placing a call.
+
+- Enable **Saudi Arabia (+966)** under Twilio → Voice → Geo permissions, or
+  every call is refused with code 21215 and falls back to the rep dialling.
+- Each rep needs a mobile number on their profile: the bridge rings the rep
+  first and connects the lead when they answer.
+
+Without it, the rep dials — which is reported as exactly that, not as a failure.
 
 Meta also needs its webhook pointed at:
 
@@ -389,11 +458,16 @@ The `GET` on that path answers Meta's subscription handshake using `META_VERIFY_
 
 ## Summary
 
-| Blocking the product? | Item |
-| --- | --- |
-| No | Everything on this page |
-| — | The app, its 182 tests and its pipeline are complete and run today |
+| Needs | Item | Whose |
+| --- | --- | --- |
+| A server | VPS, a `deploy` user with an SSH key | you |
+| A domain | DNS for the app and API, TLS | you |
+| Google Sheets | an OAuth client; app verification if >100 accounts | you → Google |
+| WhatsApp | per client: number, token, app secret; approved templates | each client → Meta |
+| Telephony | per client: Twilio account and number | each client → Twilio |
+| Ad platforms | per platform API access | you → each platform |
 
-The only genuinely external dependencies are a server, a domain and ad-platform
-API access. Each is isolated behind configuration, so filling one in never
-requires a code change.
+Everything else — the product, its tests and its pipeline — is complete and runs
+today. Each external item is isolated behind configuration, so filling one in
+never requires a code change, and until it is filled in the Integrations screen
+says **External verification required** and names what it is waiting for.

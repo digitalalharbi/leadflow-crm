@@ -32,6 +32,20 @@ interface HealthRow {
   events: number
   flow: 'webhook' | 'pull' | 'manual'
   verification: 'implemented' | 'externally_verified' | 'manual_only'
+  /**
+   * Why this is not verified yet, or null once it is.
+   *
+   * "Unproven" is true and tells nobody what to do. This says whose move it is:
+   * ours (the platform has no OAuth client), theirs (no credentials), or
+   * nobody's (connected, waiting for the first real event).
+   */
+  blocker?:
+    | 'credentials_missing'
+    | 'platform_not_configured'
+    | 'not_connected'
+    | 'awaiting_first_event'
+    | 'no_provider_selected'
+    | null
 }
 
 export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) => void }) {
@@ -141,6 +155,12 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             <Badge tone={TONE[row.verification]} className="mt-1.5">
               {t(`health.short.${row.verification}`)}
             </Badge>
+
+            {row.verification !== 'externally_verified' && row.blocker && (
+              <p className="t-caption mt-1" data-testid={`blocker-${row.key}`}>
+                {t(`health.blocker.${row.blocker}`)}
+              </p>
+            )}
 
             <dl className="mt-1.5 space-y-0.5">
               <Line label={t('health.lastEvent')} value={row.last_event_at} />

@@ -110,15 +110,15 @@ class OutcomeRecorder
     /**
      * @return array{lead: Lead, stage_changed: bool, follow_up: ?FollowUp, summary: string}
      */
-    public function record(Lead $lead, string $outcome, User $actor, ?string $note = null): array
+    public function record(Lead $lead, string $outcome, User $actor, ?string $note = null, string $via = 'work_queue'): array
     {
         $spec = self::OUTCOMES[$outcome];
         $from = $lead->status;
 
-        return DB::transaction(function () use ($lead, $spec, $outcome, $actor, $note, $from) {
+        return DB::transaction(function () use ($lead, $spec, $outcome, $actor, $note, $from, $via) {
             $this->activities->log($lead, $spec['activity'], $actor,
                 $note ?: $spec['label'],
-                ['outcome' => $outcome, 'via' => 'work_queue']);
+                ['outcome' => $outcome, 'via' => $via]);
 
             /*
              * Recording an outcome is the act of having worked the lead.
@@ -142,7 +142,7 @@ class OutcomeRecorder
             $lead->last_contact_at = now();
 
             $stageChanged = $this->advance($lead, $spec['stage']);
-            $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label']);
+            $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label'], $via);
 
             $lead->refresh();
 
@@ -197,7 +197,7 @@ class OutcomeRecorder
         return true;
     }
 
-    private function scheduleNextStep(Lead $lead, ?int $hours, User $actor, string $label): ?FollowUp
+    private function scheduleNextStep(Lead $lead, ?int $hours, User $actor, string $label, string $via = 'work_queue'): ?FollowUp
     {
         if ($hours === null) {
             return null;
@@ -243,7 +243,7 @@ class OutcomeRecorder
          * most common reminder nor the reason for it.
          */
         $this->activities->log($lead, ActivityType::FollowUpCreated, $actor, $label, [
-            'via' => 'work_queue',
+            'via' => $via,
             'due_at' => $followUp->due_at->toIso8601String(),
         ]);
 

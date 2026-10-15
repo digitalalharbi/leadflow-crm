@@ -6,6 +6,7 @@ use App\Enums\MessageStatus;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Services\Whatsapp\SendFailure;
+use App\Services\Whatsapp\SendSpec;
 use App\Services\Whatsapp\WhatsappManager;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -91,7 +92,24 @@ class RetryWhatsappMessage implements ShouldQueue
             }
 
             $to = $lead->phone_normalized ?: (string) $lead->phone;
-            $result = $manager->providerFor($integration)->sendText($integration, $to, (string) $message->body);
+
+            /*
+             * The stored recipe, not the body.
+             *
+             * This resent `body` as text for as long as text was the only kind
+             * of message. A template retried that way is refused outside the
+             * window and, inside it, goes out in different words to the ones
+             * Meta approved; a brochure retried that way delivers its caption
+             * and no file. Anything that predates the column has no recipe and
+             * is text, which is what it always was.
+             */
+            $result = SendSpec::run(
+                $manager->providerFor($integration),
+                $integration,
+                $to,
+                $message->send_spec,
+                (string) $message->body,
+            );
 
             $message->forceFill(['attempts' => $message->attempts + 1]);
 

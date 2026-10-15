@@ -39,11 +39,18 @@ class MessageTemplate extends Model
         ],
     ];
 
-    protected $fillable = ['name', 'body', 'channel', 'is_active', 'sort_order'];
+    protected $fillable = [
+        'name', 'body', 'channel', 'is_active', 'sort_order',
+        'meta_template_name', 'meta_language', 'meta_parameters',
+    ];
 
     protected function casts(): array
     {
-        return ['channel' => MessageChannel::class, 'is_active' => 'boolean'];
+        return [
+            'channel' => MessageChannel::class,
+            'is_active' => 'boolean',
+            'meta_parameters' => 'array',
+        ];
     }
 
     public function scopeActive(Builder $query): Builder

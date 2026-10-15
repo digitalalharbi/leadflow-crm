@@ -72,16 +72,22 @@ class LeadMessageController extends Controller
         }
 
         // A rep may edit a template before sending; what they typed wins.
-        $body = filled($data['body'] ?? null)
-            ? $data['body']
-            : $this->renderer->render($template->body, $lead, $request->user());
+        $override = filled($data['body'] ?? null) ? $data['body'] : null;
 
-        if (trim($body) === '') {
+        if ($override === null && $template === null) {
             return ApiResponse::error('The message is empty.', null, 422);
         }
 
         try {
-            $message = $this->sender->send($lead, $body, $request->user(), $template?->name);
+            /*
+             * A saved message the rep did not edit goes the way that will work:
+             * as text inside the customer's window, as the approved template
+             * outside it. Free text the rep typed is free text, and is refused
+             * with the reason when the window is shut.
+             */
+            $message = ($template !== null && $override === null)
+                ? $this->sender->sendSaved($lead, $template, $request->user())
+                : $this->sender->send($lead, (string) $override, $request->user(), $template?->name);
         } catch (RuntimeException $e) {
             return ApiResponse::error($e->getMessage(), null, 422);
         }

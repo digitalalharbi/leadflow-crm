@@ -49,6 +49,12 @@ further provider adapters, cohort and forecast analytics.
 | Files automation | The whole feature was unreachable. Six endpoints, a chooser that reads a lead's own answers, a per-lead link whose opens feed the engagement score, twenty-five passing backend tests — and no screen called any of it, so no workspace could upload a file for the chooser to choose. | `components/projects/ProjectFiles`, `components/leads/LeadFiles`, `features/files.ts` |
 | A rule can contact the customer | `WhatsappSender` was reachable from one controller and `FileForTheLead` from one more, both of them a person pressing a button. The automation engine had eight actions and none of them could send anything, so "WhatsApp qualification sequences" and "files automation" existed as machinery and as nothing else. | `send_whatsapp` and `share_file` in `Domain/Automation/ActionExecutor` |
 
+| Google Sheets could not be connected | `GoogleTokens` refreshed a token and nothing could ever *obtain* one — no authorize step, no callback. The only route to "connected" was pasting a refresh token into a field. | `Domain/Sheets/GoogleOAuth`, `GoogleOAuthController`, `/oauth/google/callback` |
+| WhatsApp could only send plain text | Meta refuses free text outside a 24-hour window with code 131047, so every first message to a new lead — the case automation exists for — would have failed in production while passing every test against the mock. No templates, no attachments, and a retry degraded a template into text. | `WhatsappSender::sendSaved/sendDocument`, `SendSpec`, `WhatsappCloudProvider` |
+| "Externally verified" could be faked by the mock | WhatsApp's evidence was any inbound event or any delivered message — which the mock and the E2E fixtures both write. | `IntegrationHealthReport::whatsapp` |
+| Calls had a provider interface and no provider | The abstraction's own claim ("a provider can be connected later") had never been exercised. | `TwilioCallProvider`, `TwilioStatusController`, `CallSettingsController` |
+| A project was two tabs | An overview of three fields and a repository view. | `ProjectDetail` — nine tabs, `ProjectActivityController` |
+
 The shape is the same one row 43 of `NEXT_SESSION.md` describes: a capability
 built, tested, and called by nothing. It is worth checking for deliberately,
 because every test passes the whole time.

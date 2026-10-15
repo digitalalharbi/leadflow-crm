@@ -37,6 +37,41 @@ class MockWhatsappProvider implements WhatsappProviderInterface
         );
     }
 
+    public function sendTemplate(
+        Integration $integration,
+        string $toPhone,
+        string $templateName,
+        string $language,
+        array $parameters = [],
+    ): SentMessage {
+        if (str_contains($toPhone, '000000')) {
+            return SentMessage::failed('131026', 'Message undeliverable: the recipient is not on WhatsApp.');
+        }
+
+        return SentMessage::accepted(
+            'wamid.mock.'.Str::lower(Str::random(24)),
+            ['mock' => true, 'to' => $toPhone, 'template' => $templateName, 'language' => $language],
+        );
+    }
+
+    public function sendDocument(
+        Integration $integration,
+        string $toPhone,
+        string $contents,
+        string $mime,
+        string $filename,
+        ?string $caption = null,
+    ): SentMessage {
+        if (str_contains($toPhone, '000000')) {
+            return SentMessage::failed('131026', 'Message undeliverable: the recipient is not on WhatsApp.');
+        }
+
+        return SentMessage::accepted(
+            'wamid.mock.'.Str::lower(Str::random(24)),
+            ['mock' => true, 'to' => $toPhone, 'document' => $filename, 'bytes' => strlen($contents)],
+        );
+    }
+
     /**
      * The mock verifies through the same app_secret path as the real provider,
      * so a signature test exercises the real comparison.

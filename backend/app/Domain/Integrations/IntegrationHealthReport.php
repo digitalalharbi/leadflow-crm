@@ -82,6 +82,11 @@ class IntegrationHealthReport
                 // before asking why nothing has.
                 'flow' => $provider === IntegrationProvider::GoogleAds ? 'pull' : 'webhook',
                 'verification' => $lastEvent ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
+                'blocker' => match (true) {
+                    $lastEvent !== null => null,
+                    $integration === null || $integration->configuredCredentialKeys() === [] => 'credentials_missing',
+                    default => 'awaiting_first_event',
+                },
             ];
         }
 
@@ -109,6 +114,18 @@ class IntegrationHealthReport
             'events' => (int) SheetSyncRun::sum('imported'),
             'flow' => 'pull',
             'verification' => $lastRun ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
+            /*
+             * Three reasons with one symptom, kept apart because they are three
+             * different people's jobs: the platform has no OAuth client (ours),
+             * the workspace has not completed the grant (theirs), or it has and
+             * nothing has synced yet (nobody's — wait).
+             */
+            'blocker' => match (true) {
+                $lastRun !== null => null,
+                blank(config('integrations.google_sheets.client_id')) => 'platform_not_configured',
+                blank($connection?->credentials['refresh_token'] ?? null) => 'not_connected',
+                default => 'awaiting_first_event',
+            },
         ];
     }
 
@@ -122,12 +139,28 @@ class IntegrationHealthReport
     {
         $integration = Integration::where('provider', IntegrationProvider::Whatsapp->value)->first();
 
-        $inbound = WhatsappEvent::latest('id')->first();
+        $live = filled($integration?->credentials['access_token'] ?? null)
+            && filled($integration?->config['phone_number_id'] ?? null);
 
-        $delivered = LeadMessage::where('channel', 'whatsapp')
-            ->whereIn('status', ['delivered', 'read'])
-            ->latest('id')
-            ->first();
+        /*
+         * Evidence counts only from a workspace that can actually reach Meta.
+         *
+         * The mock provider mints delivery receipts of its own, and the E2E
+         * fixtures post signed webhooks to a workspace that has an app secret
+         * and no access token — both of which wrote rows this report used to
+         * read as proof. A workspace with no live credentials has never spoken
+         * to Meta, whatever its tables say, so the question is settled before
+         * the tables are asked.
+         */
+        $inbound = $live ? WhatsappEvent::latest('id')->first() : null;
+
+        $delivered = $live
+            ? LeadMessage::where('channel', 'whatsapp')
+                ->where('provider', 'whatsapp_cloud')
+                ->whereIn('status', ['delivered', 'read'])
+                ->latest('id')
+                ->first()
+            : null;
 
         $evidence = $inbound ?? $delivered;
 
@@ -142,6 +175,7 @@ class IntegrationHealthReport
             'events' => (int) LeadMessage::where('channel', 'whatsapp')->count(),
             'flow' => 'webhook',
             'verification' => $evidence ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
+            'blocker' => $evidence ? null : ($live ? 'awaiting_first_event' : 'credentials_missing'),
         ];
     }
 
@@ -155,22 +189,45 @@ class IntegrationHealthReport
      */
     private function calls(): array
     {
-        $provider = Call::whereNot('provider', 'manual')->latest('id')->first();
+        $configured = Integration::where('provider', IntegrationProvider::TwilioVoice->value)->first();
+
+        /*
+         * Evidence is a call the provider itself reported on: it has an
+         * external id, and it reached a state only a provider could put it in.
+         * A row with provider `twilio` that never left `initiated` proves the
+         * request was sent and nothing more.
+         */
+        $provider = Call::whereNot('provider', 'manual')
+            ->whereNotNull('external_id')
+            ->whereIn('status', [Call::ANSWERED, Call::COMPLETED, Call::NO_ANSWER])
+            ->latest('id')
+            ->first();
 
         return [
             'key' => 'calls',
             'kind' => 'telephony',
-            'connected' => $provider !== null,
-            'configured' => $provider !== null,
+            'connected' => $configured?->status === Integration::CONNECTED,
+            'configured' => filled($configured?->credentials['account_sid'] ?? null),
             'last_event_at' => $provider?->started_at?->toIso8601String(),
             'last_sync_at' => null,
             'last_error' => null,
             'events' => (int) Call::count(),
-            'flow' => 'manual',
+            'flow' => $configured?->status === Integration::CONNECTED ? 'webhook' : 'manual',
             // Without a provider this is not "implemented but unproven" — it is
             // the product telling you the rep dials, which is a different state
             // and deserves its own word.
-            'verification' => $provider ? self::EXTERNALLY_VERIFIED : 'manual_only',
+            // `manual_only` is a fact about the product, not a stage of
+            // progress: with no telephony account the rep dials, and that is
+            // not "unverified" — it is a different arrangement.
+            'verification' => $provider
+                ? self::EXTERNALLY_VERIFIED
+                : (filled($configured?->credentials['account_sid'] ?? null) ? self::IMPLEMENTED : 'manual_only'),
+            'blocker' => match (true) {
+                $provider !== null => null,
+                blank($configured?->credentials['account_sid'] ?? null) => 'no_provider_selected',
+                $configured->status !== Integration::CONNECTED => 'credentials_missing',
+                default => 'awaiting_first_event',
+            },
         ];
     }
 
@@ -195,6 +252,11 @@ class IntegrationHealthReport
             'events' => (int) RepositoryWebhookDelivery::where('signature_valid', true)->count(),
             'flow' => 'webhook',
             'verification' => $delivery ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
+            'blocker' => match (true) {
+                $delivery !== null => null,
+                blank($connection?->credentials['access_token'] ?? null) => 'credentials_missing',
+                default => 'awaiting_first_event',
+            },
         ];
     }
 }

@@ -16,7 +16,6 @@ use App\Notifications\AutomationNotification;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Services\Leads\LeadScoringService;
-use App\Services\Whatsapp\TemplateRenderer;
 use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Support\Carbon;
 use RuntimeException;
@@ -44,7 +43,6 @@ class ActionExecutor
         private LeadScoringService $scoring,
         private ActivityLogger $activities,
         private WhatsappSender $whatsapp,
-        private TemplateRenderer $renderer,
         private FileForTheLead $chooser,
         private ShareFile $sharer,
     ) {}
@@ -364,11 +362,15 @@ class ActionExecutor
          * No actor. A rule is not a person, and attributing the message to the
          * lead's owner would put their name on something they did not write —
          * on the screen and in the audit trail both.
+         *
+         * `sendSaved` rather than `send`: a rule fires on a lead that has very
+         * often never written to us, which is exactly the case where free text
+         * is refused and only the approved template will do. Choosing between
+         * the two is the sender's job and not a rule's, because the answer
+         * depends on the clock and a rule is written once.
          */
-        $body = $this->renderer->render($template->body, $lead, null);
-
         try {
-            $this->whatsapp->send($lead, $body, null, $template->name);
+            $this->whatsapp->sendSaved($lead, $template);
         } catch (RuntimeException $e) {
             /*
              * Reported, not thrown. The reasons a send is refused are ordinary
@@ -413,8 +415,17 @@ class ActionExecutor
             return ['ok' => true, 'description' => "جُهِّز رابط '{$file->name}' للعميل."];
         }
 
+        /*
+         * As an attachment, with the tracked link in the caption.
+         *
+         * The file itself goes by upload, not by link, on purpose: a link makes
+         * Meta's servers fetch it, which would register as the customer opening
+         * the brochure. The link rides in the caption so the one signal that
+         * matters — they tapped it — still arrives, and arrives only when a
+         * person did.
+         */
         try {
-            $this->whatsapp->send($lead, trim($file->name."\n".$share->url()), null);
+            $this->whatsapp->sendDocument($lead, $file, $share->url());
         } catch (RuntimeException $e) {
             // The share stands. It is on the lead's screen for a rep to send by
             // hand, which is strictly better than having neither.

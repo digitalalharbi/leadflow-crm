@@ -42,6 +42,23 @@ fi
 SIZE="$(du -h "$TARGET" | cut -f1)"
 echo "==> Backup complete (${SIZE})"
 
+# A copy on the same machine survives a bad migration and does not survive the
+# machine. BACKUP_UPLOAD_COMMAND is where off-server storage plugs in without a
+# change here — it is run with the file path as its only argument, e.g.
+#
+#   BACKUP_UPLOAD_COMMAND='rclone copyto "$1" r2:leadflow-backups/$(basename "$1")'
+#
+# The local copy is kept either way, and a failed upload fails the run: a
+# scheduled job that exits 0 having copied nothing is the failure that is found
+# on the day the server is lost.
+if [ -n "${BACKUP_UPLOAD_COMMAND:-}" ]; then
+  echo "==> Copying off the server"
+  if ! bash -c "${BACKUP_UPLOAD_COMMAND}" _ "$TARGET"; then
+    echo "Off-server copy FAILED. The local backup is intact at ${TARGET}." >&2
+    exit 2
+  fi
+fi
+
 echo "==> Pruning backups older than ${RETAIN_DAYS} days"
 find "$BACKUP_DIR" -name '*.sql.gz' -type f -mtime "+${RETAIN_DAYS}" -delete
 

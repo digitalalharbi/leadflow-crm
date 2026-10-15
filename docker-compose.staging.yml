@@ -29,7 +29,10 @@ x-backend-env: &backend-env
   # Read by the health endpoint to decide whether a caller may be told which
   # commit is serving. Empty means nobody may, which is the safe default.
   DEPLOY_SECRET: ${DEPLOY_SECRET:-}
-  LOG_CHANNEL: stderr
+  # `stack` so an alert channel can be added by setting LOG_STACK, with no
+  # code change: LOG_STACK=stderr,slack plus LOG_SLACK_WEBHOOK_URL.
+  LOG_CHANNEL: stack
+  LOG_STACK: ${LOG_STACK:-stderr}
   LOG_LEVEL: info
   # The host Nginx terminates TLS and proxies in over the docker bridge, so the
   # client IP arrives in X-Forwarded-For. Trusting '*' would let a caller forge
@@ -38,6 +41,16 @@ x-backend-env: &backend-env
   API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}
   LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-5}
   LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE:-20}
+
+x-logging: &default-logging
+  # Docker's default json-file driver has no size limit, and every container here
+  # logs to stderr. Left alone, a chatty queue worker fills the disk — and a full
+  # disk takes the database down with it, which is a worse outage than any the
+  # logs would have explained.
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
 
 services:
   postgres:
@@ -57,6 +70,7 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
@@ -71,6 +85,7 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
 
   backend:
     build:
@@ -80,6 +95,19 @@ services:
       args:
         # Set by the deploy script so the image can identify itself over HTTP.
         APP_RELEASE: ${DEPLOY_COMMIT:-}
+    # Every variable the operator put in the env file reaches the app.
+    #
+    # `--env-file` on the command line only feeds compose's own ${...}
+    # interpolation: a container sees what is named under `environment:` and
+    # nothing else. This file was therefore never read by the application —
+    # the Google, Meta, TikTok and WhatsApp settings, the mail transport, the
+    # Reverb keys and the super-admin password all came up empty, which is
+    # indistinguishable from "not configured yet" and was discovered by
+    # counting. `environment:` below still wins, so the values composed from
+    # the domain and the forced production flags cannot be overridden by a
+    # stray line in the file.
+    env_file:
+      - .env.staging
     environment: *backend-env
     volumes:
       - staging-storage:/var/www/html/storage
@@ -87,6 +115,7 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     restart: unless-stopped
+    logging: *default-logging
 
   api:
     image: nginx:1.27-alpine
@@ -98,6 +127,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
 
   frontend:
     build:
@@ -109,6 +139,7 @@ services:
     ports:
       - "127.0.0.1:8080:80"
     restart: unless-stopped
+    logging: *default-logging
 
   horizon:
     build:
@@ -118,6 +149,19 @@ services:
       args:
         APP_RELEASE: ${DEPLOY_COMMIT:-}
     command: php artisan horizon
+    # Every variable the operator put in the env file reaches the app.
+    #
+    # `--env-file` on the command line only feeds compose's own ${...}
+    # interpolation: a container sees what is named under `environment:` and
+    # nothing else. This file was therefore never read by the application —
+    # the Google, Meta, TikTok and WhatsApp settings, the mail transport, the
+    # Reverb keys and the super-admin password all came up empty, which is
+    # indistinguishable from "not configured yet" and was discovered by
+    # counting. `environment:` below still wins, so the values composed from
+    # the domain and the forced production flags cannot be overridden by a
+    # stray line in the file.
+    env_file:
+      - .env.staging
     environment: *backend-env
     volumes:
       - staging-storage:/var/www/html/storage
@@ -125,6 +169,7 @@ services:
       backend: { condition: service_started }
       redis: { condition: service_healthy }
     restart: unless-stopped
+    logging: *default-logging
 
   # Runs Laravel's scheduler (follow-up reminders, Horizon snapshots).
   scheduler:
@@ -135,12 +180,26 @@ services:
       args:
         APP_RELEASE: ${DEPLOY_COMMIT:-}
     command: php artisan schedule:work
+    # Every variable the operator put in the env file reaches the app.
+    #
+    # `--env-file` on the command line only feeds compose's own ${...}
+    # interpolation: a container sees what is named under `environment:` and
+    # nothing else. This file was therefore never read by the application —
+    # the Google, Meta, TikTok and WhatsApp settings, the mail transport, the
+    # Reverb keys and the super-admin password all came up empty, which is
+    # indistinguishable from "not configured yet" and was discovered by
+    # counting. `environment:` below still wins, so the values composed from
+    # the domain and the forced production flags cannot be overridden by a
+    # stray line in the file.
+    env_file:
+      - .env.staging
     environment: *backend-env
     volumes:
       - staging-storage:/var/www/html/storage
     depends_on:
       backend: { condition: service_started }
     restart: unless-stopped
+    logging: *default-logging
 
   # The websocket server behind the live feed.
   #
@@ -158,6 +217,19 @@ services:
       args:
         APP_RELEASE: ${DEPLOY_COMMIT:-}
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    # Every variable the operator put in the env file reaches the app.
+    #
+    # `--env-file` on the command line only feeds compose's own ${...}
+    # interpolation: a container sees what is named under `environment:` and
+    # nothing else. This file was therefore never read by the application —
+    # the Google, Meta, TikTok and WhatsApp settings, the mail transport, the
+    # Reverb keys and the super-admin password all came up empty, which is
+    # indistinguishable from "not configured yet" and was discovered by
+    # counting. `environment:` below still wins, so the values composed from
+    # the domain and the forced production flags cannot be overridden by a
+    # stray line in the file.
+    env_file:
+      - .env.staging
     environment: *backend-env
     volumes:
       - staging-storage:/var/www/html/storage
@@ -165,6 +237,7 @@ services:
       backend: { condition: service_started }
       redis: { condition: service_healthy }
     restart: unless-stopped
+    logging: *default-logging
     # Not published to the host: the reverse proxy in front of this stack
     # terminates TLS and forwards /app and /apps to it, the same way it does
     # for the API. Opening 8080 to the internet would serve the socket without

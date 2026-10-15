@@ -364,6 +364,10 @@ is refused outside local development, so a staging or production workspace
 without credentials cannot send at all — a message a rep believes was delivered
 but never left the building is worse than a visible failure.
 
+> The ordered, step-by-step version of everything below — provisioning, deploy,
+> credentials, the evidence that closes each row, and the live smoke test — is
+> [`docs/PILOT_RUNBOOK.md`](docs/PILOT_RUNBOOK.md).
+
 ## Commissioning — after the credentials, with no code change
 
 Entering a credential and proving it are two steps, and the **Production

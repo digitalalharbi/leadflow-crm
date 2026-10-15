@@ -9,7 +9,6 @@ use App\Models\Integration;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
 /**
  * Connecting a workspace's own telephony account.
@@ -77,49 +76,29 @@ class CallSettingsController extends Controller
     }
 
     /**
-     * Asks Twilio to describe the account.
-     *
-     * The cheapest call that exercises the SID and the token together without
-     * ringing anybody, and the only thing that earns the word "connected".
+     * Asks Twilio to describe the account — see `TwilioCallProvider::verifyAccount`.
      */
     public function test(Request $request)
     {
         $this->authorize('create', Integration::class);
 
-        $integration = $this->twilio->integration();
+        $result = $this->twilio->verifyAccount();
 
-        if (! $integration || ! $this->twilio->canPlace()) {
+        if ($result['detail'] === 'not_configured') {
             return ApiResponse::error('Telephony is not configured.', null, 422);
         }
 
-        $sid = (string) $integration->credentials['account_sid'];
-
-        try {
-            $response = Http::withBasicAuth($sid, (string) $integration->credentials['auth_token'])
-                ->timeout(15)
-                ->acceptJson()
-                ->get("https://api.twilio.com/2010-04-01/Accounts/{$sid}.json");
-        } catch (\Throwable) {
+        if ($result['detail'] === 'unreachable') {
             return ApiResponse::error('Twilio could not be reached.', null, 502);
         }
 
-        if ($response->failed() || $response->json('status') !== 'active') {
-            $reason = (string) ($response->json('message') ?: 'Twilio did not accept these credentials.');
-
-            $integration->forceFill(['status' => Integration::ERROR, 'last_error' => $reason])->save();
-
-            return ApiResponse::error($reason, null, 422);
+        if (! $result['ok']) {
+            return ApiResponse::error($result['detail'], null, 422);
         }
 
-        $integration->forceFill([
-            'status' => Integration::CONNECTED,
-            'last_error' => null,
-            'last_synced_at' => now(),
-        ])->save();
-
         return ApiResponse::success([
-            'calls' => $this->present($integration),
-            'account' => $response->json('friendly_name'),
+            'calls' => $this->present($this->twilio->integration()),
+            'account' => $result['account'],
         ]);
     }
 

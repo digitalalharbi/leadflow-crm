@@ -11,8 +11,12 @@ use Illuminate\Support\Facades\Log;
  *
  * Deliberately read-only — there is no method here that writes. A product that
  * can edit a customer's spreadsheet is one that will eventually edit it by
- * accident, and the scope requested from Google says so too:
- * `spreadsheets.readonly` and `drive.metadata.readonly`.
+ * accident.
+ *
+ * Nor is there a method that lists. The grant is `drive.file`, which covers the
+ * files a person picked in Google's picker and nothing else in their Drive, so
+ * there is nothing to enumerate: the file arrives by id, from the picker, and
+ * Google itself refuses any id the person did not choose.
  *
  * Every method answers with a reason rather than throwing. A sheet somebody
  * renamed, a tab somebody deleted and an expired grant are all ordinary states
@@ -21,45 +25,6 @@ use Illuminate\Support\Facades\Log;
 class SheetReader
 {
     public function __construct(private readonly GoogleTokens $tokens) {}
-
-    /**
-     * The spreadsheets this connection may see, newest first.
-     *
-     * Through Drive rather than Sheets, because Sheets has no "list" — and only
-     * the metadata scope, which can read a file's name and not a cell of it.
-     *
-     * @return array{items:array<int,array{id:string,name:string,modified_at:?string}>,error:?string}
-     */
-    public function spreadsheets(Integration $connection, ?string $search = null): array
-    {
-        $query = "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false";
-
-        if (filled($search)) {
-            // Escaped: a name with an apostrophe would otherwise end the clause
-            // and change the query into something else entirely.
-            $query .= " and name contains '".str_replace("'", "\\'", (string) $search)."'";
-        }
-
-        $result = $this->get($connection, 'https://www.googleapis.com/drive/v3/files', [
-            'q' => $query,
-            'orderBy' => 'modifiedTime desc',
-            'pageSize' => 50,
-            'fields' => 'files(id,name,modifiedTime)',
-        ]);
-
-        if ($result['error'] !== null) {
-            return ['items' => [], 'error' => $result['error']];
-        }
-
-        return [
-            'items' => array_map(fn (array $file) => [
-                'id' => $file['id'] ?? '',
-                'name' => $file['name'] ?? '',
-                'modified_at' => $file['modifiedTime'] ?? null,
-            ], $result['json']['files'] ?? []),
-            'error' => null,
-        ];
-    }
 
     /**
      * The tabs in one spreadsheet.

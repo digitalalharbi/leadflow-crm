@@ -23,6 +23,23 @@ return [
     'google_sheets' => [
         'client_id' => env('GOOGLE_SHEETS_CLIENT_ID'),
         'client_secret' => env('GOOGLE_SHEETS_CLIENT_SECRET'),
+
+        /*
+         * Google's file picker, which is how a spreadsheet becomes readable
+         * under the `drive.file` grant.
+         *
+         * Two values, both from the same Cloud project as the OAuth client:
+         *
+         *   - the API key is the picker's "developer key". It is not a secret —
+         *     it is sent to the browser — and should be restricted to the app's
+         *     origin and to the Picker API in the console.
+         *   - the project *number* (not the id) is the picker's app id. Without
+         *     it the picker still works and the file it returns is not added to
+         *     the grant, so the first read fails with a 404 that looks like a
+         *     typo in the sheet id.
+         */
+        'picker_api_key' => env('GOOGLE_PICKER_API_KEY'),
+        'picker_app_id' => env('GOOGLE_PROJECT_NUMBER'),
     ],
     'linkedin' => [
         'client_id' => env('LINKEDIN_CLIENT_ID'),

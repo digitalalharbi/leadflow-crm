@@ -55,6 +55,9 @@ further provider adapters, cohort and forecast analytics.
 | Calls had a provider interface and no provider | The abstraction's own claim ("a provider can be connected later") had never been exercised. | `TwilioCallProvider`, `TwilioStatusController`, `CallSettingsController` |
 | A project was two tabs | An overview of three fields and a repository view. | `ProjectDetail` — nine tabs, `ProjectActivityController` |
 
+| Google needed two sensitive scopes | `spreadsheets.readonly` plus `drive.metadata.readonly` could see every sheet's name and read any sheet in the account — more reach than the product uses, and the reason the app was headed for Google's scope review. | `drive.file` only, with Google's picker: `lib/googlePicker`, `GoogleOAuthController::picker` |
+| "Is it live" had no answer | Six things stand between a deployment and being live and each was visible somewhere different, or nowhere. | `Domain/Readiness`, `/readiness`, `leadflow:readiness`, `leadflow:heartbeat` |
+
 The shape is the same one row 43 of `NEXT_SESSION.md` describes: a capability
 built, tested, and called by nothing. It is worth checking for deliberately,
 because every test passes the whole time.

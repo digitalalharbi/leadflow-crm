@@ -6,12 +6,13 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen } from '@/lib/format'
 import {
-  Badge, Button, Card, CardBody, CardHeader, Input, Modal, Select, Skeleton,
+  Badge, Button, Card, CardBody, CardHeader, Modal, Select, Skeleton,
 } from '@/components/ui'
 import {
-  connectSheet, disconnectGoogle, disconnectSheet, fetchSheets, fetchSpreadsheets,
+  connectSheet, disconnectGoogle, disconnectSheet, fetchPickerCredentials, fetchSheets,
   fetchTabs, previewSheet, startGoogleAuthorization, syncSheet, type SheetSource,
 } from '@/features/sheets'
+import { pickSpreadsheet } from '@/lib/googlePicker'
 
 /**
  * Leads that arrive in a spreadsheet.
@@ -199,7 +200,13 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
         </ul>
       </CardBody>
 
-      {open && <ConnectSheet onClose={() => setOpen(false)} onConnected={() => { setOpen(false); refresh() }} />}
+      {open && (
+        <ConnectSheet
+          pickerConfigured={Boolean(connection?.picker_configured)}
+          onClose={() => setOpen(false)}
+          onConnected={() => { setOpen(false); refresh() }}
+        />
+      )}
     </Card>
   )
 
@@ -228,21 +235,57 @@ const HEALTH_TONE: Record<string, 'success' | 'danger' | 'warning' | 'neutral'> 
   paused: 'neutral',
 }
 
-/** Pick a spreadsheet, pick a tab, map the columns, look before you import. */
-function ConnectSheet({ onClose, onConnected }: { onClose: () => void; onConnected: () => void }) {
-  const { t } = useTranslation()
+/**
+ * Pick a spreadsheet, pick a tab, map the columns, look before you import.
+ *
+ * The first step is Google's own file picker rather than a list of the account's
+ * spreadsheets. The grant is `drive.file`: it covers files a person chose and
+ * nothing else in their Drive, so there is no list to show — and choosing a file
+ * in the picker is also the act that puts it inside the grant. Everything after
+ * that step is unchanged.
+ */
+function ConnectSheet({
+  pickerConfigured,
+  onClose,
+  onConnected,
+}: {
+  pickerConfigured: boolean
+  onClose: () => void
+  onConnected: () => void
+}) {
+  const { t, i18n } = useTranslation()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
-  const [search, setSearch] = useState('')
   const [spreadsheet, setSpreadsheet] = useState<{ id: string; name: string } | null>(null)
   const [tab, setTab] = useState('')
   const [mapping, setMapping] = useState<Record<string, string>>({})
 
-  const { data: files } = useQuery({
-    queryKey: ['sheets-files', search],
-    queryFn: () => fetchSpreadsheets(search),
-    retry: false,
+  const choose = useMutation({
+    mutationFn: async () => {
+      const credentials = await fetchPickerCredentials()
+
+      return pickSpreadsheet(credentials, i18n.language)
+    },
+    onSuccess: (file) => {
+      // Cancelled is not an error, and says nothing.
+      if (!file) return
+
+      setSpreadsheet(file)
+      setTab('')
+      setMapping({})
+    },
+    onError: (caught) => {
+      // The script itself being blocked — an extension, a network policy — is a
+      // different problem from the API refusing, and the person can fix it.
+      if (caught instanceof Error && caught.message.startsWith('picker_')) {
+        toast(t('sheets.pickerBlocked'), 'error')
+
+        return
+      }
+
+      toast(translateError(caught), 'error')
+    },
   })
 
   const { data: tabs } = useQuery({
@@ -293,27 +336,25 @@ function ConnectSheet({ onClose, onConnected }: { onClose: () => void; onConnect
       }
     >
       <div className="space-y-4">
-        <Input
-          label={t('sheets.spreadsheet')}
-          value={search}
-          data-testid="sheet-search"
-          onChange={(event) => setSearch(event.target.value)}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-[var(--color-line)] p-3">
+          <div className="min-w-0">
+            <p className="t-small font-medium">{t('sheets.spreadsheet')}</p>
+            <p className="t-caption truncate" data-testid="picked-spreadsheet">
+              {spreadsheet?.name ?? (pickerConfigured ? t('sheets.pickHint') : t('sheets.pickerMissing'))}
+            </p>
+          </div>
 
-        <ul className="max-h-40 space-y-1 overflow-y-auto" data-testid="spreadsheet-choices">
-          {files?.spreadsheets.map((file) => (
-            <li key={file.id}>
-              <button
-                type="button"
-                aria-pressed={spreadsheet?.id === file.id}
-                onClick={() => { setSpreadsheet({ id: file.id, name: file.name }); setTab(''); }}
-                className="t-small w-full text-start hover:underline"
-              >
-                {file.name}
-              </button>
-            </li>
-          ))}
-        </ul>
+          <Button
+            variant={spreadsheet ? 'outline' : 'primary'}
+            size="sm"
+            loading={choose.isPending}
+            disabled={!pickerConfigured}
+            onClick={() => choose.mutate()}
+            data-testid="choose-spreadsheet"
+          >
+            {spreadsheet ? t('sheets.chooseAnother') : t('sheets.choose')}
+          </Button>
+        </div>
 
         {spreadsheet && (
           <Select label={t('sheets.tab')} value={tab} data-testid="sheet-tab" onChange={(e) => setTab(e.target.value)}>

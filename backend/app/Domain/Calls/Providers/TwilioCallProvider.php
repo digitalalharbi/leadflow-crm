@@ -129,6 +129,52 @@ class TwilioCallProvider implements CallProviderInterface
         ]);
     }
 
+    /**
+     * Asks Twilio to describe the account.
+     *
+     * The cheapest call that exercises the SID and the token together without
+     * ringing anybody, and the only thing that earns the word "connected".
+     * Shared by the settings button and by commissioning, so the two cannot
+     * disagree about what working means.
+     *
+     * @return array{ok:bool, detail:string, account:?string}
+     */
+    public function verifyAccount(): array
+    {
+        $integration = $this->integration();
+
+        if (! $integration || ! $this->canPlace()) {
+            return ['ok' => false, 'detail' => 'not_configured', 'account' => null];
+        }
+
+        $sid = (string) $integration->credentials['account_sid'];
+
+        try {
+            $response = Http::withBasicAuth($sid, (string) $integration->credentials['auth_token'])
+                ->timeout(15)
+                ->acceptJson()
+                ->get(self::API."/Accounts/{$sid}.json");
+        } catch (\Throwable) {
+            return ['ok' => false, 'detail' => 'unreachable', 'account' => null];
+        }
+
+        if ($response->failed() || $response->json('status') !== 'active') {
+            $reason = (string) ($response->json('message') ?: 'Twilio did not accept these credentials.');
+
+            $integration->forceFill(['status' => Integration::ERROR, 'last_error' => $reason])->save();
+
+            return ['ok' => false, 'detail' => $reason, 'account' => null];
+        }
+
+        $integration->forceFill([
+            'status' => Integration::CONNECTED,
+            'last_error' => null,
+            'last_synced_at' => now(),
+        ])->save();
+
+        return ['ok' => true, 'detail' => 'active', 'account' => $response->json('friendly_name')];
+    }
+
     /** Where Twilio reports back. The integration's own uuid identifies the workspace. */
     public function statusUrl(Integration $integration): string
     {

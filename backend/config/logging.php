@@ -78,7 +78,11 @@ return [
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
             'username' => env('LOG_SLACK_USERNAME', env('APP_NAME', 'Laravel')),
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
-            'level' => env('LOG_LEVEL', 'critical'),
+            // Its own level. It read LOG_LEVEL, which production sets to `info` for
+            // the log stream — so turning the alert channel on would have posted
+            // every info line to a chat room, and the first thing anybody does
+            // with a channel like that is mute it.
+            'level' => env('LOG_ALERT_LEVEL', 'error'),
             'replace_placeholders' => true,
         ],
 

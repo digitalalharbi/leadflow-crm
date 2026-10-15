@@ -94,6 +94,31 @@ else
   skip "ufw not installed"
 fi
 
+say "Scheduled backups"
+# The backup script existed and ran before a deploy — which is a backup of the
+# state just before a change, and no backup at all of a Tuesday with no deploys.
+# Daily, off the hour so the two environments never dump at once, and into a log
+# that is rotated rather than left to grow.
+cat > /etc/cron.d/leadflow-backup <<CRON
+# Managed by scripts/provision-server.sh — edits are overwritten.
+17 2 * * * deploy cd $BASE/production && ./scripts/backup-db.sh production daily >> /var/log/leadflow-backup.log 2>&1
+47 2 * * * deploy cd $BASE/staging && ./scripts/backup-db.sh staging daily >> /var/log/leadflow-backup.log 2>&1
+CRON
+chmod 644 /etc/cron.d/leadflow-backup
+touch /var/log/leadflow-backup.log
+chown deploy:deploy /var/log/leadflow-backup.log
+cat > /etc/logrotate.d/leadflow-backup <<'LOGROTATE'
+/var/log/leadflow-backup.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    create 0644 deploy deploy
+}
+LOGROTATE
+ok "daily dumps at 02:17 (production) and 02:47 (staging)"
+
 # Reloaded last: a bad sshd_config should not lock anyone out mid-script.
 if sshd -t; then
   systemctl reload ssh

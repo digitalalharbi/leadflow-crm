@@ -17,10 +17,21 @@ use RuntimeException;
  * could reach a connected state was for somebody to paste a refresh token into
  * a credentials field by hand. That is not a flow anybody sells.
  *
- * Two scopes, both read-only, and the narrower of each pair. `spreadsheets.
- * readonly` reads cells; `drive.metadata.readonly` can list a file's name and
- * not a byte of its contents, which is all the picker needs. A product that
- * asks for `drive` to populate a dropdown is one a security review rejects.
+ * One scope, and it is `drive.file`: access to the files the person chose in
+ * Google's own picker, and to nothing else in their Drive.
+ *
+ * It replaced `spreadsheets.readonly` plus `drive.metadata.readonly`, which
+ * between them could see every spreadsheet's name and read any sheet in the
+ * account. That was more reach than the product needs — it reads the tab the
+ * workspace pointed it at — and it was also the reach that put the app into
+ * Google's sensitive/restricted scope review. `drive.file` is non-sensitive, so
+ * the consent screen says "this app can see files you open with it", which is
+ * exactly what is true.
+ *
+ * The Sheets API accepts `drive.file` for reading values of a file the grant
+ * covers, so nothing downstream changes: the same token, the same read calls.
+ * What changes is *how a file becomes covered*: by the person picking it, not by
+ * us listing their Drive.
  */
 class GoogleOAuth
 {
@@ -31,8 +42,7 @@ class GoogleOAuth
     private const REVOKE = 'https://oauth2.googleapis.com/revoke';
 
     public const SCOPES = [
-        'https://www.googleapis.com/auth/spreadsheets.readonly',
-        'https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/drive.file',
     ];
 
     /** Whether the platform can offer this at all. Ours to fix, not a tenant's. */
@@ -40,6 +50,19 @@ class GoogleOAuth
     {
         return filled(config('integrations.google_sheets.client_id'))
             && filled(config('integrations.google_sheets.client_secret'));
+    }
+
+    /**
+     * Whether the file picker can be offered.
+     *
+     * Separate from `configured()` because it fails separately, and for a
+     * different reason: an OAuth client with no picker key means somebody can
+     * connect an account and then has no way to choose a file.
+     */
+    public function pickerConfigured(): bool
+    {
+        return filled(config('integrations.google_sheets.picker_api_key'))
+            && filled(config('integrations.google_sheets.picker_app_id'));
     }
 
     public function redirectUri(): string

@@ -49,18 +49,14 @@ export interface SheetsPayload {
     last_error: string | null
     /** False means the platform has no OAuth client — ours to fix, not theirs. */
     oauth_configured: boolean
+    /** A file can be chosen — the picker's key and project number are set. */
+    picker_configured: boolean
   }
   mappable: string[]
 }
 
 export function fetchSheets() {
   return apiGet<SheetsPayload>('/integrations/sheets')
-}
-
-export function fetchSpreadsheets(search?: string) {
-  return apiGet<{ spreadsheets: Array<{ id: string; name: string; modified_at: string | null }> }>(
-    `/integrations/sheets/spreadsheets${search ? `?search=${encodeURIComponent(search)}` : ''}`,
-  )
 }
 
 export function fetchTabs(spreadsheetId: string) {
@@ -121,4 +117,17 @@ export function startGoogleAuthorization() {
 
 export function disconnectGoogle() {
   return apiPost('/integrations/google/disconnect')
+}
+
+/**
+ * What the browser needs to open Google's file picker.
+ *
+ * Fetched when the person asks to choose a file, not with the page: the access
+ * token in it is short-lived and there is no reason for it to exist in the
+ * browser for the many visits that never open the picker.
+ */
+export function fetchPickerCredentials() {
+  return apiPost<{ access_token: string; developer_key: string; app_id: string }>(
+    '/integrations/google/picker',
+  )
 }

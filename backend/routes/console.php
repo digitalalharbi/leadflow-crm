@@ -89,3 +89,12 @@ Schedule::command('horizon:snapshot')->everyFiveMinutes();
  * large delete on tables nothing is waiting on.
  */
 Schedule::command('leadflow:prune-payloads')->dailyAt('03:30')->withoutOverlapping();
+
+/*
+ * The pulse the production-readiness screen reads.
+ *
+ * Every minute, and cheap: a cache write and one queued no-op. Without it the
+ * application cannot tell "the scheduler is configured" from "the scheduler is
+ * running", and only the second is worth the word live.
+ */
+Schedule::command('leadflow:heartbeat')->everyMinute();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Sheets\GoogleOAuth;
 use App\Domain\Sheets\SheetReader;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
@@ -42,20 +43,6 @@ class SheetSourceController extends Controller
         ]);
     }
 
-    /** The spreadsheets this workspace's Google connection may see. */
-    public function spreadsheets(Request $request)
-    {
-        $this->authorize('viewAny', Integration::class);
-
-        $result = $this->reader->spreadsheets($this->requireConnection(), $request->string('search')->toString());
-
-        if ($result['error'] !== null) {
-            return ApiResponse::error($this->reasonFor($result['error']), null, 422);
-        }
-
-        return ApiResponse::success(['spreadsheets' => $result['items']]);
-    }
-
     /** The tabs in one spreadsheet, and its name. */
     public function tabs(Request $request)
     {
@@ -66,7 +53,7 @@ class SheetSourceController extends Controller
         $result = $this->reader->tabs($this->requireConnection(), $data['spreadsheet_id']);
 
         if ($result['error'] !== null) {
-            return ApiResponse::error($this->reasonFor($result['error']), null, 422);
+            return $this->failure($result['error']);
         }
 
         return ApiResponse::success(['tabs' => $result['items'], 'name' => $result['name']]);
@@ -96,13 +83,13 @@ class SheetSourceController extends Controller
         $headers = $this->reader->headers($connection, $data['spreadsheet_id'], $data['sheet_name'], $headerRow);
 
         if ($headers['error'] !== null) {
-            return ApiResponse::error($this->reasonFor($headers['error']), null, 422);
+            return $this->failure($headers['error']);
         }
 
         $rows = $this->reader->rows($connection, $data['spreadsheet_id'], $data['sheet_name'], $headerRow + 1, 10);
 
         if ($rows['error'] !== null) {
-            return ApiResponse::error($this->reasonFor($rows['error']), null, 422);
+            return $this->failure($rows['error']);
         }
 
         $columns = array_flip($headers['headers']);
@@ -265,12 +252,37 @@ class SheetSourceController extends Controller
             // fix rather than the customer's.
             'oauth_configured' => filled(config('integrations.google_sheets.client_id'))
                 && filled(config('integrations.google_sheets.client_secret')),
+            // Its own flag: an account can be connected and have no way to
+            // choose a file, and "connect" and "pick" fail for different
+            // reasons and are fixed by changing different settings.
+            'picker_configured' => app(GoogleOAuth::class)->pickerConfigured(),
         ];
     }
 
     private function reasonFor(string $error): string
     {
         return 'sheets.'.$error;
+    }
+
+    /**
+     * A sheet read that did not work, as something the screen can show.
+     *
+     * With `drive.file`, Google answers 403 or 404 for a spreadsheet the person
+     * did not pick in its picker — which is not an error to apologise for, it is
+     * the grant working as intended. Said as such, because "not found" sends
+     * somebody to check a link that is fine.
+     *
+     * Returned in `errors` as well as in the message: the interface shows the
+     * first validation entry and ignores the message on a 422, so a reason that
+     * lives only in the message is seen as "validation failed".
+     */
+    private function failure(string $error)
+    {
+        $key = in_array($error, ['forbidden', 'not_found'], true)
+            ? 'sheets.not_picked'
+            : $this->reasonFor($error);
+
+        return ApiResponse::error($key, ['sheet' => [$key]], 422);
     }
 
     private function present(SheetSource $source): array

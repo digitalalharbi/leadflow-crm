@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\QualificationController;
+use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SearchController;
@@ -277,6 +278,12 @@ Route::prefix('v1')->group(function () {
              * Starting and ending a Google grant. The middle of it happens on
              * Google's own screens, and the way back is a public web route.
              */
+            // Is this deployment live, and what is it waiting for — and the
+            // button that uses a credential once, against the real provider.
+            Route::get('/readiness', [ReadinessController::class, 'workspace']);
+            Route::post('/readiness/{key}/commission', [ReadinessController::class, 'commission'])
+                ->middleware('throttle:10,1');
+
             // The workspace's own telephony account.
             Route::get('/integrations/calls', [CallSettingsController::class, 'show']);
             Route::put('/integrations/calls', [CallSettingsController::class, 'update']);
@@ -284,11 +291,11 @@ Route::prefix('v1')->group(function () {
             Route::delete('/integrations/calls', [CallSettingsController::class, 'destroy']);
 
             Route::post('/integrations/google/authorize', [GoogleOAuthController::class, 'start']);
+            Route::post('/integrations/google/picker', [GoogleOAuthController::class, 'picker']);
             Route::post('/integrations/google/disconnect', [GoogleOAuthController::class, 'disconnect']);
 
             Route::get('/integrations/sheets', [SheetSourceController::class, 'index']);
             Route::post('/integrations/sheets', [SheetSourceController::class, 'store']);
-            Route::get('/integrations/sheets/spreadsheets', [SheetSourceController::class, 'spreadsheets']);
             Route::get('/integrations/sheets/tabs', [SheetSourceController::class, 'tabs']);
             Route::post('/integrations/sheets/preview', [SheetSourceController::class, 'preview']);
             Route::patch('/integrations/sheets/{uuid}', [SheetSourceController::class, 'update']);
@@ -343,6 +350,7 @@ Route::prefix('v1')->group(function () {
         | Platform console — SaaS owner only. Returns 404 to everyone else.
         */
         Route::prefix('super-admin')->middleware(EnsureSuperAdmin::class)->group(function () {
+            Route::get('/readiness', [ReadinessController::class, 'platform']);
             Route::get('/stats', [TenantController::class, 'stats']);
             Route::get('/tenants', [TenantController::class, 'index']);
             Route::post('/tenants', [TenantController::class, 'store']);

@@ -364,6 +364,40 @@ is refused outside local development, so a staging or production workspace
 without credentials cannot send at all — a message a rep believes was delivered
 but never left the building is worse than a visible failure.
 
+## Commissioning — after the credentials, with no code change
+
+Entering a credential and proving it are two steps, and the **Production
+readiness** screen (and `php artisan leadflow:readiness` on the server) separates
+them:
+
+| State | Means | Moved by |
+| --- | --- | --- |
+| External verification required | something outside the application is missing or unproven | you, or the provider |
+| Ready | everything the application needs has been supplied | credentials entered |
+| Live verified | a real connection or event has been observed | the other end, and only that |
+
+For Google, WhatsApp, Twilio and the ad platforms the screen has a **Run the
+check** button, which uses the credential once against the real provider and
+keeps the result:
+
+- **Google** — asks Google to accept the OAuth client (a deliberately invalid
+  code: `invalid_grant` means the client is right, `invalid_client` means the id
+  or secret is wrong), confirms the picker is configured, and for a connected
+  workspace renews the token and confirms the scope is `drive.file`.
+- **WhatsApp** — asks Meta to describe the number; the verified business name
+  that comes back is what to check against your own.
+- **Twilio** — asks Twilio to describe the account; no call is placed.
+- **Ad platforms** — pulls from each platform that has credentials, which is the
+  real thing: whatever leads are waiting are ingested, and that is also the first
+  real event. Webhook-only platforms call *us*, so they say so rather than pass.
+
+A passing check does **not** make a row live. That takes a delivery receipt, a
+measured call, a lead arriving, a sheet read, a scheduler pulse — something the
+other end did. VPS and domain are never "run": the server's own heartbeat and
+the request that opened the screen are the evidence.
+
+---
+
 ## 5. Ad-platform credentials
 
 **Until these exist:** each provider is fully built, tested with mocks, and
@@ -380,11 +414,12 @@ leads through Zapier, Make or a landing page anyway.
 | LinkedIn | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | linkedin.com/developers → Lead Sync API access |
 | Snapchat | `SNAPCHAT_CLIENT_ID`, `SNAPCHAT_CLIENT_SECRET` | business.snapchat.com → Marketing API |
 
-### Google Sheets — the consent flow
+### Google Sheets — the consent flow and the file picker
 
 `GOOGLE_SHEETS_CLIENT_ID` and `GOOGLE_SHEETS_CLIENT_SECRET` belong to the
 **platform**; each client then connects its own Google account with one button in
-Integrations → Google Sheets. In the Google Cloud Console:
+Integrations → Google Sheets, and chooses the spreadsheet in **Google's own
+picker**. In the Google Cloud Console:
 
 1. Create an OAuth client of type *Web application*.
 2. Add this as an **authorised redirect URI**, exactly:
@@ -392,20 +427,25 @@ Integrations → Google Sheets. In the Google Cloud Console:
    ```
    https://<api-domain>/oauth/google/callback
    ```
-3. Enable the *Google Sheets API* and the *Google Drive API*.
-4. Set `FRONTEND_URL` so the browser is returned to the app after consent.
+3. Enable the *Google Sheets API* and the *Google Picker API*.
+4. Create an **API key**, restrict it to your app's origin and to the Picker
+   API, and set it as `GOOGLE_PICKER_API_KEY`. It is sent to the browser — it is
+   not a secret, and the restriction is what makes that fine.
+5. Set `GOOGLE_PROJECT_NUMBER` to the project's **number** (not its id). Without
+   it the picker still opens and the file it returns is not added to the grant,
+   so the first read fails with a 404 that looks like a typo.
+6. Set `FRONTEND_URL` so the browser is returned to the app after consent.
 
-Two read-only scopes are requested — `spreadsheets.readonly` to read rows and
-`drive.metadata.readonly` to list file names for the picker. Neither can write
-or read a file's contents beyond cells.
+**One scope: `drive.file`.** It covers files a person chose in the picker and
+nothing else in their Drive, which is why the product never lists anybody's
+spreadsheets. It is a *non-sensitive* scope, so — unlike the two read-only scopes
+this replaced — it does not put the app through Google's sensitive/restricted
+scope review, and the consent screen says what is true: "see files you open with
+this app". If you later publish the OAuth app, the brand-verification step
+(name, logo, domain, privacy policy) still applies, and it is Google's.
 
-**Provider approval, and it is Google's, not ours.** Google classes both scopes
-as sensitive or restricted, so an OAuth app that more than a hundred accounts
-will use must pass Google's app verification before the consent screen stops
-showing "unverified app". Until then it works for up to 100 test users added in
-the console. If restricted-scope assessment is not wanted, the picker can be
-rebuilt on Google Picker with the non-sensitive `drive.file` scope — a change to
-how a sheet is chosen, not to anything downstream of it.
+If the page ever gets a Content-Security-Policy, the picker needs
+`script-src https://apis.google.com` and `frame-src https://docs.google.com`.
 
 ### Telephony
 
@@ -462,7 +502,7 @@ The `GET` on that path answers Meta's subscription handshake using `META_VERIFY_
 | --- | --- | --- |
 | A server | VPS, a `deploy` user with an SSH key | you |
 | A domain | DNS for the app and API, TLS | you |
-| Google Sheets | an OAuth client; app verification if >100 accounts | you → Google |
+| Google Sheets | an OAuth client, an API key and project number for the picker | you |
 | WhatsApp | per client: number, token, app secret; approved templates | each client → Meta |
 | Telephony | per client: Twilio account and number | each client → Twilio |
 | Ad platforms | per platform API access | you → each platform |

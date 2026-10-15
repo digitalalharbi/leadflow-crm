@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Sheets\GoogleOAuth;
+use App\Domain\Sheets\GoogleTokens;
 use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\Tenant;
@@ -121,6 +122,51 @@ class GoogleOAuthController extends Controller
         });
 
         return $this->back(null);
+    }
+
+    /**
+     * What the browser needs to open Google's file picker.
+     *
+     * The picker runs in the page, so it needs an access token there. The one
+     * handed over is the workspace's own, short-lived, and — because the grant
+     * is `drive.file` — good for the files that person picks and nothing else in
+     * their Drive. That is the property that makes sending a token to a browser
+     * acceptable at all; it would not be with the old scopes.
+     *
+     * Admin-only like the rest of connecting a source, and never logged.
+     */
+    public function picker(Request $request)
+    {
+        $this->authorize('create', Integration::class);
+
+        if (! $this->oauth->pickerConfigured()) {
+            return ApiResponse::error('Google file picker is not configured on this platform.', null, 503);
+        }
+
+        $connection = Integration::where('provider', 'google_sheets')->first();
+
+        if (! $connection || blank($connection->credentials['refresh_token'] ?? null)) {
+            return ApiResponse::error('Connect a Google account first.', ['connection' => ['sheets.not_connected']], 422);
+        }
+
+        $token = app(GoogleTokens::class)->accessToken($connection);
+
+        if (blank($token)) {
+            // The connection already holds the reason — revoked, unreachable —
+            // and a picker that opens with a dead token fails somewhere the
+            // person cannot see why.
+            return ApiResponse::error(
+                'The Google connection needs to be renewed.',
+                ['connection' => ['sheets.reauth_required']],
+                422,
+            );
+        }
+
+        return ApiResponse::success([
+            'access_token' => $token,
+            'developer_key' => config('integrations.google_sheets.picker_api_key'),
+            'app_id' => config('integrations.google_sheets.picker_app_id'),
+        ]);
     }
 
     /** Hands the grant back to Google and forgets our copy of it. */

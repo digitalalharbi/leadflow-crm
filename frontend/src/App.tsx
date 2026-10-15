@@ -32,6 +32,7 @@ const IntegrationsPage = lazy(() => import('@/pages/Integrations').then((m) => (
 const UsersPage = lazy(() => import('@/pages/Users').then((m) => ({ default: m.UsersPage })))
 const SettingsPage = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.SettingsPage })))
 const ProfilePage = lazy(() => import('@/pages/Profile').then((m) => ({ default: m.ProfilePage })))
+const ReadinessPage = lazy(() => import('@/pages/Readiness').then((m) => ({ default: m.ReadinessPage })))
 const PlatformPage = lazy(() => import('@/pages/Platform').then((m) => ({ default: m.PlatformPage })))
 
 function PageFallback() {
@@ -128,6 +129,7 @@ export function App() {
                   <Route path="/projects/:id" element={<ProjectDetailPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/integrations" element={<IntegrationsPage />} />
+                  <Route path="/readiness" element={<ReadinessPage />} />
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/settings/profile" element={<ProfilePage />} />

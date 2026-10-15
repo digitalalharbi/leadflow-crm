@@ -72,11 +72,17 @@ class ConnectingAGoogleAccountTest extends TestCase
         $this->assertSame('offline', $query['access_type']);
         $this->assertSame('consent', $query['prompt']);
 
-        // Read-only, and the narrower of each pair: metadata cannot read a cell.
+        // Exactly one scope, and the narrowest that works: the files a person
+        // picked in Google's picker and nothing else in their Drive. Asserted
+        // as an equality, not a containment, so a second scope added later
+        // — which would put the app back in Google's sensitive-scope review —
+        // fails here rather than in a review nobody scheduled.
         $this->assertSame(
-            'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
+            'https://www.googleapis.com/auth/drive.file',
             $query['scope'],
         );
+        $this->assertStringNotContainsString('spreadsheets', $query['scope']);
+        $this->assertStringNotContainsString('metadata', $query['scope']);
 
         $this->assertNotEmpty($query['state']);
     }
@@ -268,5 +274,113 @@ class ConnectingAGoogleAccountTest extends TestCase
         config(['app.url' => 'https://api.example.test']);
 
         $this->assertSame('https://api.example.test/oauth/google/callback', app(GoogleOAuth::class)->redirectUri());
+    }
+
+    // ------------------------------------------------------------ picker
+
+    private function connected(): Integration
+    {
+        return $this->asTenant($this->t['tenant'], fn () => Integration::create([
+            'provider' => 'google_sheets',
+            'name' => 'Google Sheets',
+            'status' => Integration::CONNECTED,
+            'credentials' => [
+                'access_token' => 'ya29.live',
+                'refresh_token' => '1//refresh',
+                'expires_at' => now()->addHour()->toIso8601String(),
+            ],
+            'is_active' => true,
+        ]));
+    }
+
+    public function test_the_picker_is_given_a_token_and_the_keys_it_needs(): void
+    {
+        config([
+            'integrations.google_sheets.picker_api_key' => 'AIza-picker-key',
+            'integrations.google_sheets.picker_app_id' => '123456789012',
+        ]);
+
+        $this->connected();
+
+        $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/integrations/google/picker')
+            ->assertOk()
+            ->assertJsonPath('data.access_token', 'ya29.live')
+            ->assertJsonPath('data.developer_key', 'AIza-picker-key')
+            // The project number, which is what makes the picked file part of the grant.
+            ->assertJsonPath('data.app_id', '123456789012');
+    }
+
+    public function test_the_picker_says_so_when_the_platform_has_no_picker_key(): void
+    {
+        config(['integrations.google_sheets.picker_api_key' => null]);
+
+        $this->connected();
+
+        $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/integrations/google/picker')
+            ->assertStatus(503);
+    }
+
+    public function test_there_is_no_picker_without_a_connected_account(): void
+    {
+        config([
+            'integrations.google_sheets.picker_api_key' => 'k',
+            'integrations.google_sheets.picker_app_id' => '1',
+        ]);
+
+        $this->actingAs($this->t['admin'])
+            ->postJson('/api/v1/integrations/google/picker')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.connection.0', 'sheets.not_connected');
+    }
+
+    public function test_a_rep_is_not_handed_a_token(): void
+    {
+        config([
+            'integrations.google_sheets.picker_api_key' => 'k',
+            'integrations.google_sheets.picker_app_id' => '1',
+        ]);
+
+        $this->connected();
+
+        $rep = User::factory()->create([
+            'tenant_id' => $this->t['tenant']->id,
+            'role' => Role::Sales,
+        ]);
+
+        $this->actingAs($rep)->postJson('/api/v1/integrations/google/picker')->assertForbidden();
+    }
+
+    /**
+     * A file the person did not pick is Google refusing, not a typo.
+     *
+     * Under `drive.file` an id outside the grant answers 404 or 403. The screen
+     * has to say "choose it in the picker", because "not found" sends somebody
+     * to check a link that is perfectly fine.
+     */
+    public function test_a_spreadsheet_that_was_not_picked_is_reported_as_such(): void
+    {
+        $this->connected();
+
+        Http::fake(['sheets.googleapis.com/*' => Http::response(['error' => ['code' => 404]], 404)]);
+
+        $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/integrations/sheets/tabs?spreadsheet_id=not-picked')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.sheet.0', 'sheets.not_picked');
+    }
+
+    public function test_the_connection_state_says_whether_a_file_can_be_chosen(): void
+    {
+        config([
+            'integrations.google_sheets.picker_api_key' => null,
+            'integrations.google_sheets.picker_app_id' => null,
+        ]);
+
+        $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/integrations/sheets')
+            ->assertOk()
+            ->assertJsonPath('data.connection.picker_configured', false);
     }
 }

@@ -65,7 +65,8 @@ class SettingsController extends Controller
 
         $data = $request->validate([
             'company_name' => ['sometimes', 'string', 'max:255'],
-            'system_name' => ['sometimes', 'string', 'max:255'],
+            // Null or blank is "use the platform's name" — the way back from a rename.
+            'system_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
             'login_logo_url' => ['nullable', 'url', 'max:2048'],
             'login_background_url' => ['nullable', 'url', 'max:2048'],

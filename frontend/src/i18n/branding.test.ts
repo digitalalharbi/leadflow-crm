@@ -33,6 +33,11 @@ const FORBIDDEN: Array<[label: string, pattern: RegExp]> = [
   // The reference the GitHub work was modelled on. A good idea to borrow, not
   // a name to inherit.
   ['CampaignsHub', /campaigns?[\s_-]*hub/i],
+  // The product is written in Arabic everywhere, English included. A Latin
+  // spelling is a second name — and there had already been two of them, "Muhtam"
+  // in the strings and "Mahtam" in the wordmark, which agreed with each other
+  // about nothing.
+  ['a Latin spelling of مهتم', /\b(muhtam|mahtam|mohtam|muhtam)\b/i],
 ]
 
 /** Every string a person can read, with the path that produced it. */

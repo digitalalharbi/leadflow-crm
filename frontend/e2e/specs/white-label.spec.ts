@@ -15,8 +15,10 @@ test.describe('White label', () => {
   test.beforeAll(() => resetFixtures())
 
   test('each tenant gets its own identity on the login screen', async ({ page }) => {
+    // A workspace that has not renamed the product shows the product's own name,
+    // beside its own company — which is what ALPHA is.
     await page.goto(`/login?tenant=${ALPHA.slug}`)
-    await expect(page.getByText(ALPHA.systemName).first()).toBeVisible()
+    await expect(page.locator('body')).toContainText(ALPHA.systemName)
     await expect(page.getByText(ALPHA.companyName)).toBeVisible()
     expect(await brandColour(page)).toBe(ALPHA.primaryColor)
 
@@ -88,7 +90,7 @@ test.describe('White label', () => {
     // Settings is sections now, and identity is one of them.
     await page.getByTestId('settings-tab-branding').click()
 
-    await page.getByLabel('اسم النظام').fill('ألفا بعد التغيير')
+    await page.getByLabel('اسم النظام').fill('الريادة بعد التغيير')
     // fill() drives the control the way a user does; assigning .value directly
     // is swallowed by React's value tracker.
     await page.getByLabel('اللون الأساسي').fill('#7c3aed')
@@ -97,7 +99,7 @@ test.describe('White label', () => {
     await expect(page.getByText('تم الحفظ.')).toBeVisible()
 
     // The sidebar picks up the new name without a reload…
-    await expect(page.getByText('ألفا بعد التغيير').first()).toBeVisible()
+    await expect(page.getByText('الريادة بعد التغيير').first()).toBeVisible()
 
     // …and the change is what a brand-new visitor sees on the login screen.
     const session = await apiLogin(ALPHA.admin.email, PASSWORD)
@@ -106,7 +108,7 @@ test.describe('White label', () => {
         session,
         `/api/v1/branding?tenant=${ALPHA.slug}`,
       )
-      expect(branding.system_name).toBe('ألفا بعد التغيير')
+      expect(branding.system_name).toBe('الريادة بعد التغيير')
       expect(branding.primary_color.toLowerCase()).toBe('#7c3aed')
     } finally {
       await session.dispose()

@@ -8,11 +8,12 @@ export const PASSWORD = 'Password123!'
 
 export const ALPHA = {
   slug: 'e2e-alpha',
-  systemName: 'ألفا CRM',
-  companyName: 'شركة ألفا للتطوير العقاري',
+  // Not renamed by this workspace, so it is the product's own name.
+  systemName: 'مهتم',
+  companyName: 'شركة الريادة للتطوير العقاري',
   primaryColor: '#0f766e',
-  admin: { email: 'admin@e2e.test', name: 'مدير ألفا' },
-  manager: { email: 'manager@e2e.test', name: 'مدير مبيعات ألفا' },
+  admin: { email: 'admin@e2e.test', name: 'مدير الريادة' },
+  manager: { email: 'manager@e2e.test', name: 'مدير مبيعات الريادة' },
   rep1: { email: 'rep1@e2e.test', name: 'مندوب أول' },
   rep2: { email: 'rep2@e2e.test', name: 'مندوب ثاني' },
   projects: ['مشروع الاختبار الأول', 'مشروع الاختبار الثاني', 'مشروع الاختبار الثالث'],
@@ -20,11 +21,11 @@ export const ALPHA = {
 
 export const BETA = {
   slug: 'e2e-beta',
-  systemName: 'بيتا CRM',
-  companyName: 'شركة بيتا القابضة',
+  systemName: 'المدار CRM',
+  companyName: 'شركة المدار القابضة',
   primaryColor: '#b91c1c',
-  admin: { email: 'admin@beta-e2e.test', name: 'مدير بيتا' },
-  secretLead: 'سر بيتا المحجوب',
+  admin: { email: 'admin@beta-e2e.test', name: 'مدير المدار' },
+  secretLead: 'سر المدار المحجوب',
 } as const
 
 /** Leads the specs drive by name. */

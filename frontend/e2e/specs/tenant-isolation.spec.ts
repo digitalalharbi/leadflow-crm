@@ -142,8 +142,8 @@ test.describe('Tenant isolation', () => {
     try {
       const phone = '0555123123'
 
-      const a = await apiPost(alpha, '/api/v1/leads', { full_name: 'مشترك ألفا', phone })
-      const b = await apiPost(beta, '/api/v1/leads', { full_name: 'مشترك بيتا', phone })
+      const a = await apiPost(alpha, '/api/v1/leads', { full_name: 'مشترك الريادة', phone })
+      const b = await apiPost(beta, '/api/v1/leads', { full_name: 'مشترك المدار', phone })
 
       // Duplicate detection is per tenant: two agencies may chase the same buyer.
       expect(a.status()).toBe(201)

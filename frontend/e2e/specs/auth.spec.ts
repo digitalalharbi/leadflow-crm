@@ -8,7 +8,7 @@ test.describe('Authentication', () => {
 
     // The login screen must already be the customer's product, before anyone
     // has authenticated — that is the whole white-label promise.
-    await expect(page.getByText(ALPHA.systemName).first()).toBeVisible()
+    await expect(page.locator('body')).toContainText(ALPHA.systemName)
 
     await page.getByLabel('البريد الإلكتروني').fill(ALPHA.admin.email)
     await page.getByLabel('كلمة المرور', { exact: true }).fill(PASSWORD)

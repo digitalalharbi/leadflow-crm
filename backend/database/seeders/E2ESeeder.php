@@ -71,7 +71,7 @@ class E2ESeeder extends Seeder
 
     public const LEAD_ASSIGN = 'بشاير الإسناد';
 
-    public const BETA_SECRET_LEAD = 'سر بيتا المحجوب';
+    public const BETA_SECRET_LEAD = 'سر المدار المحجوب';
 
     /** A lead with a conversation already on it, and one with none. */
     public const LEAD_CHAT = 'غادة المحادثة';
@@ -112,15 +112,17 @@ class E2ESeeder extends Seeder
     private function seedAlpha(TenantContext $context): void
     {
         $result = app(TenantProvisioningService::class)->provision([
-            'company_name' => 'شركة ألفا للتطوير العقاري',
-            'system_name' => 'ألفا CRM',
+            'company_name' => 'شركة الريادة للتطوير العقاري',
+            // No system_name: this workspace has not renamed the product, so it shows
+            // مهتم — which is what the identity specs assert. The other tenant below
+            // is the one that *has* renamed it.
             'subdomain' => self::ALPHA_SLUG,
             'primary_color' => '#0f766e',
             'secondary_color' => '#0f172a',
-            'admin_name' => 'مدير ألفا',
+            'admin_name' => 'مدير الريادة',
             'admin_email' => 'admin@e2e.test',
             'admin_password' => self::PASSWORD,
-            'support_email' => 'support@alpha-e2e.test',
+            'support_email' => 'support@riyada.test',
             // Manual, so assignment tests control who owns what. A round-robin
             // default would make every created lead land somewhere unpredictable.
             'assignment_mode' => 'manual',
@@ -129,7 +131,7 @@ class E2ESeeder extends Seeder
         $tenant = $result['tenant'];
 
         $context->withTenant($tenant, function () use ($tenant) {
-            $manager = $this->user($tenant, 'مدير مبيعات ألفا', 'manager@e2e.test', Role::Manager);
+            $manager = $this->user($tenant, 'مدير مبيعات الريادة', 'manager@e2e.test', Role::Manager);
             $rep1 = $this->user($tenant, 'مندوب أول', 'rep1@e2e.test', Role::Sales);
             $rep2 = $this->user($tenant, 'مندوب ثاني', 'rep2@e2e.test', Role::Sales);
             $admin = User::where('email', 'admin@e2e.test')->first();
@@ -141,7 +143,7 @@ class E2ESeeder extends Seeder
             ])->map(fn ($p) => Project::create([
                 'tenant_id' => $tenant->id,
                 'name' => $p[0],
-                'developer_name' => 'ألفا للتطوير',
+                'developer_name' => 'الريادة للتطوير',
                 'location' => $p[1],
                 'starting_price' => $p[2],
                 'status' => 'active',
@@ -179,7 +181,7 @@ class E2ESeeder extends Seeder
                 'tenant_id' => $tenant->id, 'lead_id' => $chat->id, 'user_id' => $admin->id,
                 'direction' => MessageDirection::Outbound, 'channel' => MessageChannel::Whatsapp,
                 'provider' => 'mock', 'provider_message_id' => 'wamid.e2e.seed.out.1',
-                'message_type' => 'text', 'body' => 'مرحبًا غادة، معك فريق ألفا بخصوص اهتمامك بالمشروع.',
+                'message_type' => 'text', 'body' => 'مرحبًا غادة، معك فريق الريادة بخصوص اهتمامك بالمشروع.',
                 'status' => MessageStatus::Delivered,
                 'sent_at' => now()->subHours(3), 'delivered_at' => now()->subHours(3),
             ]);
@@ -376,14 +378,14 @@ class E2ESeeder extends Seeder
     private function seedBeta(TenantContext $context): void
     {
         $result = app(TenantProvisioningService::class)->provision([
-            'company_name' => 'شركة بيتا القابضة',
-            'system_name' => 'بيتا CRM',
+            'company_name' => 'شركة المدار القابضة',
+            'system_name' => 'المدار CRM',
             'subdomain' => self::BETA_SLUG,
             // Visibly different identity, so white-label assertions are unambiguous.
             'primary_color' => '#b91c1c',
             'secondary_color' => '#450a0a',
             'logo_url' => 'https://placehold.co/96x96/b91c1c/ffffff/png?text=B',
-            'admin_name' => 'مدير بيتا',
+            'admin_name' => 'مدير المدار',
             'admin_email' => 'admin@beta-e2e.test',
             'admin_password' => self::PASSWORD,
             'support_email' => 'support@beta-e2e.test',
@@ -400,7 +402,7 @@ class E2ESeeder extends Seeder
                 'temperature' => LeadTemperature::Hot->value,
                 'score' => 90,
                 'platform' => 'meta',
-                'campaign_name' => 'حملة بيتا السرية',
+                'campaign_name' => 'حملة المدار السرية',
             ]);
         });
     }

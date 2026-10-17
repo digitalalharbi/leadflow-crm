@@ -26,7 +26,7 @@ import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
 import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
 import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
-import { Conversation } from '@/components/whatsapp/Conversation'
+import { LeadMessaging } from '@/components/email/LeadMessaging'
 import { cn } from '@/lib/cn'
 
 const STATUSES: LeadStatus[] = ['new', 'contacted', 'qualified', 'appointment', 'won', 'lost']
@@ -516,7 +516,7 @@ export function LeadDetailPage() {
 
           <QualificationCard lead={lead} />
 
-          <Conversation lead={lead} />
+          <LeadMessaging lead={lead} />
 
           {/*
             Under the conversation, because sending a brochure is the same kind

@@ -9,6 +9,7 @@ import { apiGet } from '@/lib/api'
 import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
+import { CommandCenter, CommandSide } from '@/components/dashboard/CommandCenter'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDue, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -157,6 +158,9 @@ export function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* What needs a person right now — before any figure about a period. */}
+          <CommandCenter />
+
           {/*
             The five figures a sales manager quotes in a meeting. Each carries
             its change against the previous period of equal length — which is
@@ -214,39 +218,45 @@ export function DashboardPage() {
             43 leads is excellent or alarming depending entirely on last week,
             and a tile cannot say which.
           */}
-          <ChartCard
-            title={t('charts.leadFlow.title')}
-            description={t('charts.leadFlow.hint')}
-            height={240}
-            testId="lead-flow"
-            empty={(data.timeline ?? []).every((p) => p.leads + p.qualified + p.won === 0)}
-            emptyMessage={t('dashboard.noData')}
-            legend={
-              <ChartLegend
-                items={[
-                  { key: 'leads', label: t('charts.leadFlow.leads'), color: SERIES[0] },
-                  { key: 'qualified', label: t('charts.leadFlow.qualified'), color: SERIES[1] },
-                  { key: 'won', label: t('charts.leadFlow.won'), color: SERIES[3] },
-                ]}
-              />
-            }
-            table={{
-              head: [
-                t('charts.leadFlow.day'),
-                t('charts.leadFlow.leads'),
-                t('charts.leadFlow.qualified'),
-                t('charts.leadFlow.won'),
-              ],
-              rows: (data.timeline ?? []).map((point) => [
-                point.date,
-                point.leads,
-                point.qualified,
-                point.won,
-              ]),
-            }}
-          >
-            <LeadFlowChart points={data.timeline ?? []} />
-          </ChartCard>
+          <div className="grid gap-3 lg:grid-cols-12">
+            <div className="lg:col-span-8">
+            <ChartCard
+              title={t('charts.leadFlow.title')}
+              description={t('charts.leadFlow.hint')}
+              height={240}
+              testId="lead-flow"
+              empty={(data.timeline ?? []).every((p) => p.leads + p.qualified + p.won === 0)}
+              emptyMessage={t('dashboard.noData')}
+              legend={
+                <ChartLegend
+                  items={[
+                    { key: 'leads', label: t('charts.leadFlow.leads'), color: SERIES[0] },
+                    { key: 'qualified', label: t('charts.leadFlow.qualified'), color: SERIES[1] },
+                    { key: 'won', label: t('charts.leadFlow.won'), color: SERIES[3] },
+                  ]}
+                />
+              }
+              table={{
+                head: [
+                  t('charts.leadFlow.day'),
+                  t('charts.leadFlow.leads'),
+                  t('charts.leadFlow.qualified'),
+                  t('charts.leadFlow.won'),
+                ],
+                rows: (data.timeline ?? []).map((point) => [
+                  point.date,
+                  point.leads,
+                  point.qualified,
+                  point.won,
+                ]),
+              }}
+            >
+              <LeadFlowChart points={data.timeline ?? []} />
+            </ChartCard>
+
+            </div>
+            <div className="lg:col-span-4"><CommandSide /></div>
+          </div>
 
           {/*
             A brand-new workspace has nothing to show, so the first thing an

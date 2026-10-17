@@ -46,7 +46,9 @@ class TenantProvisioningService
             return $this->context->withTenant($tenant, function () use ($tenant, $data, $defaults) {
                 TenantBranding::create([
                     'company_name' => $data['company_name'],
-                    'system_name' => $data['system_name'] ?? $data['company_name'],
+                    // Not defaulted to the company name. A workspace that was never asked to
+                    // rename the product shows the product's own name, not its client's.
+                    'system_name' => filled($data['system_name'] ?? null) ? $data['system_name'] : null,
                     'logo_url' => $data['logo_url'] ?? null,
                     'primary_color' => $data['primary_color'] ?? '#2563eb',
                     'secondary_color' => $data['secondary_color'] ?? '#0f172a',

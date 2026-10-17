@@ -1,6 +1,6 @@
 export default {
   common: {
-    appName: 'Muhtam',
+    appName: 'مهتم',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
     delete: 'Delete', edit: 'Edit', add: 'Add', create: 'Create', search: 'Search',
     filter: 'Filter', clearFilters: 'Clear filters', export: 'Export', retry: 'Try again',
@@ -1134,7 +1134,7 @@ export default {
     mockNotice: 'Demo mode: messages are recorded here but never reach the customer. Add a phone number id and an access token to send for real.',
     conversation: 'Conversation', noMessages: 'No messages yet',
     noMessagesHint: 'Start the conversation with a WhatsApp message.',
-    send: 'Send', sendVia: 'Send from Muhtam', openWhatsapp: 'Open WhatsApp',
+    send: 'Send', sendVia: 'Send via مهتم', openWhatsapp: 'Open WhatsApp',
     messagePlaceholder: 'Write your message…',
     templates: 'Saved messages', chooseTemplate: 'Choose a saved message',
     notConnectedHint: 'WhatsApp is not connected, so this opens the WhatsApp app instead.',
@@ -1282,6 +1282,7 @@ export default {
   },
   roles: { admin: 'Admin', manager: 'Sales manager', sales: 'Sales rep', super_admin: 'Platform admin' },
   settings: {
+    systemNameHint: "Leave empty to use the product's own name.",
     workingHours: 'Working hours',
     workingHoursHint: 'The first-contact target only counts inside these hours. Leave empty to count around the clock.',
     workStarts: 'From',

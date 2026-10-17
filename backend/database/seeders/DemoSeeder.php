@@ -54,7 +54,6 @@ class DemoSeeder extends Seeder
 
         $result = $provisioning->provision([
             'company_name' => 'شركة رواسي للتطوير العقاري',
-            'system_name' => 'رواسي CRM',
             'subdomain' => 'rawasi',
             'primary_color' => '#0f766e',
             'secondary_color' => '#0f172a',

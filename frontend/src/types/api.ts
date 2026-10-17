@@ -32,7 +32,7 @@ export interface Branding {
   tenant_id: string
   slug: string
   company_name: string
-  system_name: string
+  system_name: string | null
   logo_url: string | null
   login_logo_url: string | null
   login_background_url: string | null

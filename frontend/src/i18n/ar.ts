@@ -1606,6 +1606,7 @@ export default {
     super_admin: 'مدير المنصة',
   },
   settings: {
+    systemNameHint: "اتركه فارغًا لاستخدام اسم «مهتم».",
     workingHours: 'أوقات العمل',
     workingHoursHint: 'مهلة أول تواصل تُحسب داخل هذه الأوقات فقط. اتركها فارغة ليعمل العدّاد طوال الوقت.',
     workStarts: 'من',

@@ -195,7 +195,8 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
 
   const [form, setForm] = useState({
     company_name: branding.company_name,
-    system_name: branding.system_name,
+    // Empty means "not renamed": the product shows its own name.
+    system_name: branding.system_name ?? '',
     logo_url: branding.logo_url ?? '',
     login_background_url: branding.login_background_url ?? '',
     primary_color: branding.primary_color,
@@ -244,6 +245,8 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
             />
             <Input
               label={t('settings.systemName')}
+              hint={t('settings.systemNameHint')}
+              placeholder={t('common.appName')}
               value={form.system_name}
               onChange={(e) => setForm((prev) => ({ ...prev, system_name: e.target.value }))}
             />

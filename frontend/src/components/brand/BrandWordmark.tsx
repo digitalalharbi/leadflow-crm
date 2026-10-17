@@ -9,7 +9,8 @@ import { cn } from '@/lib/cn'
  * type. The weight, tracking and optical size are locked here so it is a mark
  * rather than a heading that happens to say the name.
  *
- * Latin fallback is "Mahtam" — used only where a Latin context demands it.
+ * There is no Latin spelling. The product is مهتم in an English interface too —
+ * a second spelling is a second name, and it had already drifted into two.
  */
 export function BrandWordmark({
   className,
@@ -28,7 +29,7 @@ export function BrandWordmark({
 
   return (
     <span
-      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      dir="rtl"
       className={cn(
         'font-semibold whitespace-nowrap text-[var(--color-ink)]',
         // Arabic takes no tracking — it breaks the joins. Latin is tightened,
@@ -38,7 +39,7 @@ export function BrandWordmark({
         className,
       )}
     >
-      {locale === 'ar' ? 'مهتم' : 'Mahtam'}
+      مهتم
     </span>
   )
 }

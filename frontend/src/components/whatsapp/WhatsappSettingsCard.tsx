@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { STATE_TONE, useIntegrationStates } from '@/features/integrationState'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Copy, MessageSquare, RefreshCw, Unplug } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +26,7 @@ const STATUS_TONE = {
  * changing a phone number does not silently wipe an access token.
  */
 export function WhatsappSettingsCard() {
+  const state = useIntegrationStates().get('whatsapp')
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
@@ -136,8 +138,13 @@ export function WhatsappSettingsCard() {
           }
           description={t('whatsapp.subtitle')}
           action={
-            <Badge tone={STATUS_TONE[data.status]} testId="whatsapp-status">
-              {t(`integrations.${camel(data.status)}`)}
+            // The ladder, not `data.status`: that said "connected" the moment a token
+            // was typed, and said it beside the demo provider too.
+            <Badge
+              tone={state ? STATE_TONE[state] : STATUS_TONE[data.status]}
+              testId="whatsapp-status"
+            >
+              {state ? t(`integrationState.${state}`) : t(`integrations.${camel(data.status)}`)}
             </Badge>
           }
         />

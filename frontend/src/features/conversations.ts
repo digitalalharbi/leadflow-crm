@@ -30,8 +30,8 @@ export function setWhatsappOptOut(leadId: string, optedOut: boolean) {
 
 /* --------------------------------------------------------------- templates */
 
-export function fetchMessageTemplates(all = false) {
-  return apiGet<{ templates: MessageTemplate[]; variables: string[] }>('/message-templates', { all })
+export function fetchMessageTemplates(all = false, channel: 'whatsapp' | 'email' = 'whatsapp') {
+  return apiGet<{ templates: MessageTemplate[]; variables: string[] }>('/message-templates', { all, channel })
 }
 
 export type TemplatePayload = {

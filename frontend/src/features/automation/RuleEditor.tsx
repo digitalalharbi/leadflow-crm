@@ -46,6 +46,8 @@ const ACTION_DEFAULTS: Record<string, Record<string, unknown>> = {
    * happened to be at the top of somebody's list to real customers.
    */
   send_whatsapp: { template_uuid: '' },
+  // Same reasoning as above: an email template is chosen, never defaulted.
+  send_email: { template_uuid: '' },
   // Left empty on purpose: with no kind, the chooser reads the lead's own
   // answers, which is the behaviour worth having by default.
   share_file: { kind: '', send: true },
@@ -118,6 +120,11 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const { data: templates } = useQuery({
     queryKey: ['message-templates'],
     queryFn: () => fetchMessageTemplates(),
+  })
+
+  const { data: emailTemplates } = useQuery({
+    queryKey: ['message-templates', 'email'],
+    queryFn: () => fetchMessageTemplates(false, 'email'),
   })
 
   const [name, setName] = useState(rule?.name ?? '')
@@ -384,6 +391,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                 lostReasons={lostReasons}
                 assignees={assignees}
                 templates={templates?.templates ?? []}
+                emailTemplates={emailTemplates?.templates ?? []}
                 onChange={(patch) => patchAction(index, patch)}
               />
 
@@ -445,6 +453,7 @@ function ActionDetail({
   lostReasons,
   assignees,
   templates,
+  emailTemplates,
   onChange,
 }: {
   action: RuleAction
@@ -453,6 +462,7 @@ function ActionDetail({
   lostReasons: { id: string; label: string }[]
   assignees: { id: string; name: string }[]
   templates: { id: string; name: string }[]
+  emailTemplates: { id: string; name: string }[]
   onChange: (patch: Partial<RuleAction>) => void
 }) {
   const { t } = useTranslation()
@@ -596,6 +606,25 @@ function ActionDetail({
             {templates.length === 0 ? t('automation.noTemplates') : t('automation.pickTemplate')}
           </option>
           {templates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {template.name}
+            </option>
+          ))}
+        </Select>
+      )
+
+    case 'send_email':
+      return (
+        <Select
+          className="min-w-48 flex-1"
+          label={labelled ? t('automation.emailTemplate') : undefined}
+          value={String(action.template_uuid ?? '')}
+          onChange={(e) => onChange({ template_uuid: e.target.value })}
+        >
+          <option value="" disabled>
+            {emailTemplates.length === 0 ? t('automation.noEmailTemplates') : t('automation.pickTemplate')}
+          </option>
+          {emailTemplates.map((template) => (
             <option key={template.id} value={template.id}>
               {template.name}
             </option>

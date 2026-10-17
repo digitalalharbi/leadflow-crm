@@ -173,6 +173,9 @@ class E2ESeeder extends Seeder
                 'assigned_to' => $admin->id, 'project_id' => $firstProject->id,
                 'status' => LeadStatus::Contacted->value, 'platform' => 'meta',
                 'campaign_name' => 'حملة الاختبار',
+                // The one lead the email specs write to. `.test` never resolves,
+                // so nothing a test sends can reach a person.
+                'email' => 'ghada.chat@customer.test',
             ]);
 
             // One outbound, one reply: enough for the conversation to render

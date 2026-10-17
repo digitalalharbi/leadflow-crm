@@ -89,7 +89,7 @@ test.describe('A laptop screen', () => {
     await expect(page.getByTestId('integration-grid')).toBeVisible()
 
     // Every source, not a selection that happened to fit.
-    for (const key of ['meta', 'tiktok', 'snapchat', 'google_ads', 'google_sheets', 'whatsapp', 'calls']) {
+    for (const key of ['meta', 'tiktok', 'snapchat', 'google_ads', 'google_sheets', 'whatsapp', 'email', 'calls']) {
       await expect(page.getByTestId(`integration-tile-${key}`)).toBeVisible()
     }
   })

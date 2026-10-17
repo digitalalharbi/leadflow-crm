@@ -16,6 +16,7 @@ export default {
     clearFilters: 'مسح التصفية',
     export: 'تصدير',
     retry: 'إعادة المحاولة',
+    loadFailed: 'تعذّر تحميل البيانات.',
     loading: 'جارٍ التحميل…',
     noResults: 'لا توجد نتائج',
     all: 'الكل',
@@ -168,11 +169,13 @@ export default {
       won: 'مبروك — أُغلق العميل كصفقة ناجحة',
       lost: 'سُجِّلت الخسارة وأُوقفت المتابعات',
     },
+    contactHint: 'بريد وواتساب وملفات — دون مغادرة القائمة.',
     buttons: {
       call: 'اتصال',
       whatsapp: 'واتساب',
       noAnswer: 'لم يرد',
       openLead: 'فتح الملف',
+      contact: 'مراسلة',
       skip: 'تخطَّ',
     },
     empty: {
@@ -1413,6 +1416,7 @@ export default {
     body: 'نص الرسالة',
     bodyPlaceholder: 'اكتب الرسالة…',
     send: 'إرسال بالبريد',
+    attachFile: 'أدرج رابط «{{name}}»',
     status: {
       pending: 'قيد الإرسال',
       sent: 'أُرسل',

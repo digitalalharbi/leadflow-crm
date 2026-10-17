@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Ban, Clock, Mail, MailCheck, MailOpen, Send } from 'lucide-react'
+import { AlertTriangle, Ban, Clock, Mail, MailCheck, MailOpen, Paperclip, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { fetchEmailCapability, sendLeadEmail, setEmailOptOut } from '@/features/email'
 import { fetchLeadMessages, fetchMessageTemplates } from '@/features/conversations'
+import { fetchFilesForLead, shareFileWithLead } from '@/features/files'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime } from '@/lib/format'
@@ -49,6 +50,30 @@ export function EmailPanel({ lead }: { lead: Lead }) {
     queryFn: () => fetchLeadMessages(lead.id, 1),
     refetchInterval: (query) =>
       query.state.data?.data.some((m) => m.channel === 'email' && m.status === 'pending') ? 10_000 : false,
+  })
+
+  /*
+   * The file the product would send this lead, as a link.
+   *
+   * Not an attachment: an attachment is a copy that nobody can count, and a
+   * link is a per-lead address whose opens move the score. The same chooser and
+   * the same share the lead screen uses, with the channel set to email so the
+   * hand-off is recorded as one.
+   */
+  const { data: files } = useQuery({
+    queryKey: ['lead-files', lead.id],
+    queryFn: () => fetchFilesForLead(lead.id),
+    enabled: Boolean(lead.project),
+  })
+  const suggested = files?.suggested ?? null
+
+  const attach = useMutation({
+    mutationFn: () => shareFileWithLead(lead.id, suggested!.id, 'email'),
+    onSuccess: (result) => {
+      setBody((current) => `${current.trimEnd()}${current.trim() ? '\n\n' : ''}${result.share.url}`)
+      void queryClient.invalidateQueries({ queryKey: ['lead-shares', lead.id] })
+    },
+    onError: (e) => toast(translateError(e), 'error'),
   })
 
   const emails = (data?.data ?? []).filter((m) => m.channel === 'email').toReversed()
@@ -173,15 +198,30 @@ export function EmailPanel({ lead }: { lead: Lead }) {
           onChange={(e) => setBody(e.target.value)}
         />
 
-        <Button
-          onClick={() => send.mutate()}
-          loading={send.isPending}
-          disabled={!ready}
-          data-testid="send-email"
-        >
-          <Send className="size-4" />
-          {t('email.send')}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => send.mutate()}
+            loading={send.isPending}
+            disabled={!ready}
+            data-testid="send-email"
+          >
+            <Send className="size-4" />
+            {t('email.send')}
+          </Button>
+
+          {suggested && (
+            <Button
+              variant="secondary"
+              onClick={() => attach.mutate()}
+              loading={attach.isPending}
+              disabled={blocked}
+              data-testid="email-attach-file"
+            >
+              <Paperclip className="size-4" />
+              {t('email.attachFile', { name: suggested.name })}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

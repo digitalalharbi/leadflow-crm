@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus, MessageCircle, PartyPopper, Phone, SkipForward } from 'lucide-react'
+import { CalendarPlus, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   fetchNextInQueue, fetchWorkSummary, logContact, recordCall, recordOutcome,
@@ -11,8 +11,9 @@ import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen, telLink, whatsappLink } from '@/lib/format'
+import { WorkContactPanel } from '@/components/work/WorkContactPanel'
 import {
-  Badge, Button, ButtonLink, buttonClasses, Card, CardBody, CardHeader, EmptyState, ErrorState,
+  Badge, Button, ButtonLink, buttonClasses, Card, CardBody, CardHeader, Drawer, EmptyState, ErrorState,
   PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -54,6 +55,8 @@ export function WorkPage() {
   const translateError = useApiError()
 
   const [note, setNote] = useState('')
+  /** The side panel for writing to the lead — email, WhatsApp and files — without leaving the queue. */
+  const [contactOpen, setContactOpen] = useState(false)
   /** Leads the rep passed over in this sitting, so the queue moves on. */
   const [skipped, setSkipped] = useState<string[]>([])
 
@@ -390,6 +393,16 @@ export function WorkPage() {
                   )}
 
                   <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<MessagesSquare className="size-3.5" aria-hidden />}
+                    onClick={() => setContactOpen(true)}
+                    data-testid="work-contact"
+                  >
+                    {t('work.buttons.contact')}
+                  </Button>
+
+                  <Button
                     variant="ghost"
                     size="sm"
                     icon={<SkipForward className="size-3.5" aria-hidden />}
@@ -468,6 +481,21 @@ export function WorkPage() {
           </aside>
         </div>
       )}
+
+      {/*
+        Keyed by the lead, so a card that changes underneath an open panel
+        cannot leave a half-written email addressed to somebody else.
+      */}
+      <Drawer
+        open={contactOpen && Boolean(lead)}
+        onClose={() => setContactOpen(false)}
+        title={lead?.full_name}
+        description={t('work.contactHint')}
+        size="lg"
+        testId="work-contact-drawer"
+      >
+        {lead && <WorkContactPanel key={lead.id} leadId={lead.id} />}
+      </Drawer>
     </div>
   )
 }

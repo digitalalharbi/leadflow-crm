@@ -3,7 +3,7 @@ export default {
     appName: 'مهتم',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
     delete: 'Delete', edit: 'Edit', add: 'Add', create: 'Create', search: 'Search',
-    filter: 'Filter', clearFilters: 'Clear filters', export: 'Export', retry: 'Try again',
+    filter: 'Filter', clearFilters: 'Clear filters', export: 'Export', retry: 'Try again', loadFailed: 'Could not load this.',
     saved: 'Saved.',
     loading: 'Loading…', noResults: 'No results', all: 'All', none: 'None',
     optional: 'optional', required: 'required', actions: 'Actions', back: 'Back',
@@ -103,11 +103,13 @@ export default {
       won: 'Closed as won',
       lost: 'Recorded as lost; follow-ups stopped',
     },
+    contactHint: 'Email, WhatsApp and files — without leaving the queue.',
     buttons: {
       call: 'Call',
       whatsapp: 'WhatsApp',
       noAnswer: 'No answer',
       openLead: 'Open lead',
+      contact: 'Message',
       skip: 'Skip',
     },
     empty: {
@@ -1177,6 +1179,7 @@ export default {
     body: 'Message',
     bodyPlaceholder: 'Write the message…',
     send: 'Send by email',
+    attachFile: 'Add link to “{{name}}”',
     status: {
       pending: 'Sending',
       sent: 'Sent',

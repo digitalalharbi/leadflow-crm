@@ -10,6 +10,7 @@ use App\Models\LeadSourceEvent;
 use App\Models\RepositoryWebhookDelivery;
 use App\Models\SheetSyncRun;
 use App\Models\WhatsappEvent;
+use App\Services\Whatsapp\WhatsappManager;
 
 /**
  * Which integrations have ever actually worked.
@@ -36,10 +37,35 @@ class IntegrationHealthReport
     /** @return array<int,array<string,mixed>> */
     public function all(): array
     {
-        return array_merge(
+        $state = new IntegrationState;
+
+        return array_map(function (array $row) use ($state) {
+            $row['state'] = $state->resolve($row, $this->hasCredentials($row));
+
+            return $row;
+        }, array_merge(
             $this->leadSources(),
             [$this->sheets(), $this->whatsapp(), $this->calls(), $this->github()],
-        );
+        ));
+    }
+
+    /**
+     * Whether the workspace has entered what this integration needs.
+     *
+     * Per integration, because "has an integration row" is true of every one of
+     * them from the day the workspace is provisioned, and "configured" meant
+     * three different things across the rows. This asks the question each
+     * integration itself asks before it will send.
+     */
+    private function hasCredentials(array $row): bool
+    {
+        return match ($row['key']) {
+            'google_sheets' => (bool) $row['connected'],
+            'whatsapp' => app(WhatsappManager::class)->isLive(app(WhatsappManager::class)->integration()),
+            'calls' => (bool) $row['configured'],
+            'github' => (bool) $row['connected'],
+            default => (bool) $row['configured'],
+        };
     }
 
     /**
@@ -69,11 +95,13 @@ class IntegrationHealthReport
                 ->latest('received_at')
                 ->first();
 
+            $configured = $integration !== null && $integration->configuredCredentialKeys() !== [];
+
             $rows[] = [
                 'key' => $provider->value,
                 'kind' => 'lead_source',
                 'connected' => $integration !== null && $integration->status === Integration::CONNECTED,
-                'configured' => $integration !== null && $integration->configuredCredentialKeys() !== [],
+                'configured' => $configured,
                 'last_event_at' => $lastEvent?->received_at?->toIso8601String(),
                 'last_sync_at' => $integration?->last_synced_at?->toIso8601String(),
                 'last_error' => $integration?->last_error,
@@ -81,9 +109,19 @@ class IntegrationHealthReport
                 // How this one arrives, which is what a reader needs to know
                 // before asking why nothing has.
                 'flow' => $provider === IntegrationProvider::GoogleAds ? 'pull' : 'webhook',
-                'verification' => $lastEvent ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
+                /*
+                 * An event proves the platform only if the workspace holds what
+                 * the platform needs to send one. Without credentials the event
+                 * was posted by hand, by the demo button or by a test — real in
+                 * shape and not from the platform — and that is sandbox
+                 * evidence, which the state ladder reports separately. The
+                 * generic webhook is the workspace's own systems and needs none.
+                 */
+                'verification' => $lastEvent && ($provider === IntegrationProvider::GenericWebhook || $configured)
+                    ? self::EXTERNALLY_VERIFIED
+                    : self::IMPLEMENTED,
                 'blocker' => match (true) {
-                    $lastEvent !== null => null,
+                    $lastEvent !== null && ($provider === IntegrationProvider::GenericWebhook || $configured) => null,
                     $integration === null || $integration->configuredCredentialKeys() === [] => 'credentials_missing',
                     default => 'awaiting_first_event',
                 },

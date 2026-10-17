@@ -142,6 +142,7 @@ export interface Lead extends LeadListItem {
   first_contact_at: string | null
   first_response_at: string | null
   whatsapp_opt_out_at: string | null
+  email_opt_out_at: string | null
 }
 
 export type QualificationStatus = 'unqualified' | 'partially_qualified' | 'qualified'
@@ -154,6 +155,8 @@ export interface LeadMessage {
   channel: 'whatsapp' | 'sms' | 'email'
   message_type: string
   template_name: string | null
+  /** Set on email only. */
+  subject?: string | null
   body: string | null
   status: MessageStatus
   sent_at: string | null
@@ -169,6 +172,8 @@ export interface LeadMessage {
 export interface MessageTemplate {
   id: string
   name: string
+  /** Email templates only. */
+  subject?: string | null
   body: string
   channel: string
   is_active: boolean
@@ -551,4 +556,20 @@ export interface CustomField {
   options: string[] | null
   is_required: boolean
   is_active: boolean
+}
+
+/** What the settings screen may know about the workspace's mail server — never the password. */
+export interface EmailSettings {
+  configured: boolean
+  /** Where a message would actually go: its own server, ours, or nowhere (log). */
+  mode: 'smtp' | 'platform' | 'mock'
+  host: string | null
+  port: number | null
+  username: string | null
+  encryption: 'tls' | 'ssl'
+  from_address: string | null
+  from_name: string | null
+  has_password: boolean
+  status: string
+  last_error: string | null
 }

@@ -31,6 +31,28 @@ test.describe('اعمل الآن — the work queue', () => {
     await expect(page.getByTestId('work-action')).not.toBeEmpty()
   })
 
+  test('writing to the lead opens beside the queue instead of leaving it', async ({ page }) => {
+    const name = await page.getByTestId('work-lead-name').textContent()
+
+    await page.getByTestId('work-contact').click()
+
+    const drawer = page.getByTestId('work-contact-drawer')
+    await expect(drawer).toBeVisible()
+    await expect(page.getByTestId('work-contact-panel')).toBeVisible()
+
+    // Both channels are there, and WhatsApp is first.
+    await expect(page.getByTestId('tab-whatsapp')).toBeVisible()
+    await page.getByTestId('tab-email').click()
+    await expect(page.getByTestId('email-panel')).toBeVisible()
+
+    // Still on the queue, still on the same lead: nothing navigated.
+    await expect(page).toHaveURL(/\/work$/)
+
+    await page.keyboard.press('Escape')
+    await expect(drawer).toBeHidden()
+    await expect(page.getByTestId('work-lead-name')).toHaveText(name ?? '')
+  })
+
   test('recording an outcome hands over a different lead', async ({ page }) => {
     const first = await page.getByTestId('work-lead-name').textContent()
 

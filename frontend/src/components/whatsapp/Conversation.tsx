@@ -49,7 +49,9 @@ export function Conversation({ lead }: { lead: Lead }) {
      * which is a worse lie than the "فشل الإرسال" it replaced.
      */
     refetchInterval: (query) =>
-      query.state.data?.data.some((message) => message.status === 'pending') ? 10_000 : false,
+      query.state.data?.data.some((message) => message.channel === 'whatsapp' && message.status === 'pending')
+        ? 10_000
+        : false,
   })
 
   const optedOut = Boolean(lead.whatsapp_opt_out_at)
@@ -96,7 +98,8 @@ export function Conversation({ lead }: { lead: Lead }) {
   }
 
   // The API returns newest first for pagination; the thread reads oldest first.
-  const messages = (data?.data ?? []).toReversed()
+  // Email lives in its own panel; this thread is WhatsApp's alone.
+  const messages = (data?.data ?? []).filter((m) => m.channel === 'whatsapp').toReversed()
   const hasMore = (data?.meta?.last_page ?? 1) > page
 
   return (

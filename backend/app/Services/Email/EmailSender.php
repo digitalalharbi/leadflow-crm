@@ -62,7 +62,15 @@ class EmailSender
             'tracking_token' => Str::random(32),
         ]);
 
-        SendEmailMessage::dispatch($message->id);
+        /*
+         * The first attempt runs now, in the caller's request, like WhatsApp's.
+         *
+         * Queued, it would wait for a worker — and a workspace whose worker is
+         * down, or a laptop that never ran one, would show every email as
+         * "sending" for ever. Only the *retries* go to the queue, where a delay
+         * is the point.
+         */
+        SendEmailMessage::dispatchSync($message->id);
 
         return $message->refresh();
     }

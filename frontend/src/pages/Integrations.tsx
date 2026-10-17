@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn'
 import { ProviderMark } from '@/components/integrations/ProviderMark'
 import { MessageTemplates } from '@/components/whatsapp/MessageTemplates'
 import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
+import { EmailSettingsCard } from '@/components/email/EmailSettingsCard'
 import { ChartCard, IngestionChart, IngestionSources } from '@/components/charts'
 import { fetchIngestion } from '@/features/ingestion'
 import { useIntegrationStates } from '@/features/integrationState'
@@ -231,6 +232,12 @@ export function IntegrationsPage() {
       <div className="mb-4">
         <WhatsappSettingsCard />
       </div>
+
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <EmailSettingsCard />
+        </div>
+      )}
 
       {can.manageIntegrations(user) && (
         <div className="mb-4">

@@ -15,6 +15,7 @@ class LeadMessageResource extends JsonResource
             'channel' => $this->channel?->value,
             'message_type' => $this->message_type,
             'template_name' => $this->template_name,
+            'subject' => $this->subject,
             'body' => $this->body,
             'status' => $this->status?->value,
 

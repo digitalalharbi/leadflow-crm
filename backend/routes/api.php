@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\CommandCenterController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
+use App\Http\Controllers\Api\V1\EmailSettingsController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\LeadController;
+use App\Http\Controllers\Api\V1\LeadEmailController;
 use App\Http\Controllers\Api\V1\LeadMessageController;
 use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -148,6 +150,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/messages', [LeadMessageController::class, 'store']);
             Route::post('/leads/{uuid}/messages/preview', [LeadMessageController::class, 'preview']);
             Route::post('/leads/{uuid}/whatsapp-opt-out', [LeadMessageController::class, 'optOut']);
+            Route::post('/leads/{uuid}/emails', [LeadEmailController::class, 'store']);
+            Route::post('/leads/{uuid}/email-opt-out', [LeadEmailController::class, 'optOut']);
+            Route::get('/email/capability', [EmailSettingsController::class, 'capability']);
 
             // Qualification
             Route::get('/qualification/options', [QualificationController::class, 'options']);
@@ -309,6 +314,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/integrations/whatsapp/test', [WhatsappSettingsController::class, 'test']);
             Route::post('/integrations/whatsapp/rotate-verify-token', [WhatsappSettingsController::class, 'rotateVerifyToken']);
             Route::delete('/integrations/whatsapp', [WhatsappSettingsController::class, 'disconnect']);
+            Route::get('/integrations/email', [EmailSettingsController::class, 'show']);
+            Route::patch('/integrations/email', [EmailSettingsController::class, 'update']);
+            Route::post('/integrations/email/test', [EmailSettingsController::class, 'test']);
+            Route::delete('/integrations/email', [EmailSettingsController::class, 'disconnect']);
 
             Route::get('/message-templates', [MessageTemplateController::class, 'index']);
             Route::post('/message-templates', [MessageTemplateController::class, 'store']);

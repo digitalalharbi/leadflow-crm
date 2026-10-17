@@ -209,6 +209,7 @@ class Lead extends Model
             'first_response_at' => 'datetime',
             'whatsapp_opt_in_at' => 'datetime',
             'whatsapp_opt_out_at' => 'datetime',
+            'email_opt_out_at' => 'datetime',
             'assigned_at' => 'datetime',
             'won_at' => 'datetime',
             'deal_value_minor' => 'integer',
@@ -269,6 +270,15 @@ class Lead extends Model
     public function acceptsWhatsapp(): bool
     {
         return $this->whatsapp_opt_out_at === null;
+    }
+
+    /**
+     * Whether this lead can be emailed at all: there is an address, and they
+     * have not asked us to stop. Opt-out is final until somebody re-opts them in.
+     */
+    public function acceptsEmail(): bool
+    {
+        return filled($this->email) && $this->email_opt_out_at === null;
     }
 
     public function activities(): HasMany

@@ -39,8 +39,22 @@ class MessageTemplate extends Model
         ],
     ];
 
+    /** The email set: a subject as well as a body, and room to say more. */
+    public const EMAIL_DEFAULTS = [
+        [
+            'name' => 'ترحيب وتعريف',
+            'subject' => 'شكرًا لاهتمامك بمشروع {{project}}',
+            'body' => "مرحبًا {{name}}،\n\nمعك {{agent}} من {{company}}. شكرًا لاهتمامك بمشروع {{project}}.\n\nيسعدني أن أجيب عن أي سؤال، وأن أرتب لك زيارة أو اتصالًا في الوقت الذي يناسبك.\n\nتحياتي،\n{{agent}}",
+        ],
+        [
+            'name' => 'متابعة بعد عدم الرد',
+            'subject' => 'بخصوص {{project}}',
+            'body' => "مرحبًا {{name}}،\n\nحاولت التواصل معك بخصوص {{project}}. متى يناسبك أن أتصل بك؟\n\nتحياتي،\n{{agent}}",
+        ],
+    ];
+
     protected $fillable = [
-        'name', 'body', 'channel', 'is_active', 'sort_order',
+        'name', 'subject', 'body', 'channel', 'is_active', 'sort_order',
         'meta_template_name', 'meta_language', 'meta_parameters',
     ];
 

@@ -58,7 +58,7 @@ class AutomationRuleController extends Controller
     private const ACTIONS = [
         'assign', 'change_stage', 'adjust_score', 'add_tag',
         'schedule_follow_up', 'add_note', 'notify', 'stop_follow_ups',
-        'send_whatsapp', 'share_file',
+        'send_whatsapp', 'send_email', 'share_file',
     ];
 
     public function index(Request $request)
@@ -386,7 +386,7 @@ class AutomationRuleController extends Controller
              * which one carries that sentence. Required, because a send_whatsapp
              * with no template is a rule that reports a failure on every run.
              */
-            'actions.*.template_uuid' => ['required_if:actions.*.type,send_whatsapp', 'uuid'],
+            'actions.*.template_uuid' => ['required_if:actions.*.type,send_whatsapp,send_email', 'uuid'],
 
             /*
              * Optional on purpose. Left out, the chooser reads the lead's own

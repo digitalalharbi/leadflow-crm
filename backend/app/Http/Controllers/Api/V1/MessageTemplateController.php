@@ -24,6 +24,10 @@ class MessageTemplateController extends Controller
 
         $templates = MessageTemplate::query()
             ->when(! $includeInactive, fn ($q) => $q->active())
+            // WhatsApp unless asked otherwise: this endpoint was WhatsApp's alone
+            // for a long time, and a caller that never heard of email must not
+            // start receiving email templates in its list.
+            ->where('channel', $request->input('channel') === 'email' ? 'email' : 'whatsapp')
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -40,7 +44,10 @@ class MessageTemplateController extends Controller
 
         $data = $this->validated($request);
 
-        $template = MessageTemplate::create($data + ['channel' => MessageChannel::Whatsapp->value]);
+        $channel = ($data['channel'] ?? null) === 'email' ? MessageChannel::Email : MessageChannel::Whatsapp;
+        unset($data['channel']);
+
+        $template = MessageTemplate::create($data + ['channel' => $channel->value]);
 
         return ApiResponse::created(['template' => new MessageTemplateResource($template)]);
     }
@@ -50,7 +57,11 @@ class MessageTemplateController extends Controller
         $template = MessageTemplate::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $template);
 
-        $template->update($this->validated($request, $template));
+        $data = $this->validated($request, $template);
+        // A template does not change channel: its words were written for one.
+        unset($data['channel']);
+
+        $template->update($data);
 
         return ApiResponse::success(['template' => new MessageTemplateResource($template->refresh())]);
     }
@@ -76,6 +87,8 @@ class MessageTemplateController extends Controller
             ],
             'body' => [$existing ? 'sometimes' : 'required', 'string', 'max:'.config('services.whatsapp.max_body_length')],
             'is_active' => ['nullable', 'boolean'],
+            'channel' => ['sometimes', Rule::in(['whatsapp', 'email'])],
+            'subject' => ['sometimes', 'nullable', 'string', 'max:250'],
 
             /*
              * The Meta-approved twin of this message.

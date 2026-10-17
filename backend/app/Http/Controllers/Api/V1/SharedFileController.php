@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\FileShare;
+use App\Models\Lead;
 use App\Models\LeadEngagement;
 use App\Models\ProjectFile;
 use App\Models\Tenant;
+use App\Services\Leads\LeadScoringService;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -80,6 +82,11 @@ class SharedFileController extends Controller
                     'meta' => ['file' => $share->project_file_id, 'channel' => $share->channel],
                     'happened_at' => now(),
                 ]);
+
+                // The open has to move the score now, not whenever somebody next
+                // edits the lead — a hot lead is hot while the brochure is open.
+                $lead = Lead::find($share->lead_id);
+                $lead && app(LeadScoringService::class)->refresh($lead, 'engagement');
             });
         } catch (\Throwable $e) {
             /*

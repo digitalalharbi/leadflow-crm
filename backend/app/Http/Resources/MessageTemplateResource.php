@@ -12,6 +12,7 @@ class MessageTemplateResource extends JsonResource
         return [
             'id' => $this->uuid,
             'name' => $this->name,
+            'subject' => $this->subject,
             'body' => $this->body,
             'channel' => $this->channel?->value,
             'is_active' => $this->is_active,

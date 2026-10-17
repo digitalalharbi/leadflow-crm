@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\SharedFileController;
+use App\Http\Controllers\EmailTrackingController;
 use Illuminate\Support\Facades\Route;
 
 // API-only application. The React SPA is served by Nginx (or `npm run dev` locally).
@@ -36,3 +37,16 @@ Route::get('/f/{token}', SharedFileController::class)
 Route::get('/oauth/google/callback', [GoogleOAuthController::class, 'callback'])
     ->middleware('throttle:30,1')
     ->name('oauth.google.callback');
+
+/*
+ * What comes back from an email.
+ *
+ * An open pixel, a redirecting link and an unsubscribe — all public because the
+ * caller is a customer's mail client. Short paths, since they sit inside a
+ * message; throttled, since they are public and write.
+ */
+Route::middleware('throttle:120,1')->group(function () {
+    Route::get('/e/o/{token}', [EmailTrackingController::class, 'open'])->name('email.open');
+    Route::get('/e/c/{token}', [EmailTrackingController::class, 'click'])->name('email.click');
+    Route::match(['get', 'post'], '/e/u/{token}', [EmailTrackingController::class, 'unsubscribe'])->name('email.unsubscribe');
+});

@@ -26,6 +26,7 @@ enum ActivityType: string
     case ScoreChanged = 'score_changed';
     case FollowUpOutcomeRecorded = 'follow_up_outcome';
     case WhatsappOptedOut = 'whatsapp_opted_out';
+    case EmailOptedOut = 'email_opted_out';
     case FileShared = 'file_shared';
     case Updated = 'updated';
 

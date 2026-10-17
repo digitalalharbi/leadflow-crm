@@ -13,6 +13,7 @@ use App\Models\LostReason;
 use App\Models\MessageTemplate;
 use App\Models\User;
 use App\Notifications\AutomationNotification;
+use App\Services\Email\EmailSender;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Services\Leads\LeadScoringService;
@@ -43,6 +44,7 @@ class ActionExecutor
         private LeadScoringService $scoring,
         private ActivityLogger $activities,
         private WhatsappSender $whatsapp,
+        private EmailSender $email,
         private FileForTheLead $chooser,
         private ShareFile $sharer,
     ) {}
@@ -65,6 +67,7 @@ class ActionExecutor
                 'add_note' => $this->addNote($lead, $action),
                 'notify' => $this->notify($lead, $action),
                 'send_whatsapp' => $this->sendWhatsapp($lead, $action),
+                'send_email' => $this->sendEmail($lead, $action),
                 'share_file' => $this->shareFile($lead, $action),
                 'stop_follow_ups' => $this->stopFollowUps($lead, $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
@@ -385,6 +388,38 @@ class ActionExecutor
         // The sender writes the timeline entry itself, so there is one record
         // of a message whether a rep or a rule sent it.
         return ['ok' => true, 'description' => "أُرسلت رسالة واتساب '{$template->name}'."];
+    }
+
+    /**
+     * The email twin of `sendWhatsapp`, and held to the same rules: the message
+     * is a saved template, a refusal is reported rather than thrown, and the
+     * sender — not the rule — decides whether this lead may be written to.
+     */
+    private function sendEmail(Lead $lead, array $action): array
+    {
+        $uuid = (string) ($action['template_uuid'] ?? '');
+
+        if ($uuid === '') {
+            return ['ok' => false, 'description' => 'لم يُحدَّد قالب بريد — لم يُرسل شيء.'];
+        }
+
+        $template = MessageTemplate::where('uuid', $uuid)->where('channel', 'email')->first();
+
+        if (! $template) {
+            return ['ok' => false, 'description' => 'قالب البريد المحدد غير موجود — لم يُرسل شيء.'];
+        }
+
+        if (! $template->is_active) {
+            return ['ok' => false, 'description' => "القالب '{$template->name}' موقوف — لم يُرسل."];
+        }
+
+        try {
+            $this->email->sendSaved($lead, $template);
+        } catch (RuntimeException $e) {
+            return ['ok' => false, 'description' => 'لم يُرسل البريد: '.$e->getMessage()];
+        }
+
+        return ['ok' => true, 'description' => "أُرسل بريد '{$template->name}'."];
     }
 
     /**

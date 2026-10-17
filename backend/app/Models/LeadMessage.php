@@ -18,7 +18,7 @@ class LeadMessage extends Model
 
     protected $fillable = [
         'lead_id', 'user_id', 'direction', 'channel', 'provider',
-        'provider_message_id', 'message_type', 'template_name', 'body',
+        'provider_message_id', 'message_type', 'template_name', 'subject', 'tracking_token', 'body',
         'status', 'attempts', 'sent_at', 'delivered_at', 'read_at', 'failed_at',
         'failure_code', 'failure_reason', 'provider_payload', 'send_spec',
     ];

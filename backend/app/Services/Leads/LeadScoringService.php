@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Enums\ActivityType;
 use App\Enums\FollowUpOutcome;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
@@ -197,6 +198,41 @@ class LeadScoringService
             'previous_temperature' => $previousTemperature,
             'reasons' => $result['reasons'],
         ];
+    }
+
+    /**
+     * Re-scores a lead because something happened to it, and keeps the result.
+     *
+     * `apply` only sets the attributes — every other caller is mid-save — so a
+     * caller with nothing else to save (a customer opened an email, pressed a
+     * link, opened a brochure) would compute a new score and drop it. Without
+     * this the engagement weights in `config/scoring.php` counted for the next
+     * time anybody happened to edit the lead, which is not when they matter.
+     *
+     * @return array{changed:bool,score:int,previous_score:int}
+     */
+    public function refresh(Lead $lead, string $reason): array
+    {
+        $result = $this->apply($lead);
+
+        if ($result['changed']) {
+            $lead->saveQuietly();
+
+            app(ActivityLogger::class)->log(
+                $lead,
+                ActivityType::ScoreChanged,
+                null,
+                null,
+                [
+                    'from' => $result['previous_score'],
+                    'to' => $result['score'],
+                    'temperature' => $result['temperature']->value,
+                    'reason' => $reason,
+                ],
+            );
+        }
+
+        return $result;
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Models\LeadSourceEvent;
 use App\Models\RepositoryWebhookDelivery;
 use App\Models\SheetSyncRun;
 use App\Models\WhatsappEvent;
+use App\Services\Email\EmailManager;
 use App\Services\Whatsapp\WhatsappManager;
 
 /**
@@ -45,7 +46,7 @@ class IntegrationHealthReport
             return $row;
         }, array_merge(
             $this->leadSources(),
-            [$this->sheets(), $this->whatsapp(), $this->calls(), $this->github()],
+            [$this->sheets(), $this->whatsapp(), $this->email(), $this->calls(), $this->github()],
         ));
     }
 
@@ -63,6 +64,7 @@ class IntegrationHealthReport
             'google_sheets' => (bool) $row['connected'],
             'whatsapp' => app(WhatsappManager::class)->isLive(app(WhatsappManager::class)->integration()),
             'calls' => (bool) $row['configured'],
+            'email' => (bool) $row['configured'],
             'github' => (bool) $row['connected'],
             default => (bool) $row['configured'],
         };
@@ -214,6 +216,47 @@ class IntegrationHealthReport
             'flow' => 'webhook',
             'verification' => $evidence ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
             'blocker' => $evidence ? null : ($live ? 'awaiting_first_event' : 'credentials_missing'),
+        ];
+    }
+
+    /**
+     * Evidence: a customer's own mail client fetched something from a message
+     * we sent over the workspace's real mail server.
+     *
+     * The server accepting a message proves the credentials; it does not prove
+     * the mail arrived anywhere, because a message accepted and then dropped
+     * looks identical. An open or a click is somebody's software saying it did.
+     * It counts only from `smtp` or `platform`: the log and array transports
+     * produce messages and no recipients, so anything they "sent" is sandbox.
+     */
+    private function email(): array
+    {
+        $manager = app(EmailManager::class);
+        $integration = $manager->integration();
+        $live = $manager->isLive($integration);
+
+        $heard = LeadMessage::where('channel', 'email')
+            ->whereIn('provider', ['smtp', 'platform'])
+            ->whereNotNull('read_at')
+            ->latest('read_at')
+            ->first();
+
+        return [
+            'key' => 'email',
+            'kind' => 'messaging',
+            'connected' => $integration?->status === Integration::CONNECTED,
+            'configured' => $live,
+            'last_event_at' => $heard?->read_at?->toIso8601String(),
+            'last_sync_at' => null,
+            'last_error' => $integration?->last_error,
+            'events' => (int) LeadMessage::where('channel', 'email')->count(),
+            'flow' => 'outbound',
+            'verification' => $heard ? self::EXTERNALLY_VERIFIED : self::IMPLEMENTED,
+            'blocker' => match (true) {
+                $heard !== null => null,
+                ! $live && $manager->provider() === 'mock' => 'credentials_missing',
+                default => 'awaiting_first_event',
+            },
         ];
     }
 

@@ -285,6 +285,24 @@ class TheRightFileFindsTheLeadTest extends TestCase
         $this->assertGreaterThan($before, $after);
     }
 
+    /**
+     * The stored score, not a fresh evaluation of it.
+     *
+     * The test above evaluates the score on demand, which is why it passed while
+     * the open changed nothing a rep would ever see: the number on the lead card
+     * is the stored one, and it only moved the next time somebody edited the lead.
+     */
+    public function test_opening_a_brochure_moves_the_score_on_the_lead_itself(): void
+    {
+        [, $lead, $share] = $this->sharedFile();
+
+        $before = (int) $lead->fresh()->score;
+
+        $this->open($share);
+
+        $this->assertGreaterThan($before, (int) $lead->fresh()->score);
+    }
+
     /** And it says so, because a score nobody can explain is one nobody trusts. */
     public function test_the_score_says_the_brochure_was_opened(): void
     {

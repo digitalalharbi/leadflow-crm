@@ -76,6 +76,17 @@ class TenantProvisioningService
                     ]);
                 }
 
+                foreach (MessageTemplate::EMAIL_DEFAULTS as $index => $template) {
+                    MessageTemplate::create([
+                        'name' => $template['name'],
+                        'subject' => $template['subject'],
+                        'body' => $template['body'],
+                        'channel' => 'email',
+                        'is_active' => true,
+                        'sort_order' => $index,
+                    ]);
+                }
+
                 foreach (LostReason::DEFAULTS as $index => $reason) {
                     LostReason::create([
                         'key' => $reason['key'],

@@ -59,6 +59,7 @@ class IntegrationState
         'google_sheets' => 'google',
         'whatsapp' => 'whatsapp',
         'calls' => 'twilio',
+        'email' => 'email',
         'meta' => 'ads',
         'tiktok' => 'ads',
         'google_ads' => 'ads',
@@ -154,6 +155,12 @@ class IntegrationState
     {
         if ($key === 'whatsapp') {
             return LeadMessage::where('provider', 'mock')->exists();
+        }
+
+        // An email the log or array transport "sent": the pipeline ran end to
+        // end and nothing left the building.
+        if ($key === 'email') {
+            return LeadMessage::where('channel', 'email')->where('provider', 'mock')->exists();
         }
 
         if (in_array($key, ['meta', 'tiktok', 'google_ads', 'snapchat', 'linkedin'], true) && ! $credentials) {

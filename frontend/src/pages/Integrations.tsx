@@ -24,8 +24,10 @@ import { MessageTemplates } from '@/components/whatsapp/MessageTemplates'
 import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
 import { ChartCard, IngestionChart, IngestionSources } from '@/components/charts'
 import { fetchIngestion } from '@/features/ingestion'
+import { useIntegrationStates } from '@/features/integrationState'
 
 const STATUS_LABEL = {
+  // Fallback only. See the card: this word is not used when a state exists.
   connected: 'integrations.connected',
   not_connected: 'integrations.notConnected',
   configuration_required: 'integrations.configurationRequired',
@@ -44,6 +46,7 @@ export function IntegrationsPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const demoMode = useAuth((s) => s.demoMode)
   const user = useAuth((s) => s.user)
+  const states = useIntegrationStates()
 
   /*
    * What came back from Google.
@@ -276,7 +279,16 @@ export function IntegrationsPage() {
                       </h3>
                       {/* Status as words next to the name, not only as a chip —
                           "needs setup" is the thing an admin is scanning for. */}
-                      <p className="t-caption">{t(STATUS_LABEL[card.status])}</p>
+                      <p className="t-caption" data-testid={`card-state-${card.provider}`}>
+                        {/*
+                          The ladder state when the server has one. The raw status
+                          said "connected" for a row that merely existed, beside a
+                          demo provider — so it is only the fallback now.
+                        */}
+                        {states.get(card.provider)
+                          ? t(`integrationState.${states.get(card.provider)}`)
+                          : t(STATUS_LABEL[card.status])}
+                      </p>
                     </div>
                   </div>
                   <span

@@ -7,6 +7,7 @@ import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { Badge, Button, Card, CardBody, Skeleton } from '@/components/ui'
+import { STATE_TONE, isProven, type IntegrationState } from '@/features/integrationState'
 
 /**
  * Every source on one screen.
@@ -32,6 +33,8 @@ interface HealthRow {
   events: number
   flow: 'webhook' | 'pull' | 'manual'
   verification: 'implemented' | 'externally_verified' | 'manual_only'
+  /** The six-word ladder, computed on the server. */
+  state: IntegrationState
   /**
    * Why this is not verified yet, or null once it is.
    *
@@ -95,7 +98,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             />
             <Figure
               label={t('health.verifiedCount')}
-              value={String(rows.filter((row) => row.verification === 'externally_verified').length)}
+              value={String(rows.filter((row) => isProven(row.state)).length)}
             />
             <Figure
               label={t('health.lastEventAny')}
@@ -130,7 +133,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
               'pressable rounded-[var(--radius-card)] border bg-[var(--color-surface)] p-2.5 text-start',
               row.last_error
                 ? 'border-[var(--color-danger)]/40'
-                : row.verification === 'externally_verified'
+                : isProven(row.state)
                   ? 'border-[var(--color-success)]/35'
                   : 'border-[var(--color-line)]',
             )}
@@ -145,18 +148,18 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
                   'size-2 shrink-0 rounded-full',
                   row.last_error
                     ? 'bg-[var(--color-danger)]'
-                    : row.verification === 'externally_verified'
+                    : isProven(row.state)
                       ? 'bg-[var(--color-success)]'
                       : 'bg-[var(--color-ink-subtle)]/40',
                 )}
               />
             </div>
 
-            <Badge tone={TONE[row.verification]} className="mt-1.5">
-              {t(`health.short.${row.verification}`)}
+            <Badge tone={STATE_TONE[row.state]} className="mt-1.5" testId={`state-${row.key}`}>
+              {t(`integrationState.${row.state}`)}
             </Badge>
 
-            {row.verification !== 'externally_verified' && row.blocker && (
+            {!isProven(row.state) && row.blocker && (
               <p className="t-caption mt-1" data-testid={`blocker-${row.key}`}>
                 {t(`health.blocker.${row.blocker}`)}
               </p>
@@ -202,10 +205,4 @@ function Figure({ label, value }: { label: string; value: string }) {
   )
 }
 
-const TONE: Record<string, 'success' | 'warning' | 'neutral'> = {
-  externally_verified: 'success',
-  // Not a failure — the code is written and tested. It is a claim nobody has
-  // checked against the real thing, and saying so is the point.
-  implemented: 'warning',
-  manual_only: 'neutral',
-}
+

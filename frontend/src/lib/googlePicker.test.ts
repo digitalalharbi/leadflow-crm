@@ -26,7 +26,12 @@ function stubPicker(respond: (callback: (data: unknown) => void) => void) {
   window.google = {
     picker: {
       PickerBuilder: Builder as never,
-      DocsView: class { constructor(public id: unknown) {} } as never,
+      DocsView: class {
+        id: unknown
+        constructor(id: unknown) {
+          this.id = id
+        }
+      } as never,
       ViewId: { SPREADSHEETS: 'SPREADSHEETS' },
       Action: { PICKED: 'picked', CANCEL: 'cancel' },
     },

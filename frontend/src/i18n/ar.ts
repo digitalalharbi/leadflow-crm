@@ -960,6 +960,23 @@ export default {
     },
   },
 
+  integrationState: {
+    not_configured: 'غير مُعدّ',
+    code_verified: 'الكود مُختبَر',
+    sandbox_verified: 'مُجرَّب تجريبيًا',
+    ready: 'جاهز',
+    live_verified: 'مُجرَّب فعليًا',
+    production_verified: 'مُجرَّب في الإنتاج',
+    hint: {
+      not_configured: 'لم تُدخَل بيانات الاتصال بعد.',
+      code_verified: 'بيانات الاتصال موجودة ولم يتأكد منها المزوّد بعد.',
+      sandbox_verified: 'يعمل المسار على مزوّد تجريبي — لم يصل شيء حقيقي.',
+      ready: 'قبل المزوّد بيانات الاتصال. ينقص أول حدث حقيقي.',
+      live_verified: 'حدث شيء حقيقي من الطرف الآخر.',
+      production_verified: 'مُجرَّب فعليًا في الإنتاج، حديثًا، وبلا أخطاء.',
+    },
+  },
+
   readiness: {
     title: 'جاهزية الإنتاج',
     hint: 'ما الذي يفصل هذا النظام عن العمل الفعلي، ومن صاحب الخطوة التالية.',

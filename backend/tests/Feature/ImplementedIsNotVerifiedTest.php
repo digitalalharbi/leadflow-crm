@@ -73,29 +73,58 @@ class ImplementedIsNotVerifiedTest extends TestCase
         $this->assertSame(IntegrationHealthReport::IMPLEMENTED, $row['verification']);
     }
 
-    /** A real arrival is evidence. Nothing else is. */
+    /**
+     * A real arrival is evidence — from a workspace that could have received one.
+     *
+     * An event for a platform the workspace holds no credentials for was posted by
+     * hand, by the demo button or by a test. It has the right shape and it did not
+     * come from the platform, so it is not proof of the platform.
+     */
     public function test_a_lead_that_actually_arrived_verifies_the_source(): void
     {
         $this->asTenant($this->t['tenant'], function () {
-            $lead = Lead::create([
-                'full_name' => 'عميل',
-                'phone_normalized' => '+966551234567',
-                'status' => 'new',
+            Integration::create([
+                'provider' => IntegrationProvider::Meta->value,
+                'name' => 'Meta',
+                'status' => Integration::CONNECTED,
+                'credentials' => ['access_token' => 'EAAB-real', 'page_id' => '123'],
+                'is_active' => true,
             ]);
 
-            LeadSourceEvent::create([
-                'lead_id' => $lead->id,
-                'provider' => IntegrationProvider::Meta->value,
-                'platform' => 'meta',
-                'was_duplicate' => false,
-                'received_at' => now(),
-            ]);
+            $this->arrive(IntegrationProvider::Meta);
         });
 
         $row = $this->row(IntegrationProvider::Meta->value);
 
         $this->assertSame(IntegrationHealthReport::EXTERNALLY_VERIFIED, $row['verification']);
         $this->assertNotNull($row['last_event_at']);
+    }
+
+    public function test_an_event_for_a_platform_with_no_credentials_is_not_proof_of_the_platform(): void
+    {
+        $this->asTenant($this->t['tenant'], fn () => $this->arrive(IntegrationProvider::Meta));
+
+        $row = $this->row(IntegrationProvider::Meta->value);
+
+        $this->assertSame(IntegrationHealthReport::IMPLEMENTED, $row['verification']);
+        $this->assertSame('credentials_missing', $row['blocker']);
+    }
+
+    private function arrive(IntegrationProvider $provider): void
+    {
+        $lead = Lead::create([
+            'full_name' => 'عميل',
+            'phone_normalized' => '+9665512'.random_int(10000, 99999),
+            'status' => 'new',
+        ]);
+
+        LeadSourceEvent::create([
+            'lead_id' => $lead->id,
+            'provider' => $provider->value,
+            'platform' => $provider->value,
+            'was_duplicate' => false,
+            'received_at' => now(),
+        ]);
     }
 
     /**

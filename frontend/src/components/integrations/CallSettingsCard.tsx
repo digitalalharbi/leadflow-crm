@@ -4,6 +4,7 @@ import { Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
+import { useIntegrationStates, STATE_TONE } from '@/features/integrationState'
 import { Badge, Button, Card, CardBody, CardHeader, Input, Skeleton } from '@/components/ui'
 import {
   disconnectCalls, fetchCallSettings, saveCallSettings, testCallSettings,
@@ -29,6 +30,7 @@ export function CallSettingsCard() {
   const [from, setFrom] = useState('')
 
   const { data, isLoading } = useQuery({ queryKey: ['call-settings'], queryFn: fetchCallSettings })
+  const state = useIntegrationStates().get('calls')
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['call-settings'] })
@@ -73,19 +75,17 @@ export function CallSettingsCard() {
 
   if (isLoading) return <Skeleton className="h-40" />
 
-  const connected = data?.status === 'connected'
-
   return (
     <Card data-testid="call-settings">
       <CardHeader
         title={t('calls.title')}
         description={t('calls.hint')}
         action={
-          connected ? (
-            <Badge tone="success">{t('calls.connected')}</Badge>
+          state && state !== 'not_configured' ? (
+            <Badge tone={STATE_TONE[state]} testId="calls-state">{t(`integrationState.${state}`)}</Badge>
           ) : (
             // In words, and not "disconnected": nothing is broken. The rep
-            // dials, which is the arrangement until a provider is connected.
+            // dials, which is the arrangement until a provider is set up.
             <Badge tone="neutral">{t('calls.manual')}</Badge>
           )
         }

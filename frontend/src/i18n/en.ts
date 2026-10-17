@@ -809,6 +809,23 @@ export default {
     },
   },
 
+  integrationState: {
+    not_configured: 'Not configured',
+    code_verified: 'Code verified',
+    sandbox_verified: 'Sandbox verified',
+    ready: 'Ready',
+    live_verified: 'Live verified',
+    production_verified: 'Production verified',
+    hint: {
+      not_configured: 'No credentials have been entered yet.',
+      code_verified: 'Credentials are entered and the provider has not yet confirmed them.',
+      sandbox_verified: 'The path runs on a demo provider \u2014 nothing real has arrived.',
+      ready: 'The provider accepted the credentials. The first real event is what remains.',
+      live_verified: 'Something real has happened at the other end.',
+      production_verified: 'Live-verified in production, recently, with no errors.',
+    },
+  },
+
   readiness: {
     title: 'Production readiness',
     hint: 'What stands between this system and being live, and whose move it is.',

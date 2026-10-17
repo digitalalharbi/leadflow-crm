@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
+use App\Http\Controllers\Api\V1\CommandCenterController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
@@ -121,6 +122,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
 
             Route::get('/dashboard', [DashboardController::class, 'index']);
+            Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);

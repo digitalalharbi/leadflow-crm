@@ -120,7 +120,13 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
       </Card>
 
       <div
-        className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5"
+        /*
+         * Six across from the laptop width up: eleven integrations in rows of
+         * five is three rows, and the third is the one that pushed this page
+         * past a 768px screen. Two full rows is the point of the grid — the
+         * answer to "is anything wrong" without a scroll.
+         */
+        className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6"
         data-testid="integration-grid"
       >
         {rows.map((row) => (

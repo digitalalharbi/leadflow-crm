@@ -107,6 +107,16 @@ test.describe('Email settings', () => {
     await expect(page.getByTestId('email-state')).not.toContainText('متصل')
   })
 
+  test('the grid has an email tile and no untranslated key leaks onto it', async ({ page }) => {
+    await authenticateAs(page, ALPHA.admin.email)
+    await page.goto('/integrations')
+
+    const tile = page.getByTestId('integration-tile-email')
+    await expect(tile).toBeVisible()
+    // A missing translation renders as its own key — `health.flow.outbound`.
+    await expect(tile).not.toContainText(/\b[a-z]+\.[a-z]+\.[a-z_]+\b/)
+  })
+
   test('a rep never sees the mail server settings', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
     await page.goto('/integrations')

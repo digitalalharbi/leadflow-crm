@@ -590,6 +590,7 @@ export default {
       webhook: 'Arrives on its own',
       pull: 'We read it on a schedule',
       manual: 'The rep does it',
+      outbound: 'We send it',
     },
     title: 'Integration status',
     hint: 'Written and tested is one thing; actually exercised against the other end is another. This says which.',

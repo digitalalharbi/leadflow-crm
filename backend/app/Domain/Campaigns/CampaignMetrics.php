@@ -10,6 +10,8 @@ use App\Models\Lead;
 use App\Models\MetricSnapshot;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * What each campaign cost and what it brought, side by side.
@@ -45,10 +47,17 @@ class CampaignMetrics
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->get();
 
+        return $this->rowsFor($campaigns);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function rowsFor($campaigns): array
+    {
         if ($campaigns->isEmpty()) {
             return [];
         }
 
+        $campaigns->loadMissing(['project:id,uuid,name', 'account:id,uuid,name']);
         $platform = $this->platformNumbers();
         $crm = $this->crmNumbers();
         $manual = $this->manualSpend($campaigns);
@@ -121,6 +130,80 @@ class CampaignMetrics
         ];
     }
 
+    /**
+     * One campaign opened up: its row, its ads with what each cost and brought,
+     * the day-by-day spend and leads, and the quality of what arrived.
+     *
+     * @return array<string, mixed>
+     */
+    public function detail(Campaign $campaign): array
+    {
+        $row = collect($this->rowsFor(new Collection([$campaign])))->first();
+
+        $adSpend = MetricSnapshot::query()
+            ->where('campaign_id', $campaign->id)
+            ->whereNotNull('ad_id')
+            ->whereBetween('date', [$this->from->toDateString(), $this->to->toDateString()])
+            ->selectRaw('ad_id, sum(spend_minor) as spend, sum(impressions) as impressions, sum(clicks) as clicks')
+            ->groupBy('ad_id')
+            ->get()
+            ->keyBy('ad_id');
+
+        $adCrm = $this->crmQuery()->where('campaign_ref_id', $campaign->id)
+            ->whereNotNull('ad_ref_id')
+            ->addSelect('ad_ref_id')
+            ->groupBy('ad_ref_id')
+            ->get()
+            ->keyBy('ad_ref_id');
+
+        $ads = $campaign->ads()->with(['creative', 'adSet:id,name'])->whereNull('archived_at')->get()
+            ->map(function ($ad) use ($adSpend, $adCrm) {
+                $p = $adSpend->get($ad->id);
+                $c = $adCrm->get($ad->id);
+                $crm = $c ? $this->crmRow($c) : $this->emptyCrm();
+                $spend = $p ? (int) $p->spend : null;
+                $impressions = $p ? (int) $p->impressions : 0;
+
+                return array_merge([
+                    'id' => $ad->uuid,
+                    'name' => $ad->name,
+                    'status' => $ad->status,
+                    'ad_set' => $ad->adSet?->name,
+                    'impressions' => $p ? $impressions : null,
+                    'clicks' => $p ? (int) $p->clicks : null,
+                    'ctr' => $impressions > 0 ? round(((int) $p->clicks) / $impressions * 100, 2) : null,
+                    'creative' => $ad->creative ? [
+                        'format' => $ad->creative->format,
+                        'headline' => $ad->creative->headline,
+                        'body' => $ad->creative->body,
+                        'thumbnail_url' => $ad->creative->thumbnail_url ?? $ad->creative->media_url,
+                    ] : null,
+                ], array_diff_key($crm, ['_revenue_minor' => 1]), $this->costs($spend, $crm));
+            })
+            ->sortByDesc('qualified')->values()->all();
+
+        $leadsByDay = Lead::query()->visibleTo($this->user)->reorder()
+            ->where('campaign_ref_id', $campaign->id)
+            ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
+            ->selectRaw('leads.created_at::date as day, count(*) as total')
+            ->groupBy(DB::raw('1'))
+            ->pluck('total', 'day');
+
+        $classes = Lead::query()->visibleTo($this->user)->reorder()
+            ->where('campaign_ref_id', $campaign->id)
+            ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
+            ->selectRaw(LeadClassification::sql('leads').' as class, count(*) as total')
+            ->groupBy(DB::raw('1'))
+            ->pluck('total', 'class');
+
+        return [
+            'campaign' => $row,
+            'ads' => $ads,
+            'leads_daily' => $leadsByDay->map(fn ($n, $day) => ['date' => (string) $day, 'count' => (int) $n])->values()->all(),
+            'classification' => collect(LeadClassification::values())->map(fn ($k) => ['key' => $k, 'count' => (int) ($classes[$k] ?? 0)])->all(),
+        ];
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function platformNumbers(): array
     {
@@ -152,12 +235,31 @@ class CampaignMetrics
         $invalid = LeadStatus::Invalid->value;
         $replied = "'replied', 'qualified', 'appointment', 'negotiation', '{$won}'";
 
-        $rows = Lead::query()->visibleTo($this->user)->reorder()
-            ->whereNotNull('campaign_ref_id')
+        $rows = $this->crmQuery()->whereNotNull('campaign_ref_id')
+            ->addSelect('campaign_ref_id')
+            ->groupBy('campaign_ref_id')
+            ->get();
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $out[$row->campaign_ref_id] = $this->crmRow($row);
+        }
+
+        return $out;
+    }
+
+    /** The CRM funnel as aggregate columns, for whatever the caller groups by. */
+    private function crmQuery()
+    {
+        $won = LeadStatus::Won->value;
+        $invalid = LeadStatus::Invalid->value;
+        $replied = "'replied', 'qualified', 'appointment', 'negotiation', '{$won}'";
+
+        return Lead::query()->visibleTo($this->user)->reorder()
             ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
             ->selectRaw(sprintf(
-                "campaign_ref_id,
-                 count(*) as leads,
+                "count(*) as leads,
                  count(*) filter (where status <> '%1\$s') as valid,
                  count(*) filter (where first_response_at is not null or status in (%2\$s)) as engaged,
                  count(*) filter (where qualification_status = 'qualified' or status in ('qualified', 'appointment', 'negotiation', '%3\$s')) as qualified,
@@ -167,28 +269,23 @@ class CampaignMetrics
                  count(*) filter (where (%4\$s) in ('hot', 'priority')) as hot,
                  coalesce(sum(deal_value_minor), 0) as revenue_minor",
                 $invalid, $replied, $won, LeadClassification::sql('leads'),
-            ))
-            ->groupBy('campaign_ref_id')
-            ->get();
+            ));
+    }
 
-        $out = [];
-
-        foreach ($rows as $row) {
-            $out[$row->campaign_ref_id] = [
-                'leads' => (int) $row->leads,
-                'valid' => (int) $row->valid,
-                'engaged' => (int) $row->engaged,
-                'qualified' => (int) $row->qualified,
-                'appointments' => (int) $row->appointments,
-                'won' => (int) $row->won,
-                'cold' => (int) $row->cold,
-                'hot' => (int) $row->hot,
-                'revenue' => round(((int) $row->revenue_minor) / 100, 2),
-                '_revenue_minor' => (int) $row->revenue_minor,
-            ];
-        }
-
-        return $out;
+    private function crmRow(object $row): array
+    {
+        return [
+            'leads' => (int) $row->leads,
+            'valid' => (int) $row->valid,
+            'engaged' => (int) $row->engaged,
+            'qualified' => (int) $row->qualified,
+            'appointments' => (int) $row->appointments,
+            'won' => (int) $row->won,
+            'cold' => (int) $row->cold,
+            'hot' => (int) $row->hot,
+            'revenue' => round(((int) $row->revenue_minor) / 100, 2),
+            '_revenue_minor' => (int) $row->revenue_minor,
+        ];
     }
 
     private function emptyCrm(): array

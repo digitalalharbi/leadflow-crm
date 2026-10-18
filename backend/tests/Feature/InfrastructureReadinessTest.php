@@ -44,6 +44,23 @@ class InfrastructureReadinessTest extends TestCase
         return collect($this->infra->all())->firstWhere('key', $key);
     }
 
+    public function test_the_last_logged_error_shows_the_message_not_where_the_code_lives(): void
+    {
+        $file = storage_path('logs/laravel-readiness-test.log');
+        file_put_contents($file, '['.now()->format('Y-m-d H:i:s').'] testing.ERROR: Class "X" not found {"exception":"[object] (Error at '.base_path('app/Thing.php').':12)"}'.PHP_EOL);
+        touch($file, time() + 60);
+
+        try {
+            $error = $this->row('logs')['last_error'];
+        } finally {
+            @unlink($file);
+        }
+
+        $this->assertStringContainsString('Class "X" not found', $error);
+        $this->assertStringNotContainsString(base_path(), $error);
+        $this->assertStringNotContainsString('exception', $error);
+    }
+
     // --------------------------------------------------------------- shape
 
     public function test_there_are_seven_rows_each_with_the_same_facts(): void

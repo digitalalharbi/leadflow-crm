@@ -324,7 +324,15 @@ class InfrastructureReadiness
 
         $last = end($m);
 
-        return mb_substr($last[1].' — '.$last[2], 0, 240);
+        /*
+         * The message, not the record: the JSON context after it carries the
+         * exception's file path and trace, and a screen an admin may screenshot
+         * into a ticket has no business showing where the code lives on disk.
+         */
+        $message = preg_replace('/\s+\{".*$/s', '', $last[2]) ?? $last[2];
+        $message = str_replace([base_path().DIRECTORY_SEPARATOR, base_path()], '', $message);
+
+        return mb_substr($last[1].' — '.$message, 0, 240);
     }
 
     // ------------------------------------------------------- error tracking

@@ -8,6 +8,7 @@ use App\Domain\Campaigns\CampaignMetrics;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Http\Controllers\Controller;
 use App\Models\AdAccount;
+use App\Models\Campaign;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Project;
@@ -42,6 +43,20 @@ class CampaignController extends Controller
         return ApiResponse::success([
             'campaigns' => $rows,
             'totals' => $metrics->totals($rows),
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+        ]);
+    }
+
+    public function show(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+
+        $campaign = Campaign::query()->where('uuid', $uuid)->firstOrFail();
+        [$from, $to] = $this->window($request);
+
+        return ApiResponse::success((new CampaignMetrics($request->user(), $from, $to))->detail($campaign) + [
             'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Enums\IntegrationProvider;
 use App\Models\Ad;
@@ -279,5 +280,36 @@ class CampaignManagementTest extends TestCase
 
         $this->actingAs($rep)->getJson('/api/v1/campaigns')->assertForbidden();
         $this->actingAs($rep)->postJson('/api/v1/campaigns/sync')->assertForbidden();
+    }
+
+    public function test_a_campaign_opens_into_its_ads_their_quality_and_its_days(): void
+    {
+        $this->fakeMeta('200.00');
+        $integration = $this->integration();
+        $this->asTenant($this->t['tenant'], fn () => app(CampaignSyncer::class)->sync($integration));
+
+        // Two leads through the same ad: one qualified.
+        foreach (['0551112001' => 'qualified', '0551112002' => 'new'] as $phone => $status) {
+            $this->asTenant($this->t['tenant'], function () use ($phone, $status) {
+                $lead = Lead::create(['full_name' => 'ع', 'phone_normalized' => '+966'.substr($phone, 1), 'status' => $status,
+                    'platform' => 'facebook', 'campaign_id' => 'c1', 'campaign_name' => 'حملة النرجس', 'adset_id' => 's1', 'ad_id' => 'a1']);
+                app(CampaignResolver::class)->linkLead($lead);
+            });
+        }
+
+        $uuid = $this->asTenant($this->t['tenant'], fn () => Campaign::first()->uuid);
+        $data = $this->actingAs($this->t['admin'])->getJson("/api/v1/campaigns/{$uuid}")->assertOk()->json('data');
+
+        $this->assertSame(2, $data['campaign']['leads']);
+        $this->assertCount(1, $data['ads']);
+        $this->assertSame(1, $data['ads'][0]['qualified']);
+        $this->assertEquals(100.0, $data['ads'][0]['cpl']);
+        $this->assertSame('video', $data['ads'][0]['creative']['format']);
+        $this->assertSame(2, array_sum(array_column($data['leads_daily'], 'count')));
+        $this->assertSame(2, array_sum(array_column($data['classification'], 'count')));
+
+        // Another workspace cannot open it.
+        $other = $this->provisionTenant('Peek Co', ['admin_email' => 'peek@example.test']);
+        $this->actingAs($other['admin'])->getJson("/api/v1/campaigns/{$uuid}")->assertNotFound();
     }
 }

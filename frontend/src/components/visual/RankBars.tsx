@@ -54,9 +54,10 @@ export function RankBars({
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-baseline justify-between gap-2">
                 <span className="truncate text-[0.8125rem] font-medium">{row.label}</span>
-                <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums">
-                  {formatNumber(row.value)}
-                  {row.note && <span className="ms-1.5 text-[0.6875rem] font-normal text-[var(--color-ink-muted)]">{row.note}</span>}
+                {/* Number and note as two pieces, so bidi cannot glue "2" and "100%" into "2100%". */}
+                <span className="flex shrink-0 items-baseline gap-1.5 text-[0.8125rem] font-semibold tabular-nums">
+                  {row.note && <span className="text-[0.6875rem] font-normal text-[var(--color-ink-muted)]" dir="ltr">{row.note}</span>}
+                  <span dir="ltr">{formatNumber(row.value)}</span>
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]">

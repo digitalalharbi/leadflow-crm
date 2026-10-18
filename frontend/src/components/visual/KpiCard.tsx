@@ -74,9 +74,9 @@ export function KpiCard({
 
       <p className="mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]">{label}</p>
       <div className="flex items-end justify-between gap-2">
-        <p className="t-metric" data-testid={valueTestId}>
+        <div className="t-metric" data-testid={valueTestId}>
           {value}
-        </p>
+        </div>
         {spark && spark.length > 1 && <MiniTrend values={spark} color={TONE_INK[tone]} />}
       </div>
       {children}

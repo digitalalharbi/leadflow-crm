@@ -121,4 +121,21 @@ test.describe('الأتمتة — rules', () => {
     await expect(rules).toContainText('بلا شروط')
     await expect(rules).not.toContainText('0 شرط')
   })
+
+  test('a rule reads as a path — trigger, condition, then its actions', async ({ page }) => {
+    await page.getByTestId('install-hot_lead_priority').click()
+
+    const flow = page.locator('[data-testid^="rule-flow-"]').first()
+    await expect(flow).toBeVisible()
+    await expect(flow.locator('li[data-kind="trigger"]')).toHaveCount(1)
+    await expect(flow.locator('li[data-kind="condition"]')).toHaveCount(1)
+    expect(await flow.locator('li[data-kind="action"]').count()).toBeGreaterThan(0)
+
+    // Values are in the product's own words, never the stored key.
+    await expect(flow).not.toContainText(/\bhot\b/)
+  })
+
+  test('the numbers on top say how much the automation is doing', async ({ page }) => {
+    await expect(page.getByTestId('automation-kpis')).toBeVisible()
+  })
 })

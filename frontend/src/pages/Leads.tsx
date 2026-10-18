@@ -36,7 +36,9 @@ export function LeadsPage() {
   // "today" row lands on exactly the list it names.
   const [filters, setFilters] = useState<LeadFilters>(() => {
     const multi = (key: string) => {
-      const values = searchParams.getAll(`${key}[]`)
+      // Both spellings: `?status[]=new` from the filters and `?temperature=hot`
+      // from the links the command center and dashboard have always written.
+      const values = [...searchParams.getAll(`${key}[]`), ...searchParams.getAll(key)]
       return values.length > 0 ? values : undefined
     }
 

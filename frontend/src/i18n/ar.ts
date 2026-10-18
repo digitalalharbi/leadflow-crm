@@ -1473,6 +1473,15 @@ export default {
     chain: { platform: 'المنصة', campaign: 'الحملة', adset: 'المجموعة', ad: 'الإعلان', form: 'النموذج' },
   },
 
+  journey: {
+    arrived: 'وصل',
+    automated: 'أتمتة',
+    reached: 'تم التواصل',
+    followed: 'متابعة',
+    waiting: 'ينتظر الفريق',
+    closed: 'نتيجة',
+  },
+
   visual: {
     status: {
       healthy: 'سليم',

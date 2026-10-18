@@ -12,6 +12,7 @@ import { TONE_COLOR, TONE_TINT } from '@/components/visual/tones'
 import { platformColor } from '@/components/charts'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { ProposalInbox } from '@/components/campaigns/ProposalInbox'
+import { AgentsPanel } from '@/components/campaigns/AgentsPanel'
 import { ClientRulesDrawer } from '@/components/campaigns/ClientRulesDrawer'
 import {
   campaignInsights, spendTrend, syncCampaigns, useCampaignPlatforms, useCampaigns, type CampaignsData, type Insight, type InsightKey,
@@ -230,6 +231,11 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
       {/* What agents and people want changed, waiting for a decision. */}
 
       <ProposalInbox currency={data.currency} />
+
+
+      {/* The agents: who ran, what they saw. They advise; the inbox above is where it becomes a change. */}
+
+      <AgentsPanel />
 
 
       {insights.length > 0 && (

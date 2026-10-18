@@ -1370,6 +1370,26 @@ export default {
     name: { campaign: 'Campaign agent', analyst: 'Analyst', creative: 'Creative agent', leads: 'Leads agent', reports: 'Reports agent', orchestrator: 'Orchestrator' },
   },
 
+  agentsPanel: {
+    title: 'Agents',
+    analyse: 'Analyse now',
+    done: 'Analysis complete.',
+    notYet: 'Not run yet',
+    failed: 'Last run failed',
+    allClear: 'Nothing needs attention.',
+    neverRan: 'The analysis has not run yet.',
+    finding: {
+      no_results: 'Spend, no qualified leads',
+      over_target: 'Cost per qualified over target',
+      cpl_over_target: 'CPL over target',
+      outperforming: 'Beating the target',
+      quality_drop: 'Quality dropped',
+      spend_spike: 'Spend spike',
+      over_ceiling: 'Over the budget ceiling',
+      fatigue: 'Ad fatigue',
+    },
+  },
+
   visual: {
     status: {
       healthy: 'Healthy',

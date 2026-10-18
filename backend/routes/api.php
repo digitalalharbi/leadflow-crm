@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ActionProposalController;
+use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
@@ -274,6 +275,9 @@ Route::prefix('v1')->group(function () {
             Route::patch('/action-proposals/{uuid}', [ActionProposalController::class, 'update'])->whereUuid('uuid');
             Route::post('/action-proposals/{uuid}/approve', [ActionProposalController::class, 'approve'])->whereUuid('uuid');
             Route::post('/action-proposals/{uuid}/reject', [ActionProposalController::class, 'reject'])->whereUuid('uuid');
+            Route::get('/agents', [AgentController::class, 'index']);
+            Route::post('/agents/routines/{routine}/run', [AgentController::class, 'run']);
+            Route::get('/agents/threads/{uuid}', [AgentController::class, 'thread'])->whereUuid('uuid');
             Route::get('/client-rules', [ClientRuleController::class, 'show']);
             Route::put('/client-rules', [ClientRuleController::class, 'update']);
 

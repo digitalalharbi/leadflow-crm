@@ -79,10 +79,14 @@ Schedule::command('leadflow:sync-sheets')
     ->withoutOverlapping();
 
 /*
- * Ad accounts into the campaign tables, and leads onto their campaigns. Hourly:
- * platforms report daily, so more often buys nothing and spends API quota.
+ * Ad accounts into the campaign tables, and leads onto their campaigns, is the
+ * agents' `hourly_sync` routine: hourly, because platforms report daily and more
+ * often buys nothing but API quota. `leadflow:sync-campaigns` remains for a
+ * manual run.
  */
-Schedule::command('leadflow:sync-campaigns')->hourly()->withoutOverlapping();
+// The agents' own schedule (daily analysis, budget guard, …), in each
+// workspace's timezone. The runner decides what is due; this only wakes it.
+Schedule::command('leadflow:run-routines')->everyFiveMinutes()->withoutOverlapping();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 

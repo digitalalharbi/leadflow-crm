@@ -6,6 +6,7 @@ use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Leads\NextBestAction;
+use App\Domain\Leads\PipelineOverview;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -172,6 +173,30 @@ class LeadController extends Controller
             'appointments' => AppointmentResource::collection(
                 $lead->appointments()->orderByDesc('scheduled_at')->limit(10)->get()
             ),
+        ]);
+    }
+
+    /**
+     * The leads list as a picture: headline numbers, quality, sources, trend.
+     * Honours the same filters as the list, so the picture and the rows below it
+     * describe the same leads.
+     */
+    public function overview(Request $request)
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $overview = new PipelineOverview($this->queries->build($request, $request->user()));
+        $health = $overview->health();
+        $qualified = collect($overview->funnel())->firstWhere('key', 'qualified')['count'] ?? 0;
+
+        return ApiResponse::success([
+            'health' => $health + [
+                'qualified' => $qualified,
+                'qualified_rate' => $health['total'] > 0 ? round($qualified / $health['total'] * 100, 1) : null,
+            ],
+            'classification' => $overview->classification(),
+            'sources' => $overview->sources(),
+            'trend' => $overview->trend(30),
         ]);
     }
 

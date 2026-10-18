@@ -59,12 +59,48 @@ class PipelineOverview
         ];
     }
 
+    /** Where the leads came from — the platforms, largest first, with the tail folded into one slice. */
+    public function sources(int $limit = 5): array
+    {
+        $rows = $this->base()
+            ->selectRaw("coalesce(nullif(leads.platform, ''), 'other') as platform, count(*) as total")
+            ->groupBy(DB::raw('1'))
+            ->orderByDesc(DB::raw('count(*)'))
+            ->get();
+
+        $head = $rows->take($limit);
+        $tail = (int) $rows->skip($limit)->sum('total');
+
+        return $head->map(fn ($row) => ['key' => (string) $row->platform, 'count' => (int) $row->total])
+            ->when($tail > 0, fn ($c) => $c->push(['key' => 'other', 'count' => $tail]))
+            ->values()
+            ->all();
+    }
+
+    /** Leads per day, zero-filled, so a quiet day is a low point and not a missing one. */
+    public function trend(int $days = 30): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
+
+        $counts = $this->base()
+            ->where('leads.created_at', '>=', $from)
+            ->selectRaw('leads.created_at::date as day, count(*) as total')
+            ->groupBy(DB::raw('1'))
+            ->pluck('total', 'day');
+
+        return collect(range(0, $days - 1))->map(function (int $offset) use ($from, $counts) {
+            $day = $from->copy()->addDays($offset)->toDateString();
+
+            return ['date' => $day, 'count' => (int) ($counts[$day] ?? 0)];
+        })->all();
+    }
+
     private function base(): Builder
     {
         return (clone $this->leads)->reorder();
     }
 
-    private function health(): array
+    public function health(): array
     {
         $row = $this->base()->selectRaw(sprintf(
             "count(*) as total,
@@ -97,7 +133,7 @@ class PipelineOverview
     }
 
     /** @return array<int, array{key: string, count: int, keep: ?float}> */
-    private function funnel(): array
+    public function funnel(): array
     {
         $beyond = fn (array $statuses) => "leads.status in ('".implode("', '", $statuses)."')";
 
@@ -161,7 +197,7 @@ class PipelineOverview
     }
 
     /** Open leads by classification, zero-filled so a chart always has every slice. */
-    private function classification(): array
+    public function classification(): array
     {
         $rows = $this->base()
             ->whereRaw($this->open())

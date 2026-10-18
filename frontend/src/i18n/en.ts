@@ -1265,6 +1265,17 @@ export default {
     closed: 'Outcome',
   },
 
+  leadsOverview: {
+    total: 'Total leads',
+    hot: 'Hot',
+    qualified: 'Qualified',
+    response: 'Avg response',
+    conversion: 'Conversion',
+    sources: 'Sources',
+    trend: 'Last 30 days',
+    other: 'Other',
+  },
+
   visual: {
     status: {
       healthy: 'Healthy',

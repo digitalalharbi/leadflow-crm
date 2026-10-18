@@ -156,4 +156,31 @@ class PipelineOverviewTest extends TestCase
 
         $this->actingAs($t['admin'])->getJson('/api/v1/leads?classification[]=nonsense')->assertOk()->assertJsonCount(0, 'data');
     }
+
+    public function test_the_leads_overview_reports_sources_and_a_zero_filled_trend(): void
+    {
+        $t = $this->provisionTenant('Picture Co');
+
+        $this->asTenant($t['tenant'], function () {
+            foreach (['meta', 'meta', 'google', 'tiktok', 'snap', 'x', 'linkedin'] as $platform) {
+                $this->lead(['platform' => $platform]);
+            }
+            $this->lead(['status' => 'qualified']);
+        });
+
+        $data = $this->actingAs($t['admin'])->getJson('/api/v1/leads/overview')->assertOk()->json('data');
+
+        $this->assertSame(8, $data['health']['total']);
+        $this->assertSame(1, $data['health']['qualified']);
+        $this->assertEqualsWithDelta(12.5, $data['health']['qualified_rate'], 0.01);
+
+        // Largest first, the tail folded into one slice, and nothing lost.
+        $this->assertSame('meta', $data['sources'][0]['key']);
+        $this->assertSame(8, array_sum(array_column($data['sources'], 'count')));
+        $this->assertLessThanOrEqual(6, count($data['sources']));
+
+        $this->assertCount(30, $data['trend']);
+        $this->assertSame(8, array_sum(array_column($data['trend'], 'count')));
+        $this->assertSame(now()->toDateString(), end($data['trend'])['date']);
+    }
 }

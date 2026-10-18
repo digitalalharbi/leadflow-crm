@@ -1528,6 +1528,7 @@ export default {
     noAds: 'لا إعلانات معروفة لهذه الحملة بعد.',
     ctr: 'نسبة النقر',
     figure: { spend: 'الصرف', revenue: 'الإيراد', roas: 'العائد', leads: 'عملاء', qualified: 'مؤهلون', won: 'صفقات', cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', cpa: 'تكلفة الصفقة', revenuePerLead: 'إيراد العميل' },
+    qualityScore: 'جودة العملاء',
     insight: {
       no_qualified: 'لا عملاء مؤهلين',
       forms_not_customers: 'نماذج لا عملاء',

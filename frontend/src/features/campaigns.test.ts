@@ -3,7 +3,7 @@ import { campaignInsights, spendTrend, type CampaignRow, type CampaignTotals } f
 
 const base: CampaignRow = {
   id: 'x', name: 'A', platform: 'meta', status: 'active', origin: 'sync', objective: null, project: null, account: null,
-  daily_budget: null, currency: 'SAR', last_synced_at: null, spend_source: 'platform', impressions: null, clicks: null, ctr: null,
+  daily_budget: null, currency: 'SAR', last_synced_at: null, quality_score: null, quality_previous: null, spend_source: 'platform', impressions: null, clicks: null, ctr: null,
   daily: [], leads: 50, valid: 45, engaged: 20, qualified: 10, appointments: 4, won: 2, cold: 10, hot: 5, revenue: 0,
   spend: 1000, cpl: 20, cpql: 100, cost_per_appointment: 250, cpa: 500, roas: null, revenue_per_lead: null,
   qualified_rate: 20, won_rate: 4, cold_rate: 20,

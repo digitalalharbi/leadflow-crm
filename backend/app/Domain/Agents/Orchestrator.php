@@ -6,6 +6,7 @@ use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Enums\Role;
 use App\Models\AgentThread;
+use App\Models\Campaign;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Routine;
@@ -40,6 +41,7 @@ class Orchestrator
         private CampaignAgent $campaigns,
         private CampaignSyncer $syncer,
         private CampaignResolver $resolver,
+        private LeadsAgent $leads,
     ) {}
 
     public function run(string $routine, ?User $by = null, ?int $projectId = null): AgentThread
@@ -65,6 +67,7 @@ class Orchestrator
                 'hourly_sync' => $this->sync($thread),
                 'daily_analysis' => $this->dailyAnalysis($thread, $projectId),
                 'budget_guard' => $this->budgetGuard($thread, $projectId),
+                'lead_quality_review' => $this->leadQuality($thread),
             };
 
             Routine::query()->where('key', $routine)->update(['last_run_at' => now(), 'last_status' => 'ok', 'last_summary' => $summary]);
@@ -132,6 +135,23 @@ class Orchestrator
         }
 
         return sprintf('%d تنبيه', count($findings));
+    }
+
+    private function leadQuality(AgentThread $thread): string
+    {
+        $drops = $this->leads->review();
+        $scored = Campaign::query()->whereNotNull('quality_scored_at')->where('quality_scored_at', '>=', now()->subMinutes(5))->count();
+
+        $thread->say('agent', 'leads',
+            $drops === [] ? sprintf('قيّمتُ جودة %d حملة. لا تراجع ملحوظ.', $scored) : $this->describe($drops),
+            ['scored' => $scored, 'findings' => array_map(fn (Finding $f) => $f->toArray(), $drops)],
+        );
+
+        if ($drops !== []) {
+            $this->alert('leads', 'جودة العملاء', $this->describe($drops));
+        }
+
+        return sprintf('%d حملة · %d تراجع', $scored, count($drops));
     }
 
     /** @param  list<Finding>  $findings */

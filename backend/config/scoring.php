@@ -48,6 +48,14 @@ return [
         'location_known' => 4,
         'project_known' => 5,
         'contacted' => 5,
+        /*
+         * Where the lead came from, judged by what that campaign's other leads
+         * turned out to be (the Leads Agent's quality score). Small on purpose:
+         * it orders two otherwise equal leads, it does not outvote what this
+         * person actually said or did.
+         */
+        'campaign_quality_high' => 5,
+        'campaign_quality_low' => -5,
     ],
 
     /*

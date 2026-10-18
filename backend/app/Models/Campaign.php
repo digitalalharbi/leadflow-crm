@@ -35,6 +35,7 @@ class Campaign extends Model
         'project_id', 'ad_account_id', 'platform', 'external_id', 'name', 'origin',
         'objective', 'status', 'daily_budget_minor', 'lifetime_budget_minor', 'currency',
         'starts_at', 'ends_at', 'last_synced_at', 'archived_at', 'raw',
+        'quality_score', 'quality_previous', 'quality_scored_at',
     ];
 
     protected function casts(): array
@@ -47,6 +48,9 @@ class Campaign extends Model
             'last_synced_at' => 'datetime',
             'archived_at' => 'datetime',
             'raw' => 'array',
+            'quality_score' => 'integer',
+            'quality_previous' => 'integer',
+            'quality_scored_at' => 'datetime',
         ];
     }
 

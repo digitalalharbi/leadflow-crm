@@ -124,6 +124,34 @@ class ConversionExportTest extends TestCase
         $this->assertSame('1000000.00', $export->value);
     }
 
+    public function test_a_won_deal_carries_what_it_actually_closed_for_when_known(): void
+    {
+        $export = $this->record($this->lead(['status' => 'won', 'deal_value_minor' => 95000000]));
+
+        $this->assertSame('950000.00', $export->value);
+    }
+
+    public function test_facebook_and_instagram_leads_report_to_the_meta_account(): void
+    {
+        foreach (['facebook', 'instagram'] as $platform) {
+            $export = $this->record($this->lead(['platform' => $platform]));
+            $this->assertNotNull($export, "A {$platform} lead's sale was never reported.");
+            $this->assertSame('meta', $export->platform);
+        }
+    }
+
+    public function test_booking_a_visit_is_reported_as_an_appointment(): void
+    {
+        $lead = $this->lead(['status' => 'qualified']);
+
+        $this->actingAs($this->t['admin'])->postJson('/api/v1/appointments', [
+            'lead_id' => $lead->uuid, 'scheduled_at' => now()->addDay()->toIso8601String(),
+        ])->assertCreated();
+
+        $this->assertTrue($this->asTenant($this->t['tenant'], fn () => ConversionExport::query()
+            ->where('lead_id', $lead->id)->where('event', 'appointment')->exists()));
+    }
+
     /** Qualifying is a signal, not a sale; attaching a price to it is a guess. */
     public function test_a_qualification_carries_no_value(): void
     {

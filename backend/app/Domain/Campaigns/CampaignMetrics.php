@@ -6,6 +6,7 @@ use App\Domain\Leads\LeadClassification;
 use App\Enums\LeadStatus;
 use App\Models\Campaign;
 use App\Models\CampaignSpend;
+use App\Models\ConversionExport;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
 use App\Models\User;
@@ -199,8 +200,22 @@ class CampaignMetrics
             ->groupBy(DB::raw('1'))
             ->pluck('total', 'class');
 
+        /*
+         * What has been told back to the platform about this campaign's leads —
+         * the loop that lets its algorithm learn from customers, not forms.
+         */
+        $feedback = ConversionExport::query()
+            ->whereIn('lead_id', Lead::query()->where('campaign_ref_id', $campaign->id)->select('id'))
+            ->selectRaw('event, status, count(*) as total')
+            ->groupBy('event', 'status')
+            ->get()
+            ->groupBy('event')
+            ->map(fn ($rows) => $rows->pluck('total', 'status')->map(fn ($n) => (int) $n))
+            ->all();
+
         return [
             'campaign' => $row,
+            'feedback' => collect(['qualified', 'appointment', 'won'])->mapWithKeys(fn ($e) => [$e => $feedback[$e] ?? (object) []])->all(),
             'ads' => $ads,
             'leads_daily' => $leadsByDay->map(fn ($n, $day) => ['date' => (string) $day, 'count' => (int) $n])->values()->all(),
             'classification' => collect(LeadClassification::values())->map(fn ($k) => ['key' => $k, 'count' => (int) ($classes[$k] ?? 0)])->all(),

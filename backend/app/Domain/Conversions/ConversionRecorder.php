@@ -2,6 +2,7 @@
 
 namespace App\Domain\Conversions;
 
+use App\Domain\Campaigns\AdPlatform;
 use App\Models\ConversionExport;
 use App\Models\Lead;
 
@@ -24,20 +25,25 @@ class ConversionRecorder
     {
         // A lead with no platform came from a spreadsheet or a phone call;
         // there is no ad account waiting to hear about it.
-        if (! $this->registry->has($lead->platform)) {
+        // Facebook and Instagram leads belong to a Meta ad account: keyed by
+        // the lead's own word they never matched an exporter and the sale was
+        // never reported back to the campaign that produced it.
+        $platform = AdPlatform::fromLeadPlatform($lead->platform)?->value;
+
+        if (! $this->registry->has($platform)) {
             return null;
         }
 
         return ConversionExport::firstOrCreate(
             [
                 'lead_id' => $lead->id,
-                'platform' => $lead->platform,
+                'platform' => $platform,
                 'event' => $event->value,
             ],
             [
                 'occurred_at' => now(),
                 'value' => $event === ConversionEvent::Won ? $this->dealValue($lead) : null,
-                'currency' => 'SAR',
+                'currency' => $lead->tenant?->settings?->currency ?? 'SAR',
                 'status' => $this->matchable($lead)
                     ? ConversionExport::PENDING
                     : ConversionExport::UNMATCHABLE,
@@ -70,6 +76,12 @@ class ConversionRecorder
      */
     private function dealValue(Lead $lead): ?float
     {
+        // What it actually closed for, when somebody recorded it. Only without
+        // that does the buyer's stated budget stand in as an estimate.
+        if ($lead->deal_value_minor !== null && $lead->deal_value_minor > 0) {
+            return round($lead->deal_value_minor / 100, 2);
+        }
+
         $min = $lead->budget_min;
         $max = $lead->budget_max;
 

@@ -39,7 +39,7 @@ class CompanyScope implements Scope
         }
 
         // Appointments and follow-ups carry a lead, not a project.
-        $column = $model->getTable() === 'leads' ? $table.'.project_id' : null;
+        $column = in_array($model->getTable(), ['leads', 'campaigns'], true) ? $table.'.project_id' : null;
 
         if ($column === null) {
             $builder->whereIn($table.'.lead_id', function ($query) use ($ids) {

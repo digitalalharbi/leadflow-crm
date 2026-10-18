@@ -4,6 +4,7 @@ namespace App\Services\Leads;
 
 use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
+use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Leads\DuplicateMatcher;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
@@ -34,6 +35,7 @@ class LeadIngestionService
         private ActivityLogger $activities,
         private TenantContext $context,
         private DuplicateMatcher $duplicates,
+        private CampaignResolver $campaigns,
     ) {}
 
     public function ingest(Tenant $tenant, IncomingLead $incoming): IngestionResult
@@ -155,6 +157,14 @@ class LeadIngestionService
         }
 
         $lead->refresh();
+
+        // Tie the lead to its campaign, ad set and ad. Never allowed to cost the
+        // lead: in a savepoint, so a failure here rolls back only itself.
+        try {
+            DB::transaction(fn () => $this->campaigns->linkLead($lead));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         /*
          * Announced after the lead is saved and assigned, never before: a rule

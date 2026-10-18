@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
+use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
 use App\Http\Controllers\Api\V1\CommandCenterController;
 use App\Http\Controllers\Api\V1\CompanyController;
@@ -260,6 +261,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports', [ReportController::class, 'index']);
             Route::get('/reports/insights', [ReportController::class, 'insights']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
+            Route::get('/campaigns', [CampaignController::class, 'index']);
+            Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);
+            Route::post('/campaigns/sync', [CampaignController::class, 'sync']);
+
             Route::get('/campaign-spend', [CampaignSpendController::class, 'index']);
             Route::post('/campaign-spend', [CampaignSpendController::class, 'store']);
             Route::delete('/campaign-spend/{id}', [CampaignSpendController::class, 'destroy']);

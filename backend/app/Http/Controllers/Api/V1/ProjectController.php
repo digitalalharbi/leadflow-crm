@@ -6,11 +6,13 @@ use App\Enums\LeadStatus;
 use App\Enums\QualificationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectResource;
+use App\Models\Company;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -21,7 +23,7 @@ class ProjectController extends Controller
         $projects = Project::query()
             ->withCount('leads')
             // Eager, because the list is where a manager sees who works what.
-            ->with('team:id,uuid,name')
+            ->with(['team:id,uuid,name', 'company:id,uuid,name,color'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
             ->when($request->filled('search'), fn ($q) => $q->where('name', 'ilike', '%'.$request->input('search').'%'))
             ->orderBy('name')
@@ -88,6 +90,7 @@ class ProjectController extends Controller
         // exists and has an id to sync against.
         $team = $data['team'] ?? null;
         unset($data['team']);
+        $data = $this->withCompany($data);
 
         $project = Project::create($data);
 
@@ -100,7 +103,7 @@ class ProjectController extends Controller
             );
         }
 
-        return ApiResponse::created(['project' => new ProjectResource($project->load('team'))]);
+        return ApiResponse::created(['project' => new ProjectResource($project->load(['team', 'company']))]);
     }
 
     public function show(string $uuid)
@@ -108,7 +111,7 @@ class ProjectController extends Controller
         $project = Project::withCount('leads')->where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $project);
 
-        return ApiResponse::success(['project' => new ProjectResource($project)]);
+        return ApiResponse::success(['project' => new ProjectResource($project->load('company'))]);
     }
 
     public function update(Request $request, string $uuid)
@@ -120,6 +123,7 @@ class ProjectController extends Controller
 
         // Not a column: the team is a relation, synced below.
         unset($data['team']);
+        $data = $this->withCompany($data);
 
         $project->update($data);
 
@@ -137,7 +141,7 @@ class ProjectController extends Controller
             $project->team()->sync($ids);
         }
 
-        return ApiResponse::success(['project' => new ProjectResource($project->fresh()->load('team'))]);
+        return ApiResponse::success(['project' => new ProjectResource($project->fresh()->load(['team', 'company']))]);
     }
 
     public function destroy(string $uuid)
@@ -170,6 +174,40 @@ class ProjectController extends Controller
              */
             'team' => ['sometimes', 'nullable', 'array', 'max:50'],
             'team.*' => ['uuid'],
+
+            // The company, by uuid. Null puts the project back with the holding.
+            'company_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
+    }
+
+    /**
+     * Turns the company's uuid into its id, inside this workspace.
+     *
+     * An unknown or foreign uuid is a validation error and not a silent null:
+     * a project that quietly lands in no company is a project whose leads
+     * vanish from every company's numbers.
+     *
+     * @param  array<string,mixed>  $data
+     * @return array<string,mixed>
+     */
+    private function withCompany(array $data): array
+    {
+        if (! array_key_exists('company_id', $data)) {
+            return $data;
+        }
+
+        if ($data['company_id'] === null) {
+            return $data;
+        }
+
+        $company = Company::where('uuid', $data['company_id'])->first();
+
+        if (! $company) {
+            throw ValidationException::withMessages(['company_id' => 'That company does not exist.']);
+        }
+
+        $data['company_id'] = $company->id;
+
+        return $data;
     }
 }

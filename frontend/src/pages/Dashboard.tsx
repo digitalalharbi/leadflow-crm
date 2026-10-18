@@ -10,6 +10,7 @@ import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { CommandCenter, CommandSide } from '@/components/dashboard/CommandCenter'
+import { HoldingOverview } from '@/components/company/HoldingOverview'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDue, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -158,6 +159,9 @@ export function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Holding → company → project, when the workspace has companies at all. */}
+          <HoldingOverview />
+
           {/* What needs a person right now — before any figure about a period. */}
           <CommandCenter />
 

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, Check, Globe, LogOut, Menu, Monitor, Moon, Sun, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CommandPalette } from '@/components/layout/CommandPalette'
+import { CompanySwitcher } from '@/components/company/CompanySwitcher'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -55,6 +56,9 @@ export function Topbar() {
       </button>
 
       <div className="flex-1" />
+
+      {/* Holding → company: what every screen below is about. */}
+      <CompanySwitcher />
 
       {/* Language */}
       <Dropdown

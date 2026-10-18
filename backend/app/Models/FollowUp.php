@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
+use App\Models\Scopes\CompanyScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -42,6 +43,7 @@ class FollowUp extends Model
      */
     protected static function booted(): void
     {
+        static::addGlobalScope(new CompanyScope);
         static::saved(fn (self $followUp) => $followUp->syncLeadSchedule());
         static::deleted(fn (self $followUp) => $followUp->syncLeadSchedule());
     }

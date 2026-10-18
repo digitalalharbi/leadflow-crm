@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Plug, Settings,
-  Rocket, ShieldAlert, ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, X,
+  Rocket, ShieldAlert, ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, X, Network,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -58,6 +58,9 @@ export function Sidebar() {
           visible: true,
           badge: (counts?.overdue ?? 0) + (counts?.today ?? 0),
         },
+        // The holding's structure: admins shape it, and anybody with companies to
+        // choose between gets the same screen to choose from.
+        { to: '/companies', labelKey: 'nav.companies', Icon: Network, visible: can.seeAllLeads(user) },
         { to: '/projects', labelKey: 'nav.projects', Icon: Building2, visible: true },
         /*
          * Rules act on everybody's leads, so the screen belongs to the people

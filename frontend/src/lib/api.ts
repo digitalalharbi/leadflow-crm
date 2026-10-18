@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios'
 import type { ApiEnvelope } from '@/types/api'
+import { useCompany } from '@/stores/company'
 
 /** Where the token lives. Kept in one place so logout can be exhaustive. */
 const TOKEN_KEY = 'leadflow.token'
@@ -60,6 +61,20 @@ http.interceptors.request.use((config) => {
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+
+  /*
+   * The company being looked at, on every request but the one that lists
+   * companies. That list is how a stale choice gets noticed — a company that
+   * was deactivated, or that this person was taken out of — and a list that
+   * sent the stale choice would be refused for it, leaving no way to see
+   * that it is stale.
+   */
+  const company = useCompany.getState().selected
+  const isCompanyList = config.method === 'get' && config.url === '/companies'
+
+  if (company && !isCompanyList) {
+    config.headers['X-Company-Id'] = company
   }
 
   return config
@@ -146,6 +161,11 @@ export async function apiGetPaginated<T>(url: string, params?: Record<string, un
 
 export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
   const { data } = await http.post<ApiEnvelope<T>>(url, body)
+  return data.data
+}
+
+export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.put<ApiEnvelope<T>>(url, body)
   return data.data
 }
 

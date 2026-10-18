@@ -17,6 +17,11 @@ class ProjectResource extends JsonResource
             'starting_price' => $this->starting_price !== null ? (float) $this->starting_price : null,
             'status' => $this->status,
             'notes' => $this->notes,
+            'company' => $this->whenLoaded('company', fn () => $this->company ? [
+                'id' => $this->company->uuid,
+                'name' => $this->company->name,
+                'color' => $this->company->color,
+            ] : null),
             'leads_count' => $this->when(isset($this->leads_count), fn () => (int) $this->leads_count),
             /*
              * Who works this project. Empty means anybody, which is what every

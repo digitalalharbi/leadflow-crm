@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
+use App\Models\Scopes\CompanyScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,6 +12,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Appointment extends Model
 {
     use BelongsToTenant, HasFactory, HasUuid, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CompanyScope);
+    }
 
     protected $fillable = [
         'lead_id', 'assigned_to', 'created_by', 'scheduled_at', 'duration_minutes',

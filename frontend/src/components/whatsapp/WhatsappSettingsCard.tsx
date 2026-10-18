@@ -163,14 +163,14 @@ export function WhatsappSettingsCard() {
               label={t('whatsapp.phoneNumberId')}
               hint={t('whatsapp.phoneNumberIdHint')}
               value={form.phone_number_id}
-              data-testid="wa-phone-number-id"
+              className="font-mono" data-testid="wa-phone-number-id"
               onChange={(e) => setForm((p) => ({ ...p, phone_number_id: e.target.value.replace(/\D/g, '') }))}
             />
             <Input
               dir="ltr"
               label={t('whatsapp.businessAccountId')}
               value={form.business_account_id}
-              data-testid="wa-business-account-id"
+              className="font-mono" data-testid="wa-business-account-id"
               onChange={(e) => setForm((p) => ({ ...p, business_account_id: e.target.value.replace(/\D/g, '') }))}
             />
           </div>
@@ -184,7 +184,7 @@ export function WhatsappSettingsCard() {
               hint={data.has_access_token ? t('whatsapp.secretStored') : t('whatsapp.secretMissing')}
               placeholder={data.has_access_token ? '••••••••••••' : ''}
               value={form.access_token}
-              data-testid="wa-access-token"
+              className="font-mono" data-testid="wa-access-token"
               onChange={(e) => setForm((p) => ({ ...p, access_token: e.target.value }))}
             />
             <Input
@@ -195,7 +195,7 @@ export function WhatsappSettingsCard() {
               hint={data.has_app_secret ? t('whatsapp.secretStored') : t('whatsapp.appSecretHint')}
               placeholder={data.has_app_secret ? '••••••••••••' : ''}
               value={form.app_secret}
-              data-testid="wa-app-secret"
+              className="font-mono" data-testid="wa-app-secret"
               onChange={(e) => setForm((p) => ({ ...p, app_secret: e.target.value }))}
             />
           </div>

@@ -1,11 +1,29 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { PageHeaderSlotProvider } from '@/components/ui/PageHeader'
 import { useLiveFeed } from '@/hooks/useLiveFeed'
 import { useAuth } from '@/stores/auth'
+import { IconRail } from './IconRail'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
+/**
+ * The application frame.
+ *
+ * One large rounded workspace floating on the darker outer canvas, holding a
+ * white capsule header, a compact icon rail and the page. The frame is a layout
+ * (a grid with a rail column and a content column), not a coordinate system:
+ * in Arabic the rail is on the start edge because the grid says so, not because
+ * anything was mirrored after the fact.
+ *
+ * Below the desktop breakpoint the frame gives its margin back and the rail
+ * becomes a drawer — a phone has no use for a floating window on a table.
+ */
 export function AppShell() {
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  // A callback ref into state: the pages below need the element itself, and
+  // need to re-render once it exists.
+  const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null)
 
   /*
    * Mounted here rather than on the screens that use it: one socket for the
@@ -22,16 +40,31 @@ export function AppShell() {
      * chrome's surface tokens to ink, and every child follows without knowing
      * which console it is in.
      */
-    <div className="min-h-dvh" data-console={isSuperAdmin ? 'platform' : undefined}>
-      <Sidebar />
-
-      {/* The sidebar is fixed, so the content is offset logically (works in RTL). */}
-      <div className="lg:ms-[13.5rem]">
+    <div
+      className="app-outer min-h-dvh bg-[var(--color-outer)] p-0 sm:p-3 lg:p-5 print:bg-white print:p-0"
+      data-console={isSuperAdmin ? 'platform' : undefined}
+    >
+      <div
+        className="app-frame mx-auto flex min-h-dvh w-full max-w-[112rem] flex-col gap-4 bg-[var(--color-canvas)] p-2 sm:min-h-[calc(100dvh-1.5rem)] sm:rounded-[var(--radius-frame)] sm:p-3 lg:min-h-[calc(100dvh-2.5rem)] lg:p-4 print:min-h-0 print:p-0"
+      >
         <Topbar />
-        <main className="mx-auto w-full max-w-[110rem] px-3 py-3 sm:px-4 sm:py-4">
-          <Outlet />
-        </main>
+
+        {/* The title row: full width, above the rail and the cards. */}
+        <div ref={setTitleSlot} className="empty:hidden" data-testid="page-header-slot" />
+
+        <div className="flex flex-1 items-start gap-4">
+          <IconRail />
+          <main className="min-w-0 flex-1">
+            <PageHeaderSlotProvider value={titleSlot}>
+              <Outlet />
+            </PageHeaderSlotProvider>
+          </main>
+        </div>
       </div>
+
+      {/* After the frame in the DOM: on a desktop it is not rendered at all, and
+          the first brand mark on the page must be the header's. */}
+      <Sidebar />
     </div>
   )
 }

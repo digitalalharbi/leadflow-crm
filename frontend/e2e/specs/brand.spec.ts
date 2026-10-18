@@ -24,7 +24,8 @@ test.describe('The product has one name', () => {
   })
 
   test('a workspace that has not renamed it shows مهتم in the chrome', async ({ page }) => {
-    await expect(page.locator('aside').first()).toContainText('مهتم')
+    // The brand sits in the floating header now, not in a sidebar.
+    await expect(page.getByRole('banner')).toContainText('مهتم')
     await expect(page).toHaveTitle('مهتم')
   })
 

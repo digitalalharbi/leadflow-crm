@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChartTooltip } from './ChartTooltip'
-import { SERIES } from './palette'
 import { useChartWidth } from './useChartWidth'
 import { formatNumber } from '@/lib/format'
 
@@ -12,95 +11,148 @@ export interface TimelinePoint {
   won: number
 }
 
-type Key = 'leads' | 'qualified' | 'won'
+export type FlowSeries = 'leads' | 'qualified' | 'won'
 
-const KEYS: Key[] = ['leads', 'qualified', 'won']
+export const FLOW_SERIES: FlowSeries[] = ['leads', 'qualified', 'won']
+
+/** Days per bar. Thirty days in six bars: few enough to be shapes, many enough to be a trend. */
+const BUCKET_DAYS = 5
+
+interface Bucket {
+  /** First day of the bucket, for the axis. */
+  date: string
+  leads: number
+  qualified: number
+  won: number
+}
+
+/** Daily points into fat bars, summed — counts add, so nothing is invented. */
+function bucketise(points: TimelinePoint[]): Bucket[] {
+  const buckets: Bucket[] = []
+
+  for (let i = 0; i < points.length; i += BUCKET_DAYS) {
+    const slice = points.slice(i, i + BUCKET_DAYS)
+
+    buckets.push({
+      date: slice[0].date,
+      leads: slice.reduce((sum, p) => sum + p.leads, 0),
+      qualified: slice.reduce((sum, p) => sum + p.qualified, 0),
+      won: slice.reduce((sum, p) => sum + p.won, 0),
+    })
+  }
+
+  return buckets
+}
+
+/** A round axis ceiling, so the gridlines land on numbers a person would say. */
+function niceMax(value: number): number {
+  if (value <= 5) return 5
+
+  const magnitude = 10 ** Math.floor(Math.log10(value))
+  const normalised = value / magnitude
+
+  return (normalised <= 1 ? 1 : normalised <= 2 ? 2 : normalised <= 5 ? 5 : 10) * magnitude
+}
 
 /**
- * What the month actually looked like.
+ * What the month looked like, as the reference draws it: a few fat rounded
+ * bars on dashed gridlines, one of them darker with its change floating above.
  *
- * The product could show a funnel, a conversion rate and a dozen tiles, and
- * still not answer the first question a sales manager asks: is this getting
- * better or worse? A single number cannot — 43 leads is good or terrible
- * depending entirely on last week.
+ * Bars rather than the line it replaced because the question is "is this
+ * getting better", and a reader answers that by comparing heights, which bars
+ * make easy and a 30-point line makes a squint. The price is resolution, paid
+ * knowingly: thirty days become six five-day totals here, and the table behind
+ * the card still has all thirty.
  *
- * Three series on one axis because all three are counts of leads. Two scales on
- * one plot would let the shapes be arranged to tell any story you like, which
- * is why this has one.
+ * One series at a time, chosen by the caller. The three are all counts of leads
+ * but they are different sizes by construction — won is a sliver of leads — and
+ * on one axis the sliver is invisible. Switching is a pill, and every series is
+ * still named, so colour never carries identity alone.
+ *
+ * The highlighted bar is the tallest, not a selection: the chart says where the
+ * peak was before anyone points at anything. Hovering a column names the five
+ * days and all three figures.
  *
  * The time axis runs left-to-right inside an RTL page, like the numbers
- * themselves: Arabic readers read a chart's time axis the way everyone does,
- * and mirroring it makes "rising" look like "falling".
+ * themselves: mirrored, a rising month looks like a falling one.
  */
 export function LeadFlowChart({
   points,
+  series = 'leads',
   height = 240,
 }: {
   points: TimelinePoint[]
+  series?: FlowSeries
   height?: number
 }) {
   const { t, i18n } = useTranslation()
   const [hover, setHover] = useState<number | null>(null)
   const { ref, width } = useChartWidth()
 
-  const color: Record<Key, string> = {
-    leads: SERIES[0],
-    qualified: SERIES[1],
-    won: SERIES[3],
-  }
+  const buckets = useMemo(() => bucketise(points), [points])
 
   const geometry = useMemo(() => {
-    const padding = { top: 12, right: 12, bottom: 24, left: 34 }
+    const padding = { top: 30, right: 8, bottom: 26, left: 32 }
     const plotWidth = width - padding.left - padding.right
     const plotHeight = height - padding.top - padding.bottom
+    const max = niceMax(Math.max(1, ...buckets.map((b) => b[series])))
+    const slot = plotWidth / Math.max(buckets.length, 1)
+    // Fat bars with air between them; never wider than a tidy capsule.
+    const barWidth = Math.min(slot * 0.62, 52)
 
-    // Never zero: a flat line at the bottom of an empty chart is still a line,
-    // and dividing by a zero maximum puts every point at infinity.
-    const max = Math.max(1, ...points.flatMap((p) => KEYS.map((k) => p[k])))
-
-    const x = (index: number) =>
-      padding.left + (points.length <= 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth)
     const y = (value: number) => padding.top + plotHeight - (value / max) * plotHeight
+    const x = (index: number) => padding.left + slot * index + slot / 2
 
-    const path = (key: Key) =>
-      points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p[key]).toFixed(1)}`).join(' ')
+    return { padding, plotWidth, plotHeight, max, slot, barWidth, x, y }
+  }, [buckets, series, height, width])
 
-    return { width, padding, plotWidth, plotHeight, max, x, y, path }
-  }, [points, height, width])
+  if (buckets.length === 0) return null
 
-  if (points.length === 0) {
-    return null
-  }
+  const values = buckets.map((b) => b[series])
+  const peak = values.indexOf(Math.max(...values))
+  const active = hover === null ? null : buckets[hover]
 
-  const active = hover === null ? null : points[hover]
+  // The change into the peak, from the bucket before it: the figure the
+  // reference floats over its dark bar.
+  const peakChange =
+    peak > 0 && values[peak - 1] > 0 ? Math.round(((values[peak] - values[peak - 1]) / values[peak - 1]) * 100) : null
 
-  /** Four gridlines, including zero — enough to judge a height against. */
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => Math.round(geometry.max * fraction))
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(geometry.max * f))
+  const dayLabel = (date: string) =>
+    new Date(date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
 
   return (
     <div className="relative" dir="ltr" ref={ref}>
       <svg
-        viewBox={`0 0 ${geometry.width} ${height}`}
+        viewBox={`0 0 ${width} ${height}`}
         className="w-full"
         style={{ height }}
         role="img"
         aria-label={t('charts.leadFlow.aria')}
         onMouseLeave={() => setHover(null)}
       >
-        {/* Recessive: the data is the subject, the grid is the paper. */}
+        <defs>
+          {/* The reference's diagonal hatching: a texture, not a gradient. */}
+          <pattern id="flow-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="7" stroke="var(--brand-deep)" strokeWidth="1.4" opacity="0.22" />
+          </pattern>
+        </defs>
+
+        {/* Dashed and recessive: the data is the subject, the grid is the paper. */}
         {ticks.map((value) => (
           <g key={value}>
             <line
               x1={geometry.padding.left}
-              x2={geometry.width - geometry.padding.right}
+              x2={width - geometry.padding.right}
               y1={geometry.y(value)}
               y2={geometry.y(value)}
-              stroke="var(--color-line)"
+              stroke="var(--color-border-strong)"
               strokeWidth={1}
+              strokeDasharray="4 5"
             />
             <text
-              x={geometry.padding.left - 6}
-              y={geometry.y(value) + 3}
+              x={geometry.padding.left - 8}
+              y={geometry.y(value) + 3.5}
               textAnchor="end"
               className="fill-[var(--color-ink-muted)] text-[10px] tabular-nums"
             >
@@ -109,96 +161,106 @@ export function LeadFlowChart({
           </g>
         ))}
 
-        {KEYS.map((key) => (
-          <path
-            key={key}
-            d={geometry.path(key)}
-            fill="none"
-            stroke={color[key]}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ))}
+        {buckets.map((bucket, index) => {
+          const value = bucket[series]
+          const top = geometry.y(value)
+          const barHeight = Math.max(geometry.y(0) - top, value > 0 ? geometry.barWidth : 0)
+          const isPeak = index === peak && value > 0
+          const left = geometry.x(index) - geometry.barWidth / 2
 
-        {/* The crosshair, and a marker per series on the hovered day. */}
-        {hover !== null && (
-          <g>
-            <line
-              x1={geometry.x(hover)}
-              x2={geometry.x(hover)}
-              y1={geometry.padding.top}
-              y2={height - geometry.padding.bottom}
-              stroke="var(--color-border-strong)"
-              strokeWidth={1}
-            />
-            {KEYS.map((key) => (
-              <circle
-                key={key}
-                cx={geometry.x(hover)}
-                cy={geometry.y(points[hover][key])}
-                r={4}
-                fill={color[key]}
-                // A 2px surface ring, so overlapping markers stay countable.
-                stroke="var(--color-surface)"
-                strokeWidth={2}
-              />
-            ))}
-          </g>
-        )}
+          return (
+            <g key={bucket.date} data-chart-bar={isPeak ? 'peak' : undefined}>
+              {value > 0 && (
+                <>
+                  <rect
+                    x={left}
+                    y={geometry.y(0) - barHeight}
+                    width={geometry.barWidth}
+                    height={barHeight}
+                    rx={geometry.barWidth / 2}
+                    fill={isPeak ? 'var(--brand-deep)' : 'var(--brand-tint)'}
+                    opacity={hover === null || hover === index ? 1 : 0.7}
+                  />
+                  <rect
+                    x={left}
+                    y={geometry.y(0) - barHeight}
+                    width={geometry.barWidth}
+                    height={barHeight}
+                    rx={geometry.barWidth / 2}
+                    fill="url(#flow-hatch)"
+                  />
+                </>
+              )}
 
-        {/*
-          Invisible columns rather than hit-testing the lines: a 2px stroke is
-          an impossible target, and a chart you have to aim at is a chart people
-          stop using.
-        */}
-        {points.map((point, index) => (
+              {/* The peak, announced: a dot on the bar and the change into it. */}
+              {isPeak && (
+                <g>
+                  <circle cx={geometry.x(index)} cy={geometry.y(0) - barHeight} r={6} fill="var(--brand-deep)" stroke="var(--color-surface)" strokeWidth={3} />
+                  {peakChange !== null && (
+                    <g transform={`translate(${geometry.x(index)} ${geometry.y(0) - barHeight - 18})`}>
+                      <rect x={-27} y={-12} width={54} height={22} rx={11} fill="var(--brand)" />
+                      <text textAnchor="middle" y={3} className="fill-white text-[11px] font-medium tabular-nums">
+                        {peakChange > 0 ? '+' : ''}
+                        {peakChange}%
+                      </text>
+                    </g>
+                  )}
+                </g>
+              )}
+
+              <text
+                x={geometry.x(index)}
+                y={height - 8}
+                textAnchor="middle"
+                className="fill-[var(--color-ink-muted)] text-[10.5px]"
+              >
+                {dayLabel(bucket.date)}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Full-height columns: a bar is a fine thing to look at and a poor target. */}
+        {buckets.map((bucket, index) => (
           <rect
-            key={point.date}
-            x={geometry.x(index) - geometry.plotWidth / Math.max(points.length, 1) / 2}
-            y={geometry.padding.top}
-            width={geometry.plotWidth / Math.max(points.length, 1)}
-            height={geometry.plotHeight}
+            key={`hit-${bucket.date}`}
+            x={geometry.x(index) - geometry.slot / 2}
+            y={geometry.padding.top - 10}
+            width={geometry.slot}
+            height={geometry.plotHeight + 10}
             fill="transparent"
             onMouseEnter={() => setHover(index)}
           />
         ))}
-
-        {/* First and last day only — a label per day is a solid grey bar. */}
-        {[0, points.length - 1].map((index) => (
-          <text
-            key={index}
-            x={geometry.x(index)}
-            y={height - 6}
-            textAnchor={index === 0 ? 'start' : 'end'}
-            className="fill-[var(--color-ink-muted)] text-[10px]"
-          >
-            {new Date(points[index].date).toLocaleDateString(i18n.language, {
-              day: 'numeric',
-              month: 'short',
-            })}
-          </text>
-        ))}
       </svg>
+
+      {/* What the bars are, with a swatch that is a real background so it survives being printed. */}
+      <p className="mt-1 flex items-center justify-center gap-1.5 text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">
+        <span
+          data-chart-mark
+          className="size-2.5 rounded-full bg-[var(--brand-deep)] [print-color-adjust:exact]"
+          style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
+          aria-hidden
+        />
+        {t(`charts.leadFlow.${series}`)}
+      </p>
 
       {active && (
         <div
           className="pointer-events-none absolute top-2"
           style={{
-            left: `${(geometry.x(hover!) / geometry.width) * 100}%`,
+            left: `${(geometry.x(hover!) / width) * 100}%`,
             transform: 'translateX(-50%)',
           }}
         >
           <ChartTooltip
-            title={new Date(active.date).toLocaleDateString(i18n.language, {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-            })}
-            rows={KEYS.map((key) => ({
+            title={`${dayLabel(active.date)} – ${dayLabel(
+              new Date(new Date(active.date).getTime() + (BUCKET_DAYS - 1) * 86_400_000).toISOString(),
+            )}`}
+            rows={FLOW_SERIES.map((key) => ({
               label: t(`charts.leadFlow.${key}`),
               value: formatNumber(active[key], i18n.language),
-              color: color[key],
+              emphasis: key === series,
             }))}
           />
         </div>

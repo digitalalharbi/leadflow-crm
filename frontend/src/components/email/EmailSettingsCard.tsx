@@ -127,7 +127,7 @@ export function EmailSettingsCard() {
             label={t('email.host')}
             value={form.host}
             placeholder="smtp.example.com"
-            data-testid="email-host"
+            className="font-mono" data-testid="email-host"
             onChange={(e) => set('host')(e.target.value)}
           />
           <div className="grid grid-cols-2 gap-3">
@@ -136,7 +136,7 @@ export function EmailSettingsCard() {
               label={t('email.port')}
               inputMode="numeric"
               value={form.port}
-              data-testid="email-port"
+              className="font-mono" data-testid="email-port"
               onChange={(e) => set('port')(e.target.value.replace(/\D/g, ''))}
             />
             <Select
@@ -154,7 +154,7 @@ export function EmailSettingsCard() {
             label={t('email.username')}
             value={form.username}
             autoComplete="off"
-            data-testid="email-username"
+            className="font-mono" data-testid="email-username"
             onChange={(e) => set('username')(e.target.value)}
           />
           <Input
@@ -165,7 +165,7 @@ export function EmailSettingsCard() {
             autoComplete="new-password"
             placeholder={data.has_password ? '••••••••' : ''}
             hint={data.has_password ? t('email.passwordStored') : undefined}
-            data-testid="email-password"
+            className="font-mono" data-testid="email-password"
             onChange={(e) => set('password')(e.target.value)}
           />
           <Input

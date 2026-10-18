@@ -8,6 +8,20 @@ import { useAuth } from '@/stores/auth'
 import { applyAppearance, useUi } from '@/stores/ui'
 import { App } from '@/App'
 import '@/i18n'
+/*
+ * The typography system: three families, all self-hosted so the product does
+ * not depend on a font CDN being reachable (or on telling Google who is using
+ * it). Inter's variable file carries every weight and the tabular figures;
+ * IBM Plex Sans Arabic carries the Arabic at the four weights the scale uses;
+ * JetBrains Mono is only ever loaded for technical values.
+ */
+import '@fontsource-variable/inter/index.css'
+import '@fontsource/ibm-plex-sans-arabic/400.css'
+import '@fontsource/ibm-plex-sans-arabic/500.css'
+import '@fontsource/ibm-plex-sans-arabic/600.css'
+import '@fontsource/ibm-plex-sans-arabic/700.css'
+import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/500.css'
 import '@/index.css'
 
 /*

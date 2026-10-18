@@ -21,6 +21,7 @@ export interface ChartTable {
 export function ChartCard({
   title,
   description,
+  icon = false,
   action,
   legend,
   footer,
@@ -36,6 +37,8 @@ export function ChartCard({
   children,
 }: {
   title: ReactNode
+  /** A round icon beside the title, as the reference draws its card headers. */
+  icon?: boolean
   description?: ReactNode
   action?: ReactNode
   legend?: ReactNode
@@ -74,10 +77,17 @@ export function ChartCard({
 
   return (
     <Card className={cn('flex flex-col overflow-hidden', className)} data-testid={testId}>
-      <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 pb-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 pb-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {icon && (
+            <span className="chrome-circle !size-11" aria-hidden>
+              <BarChart3 className="size-[1.125rem]" />
+            </span>
+          )}
+          <div className="min-w-0">
           <h3 className="t-card-title truncate">{title}</h3>
           {description && <p className="t-caption mt-0.5">{description}</p>}
+          </div>
         </div>
         {/*
           Controls only — a toggle and whatever the screen passed as an action.
@@ -93,7 +103,7 @@ export function ChartCard({
               aria-pressed={showTable}
               aria-label={t(showTable ? 'charts.showChart' : 'charts.showTable')}
               data-testid={testId ? `${testId}-table-toggle` : undefined}
-              className="pressable grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+              className="chrome-circle !size-9"
             >
               {showTable ? <BarChart3 className="size-4" aria-hidden /> : <Table2 className="size-4" aria-hidden />}
             </button>

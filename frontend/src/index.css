@@ -20,14 +20,33 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * The typography system.
+ *
+ * One stack for body and headings: Inter for Latin letters and every digit,
+ * IBM Plex Sans Arabic for Arabic. The browser falls through per glyph, so a
+ * line that mixes a customer's name, a Latin campaign id and an Arabic sentence
+ * is set in two typefaces that were chosen to share an x-height and a rhythm.
+ * Nothing else is loaded; the system stack at the end is a fallback for the
+ * instant before the files arrive, never a design choice.
+ *
+ * Mono is for values a person copies or reads character by character — ids,
+ * keys, webhook URLs, log lines, commands. Never for decoration.
+ */
+:root {
+  --font-body: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-heading: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
 @theme {
   /*
    * Arabic first. IBM Plex Sans Arabic carries both scripts with the same
    * rhythm, which matters when a screen mixes a customer's name with a Latin
    * campaign id. The system stack behind it keeps first paint readable.
    */
-  --font-sans: 'IBM Plex Sans Arabic', 'Inter var', 'Inter', -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body);
+  --font-mono: 'JetBrains Mono', monospace;
 
   /*
    * Neutrals, warmed very slightly off pure grey. A pure-grey interface reads
@@ -38,19 +57,24 @@
    * toward grey, so a page of white cards sits inside the identity instead of
    * beside it.
    */
+  /*
+   * The reference's greys — pure, not cooled. Sampled from the supplied design:
+   * a near-white workspace under white cards, a slightly darker outer canvas, a
+   * hairline that is barely a line, and ink that is black rather than navy.
+   */
   --color-neutral-0: #ffffff;
-  --color-neutral-25: #fcfcfd;
-  --color-neutral-50: #f7f8fa;
-  --color-neutral-100: #eff1f5;
-  --color-neutral-200: #e4e7ec;
-  --color-neutral-300: #d0d5dd;
-  --color-neutral-400: #98a2b3;
-  --color-neutral-500: #667085;
-  --color-neutral-600: #475467;
-  --color-neutral-700: #344054;
-  --color-neutral-800: #1d2939;
-  --color-neutral-900: #101828;
-  --color-neutral-950: #0b1220;
+  --color-neutral-25: #fafafa;
+  --color-neutral-50: #f6f6f6;
+  --color-neutral-100: #f0f0f0;
+  --color-neutral-200: #e8e8e8;
+  --color-neutral-300: #d9d9d9;
+  --color-neutral-400: #a6a6a6;
+  --color-neutral-500: #777777;
+  --color-neutral-600: #5a5a5a;
+  --color-neutral-700: #3a3a3a;
+  --color-neutral-800: #222222;
+  --color-neutral-900: #111111;
+  --color-neutral-950: #0a0a0a;
 
   /*
    * Semantic surfaces, swapped wholesale in dark mode.
@@ -60,15 +84,19 @@
    * surface rather than as a page with lines drawn on it — and it is why the
    * cards below need almost no border to be legible.
    */
-  --color-canvas: #f3f4f7;
+  /* The outer canvas the app frame floats on, and the workspace inside it. */
+  --color-outer: #dcdce0;
+  --color-canvas: #eeeeee;
   --color-surface: var(--color-neutral-0);
   --color-surface-raised: var(--color-neutral-0);
-  --color-surface-muted: #f7f8fa;
+  --color-surface-muted: #f6f6f6;
   --color-surface-sunken: var(--color-neutral-100);
-  --color-border: var(--color-neutral-200);
-  --color-border-strong: var(--color-neutral-300);
+  --color-border: #f0f0f0;
+  --color-border-strong: #e2e2e2;
+  /* The fill of the round buttons in the header and the nav track. */
+  --color-chrome-fill: #f2f2f2;
   /* A line that reads as a hairline at any density, unlike a solid grey. */
-  --color-line: color-mix(in srgb, var(--color-neutral-900) 8%, transparent);
+  --color-line: color-mix(in srgb, var(--color-neutral-900) 6%, transparent);
 
   --color-ink: var(--color-neutral-900);
   --color-ink-muted: var(--color-neutral-500);
@@ -112,11 +140,11 @@
    * a glance — confident rather than corporate, and it survives being printed
    * on a sales deck.
    */
-  --color-brand-50: #eafaf7;
-  --color-brand-100: #ccf2eb;
-  --color-brand-500: #12a594;
-  --color-brand-600: #0e8c7e;
-  --color-brand-700: #0a6e63;
+  --color-brand-50: #e6f2ec;
+  --color-brand-100: #cde6da;
+  --color-brand-500: #078759;
+  --color-brand-600: #067049;
+  --color-brand-700: #055a3b;
 
   /* Mahtam ink — the identity's dark, used for headings and the brand field. */
   --color-ink-strong: #0b1220;
@@ -147,23 +175,32 @@
    * The tenant's colour, written at runtime by useBrandingTheme. Defaults are
    * here so the login screen has an identity before branding resolves.
    */
-  --brand: #12a594;
-  --brand-hover: #0e8c7e;
-  --brand-secondary: #0b1220;
-  --brand-soft: #eafaf7;
-  --brand-softer: #f4fbf9;
-  --brand-ring: color-mix(in srgb, #12a594 28%, transparent);
+  /*
+   * Mahtam green, sampled from the reference: the deep emerald of the active
+   * states and the hero card. A tenant's own colour still replaces `--brand`
+   * at runtime; the tints below are derived from it, never from a literal, so a
+   * white-label workspace gets a coherent set rather than green leftovers.
+   */
+  --brand: #078759;
+  --brand-hover: #067049;
+  --brand-secondary: #139b70;
+  --brand-soft: #e6f2ec;
+  --brand-softer: #f2f8f5;
+  --brand-ring: color-mix(in srgb, #078759 28%, transparent);
   --brand-contrast: #ffffff;
+  /* The pale fill of chart bars, and the deep one of the highlighted bar. */
+  --brand-tint: color-mix(in srgb, var(--brand) 42%, white);
+  /* The small bright pill ("+12.8%"): the brand, lightened — never the tenant's secondary colour, which is often an ink. */
+  --brand-bright: color-mix(in srgb, var(--brand) 82%, white);
+  --brand-deep: color-mix(in srgb, var(--brand) 82%, black);
 
   /*
    * Elevation as light falling on a surface, not a drop shadow: a tight
    * contact shadow plus a wide, very faint ambient one. One hard shadow reads
    * as a sticker; two soft ones read as a card.
    */
-  --shadow-card:
-    0 0 0 1px color-mix(in srgb, var(--color-neutral-900) 4%, transparent),
-    0 1px 2px color-mix(in srgb, var(--color-neutral-900) 4%, transparent),
-    0 6px 16px -8px color-mix(in srgb, var(--color-neutral-900) 10%, transparent);
+  /* Very subtle: the reference separates cards by tone, not by shadow. */
+  --shadow-card: 0 1px 2px color-mix(in srgb, var(--color-neutral-900) 4%, transparent);
   --shadow-raised:
     0 0 0 0.5px color-mix(in srgb, var(--color-neutral-900) 6%, transparent),
     0 2px 4px -2px color-mix(in srgb, var(--color-neutral-900) 10%, transparent),
@@ -180,9 +217,11 @@
    * dialog box from 2009; the softness is most of what separates a dashboard
    * somebody wants to look at from an admin panel they have to.
    */
-  --radius-control: 0.625rem;
-  --radius-card: 1rem;
-  --radius-panel: 1.25rem;
+  --radius-control: 0.875rem;
+  --radius-card: 1.5rem;
+  --radius-panel: 1.75rem;
+  /* The app frame that floats on the outer canvas. */
+  --radius-frame: 2rem;
   /* For nav items, filter chips and anything that should read as a token. */
   --radius-pill: 999px;
 
@@ -305,11 +344,12 @@
 
   body {
     margin: 0;
-    background-color: var(--color-canvas);
+    background-color: var(--color-outer);
     color: var(--color-ink);
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.9375rem;
-    line-height: 1.6;
+    font-weight: 400;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -320,7 +360,7 @@
 
   /* Arabic sits lower in its em box and needs the extra leading to breathe. */
   [dir='rtl'] body {
-    line-height: 1.8;
+    line-height: 1.75;
   }
 
   /*
@@ -329,19 +369,52 @@
    */
   h1, h2, h3, h4 {
     margin: 0;
+    font-family: var(--font-heading);
     font-weight: 600;
-    line-height: 1.25;
-    letter-spacing: -0.015em;
+    line-height: 1.3;
+    letter-spacing: -0.012em;
     text-wrap: balance;
   }
 
-  h1 { letter-spacing: -0.025em; }
+  /* The page title is the only heading that is allowed to be heavy. */
+  h1 { font-weight: 700; letter-spacing: -0.02em; }
 
-  /* Arabic has no case and no tracking convention; tightening it hurts. */
+  /*
+   * Arabic has no case and no tracking convention; tightening it pulls apart
+   * the cursive joins. It also needs more leading than Latin at the same size,
+   * because its marks sit above and below the line.
+   */
   [dir='rtl'] h1,
   [dir='rtl'] h2,
   [dir='rtl'] h3,
   [dir='rtl'] h4 {
+    letter-spacing: 0;
+    line-height: 1.45;
+  }
+
+  /*
+   * Figures line up. A column of money, scores, dates or percentages that
+   * changes width digit by digit jitters as it updates and cannot be scanned
+   * down; tabular numerals fix every digit's width.
+   */
+  table,
+  time,
+  output,
+  .tabular,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum', 'kern';
+  }
+
+  /* Technical values, in the mono face and nowhere else. */
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    font-variant-ligatures: none;
     letter-spacing: 0;
   }
 
@@ -381,8 +454,6 @@
   /* Numerals stay Latin and monospaced in both locales, so a column of money
      or phone numbers lines up and a changing value does not jitter. */
   .tabular {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum', 'kern';
     letter-spacing: 0;
   }
 
@@ -424,6 +495,131 @@
   }
 
   /*
+   * The reference's component language, in one place.
+   *
+   * Round fills for the header's own controls, a pill track for primary
+   * navigation, and a rail of outline icons whose active state is a solid green
+   * circle. Defined as classes because they are used from the header, the rail
+   * and the drawer, and three copies of a hover state drift.
+   */
+  .chrome-circle {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--color-chrome-fill);
+    color: var(--color-ink);
+    transition: background var(--duration-fast) var(--ease-out-soft);
+  }
+
+  .chrome-circle:hover {
+    background: color-mix(in srgb, var(--color-chrome-fill) 80%, var(--color-ink) 8%);
+  }
+
+  /* The header's filters: white capsules with a soft edge, like the date range
+     and the add button in the reference. A native select inside, so the whole
+     control still works from the keyboard and a screen reader. */
+  .filter-pill {
+    height: 2.75rem;
+    width: auto;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-surface);
+    padding-inline: 1.125rem;
+    font-size: 0.8125rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .nav-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+    transition:
+      background var(--duration-fast) var(--ease-out-soft),
+      color var(--duration-fast) var(--ease-out-soft);
+  }
+
+  .nav-pill:hover {
+    color: var(--color-ink);
+  }
+
+  .nav-pill-active {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-weight: 500;
+    box-shadow: var(--shadow-card);
+  }
+
+  .rail-item {
+    position: relative;
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border-radius: 999px;
+    color: var(--color-ink-muted);
+    transition:
+      background var(--duration-fast) var(--ease-out-soft),
+      color var(--duration-fast) var(--ease-out-soft);
+  }
+
+  .rail-item:hover {
+    background: var(--color-chrome-fill);
+    color: var(--color-ink);
+  }
+
+  .rail-item-active,
+  .rail-item-active:hover {
+    background: var(--brand);
+    color: var(--brand-contrast);
+  }
+
+  /* A tooltip on the end side of the rail: toward the content, in either direction. */
+  .rail-tip {
+    pointer-events: none;
+    position: absolute;
+    inset-inline-start: calc(100% + 0.625rem);
+    top: 50%;
+    z-index: 50;
+    translate: 0 -50%;
+    white-space: nowrap;
+    border-radius: 0.5rem;
+    background: var(--color-ink);
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    color: var(--color-ink-inverted);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-out-soft);
+  }
+
+  .rail-item:hover .rail-tip,
+  .rail-item:focus-visible .rail-tip {
+    opacity: 1;
+  }
+
+  /* Two- and three-way switches: a grey track, the chosen one filled green. */
+  .segment {
+    flex: 1;
+    border-radius: 999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+    background: var(--color-chrome-fill);
+  }
+
+  .segment-active {
+    background: var(--brand);
+    color: var(--brand-contrast);
+  }
+
+  /*
    * Platform console chrome.
    *
    * The SaaS owner's console and a customer's workspace run the same shell, and
@@ -437,7 +633,8 @@
    * resolves them against a dark surface.
    */
   [data-console='platform'] .app-sidebar,
-  [data-console='platform'] > div > header {
+  [data-console='platform'] [data-testid='app-header'],
+  [data-console='platform'] [data-testid='icon-rail'] > * {
     /*
      * Deliberately below the page in BOTH themes: in light mode that is an
      * unmissable change of material, and in dark mode — where the workspace
@@ -469,8 +666,8 @@
     box-shadow: inset 1px 0 0 0 var(--brand);
   }
 
-  [data-console='platform'] > div > header {
-    background-color: color-mix(in srgb, #060b14 86%, transparent);
+  [data-console='platform'] [data-testid='app-header'] {
+    background-color: #060b14;
   }
 
   /*
@@ -515,35 +712,37 @@
    * buys is bought from padding and from line-height, not from the alphabet.
    */
   .t-display {
-    font-size: 1.75rem;
+    font-size: 2rem;
     line-height: 1.2;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.025em;
   }
 
+  /* Title of the page: one per screen, clearly the largest thing on it. */
   .t-page-title {
-    font-size: 1.375rem;
-    line-height: 1.25;
-    font-weight: 600;
+    font-size: 1.875rem;
+    line-height: 1.3;
+    font-weight: 700;
     letter-spacing: -0.02em;
   }
 
+  /* Section titles are stronger than the labels and card titles beneath them. */
   .t-section-title {
-    font-size: 0.875rem;
-    line-height: 1.35;
+    font-size: 1rem;
+    line-height: 1.4;
     font-weight: 600;
     letter-spacing: -0.01em;
   }
 
   .t-card-title {
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.4;
     font-weight: 600;
   }
 
   .t-body {
-    font-size: 0.8125rem;
-    line-height: 1.5;
+    font-size: 0.875rem;
+    line-height: 1.55;
   }
 
   .t-small {
@@ -551,25 +750,29 @@
     line-height: 1.5;
   }
 
+  /* Secondary text: smaller, lighter in weight and in ink. */
   .t-caption {
     font-size: 0.75rem;
-    line-height: 1.45;
+    line-height: 1.5;
+    font-weight: 400;
     color: var(--color-ink-muted);
   }
 
+  /* The number a dashboard exists to show: large, tight, tabular, and the one
+     place weight 700 is spent besides the page title. */
   .t-metric {
-    font-size: 1.625rem;
+    font-size: 2rem;
     line-height: 1.1;
-    font-weight: 650;
+    font-weight: 700;
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
   }
 
   .t-metric-sm {
-    font-size: 1.25rem;
+    font-size: 1.375rem;
     line-height: 1.15;
-    font-weight: 650;
+    font-weight: 600;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
@@ -707,7 +910,7 @@
    */
   .label-caps {
     font-size: 0.6875rem;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.055em;
   }
@@ -945,4 +1148,23 @@
   a[href]::after {
     content: '';
   }
+}
+
+/* Unlayered on purpose: these must beat the utility classes the shell is built from. */
+/*
+ * A laptop is short. At 1366x768 the frame's generous margins, a 68px capsule
+ * and a title row would take a fifth of the screen before any content, and the
+ * working screens are designed to fit without scrolling. So below ~820px of
+ * height the same frame tightens — less margin, a slimmer header, a smaller
+ * title — and keeps every proportion it had.
+ */
+@media (min-width: 64rem) and (max-height: 820px) {
+  .app-outer { padding: 0.5rem; }
+  .app-frame { gap: 0.5rem; padding: 0.5rem; border-radius: 1.5rem; min-height: calc(100dvh - 1rem); }
+  [data-testid='app-header'] { height: 3.5rem; top: 0; }
+  [data-testid='app-header'] .chrome-circle { width: 2.5rem; height: 2.5rem; }
+  .t-page-title { font-size: 1.5rem; }
+  /* A dozen icons must fit a 768px frame without stretching the page. */
+  .rail-item { width: 2rem; height: 2rem; }
+  [data-testid='icon-rail'] { width: 3.25rem; }
 }

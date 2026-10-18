@@ -27,6 +27,8 @@ test.describe('Leads', () => {
   })
 
   test('choosing a list shows exactly as many leads as it counted', async ({ page }) => {
+    // Wait for the counts to land: until then the chip shows a placeholder dot.
+    await expect(page.getByTestId('segment-hot-count')).toHaveText(/\d/)
     const count = Number(
       ((await page.getByTestId('segment-hot-count').textContent()) ?? '').replace(/[^\d]/g, ''),
     )

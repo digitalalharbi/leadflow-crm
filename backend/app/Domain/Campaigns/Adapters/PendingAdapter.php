@@ -60,6 +60,11 @@ class PendingAdapter implements AdPlatformAdapter
         throw $this->pending();
     }
 
+    public function execute(Integration $integration, string $action, array $target, array $payload): array
+    {
+        return ['ok' => false, 'request' => [], 'response' => null, 'error' => "The {$this->platform} adapter is not built yet."];
+    }
+
     private function pending(): RuntimeException
     {
         return new RuntimeException("The {$this->platform} adapter is not built yet.");

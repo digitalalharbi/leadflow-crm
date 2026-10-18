@@ -146,6 +146,38 @@ class MetaAdsAdapter implements AdPlatformAdapter
         ])->filter(fn (array $row) => $row['campaign_external_id'] !== '')->values()->all();
     }
 
+    /**
+     * Pause, resume and daily budget, on a campaign, ad set or ad. All three
+     * are one POST to the object itself in Meta's Graph API.
+     */
+    public function execute(Integration $integration, string $action, array $target, array $payload): array
+    {
+        $fields = match ($action) {
+            'pause' => ['status' => 'PAUSED'],
+            'resume' => ['status' => 'ACTIVE'],
+            // Minor units, which is what Meta's budget fields are in.
+            'update_budget' => ['daily_budget' => (int) ($payload['daily_budget_minor'] ?? 0)],
+            default => null,
+        };
+
+        if ($fields === null || ($action === 'update_budget' && $target['level'] === 'ad')) {
+            return ['ok' => false, 'request' => [], 'response' => null, 'error' => "Meta cannot {$action} at the {$target['level']} level here."];
+        }
+
+        $request = ['object' => $target['external_id'], 'fields' => $fields];
+        $response = Http::withToken((string) data_get($integration->credentials, 'access_token'))
+            ->timeout(30)
+            ->asForm()
+            ->post(self::BASE.'/'.$target['external_id'], $fields);
+
+        return [
+            'ok' => $response->successful() && (bool) $response->json('success', true),
+            'request' => $request,
+            'response' => ['status' => $response->status(), 'body' => $response->json() ?? []],
+            'error' => $response->successful() ? null : (string) $response->json('error.message', 'Meta refused the change'),
+        ];
+    }
+
     /** @return list<array<string, mixed>> */
     private function paged(Integration $integration, string $path, array $query): array
     {

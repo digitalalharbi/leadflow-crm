@@ -55,4 +55,13 @@ interface AdPlatformAdapter
      * @return list<array<string, mixed>>
      */
     public function metrics(Integration $integration, AdAccount $account, CarbonInterface $from, CarbonInterface $to): array;
+
+    /**
+     * Carry out one approved change. Reached only from the action gateway, never
+     * from an agent or a controller.
+     *
+     * @param  array{level: string, external_id: string}  $target
+     * @return array{ok: bool, request: array<string, mixed>, response: array<string, mixed>|null, error?: string}
+     */
+    public function execute(Integration $integration, string $action, array $target, array $payload): array;
 }

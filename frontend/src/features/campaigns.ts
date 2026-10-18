@@ -81,10 +81,11 @@ export interface PlatformState {
   last_error: string | null
 }
 
-export function useCampaigns(days: number, platform: string) {
+export function useCampaigns(days: number, platform: string, projectId?: string, enabled = true) {
   return useQuery({
-    queryKey: ['campaigns', days, platform],
-    queryFn: () => apiGet<CampaignsData>('/campaigns', { days, platform: platform || undefined }),
+    queryKey: ['campaigns', days, platform, projectId ?? null],
+    queryFn: () => apiGet<CampaignsData>('/campaigns', { days, platform: platform || undefined, project_id: projectId }),
+    enabled,
   })
 }
 

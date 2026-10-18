@@ -10,6 +10,8 @@ import {
 } from '@/components/ui'
 import { fetchLeads } from '@/features/leads'
 import { fetchRules } from '@/features/automation'
+import { useCampaigns } from '@/features/campaigns'
+import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import {
   fetchProjectActivity, fetchProjectReport, fetchProjectSummary, type ReportRow,
 } from '@/features/projectWorkspace'
@@ -129,10 +131,23 @@ export function ProjectCampaigns({ projectId }: { projectId: string }) {
     queryFn: () => fetchProjectReport(projectId, 'platform'),
   })
 
+  // The campaigns as the campaigns screen draws them — cost, quality, a way in
+  // to their ads — for the people allowed to see money.
+  const user = useAuth((s) => s.user)
+  const money = can.viewReports(user)
+  const campaigns = useCampaigns(30, '', projectId, money)
+
   if (isLoading) return <Skeleton className="h-40" />
 
   return (
     <div className="space-y-3">
+      {money && (campaigns.data?.campaigns.length ?? 0) > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="project-campaign-cards">
+          {campaigns.data!.campaigns.map((campaign) => (
+            <CampaignCard key={campaign.id} campaign={campaign} currency={campaigns.data!.currency} />
+          ))}
+        </div>
+      )}
       <RowsCard
         title={t('projects.workspace.campaignsTitle')}
         rows={data?.rows ?? []}

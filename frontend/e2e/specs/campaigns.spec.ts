@@ -125,6 +125,19 @@ test.describe('الحملات — the campaign command center', () => {
     await expect(drawer.getByTestId('report-notes')).toContainText('الفواتير الرسمية هي المرجع')
   })
 
+  test('a project opens into its own campaigns, priced and qualified', async ({ page }) => {
+    await page.goto('/projects')
+    await page.locator('a[href^="/projects/"]').first().click()
+    await page.getByTestId('tab-campaigns').click()
+
+    const cards = page.getByTestId('project-campaign-cards').getByTestId('campaign-card')
+    await expect(cards.first()).toBeVisible()
+
+    // Same campaign, same screen: the card leads into the campaign itself.
+    await cards.first().click()
+    await expect(page.getByTestId('campaign-detail')).toBeVisible()
+  })
+
   test('a sales rep is not offered campaigns at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
     await page.goto('/')

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Files\FileDelivery;
 use App\Domain\Files\FileForTheLead;
 use App\Domain\Files\ShareFile;
 use App\Enums\ActivityType;
@@ -47,6 +48,7 @@ class ActionExecutor
         private EmailSender $email,
         private FileForTheLead $chooser,
         private ShareFile $sharer,
+        private FileDelivery $delivery,
     ) {}
 
     /**
@@ -434,40 +436,58 @@ class ActionExecutor
     private function shareFile(Lead $lead, array $action): array
     {
         $kind = ($action['kind'] ?? null) ?: null;
-
-        ['file' => $file, 'reason' => $reason] = $this->chooser->pick($lead, $kind);
-
-        if (! $file) {
-            return ['ok' => false, 'description' => match ($reason) {
-                'no_files_of_kind' => 'لا يوجد ملف من هذا النوع لمشروع العميل.',
-                default => 'لا توجد ملفات لمشروع هذا العميل — لم يُرسل شيء.',
-            }];
-        }
-
-        $share = $this->sharer->forLead($file, $lead, null, 'automation');
+        $channel = ($action['channel'] ?? 'whatsapp') === 'email' ? 'email' : 'whatsapp';
 
         if (! ($action['send'] ?? true)) {
+            // Only the link, for a rep to hand over: chosen and shared, not sent.
+            ['file' => $file, 'reason' => $reason] = $this->chooser->pick($lead, $kind);
+
+            if (! $file) {
+                return ['ok' => false, 'description' => $this->noFile($reason)];
+            }
+
+            $this->sharer->forLead($file, $lead, null, 'automation');
+
             return ['ok' => true, 'description' => "جُهِّز رابط '{$file->name}' للعميل."];
         }
 
-        /*
-         * As an attachment, with the tracked link in the caption.
-         *
-         * The file itself goes by upload, not by link, on purpose: a link makes
-         * Meta's servers fetch it, which would register as the customer opening
-         * the brochure. The link rides in the caption so the one signal that
-         * matters — they tapped it — still arrives, and arrives only when a
-         * person did.
-         */
         try {
-            $this->whatsapp->sendDocument($lead, $file, $share->url());
+            $result = $this->delivery->deliver($lead, $channel, null, $kind, null, 'automation');
         } catch (RuntimeException $e) {
-            // The share stands. It is on the lead's screen for a rep to send by
-            // hand, which is strictly better than having neither.
-            return ['ok' => false, 'description' => "جُهِّز رابط '{$file->name}' ولم يُرسل: ".$e->getMessage()];
+            // The share stands (see FileDelivery). When there was nothing to
+            // choose the message is a key, not a sentence.
+            return ['ok' => false, 'description' => in_array($e->getMessage(), ['no_files', 'no_files_of_kind', 'no_files_for_this_lead'], true)
+                ? $this->noFile($e->getMessage())
+                : 'جُهِّز الرابط ولم يُرسل: '.$e->getMessage()];
         }
 
-        return ['ok' => true, 'description' => "أُرسل '{$file->name}' إلى العميل."];
+        $where = $channel === 'email' ? 'بالبريد' : 'على واتساب';
+        $why = $result['reasons'] !== [] ? ' ('.implode('، ', array_map(fn ($r) => $this->reasonWords($r), $result['reasons'])).')' : '';
+
+        return ['ok' => true, 'description' => "أُرسل '{$result['file']->name}' {$where}{$why}."];
+    }
+
+    private function noFile(?string $reason): string
+    {
+        return match ($reason) {
+            'no_files_of_kind' => 'لا يوجد ملف من هذا النوع لمشروع العميل.',
+            'no_files_for_this_lead' => 'ملفات المشروع كلها موجَّهة لحملة أو مرحلة أو فئة لا ينتمي إليها هذا العميل.',
+            default => 'لا توجد ملفات لمشروع هذا العميل — لم يُرسل شيء.',
+        };
+    }
+
+    private function reasonWords(string $reason): string
+    {
+        return match (true) {
+            $reason === 'campaign' => 'مخصص لحملته',
+            $reason === 'investment_purpose' => 'يشتري للاستثمار',
+            $reason === 'needs_financing' => 'يحتاج تمويلًا',
+            $reason === 'audience_end_user' => 'يشتري للسكن',
+            str_starts_with($reason, 'stage_') => 'مناسب لمرحلته',
+            str_starts_with($reason, 'language_') => 'بلغته',
+            $reason === 'asked_for' => 'النوع المطلوب',
+            default => 'الملف الافتراضي',
+        };
     }
 
     private function stopFollowUps(Lead $lead, array $action): array

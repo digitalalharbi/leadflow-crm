@@ -4,10 +4,11 @@ import { FileText, Trash2, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { Badge, Button, Card, CardBody, CardHeader, Select, Skeleton } from '@/components/ui'
+import { Badge, Button, Card, CardBody, CardHeader, Drawer, Select, Skeleton } from '@/components/ui'
+import { FileTargeting, NO_TARGETING, type Targeting } from '@/components/projects/FileTargeting'
 import {
   deleteProjectFile, fetchProjectFiles, FILE_KINDS, updateProjectFile, uploadProjectFile,
-  type FileKind,
+  type FileKind, type ProjectFile,
 } from '@/features/files'
 
 /**
@@ -31,6 +32,9 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
 
   const [kind, setKind] = useState<FileKind>('brochure')
   const [language, setLanguage] = useState('')
+  const [targeting, setTargeting] = useState<Targeting>(NO_TARGETING)
+  const [editing, setEditing] = useState<ProjectFile | null>(null)
+  const [editTargeting, setEditTargeting] = useState<Targeting>(NO_TARGETING)
 
   const { data, isLoading } = useQuery({
     queryKey: ['project-files', projectId],
@@ -40,9 +44,16 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['project-files', projectId] })
 
   const upload = useMutation({
-    mutationFn: (file: File) => uploadProjectFile(projectId, { file, kind, language: language || null }),
+    mutationFn: (file: File) =>
+      uploadProjectFile(projectId, {
+        file, kind, language: language || null,
+        campaign: targeting.campaign || null,
+        stages: targeting.stages,
+        audience: targeting.audience || null,
+      }),
     onSuccess: () => {
       toast(t('files.uploaded'), 'success')
+      setTargeting(NO_TARGETING)
       refresh()
     },
     onError: (caught) => toast(translateError(caught), 'error'),
@@ -52,6 +63,20 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       updateProjectFile(projectId, id, { is_active }),
     onSuccess: refresh,
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const retarget = useMutation({
+    mutationFn: () =>
+      updateProjectFile(projectId, editing!.id, {
+        campaign: editTargeting.campaign || null,
+        stages: editTargeting.stages,
+        audience: editTargeting.audience || null,
+      }),
+    onSuccess: () => {
+      setEditing(null)
+      refresh()
+    },
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
@@ -123,6 +148,16 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
           </Button>
         </div>
 
+        {/* Who the next upload is for. Collapsed to a line until asked: most
+            files are for anybody, and a form that always shows five fields about
+            targeting is a form that makes every upload feel like a decision. */}
+        <details className="mt-3" data-testid="upload-targeting">
+          <summary className="t-small cursor-pointer text-[var(--color-ink-muted)]">{t('files.targetingSummary')}</summary>
+          <div className="mt-2">
+            <FileTargeting value={targeting} onChange={setTargeting} />
+          </div>
+        </details>
+
         {files.length === 0 ? (
           <p className="t-caption mt-4" data-testid="project-files-empty">{t('files.none')}</p>
         ) : (
@@ -137,6 +172,11 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
                   <span className="t-small truncate">{file.name}</span>
                   <Badge tone="neutral">{t(`files.kind.${file.kind}`)}</Badge>
                   {file.language && <Badge tone="neutral">{file.language}</Badge>}
+                  {file.campaign && <Badge tone="info">{file.campaign}</Badge>}
+                  {file.audience && <Badge tone="info">{t(`files.audienceOf.${file.audience}`)}</Badge>}
+                  {file.stages.length > 0 && (
+                    <Badge tone="info">{file.stages.map((stage) => t(`status.${stage}`)).join(' · ')}</Badge>
+                  )}
                 </span>
 
                 <span className="flex items-center gap-2">
@@ -153,6 +193,21 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
                     {file.is_active ? t('files.pause') : t('files.resume')}
                   </Button>
                   <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`target-file-${file.id}`}
+                    onClick={() => {
+                      setEditing(file)
+                      setEditTargeting({
+                        campaign: file.campaign ?? '',
+                        stages: file.stages,
+                        audience: file.audience ?? '',
+                      })
+                    }}
+                  >
+                    {t('files.target')}
+                  </Button>
+                  <Button
                     size="icon"
                     variant="ghost"
                     aria-label={t('common.delete')}
@@ -166,6 +221,23 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
           </ul>
         )}
       </CardBody>
+
+      <Drawer
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        testId="file-target-drawer"
+        title={editing?.name}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
+            <Button loading={retarget.isPending} onClick={() => retarget.mutate()} data-testid="save-targeting">
+              {t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <FileTargeting value={editTargeting} onChange={setEditTargeting} />
+      </Drawer>
     </Card>
   )
 }

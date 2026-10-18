@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\PipelineOverview;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadListResource;
 use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  */
 class PipelineController extends Controller
 {
-    public function __construct(private LeadQueryBuilder $queries) {}
+    public function __construct(private LeadQueryBuilder $queries, private TenantContext $context) {}
 
     public function index(Request $request)
     {
@@ -66,5 +68,18 @@ class PipelineController extends Controller
         ])->all();
 
         return ApiResponse::success(['columns' => $columns]);
+    }
+
+    /** The pipeline as a picture: funnel, stages, health, classification, watchlists, workload. */
+    public function overview(Request $request)
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $leads = $this->queries->build($request, $request->user());
+
+        return ApiResponse::success((new PipelineOverview($leads))->build() + [
+            // So a value is never drawn in a currency the screen guessed.
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+        ]);
     }
 }

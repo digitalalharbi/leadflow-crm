@@ -7,7 +7,7 @@ export interface RankItem {
   label: string
   value: number
   /** A second, quieter figure: "37%", "12 won". */
-  note?: string
+  note?: ReactNode
   leading?: ReactNode
   href?: string
 }

@@ -26,6 +26,13 @@ export type LeadStatus =
   | 'won' | 'lost'
   | 'invalid' | 'no_response'
 export type LeadTemperature = 'hot' | 'warm' | 'cold'
+
+/** One word for how seriously to take a lead, with the reason as a translation key. */
+export type ClassificationKey = 'new' | 'cold' | 'warm' | 'hot' | 'priority' | 'qualified' | 'unqualified'
+export interface Classification {
+  key: ClassificationKey
+  reason: string
+}
 export type UserRole = 'super_admin' | 'admin' | 'manager' | 'sales'
 
 export interface Branding {
@@ -92,6 +99,7 @@ export interface LeadListItem {
   status: LeadStatus
   /** Hot, and the one to call first. */
   is_priority?: boolean
+  classification?: Classification
   wrong_fit?: boolean
   /** What to do with it and how soon. Only on the leads list. */
   next_action?: { action: string; urgency: 'critical' | 'high' | 'medium' | 'low'; reason: string }

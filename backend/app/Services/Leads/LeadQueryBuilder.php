@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Domain\Leads\LeadClassification;
 use App\Enums\LeadStatus;
 use App\Models\ConversionExport;
 use App\Models\Lead;
@@ -91,10 +92,25 @@ class LeadQueryBuilder
         return strlen($this->phones->digits($term)) >= 4;
     }
 
+    /** Only the known classifications reach the SQL, as bindings. */
+    private function applyClassification(Builder $query, array $wanted): void
+    {
+        $keys = array_values(array_intersect($wanted, LeadClassification::values()));
+
+        if ($keys === []) {
+            $query->whereRaw('false');
+
+            return;
+        }
+
+        $query->whereRaw('('.LeadClassification::sql('leads').') in ('.implode(', ', array_fill(0, count($keys), '?')).')', $keys);
+    }
+
     private function applyFilters(Builder $query, Request $request): void
     {
         $query
             ->when($request->filled('status'), fn ($q) => $q->whereIn('status', (array) $request->input('status')))
+            ->when($request->filled('classification'), fn ($q) => $this->applyClassification($q, (array) $request->input('classification')))
             ->when($request->filled('temperature'), fn ($q) => $q->whereIn('temperature', (array) $request->input('temperature')))
             ->when($request->filled('platform'), fn ($q) => $q->whereIn('platform', (array) $request->input('platform')))
             ->when($request->filled('source'), fn ($q) => $q->where('source', $request->input('source')))

@@ -29,6 +29,11 @@ async function dragCardToColumn(page: Page, cardName: string, targetStatus: stri
   const card = page.getByTestId('pipeline-card').filter({ hasText: cardName }).first()
   const target = column(page, targetStatus)
 
+  // The board sits below the pipeline's picture, so bring it into the
+  // viewport first: pointer coordinates outside the window go nowhere.
+  await target.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  await card.scrollIntoViewIfNeeded()
+
   const from = await card.boundingBox()
   const to = await target.boundingBox()
 
@@ -49,6 +54,26 @@ test.describe('Pipeline', () => {
     await signInAs(page, ALPHA.admin.email)
     await page.goto('/pipeline')
     await expect(page.getByRole('heading', { name: 'مسار البيع', level: 1 })).toBeVisible()
+  })
+
+  test('draws the pipeline as a picture before the board', async ({ page }) => {
+    const hero = page.getByTestId('pipeline-hero')
+    await expect(hero).toBeVisible()
+
+    // Five numbers, the funnel, both donuts and the two watchlists.
+    for (const id of ['kpi-open-value', 'kpi-hot', 'kpi-stalled', 'kpi-response', 'kpi-win-rate', 'pipeline-funnel', 'stage-donut', 'quality-donut', 'team-workload']) {
+      await expect(hero.getByTestId(id)).toBeVisible()
+    }
+
+    // The funnel only narrows: each count is no larger than the one before.
+    const counts = await hero.getByTestId('pipeline-funnel').locator('li').evaluateAll((items) =>
+      items.map((li) => Number(li.textContent?.match(/(\d[\d,]*)\s*$/)?.[1].replace(/,/g, '') ?? Number.NaN)),
+    )
+    expect(counts.length).toBe(7)
+    for (let i = 1; i < counts.length; i++) expect(counts[i]).toBeLessThanOrEqual(counts[i - 1])
+
+    // A column header carries its own figures.
+    await expect(page.getByTestId('stage-stats-contacted')).toBeVisible()
   })
 
   test('shows every stage as its own column with a total', async ({ page }) => {

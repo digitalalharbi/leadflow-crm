@@ -21,6 +21,7 @@ export function Topbar() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
+  const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
   const logout = useAuth((s) => s.logout)
   const toggleSidebar = useUi((s) => s.toggleSidebar)
   const appearance = useUi((s) => s.appearance)
@@ -69,6 +70,17 @@ export function Topbar() {
       </button>
 
       <BrandLockup to="/" size="md" />
+
+      {/*
+        The console says so in words as well as in colour. Colour alone is the
+        kind of cue that stops working on the day it matters — a tired operator,
+        a projector, a screenshot pasted into a ticket.
+      */}
+      {isSuperAdmin && (
+        <span className="hidden rounded-full bg-[var(--brand-soft)] px-3 py-1 text-[0.75rem] font-medium text-[var(--brand)] sm:inline" data-testid="console-badge">
+          {t('nav.platformConsole')}
+        </span>
+      )}
 
       {/* The primary destinations, as a pill track with a white active pill. */}
       <nav

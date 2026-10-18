@@ -645,6 +645,7 @@
     --color-surface-raised: #121a28;
     --color-surface-muted: #0b1220;
     --color-surface-sunken: #161f2e;
+    --color-chrome-fill: #161f2e;
     --color-border: color-mix(in srgb, #ffffff 14%, transparent);
     --color-line: color-mix(in srgb, #ffffff 9%, transparent);
     --color-ink: #eceff4;

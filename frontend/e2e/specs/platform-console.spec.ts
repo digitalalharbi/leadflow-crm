@@ -35,7 +35,7 @@ test.describe('Platform console', () => {
 
     // And it says so in words, because colour alone does not survive a
     // screenshot pasted into a ticket.
-    await expect(page.getByText('منصة مهتم')).toBeVisible()
+    await expect(page.getByTestId('console-badge')).toContainText('منصة مهتم')
 
     // The navigation is the console's, not a workspace's.
     await expect(page.getByRole('link', { name: 'إدارة المنصة' })).toBeVisible()

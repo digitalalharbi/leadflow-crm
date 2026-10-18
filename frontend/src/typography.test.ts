@@ -1,8 +1,10 @@
+/// <reference types="node" />
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// Relative to the package root, which is where the test runner starts.
+// Read as text, not through the CSS pipeline: the contract is about what is
+// written in the file. The runner starts in the package root.
 const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf-8')
 const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf-8')
 

@@ -1406,6 +1406,20 @@ export default {
     created: 'تم تحديد المتابعة.',
     completedMsg: 'تم إتمام المتابعة.',
   },
+  visual: {
+    status: {
+      healthy: 'سليم',
+      attention: 'يحتاج انتباه',
+      risk: 'معرّض للخطر',
+      overdue: 'متأخر',
+      pending: 'قيد الانتظار',
+      completed: 'مكتمل',
+      active: 'نشط',
+      paused: 'موقوف',
+      today: 'اليوم',
+    },
+  },
+
   company: {
     title: 'الشركات',
     subtitle: 'الأعمال التابعة للمجموعة، وأداء كل منها. اختر شركة لتُصبح كل الشاشات عنها.',

@@ -24,7 +24,7 @@
  * The typography system.
  *
  * One stack for body and headings: Inter for Latin letters and every digit,
- * IBM Plex Sans Arabic for Arabic. The browser falls through per glyph, so a
+ * Noto Sans Arabic for Arabic, IBM Plex Sans Arabic only as a local fallback. The browser falls through per glyph, so a
  * line that mixes a customer's name, a Latin campaign id and an Arabic sentence
  * is set in two typefaces that were chosen to share an x-height and a rhythm.
  * Nothing else is loaded; the system stack at the end is a fallback for the
@@ -34,8 +34,8 @@
  * keys, webhook URLs, log lines, commands. Never for decoration.
  */
 :root {
-  --font-body: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
-  --font-heading: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-body: 'Inter Variable', 'Noto Sans Arabic Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-heading: 'Inter Variable', 'Noto Sans Arabic Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 

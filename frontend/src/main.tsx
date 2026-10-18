@@ -12,14 +12,13 @@ import '@/i18n'
  * The typography system: three families, all self-hosted so the product does
  * not depend on a font CDN being reachable (or on telling Google who is using
  * it). Inter's variable file carries every weight and the tabular figures;
- * IBM Plex Sans Arabic carries the Arabic at the four weights the scale uses;
- * JetBrains Mono is only ever loaded for technical values.
+ * Noto Sans Arabic (variable) carries the Arabic at every weight the scale
+ * uses — a neutral, open UI face that sits beside Inter without competing with
+ * it. IBM Plex Sans Arabic stays in the stack as a local fallback only, and is
+ * not shipped. JetBrains Mono is only ever loaded for technical values.
  */
 import '@fontsource-variable/inter/index.css'
-import '@fontsource/ibm-plex-sans-arabic/400.css'
-import '@fontsource/ibm-plex-sans-arabic/500.css'
-import '@fontsource/ibm-plex-sans-arabic/600.css'
-import '@fontsource/ibm-plex-sans-arabic/700.css'
+import '@fontsource-variable/noto-sans-arabic/index.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import '@/index.css'

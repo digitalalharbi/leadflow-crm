@@ -67,4 +67,35 @@ test.describe('Production readiness', () => {
 
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
   })
+
+  const INFRA = ['database', 'redis', 'queues', 'horizon', 'backups', 'logs', 'error_tracking']
+
+  test('lists the seven things the platform stands on', async ({ page }) => {
+    await expect(page.getByTestId('infrastructure')).toBeVisible()
+
+    for (const key of INFRA) {
+      await expect(page.getByTestId(`infra-${key}`), `${key} is missing`).toBeVisible()
+    }
+  })
+
+  test('every row says where it stands, when it was checked, the last error and what to do', async ({ page }) => {
+    for (const key of INFRA) {
+      await expect(page.getByTestId(`infra-${key}-state`)).toBeVisible()
+      await expect(page.getByTestId(`infra-${key}-checked`)).not.toBeEmpty()
+      await expect(page.getByTestId(`infra-${key}-error`)).not.toBeEmpty()
+      await expect(page.getByTestId(`infra-${key}-action`)).not.toBeEmpty()
+    }
+  })
+
+  test('the database is the one thing that has been observed working', async ({ page }) => {
+    // The page itself is a query that answered.
+    await expect(page.getByTestId('infra-database-state')).toContainText('مُتحقَّق فعليًا')
+  })
+
+  test('a developer machine claims nothing it cannot have seen', async ({ page }) => {
+    // No error tracker, no recorded backup: nothing here is entitled to green.
+    await expect(page.getByTestId('infra-error_tracking-state')).not.toContainText('مُتحقَّق فعليًا')
+    await expect(page.getByTestId('infra-backups-state')).not.toContainText('مُتحقَّق فعليًا')
+    await expect(page.getByTestId('infra-backups-action')).not.toContainText('لا إجراء مطلوب')
+  })
 })

@@ -20,6 +20,17 @@ ENV_FILE=".env.${ENVIRONMENT}"
 # shellcheck disable=SC1090
 set -a; source "$ENV_FILE"; set +a
 
+# Tells the application how this run ended, so the readiness screen can say a
+# backup was verified at a time rather than that a cron line exists. Best effort:
+# a backup that worked must not be reported as failed because the note could not
+# be delivered.
+record_backup() {
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend \
+    php artisan leadflow:record-backup "$@" >/dev/null 2>&1 || true
+}
+
+trap 'record_backup --failed="the backup script failed"' ERR
+
 BACKUP_DIR="${BACKUP_DIR:-./backups/${ENVIRONMENT}}"
 mkdir -p "$BACKUP_DIR"
 
@@ -42,6 +53,8 @@ fi
 SIZE="$(du -h "$TARGET" | cut -f1)"
 echo "==> Backup complete (${SIZE})"
 
+OFFSITE_FLAG=""
+
 # A copy on the same machine survives a bad migration and does not survive the
 # machine. BACKUP_UPLOAD_COMMAND is where off-server storage plugs in without a
 # change here — it is run with the file path as its only argument, e.g.
@@ -55,9 +68,15 @@ if [ -n "${BACKUP_UPLOAD_COMMAND:-}" ]; then
   echo "==> Copying off the server"
   if ! bash -c "${BACKUP_UPLOAD_COMMAND}" _ "$TARGET"; then
     echo "Off-server copy FAILED. The local backup is intact at ${TARGET}." >&2
+    # The dump is good and still on this machine; say exactly that.
+    record_backup --size="$SIZE"
     exit 2
   fi
+  OFFSITE_FLAG="--offsite"
 fi
+
+# Only now: the dump was read back and, if configured, copied off the server.
+record_backup --size="$SIZE" $OFFSITE_FLAG
 
 echo "==> Pruning backups older than ${RETAIN_DAYS} days"
 find "$BACKUP_DIR" -name '*.sql.gz' -type f -mtime "+${RETAIN_DAYS}" -delete

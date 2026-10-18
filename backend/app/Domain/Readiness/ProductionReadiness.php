@@ -45,6 +45,7 @@ class ProductionReadiness
         private readonly IntegrationHealthReport $health,
         private readonly GoogleOAuth $google,
         private readonly WhatsappManager $whatsapp,
+        private readonly InfrastructureReadiness $infrastructure,
     ) {}
 
     /**
@@ -68,9 +69,18 @@ class ProductionReadiness
 
         $summary = array_count_values(array_column($items, 'status'));
 
+        $infrastructure = $this->infrastructure->all();
+
         return [
             'scope' => $workspace ? 'workspace' : 'platform',
             'items' => $items,
+            /*
+             * What the platform stands on. Apart from `items` on purpose: those
+             * are things a customer connects, these are things the deployment
+             * either has or does not, and the two have different people to ask.
+             */
+            'infrastructure' => $infrastructure,
+            'infrastructure_summary' => array_count_values(array_column($infrastructure, 'state')),
             'summary' => [
                 self::LIVE => $summary[self::LIVE] ?? 0,
                 self::READY => $summary[self::READY] ?? 0,

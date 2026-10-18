@@ -27,9 +27,26 @@ export interface ReadinessItem {
   children?: Array<{ key: string; status: ReadinessStatus }>
 }
 
+/** Where a piece of infrastructure stands — three words, three burdens of proof. */
+export type InfraState = 'not_configured' | 'ready' | 'live_verified'
+
+export interface InfraItem {
+  key: 'database' | 'redis' | 'queues' | 'horizon' | 'backups' | 'logs' | 'error_tracking'
+  state: InfraState
+  status: ReadinessStatus
+  /** When it was last *seen* — a heartbeat's own time, or now for a probe. */
+  last_check: string
+  last_error: string | null
+  /** A key naming what a person has to do next; null when nothing is waiting. */
+  required_action: string | null
+  facts: Record<string, string | number | boolean | null | string[]>
+}
+
 export interface ReadinessReport {
   scope: 'workspace' | 'platform'
   items: ReadinessItem[]
+  infrastructure: InfraItem[]
+  infrastructure_summary: Partial<Record<InfraState, number>>
   summary: Record<ReadinessStatus, number>
 }
 

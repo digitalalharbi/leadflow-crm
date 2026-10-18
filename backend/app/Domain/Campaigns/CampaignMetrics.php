@@ -31,7 +31,8 @@ use Illuminate\Support\Facades\DB;
  */
 class CampaignMetrics
 {
-    public function __construct(private User $user, private CarbonInterface $from, private CarbonInterface $to) {}
+    /** No user means the workspace's own view — used by routines, which act for nobody in particular. */
+    public function __construct(private ?User $user, private CarbonInterface $from, private CarbonInterface $to) {}
 
     /**
      * @param  array{platform?: string, project_id?: int, status?: string}  $filters
@@ -182,14 +183,14 @@ class CampaignMetrics
             })
             ->sortByDesc('qualified')->values()->all();
 
-        $leadsByDay = Lead::query()->visibleTo($this->user)->reorder()
+        $leadsByDay = $this->leads()
             ->where('campaign_ref_id', $campaign->id)
             ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
             ->selectRaw('leads.created_at::date as day, count(*) as total')
             ->groupBy(DB::raw('1'))
             ->pluck('total', 'day');
 
-        $classes = Lead::query()->visibleTo($this->user)->reorder()
+        $classes = $this->leads()
             ->where('campaign_ref_id', $campaign->id)
             ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
             ->selectRaw(LeadClassification::sql('leads').' as class, count(*) as total')
@@ -256,7 +257,7 @@ class CampaignMetrics
         $invalid = LeadStatus::Invalid->value;
         $replied = "'replied', 'qualified', 'appointment', 'negotiation', '{$won}'";
 
-        return Lead::query()->visibleTo($this->user)->reorder()
+        return $this->leads()
             ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
             ->selectRaw(sprintf(
                 "count(*) as leads,
@@ -286,6 +287,13 @@ class CampaignMetrics
             'revenue' => round(((int) $row->revenue_minor) / 100, 2),
             '_revenue_minor' => (int) $row->revenue_minor,
         ];
+    }
+
+    private function leads()
+    {
+        $query = Lead::query();
+
+        return ($this->user ? $query->visibleTo($this->user) : $query)->reorder();
     }
 
     private function emptyCrm(): array

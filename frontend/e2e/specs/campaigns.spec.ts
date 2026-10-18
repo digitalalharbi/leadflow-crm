@@ -88,6 +88,20 @@ test.describe('الحملات — the campaign command center', () => {
     await expect(page.getByTestId('rule-forbidden')).toHaveValue('مضمون, مجاني')
   })
 
+  test('the agents can be asked to analyse now, and say what they saw', async ({ page }) => {
+    await page.goto('/campaigns')
+    const panel = page.getByTestId('agents-panel')
+
+    for (const key of ['orchestrator', 'analyst', 'campaign']) {
+      await expect(panel.getByTestId(`agent-${key}`)).toBeVisible()
+    }
+
+    await panel.getByTestId('run-analysis').click()
+    // Without spend nothing can be judged, and the panel says so rather than inventing findings.
+    await expect(panel).toContainText('لا شيء يستدعي الانتباه')
+    await expect(panel.getByTestId('agent-analyst')).not.toContainText('لم يعمل بعد')
+  })
+
   test('a sales rep is not offered campaigns at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
     await page.goto('/')

@@ -1590,6 +1590,26 @@ export default {
     name: { campaign: 'وكيل الحملات', analyst: 'المحلل', creative: 'وكيل الإبداع', leads: 'وكيل العملاء', reports: 'وكيل التقارير', orchestrator: 'المنسّق' },
   },
 
+  agentsPanel: {
+    title: 'الوكلاء',
+    analyse: 'تحليل الآن',
+    done: 'اكتمل التحليل.',
+    notYet: 'لم يعمل بعد',
+    failed: 'فشل آخر تشغيل',
+    allClear: 'لا شيء يستدعي الانتباه.',
+    neverRan: 'لم يُشغَّل التحليل بعد.',
+    finding: {
+      no_results: 'صرف بلا عملاء مؤهلين',
+      over_target: 'تكلفة المؤهل فوق الهدف',
+      cpl_over_target: 'تكلفة العميل فوق الهدف',
+      outperforming: 'أفضل من الهدف',
+      quality_drop: 'تراجع الجودة',
+      spend_spike: 'قفزة في الصرف',
+      over_ceiling: 'فوق سقف الميزانية',
+      fatigue: 'إرهاق الإعلان',
+    },
+  },
+
   visual: {
     status: {
       healthy: 'سليم',

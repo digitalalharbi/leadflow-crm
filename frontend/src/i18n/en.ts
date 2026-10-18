@@ -1255,6 +1255,15 @@ export default {
     chain: { platform: 'Platform', campaign: 'Campaign', adset: 'Ad set', ad: 'Ad', form: 'Form' },
   },
 
+  journey: {
+    arrived: 'Arrived',
+    automated: 'Automated',
+    reached: 'Reached',
+    followed: 'Follow-up',
+    waiting: 'Waiting for team',
+    closed: 'Outcome',
+  },
+
   visual: {
     status: {
       healthy: 'Healthy',

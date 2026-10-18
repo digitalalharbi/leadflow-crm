@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
+use App\Http\Controllers\Api\V1\JourneyController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\LeadEmailController;
@@ -128,6 +129,7 @@ Route::prefix('v1')->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index']);
             Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
+            Route::get('/dashboard/journey', [JourneyController::class, 'show']);
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::patch('/project-questions/{uuid}', [ProjectQuestionController::class, 'update']);

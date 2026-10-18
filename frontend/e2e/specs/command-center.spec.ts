@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ALPHA } from '../fixtures/data'
-import { signInAs } from '../fixtures/pages'
+import { apiGet, apiLogin } from '../fixtures/api'
+import { signInAs, waitForLeadsTable } from '../fixtures/pages'
 import { resetFixtures } from '../fixtures/seed'
 
 /**
@@ -56,5 +57,41 @@ test.describe('Command center', () => {
 
   test('shows the product name and nothing else', async ({ page }) => {
     await expect(page.locator('body')).not.toContainText(/alpha|beta|leadflow|mahtam/i)
+  })
+})
+
+test.describe('The journey strip', () => {
+  test('draws the whole promise, in order, on the dashboard', async ({ page }) => {
+    resetFixtures()
+    await signInAs(page, ALPHA.admin.email)
+    await page.goto('/')
+
+    const strip = page.getByTestId('journey-strip')
+    await expect(strip).toBeVisible()
+
+    for (const key of ['arrived', 'automated', 'reached', 'followed', 'waiting', 'closed']) {
+      await expect(strip.getByTestId(`journey-${key}`)).toBeVisible()
+    }
+
+    // What the team is waiting on opens the work queue.
+    await strip.getByTestId('journey-waiting').getByRole('link').click()
+    await expect(page).toHaveURL(/\/work/)
+  })
+
+  test('a link from the command center filters the leads list', async ({ page }) => {
+    const session = await apiLogin(ALPHA.admin.email)
+    let hot: number
+    try {
+      hot = (await apiGet<unknown[]>(session, '/api/v1/leads?temperature[]=hot&per_page=100')).length
+    } finally {
+      await session.dispose()
+    }
+
+    await signInAs(page, ALPHA.admin.email)
+    // The bare spelling the dashboard's own links have always used.
+    await page.goto('/leads?temperature=hot')
+    await waitForLeadsTable(page)
+
+    await expect(page.locator('table tbody tr')).toHaveCount(Math.min(hot, 25))
   })
 })

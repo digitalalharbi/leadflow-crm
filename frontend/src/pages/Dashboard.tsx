@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
+import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
 import { HoldingOverview } from '@/components/company/HoldingOverview'
@@ -156,6 +157,9 @@ export function DashboardPage() {
         <div className="space-y-3">
           {/* Holding → company → project, when the workspace has companies at all. */}
           <HoldingOverview />
+
+          {/* The whole promise in one row: arrived → automated → reached → followed up → waiting for the team → outcome. */}
+          <JourneyStrip days={range === 'all' ? 90 : Number(range)} />
 
           {/*
             The reference arrangement: what needs a person (the green card), the

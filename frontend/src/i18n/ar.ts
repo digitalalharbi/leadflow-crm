@@ -1483,6 +1483,17 @@ export default {
     closed: 'نتيجة',
   },
 
+  leadsOverview: {
+    total: 'كل العملاء',
+    hot: 'ساخن',
+    qualified: 'مؤهلون',
+    response: 'زمن الاستجابة',
+    conversion: 'التحويل',
+    sources: 'المصادر',
+    trend: 'آخر ٣٠ يومًا',
+    other: 'أخرى',
+  },
+
   visual: {
     status: {
       healthy: 'سليم',

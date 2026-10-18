@@ -146,6 +146,7 @@ Route::prefix('v1')->group(function () {
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
             Route::get('/leads/segments', [LeadController::class, 'segments']);
+            Route::get('/leads/overview', [LeadController::class, 'overview']);
             Route::get('/leads', [LeadController::class, 'index']);
             Route::post('/leads', [LeadController::class, 'store']);
             Route::get('/leads/{uuid}', [LeadController::class, 'show']);

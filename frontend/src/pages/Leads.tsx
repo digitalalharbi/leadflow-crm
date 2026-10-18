@@ -12,6 +12,7 @@ import { cn } from '@/lib/cn'
 import { formatDue, telLink, whatsappLink } from '@/lib/format'
 import { LeadFiltersBar } from '@/components/leads/LeadFilters'
 import { LeadAvatar } from '@/components/leads/LeadAvatar'
+import { LeadsOverview } from '@/components/leads/LeadsOverview'
 import { LeadSegments } from '@/components/leads/LeadSegments'
 import { NextActionChip } from '@/components/leads/NextActionChip'
 import { LeadFormDrawer } from '@/components/leads/LeadFormDrawer'
@@ -132,6 +133,9 @@ export function LeadsPage() {
         }
       />
 
+      {/* The picture first; the table is for acting on it. */}
+      <LeadsOverview query={query as Record<string, unknown>} />
+
       <Card className="overflow-hidden">
         {/* Which of these needs me — before a single row is read. */}
         <LeadSegments
@@ -197,7 +201,7 @@ export function LeadsPage() {
             */}
             <TableWrap
               className={cn(
-                'md:max-h-[calc(100dvh-21.5rem)] md:overflow-y-auto',
+                'md:max-h-[34rem] md:overflow-y-auto',
                 isFetching && 'opacity-60 transition-opacity',
               )}
               data-testid="leads-table-scroller"

@@ -24,6 +24,23 @@ test.describe('Leads list', () => {
     await expect(page.locator('table tbody tr').first()).toContainText('+9665')
   })
 
+  test('opens with a picture of the leads, and a search redraws it', async ({ page }) => {
+    await gotoLeads(page)
+
+    const overview = page.getByTestId('leads-overview')
+    for (const id of ['lk-total', 'lk-hot', 'lk-qualified', 'lk-response', 'lk-conversion', 'source-donut', 'lead-quality-donut', 'lead-trend']) {
+      await expect(overview.getByTestId(id)).toBeVisible()
+    }
+
+    const total = async () => Number((await overview.getByTestId('lk-total').innerText()).replace(/[^\d]/g, ''))
+    const all = await total()
+    expect(all).toBeGreaterThan(1)
+
+    // The picture and the table describe the same leads.
+    await page.getByTestId('lead-search').fill(LEADS.search)
+    await expect.poll(total).toBe(1)
+  })
+
   test('search finds a lead by name', async ({ page }) => {
     await gotoLeads(page)
     await page.getByTestId('lead-search').fill(LEADS.search)

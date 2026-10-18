@@ -105,23 +105,26 @@ test.describe('A laptop screen', () => {
    * than a longer page, and it is one CSS property away from silently not
    * working.
    */
-  test('the lead list scrolls inside itself, not down the page', async ({ page }) => {
+  test('the lead list scrolls inside itself, under the picture of the list', async ({ page }) => {
     await page.goto('/leads')
     await page.waitForLoadState('networkidle')
+
+    /*
+     * The contract changed on purpose. The page used to be the table, so the
+     * rule was "the page never scrolls". It now opens with a picture of the
+     * leads — five numbers and three charts — and the table is what you reach
+     * for to act on it, so the page may scroll to reach the table. What must
+     * still hold: the picture is on the first screen, the table is bounded and
+     * scrolls inside itself, and its header stays put while the rows move.
+     */
+    await expect(page.getByTestId('lk-total')).toBeInViewport()
+    await expect(page.getByTestId('source-donut')).toBeInViewport()
 
     const scroller = page.getByTestId('leads-table-scroller')
     await expect(scroller).toBeVisible()
 
-    const { scrollHeight, clientHeight } = await page.evaluate(() => ({
-      scrollHeight: document.documentElement.scrollHeight,
-      clientHeight: document.documentElement.clientHeight,
-    }))
-
-    expect(scrollHeight, 'the leads page grew past the viewport').toBeLessThanOrEqual(clientHeight + 1)
-
-    // The pager is reachable without scrolling, which is the point of capping
-    // the table rather than the page.
-    await expect(page.getByTestId('pagination')).toBeInViewport()
+    const height = await scroller.evaluate((node) => node.clientHeight)
+    expect(height, 'the table grew with its rows instead of scrolling inside itself').toBeLessThanOrEqual(560)
 
     // There are more rows than fit, so the inner scroller has something to do.
     const overflows = await scroller.evaluate((node) => node.scrollHeight > node.clientHeight + 1)

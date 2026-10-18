@@ -114,6 +114,8 @@ class LeadQueryBuilder
             })
             ->when($request->filled('date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->date('date_to')))
+            ->when($request->boolean('priority'), fn ($q) => $q->where('is_priority', true))
+            ->when($request->boolean('wrong_fit'), fn ($q) => $q->where('wrong_fit', true))
             ->when($request->boolean('overdue'), fn ($q) => $q->overdueFollowUp())
             ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('assigned_to'))
             // Arrived and still untouched past the workspace's own target. The

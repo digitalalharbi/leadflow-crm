@@ -54,6 +54,8 @@ class WorkQueueController extends Controller
 
         $candidates = $this->openLeadsFor($request)
             ->when($skipped !== [], fn ($q) => $q->whereNotIn('uuid', $skipped))
+            // A priority lead is always inside the window the ranking sees.
+            ->orderByDesc('is_priority')
             ->orderByRaw('first_contact_at is not null')  // never-contacted first
             ->orderBy('next_follow_up_at')
             ->orderByDesc('score')

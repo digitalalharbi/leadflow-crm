@@ -1,5 +1,6 @@
 import { cn } from '@/lib/cn'
 import type { LeadStatus, LeadTemperature } from '@/types/api'
+import { Star } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -71,14 +72,29 @@ export function StatusBadge({
 
 export function TemperatureBadge({
   temperature,
+  priority = false,
   className,
   testId,
 }: {
   temperature: LeadTemperature
+  /** Hot and the one to call first. Shown instead of "hot", never beside it. */
+  priority?: boolean
   className?: string
   testId?: string
 }) {
   const { t } = useTranslation()
+
+  if (priority) {
+    return (
+      <span
+        className={cn(base, tempTone.hot, 'font-semibold', className)}
+        data-testid={testId ?? 'priority-badge'}
+      >
+        <Star className="size-3 fill-current" aria-hidden />
+        {t('temperature.priority')}
+      </span>
+    )
+  }
 
   return (
     <span className={cn(base, tempTone[temperature], className)} data-testid={testId}>

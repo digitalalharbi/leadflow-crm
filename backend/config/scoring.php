@@ -81,6 +81,9 @@ return [
     'temperature' => [
         'warm_from' => 40,
         'hot_from' => 70,
+        // A priority lead is a hot one whose score is at least this, or whose
+        // project's own answers say it is. See LeadScoringService::finalise().
+        'priority_from' => 88,
     ],
 
     /*

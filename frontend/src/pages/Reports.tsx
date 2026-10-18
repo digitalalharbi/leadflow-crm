@@ -6,6 +6,7 @@ import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
 import { fetchDrivers, type Drivers } from '@/features/drivers'
 import { SpendModal } from '@/components/reports/SpendModal'
+import { InsightStrip } from '@/components/reports/InsightStrip'
 import { useApiError } from '@/hooks/useApiError'
 import { formatCurrency, formatDate, formatNumber } from '@/lib/format'
 import {
@@ -129,6 +130,9 @@ export function ReportsPage() {
           ) : undefined
         }
       />
+
+      {/* What to read first, before any table. */}
+      <InsightStrip />
 
       <Card className="mb-4 overflow-hidden">
         {/* One filter set for every tab, so switching keeps the period. */}

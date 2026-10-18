@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\LeadStatus;
+use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectResource;
 use App\Models\Company;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Models\ProjectFile;
+use App\Models\ProjectQuestion;
+use App\Models\TenantSetting;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -61,10 +65,49 @@ class ProjectController extends Controller
             ->get()
             ->keyBy('project_id');
 
+        /*
+         * What a manager scans the cards for: which project has somebody waiting
+         * and which has gone quiet. Two more grouped passes over the same set,
+         * not a query per card.
+         */
+        // One query, the same one every time. Reading it through the user's tenant
+        // relation costs two lazy loads on the first call and none after, which
+        // makes the cost of this screen depend on whether it was asked before.
+        $target = (int) (TenantSetting::query()->value('first_contact_target_minutes') ?? 30);
+        $open = [LeadStatus::Won->value, LeadStatus::Lost->value];
+
+        $attention = Lead::query()
+            ->whereNotNull('project_id')
+            ->visibleTo($request->user())
+            ->selectRaw(
+                'project_id,
+                 count(*) filter (where temperature = ? and status not in (?, ?)) as hot,
+                 count(*) filter (where is_priority and status not in (?, ?)) as priority,
+                 count(*) filter (where first_contact_at is null and status = ? and created_at <= ?) as awaiting_contact',
+                [LeadTemperature::Hot->value, ...$open, ...$open, LeadStatus::New->value, now()->subMinutes($target)],
+            )
+            ->groupBy('project_id')->get()->keyBy('project_id');
+
+        $since = today()->subDays(13);
+        $daily = Lead::query()
+            ->whereNotNull('project_id')
+            ->visibleTo($request->user())
+            ->where('created_at', '>=', $since)
+            ->selectRaw('project_id, date(created_at) as day, count(*) as n')
+            ->groupBy('project_id', 'day')->get()
+            ->groupBy('project_id');
+
+        $files = ProjectFile::where('is_active', true)
+            ->selectRaw('project_id, count(*) as n')->groupBy('project_id')->pluck('n', 'project_id');
+        $questions = ProjectQuestion::where('is_active', true)
+            ->selectRaw('project_id, count(*) as n')->groupBy('project_id')->pluck('n', 'project_id');
+
         return ApiResponse::success([
             'projects' => ProjectResource::collection($projects),
-            'metrics' => $projects->map(function (Project $project) use ($metrics) {
+            'metrics' => $projects->map(function (Project $project) use ($metrics, $attention, $daily, $files, $questions, $since) {
                 $row = $metrics[$project->id] ?? null;
+                $hot = $attention[$project->id] ?? null;
+                $perDay = collect($daily[$project->id] ?? [])->pluck('n', 'day');
                 $leads = (int) ($row->leads ?? 0);
                 $qualified = (int) ($row->qualified ?? 0);
 
@@ -75,6 +118,14 @@ class ProjectController extends Controller
                     'appointments' => (int) ($row->appointments ?? 0),
                     'won' => (int) ($row->won ?? 0),
                     'qualification_rate' => $leads > 0 ? round($qualified / $leads * 100, 1) : 0.0,
+                    'hot' => (int) ($hot->hot ?? 0),
+                    'priority' => (int) ($hot->priority ?? 0),
+                    'awaiting_contact' => (int) ($hot->awaiting_contact ?? 0),
+                    // Fourteen days of arrivals, zero-filled, for the little line.
+                    'trend' => collect(range(0, 13))
+                        ->map(fn ($i) => (int) ($perDay[$since->copy()->addDays($i)->toDateString()] ?? 0))->all(),
+                    'files' => (int) ($files[$project->id] ?? 0),
+                    'questions' => (int) ($questions[$project->id] ?? 0),
                 ];
             })->values(),
         ]);

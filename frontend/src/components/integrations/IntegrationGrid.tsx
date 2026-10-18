@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
+import {
+  GitBranch, Mail, Megaphone, MessageCircle, Music2, Phone, RefreshCw, Search, Sheet, Webhook,
+  Ghost, Briefcase,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost } from '@/lib/api'
 import { useUi } from '@/stores/ui'
@@ -7,7 +11,36 @@ import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { Badge, Button, Card, CardBody, Skeleton } from '@/components/ui'
-import { STATE_TONE, isProven, type IntegrationState } from '@/features/integrationState'
+import { INTEGRATION_STATES, STATE_TONE, isProven, type IntegrationState } from '@/features/integrationState'
+
+/** One glyph per source: enough to find it in a grid without reading. */
+const ICON: Record<string, LucideIcon> = {
+  meta: Megaphone,
+  tiktok: Music2,
+  google_ads: Search,
+  snapchat: Ghost,
+  linkedin: Briefcase,
+  generic_webhook: Webhook,
+  google_sheets: Sheet,
+  whatsapp: MessageCircle,
+  email: Mail,
+  calls: Phone,
+  github: GitBranch,
+}
+
+/**
+ * The ladder's own colours, weakest to strongest. Grey until something real
+ * has happened, then warming to green: the ribbon reads left to right as how
+ * far the workspace has got, which is the question it is opened to answer.
+ */
+const RUNG_COLOR: Record<IntegrationState, string> = {
+  not_configured: 'var(--color-border-strong)',
+  code_verified: 'color-mix(in srgb, var(--color-ink-subtle) 70%, var(--color-surface))',
+  sandbox_verified: 'var(--color-warning)',
+  ready: 'var(--chart-1)',
+  live_verified: 'var(--color-success)',
+  production_verified: 'color-mix(in srgb, var(--color-success) 70%, black)',
+}
 
 /**
  * Every source on one screen.
@@ -90,11 +123,14 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
       {/* The sync centre: the two facts about the whole workspace, and the one
           action that applies to all of it. */}
       <Card>
-        <CardBody className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+        <CardBody className="space-y-2 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            {/* "Set up", not "connected": a row with credentials typed into it is
+                configured, and nothing more has been said. */}
             <Figure
-              label={t('health.connected')}
-              value={`${rows.filter((row) => row.connected).length}/${rows.length}`}
+              label={t('health.configuredCount')}
+              value={`${rows.filter((row) => row.state !== 'not_configured').length}/${rows.length}`}
             />
             <Figure
               label={t('health.verifiedCount')}
@@ -106,6 +142,19 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             />
           </div>
 
+          <ul className="flex flex-wrap gap-x-3 gap-y-0.5" data-testid="ladder-legend">
+            {INTEGRATION_STATES.map((state) => {
+              const count = rows.filter((row) => row.state === state).length
+              return count === 0 ? null : (
+                <li key={state} className="flex items-center gap-1.5 text-[0.75rem] text-[var(--color-ink-muted)]">
+                  <span aria-hidden className="size-2 rounded-full" style={{ background: RUNG_COLOR[state] }} />
+                  {t(`integrationState.${state}`)}
+                  <span className="font-semibold tabular-nums text-[var(--color-ink)]">{count}</span>
+                </li>
+              )
+            })}
+          </ul>
+
           <Button
             size="sm"
             variant="outline"
@@ -116,6 +165,30 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
           >
             {t('health.syncAll')}
           </Button>
+          </div>
+
+          {/*
+            How far along the whole workspace is, as one bar: each segment is a rung
+            of the ladder, sized by how many integrations stand on it. Empty rungs
+            take no room, and the legend names only what is there.
+          */}
+          <div
+            className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full"
+            role="img"
+            aria-label={t('health.ribbon')}
+            data-testid="ladder-ribbon"
+          >
+            {INTEGRATION_STATES.map((state) => {
+              const count = rows.filter((row) => row.state === state).length
+              return count === 0 ? null : (
+                <span
+                  key={state}
+                  style={{ flex: count, background: RUNG_COLOR[state] }}
+                  data-testid={`ribbon-${state}`}
+                />
+              )
+            })}
+          </div>
         </CardBody>
       </Card>
 
@@ -136,7 +209,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             onClick={() => onConfigure?.(row.key)}
             data-testid={`integration-tile-${row.key}`}
             className={cn(
-              'pressable rounded-[var(--radius-card)] border bg-[var(--color-surface)] p-2.5 text-start',
+              'pressable relative overflow-hidden rounded-[var(--radius-card)] border bg-[var(--color-surface)] p-2.5 ps-3 text-start',
               row.last_error
                 ? 'border-[var(--color-danger)]/40'
                 : isProven(row.state)
@@ -144,9 +217,21 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
                   : 'border-[var(--color-line)]',
             )}
           >
+            {/* The rung's colour down the leading edge: readable before the word. */}
+            <span
+              aria-hidden
+              className="absolute inset-y-0 start-0 w-1"
+              style={{ background: RUNG_COLOR[row.state] }}
+            />
             <div className="flex items-center justify-between gap-1.5">
-              <span className="t-small truncate font-semibold">
-                {t(`health.name.${row.key}`, { defaultValue: row.key })}
+              <span className="flex min-w-0 items-center gap-1.5">
+                {(() => {
+                  const Icon = ICON[row.key] ?? Webhook
+                  return <Icon className="size-3.5 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
+                })()}
+                <span className="t-small truncate font-semibold">
+                  {t(`health.name.${row.key}`, { defaultValue: row.key })}
+                </span>
               </span>
               <span
                 aria-hidden

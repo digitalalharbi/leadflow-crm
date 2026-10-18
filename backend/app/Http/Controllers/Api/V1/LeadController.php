@@ -56,9 +56,64 @@ class LeadController extends Controller
         private CallProviderRegistry $calls,
     ) {}
 
+    /**
+     * How many leads are in each of the lists people actually work from.
+     *
+     * The list is a table; the question that opens it is "which of these
+     * needs me" — and a row of counts answers that before a single row is read.
+     * One pass over the same visible set the list is built from, so a number
+     * here is exactly the number of rows behind it, and a click on it lands on
+     * a list of that length.
+     *
+     * Not filtered by what is on screen: these are the lists, not a recount of
+     * the current one.
+     */
+    public function segments(Request $request)
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $user = $request->user();
+        $target = (int) ($user->tenant?->settings?->first_contact_target_minutes ?? 30);
+        $open = [LeadStatus::Won->value, LeadStatus::Lost->value];
+
+        $row = Lead::query()->visibleTo($user)
+            ->selectRaw(
+                'count(*) as total,
+                 count(*) filter (where is_priority and status not in (?, ?)) as priority,
+                 count(*) filter (where temperature = ? and status not in (?, ?)) as hot,
+                 count(*) filter (where first_contact_at is null and status = ? and created_at <= ?) as awaiting_contact,
+                 count(*) filter (where next_follow_up_at < now() and status not in (?, ?)) as overdue,
+                 count(*) filter (where assigned_to is null and status not in (?, ?)) as unassigned,
+                 count(*) filter (where first_response_at is not null and status not in (?, ?)) as replied',
+                [
+                    ...$open,
+                    LeadTemperature::Hot->value, ...$open,
+                    LeadStatus::New->value, now()->subMinutes($target),
+                    ...$open,
+                    ...$open,
+                    ...$open,
+                ],
+            )
+            ->first();
+
+        return ApiResponse::success([
+            'all' => (int) $row->total,
+            'priority' => (int) $row->priority,
+            'hot' => (int) $row->hot,
+            'awaiting_contact' => (int) $row->awaiting_contact,
+            'overdue' => (int) $row->overdue,
+            'unassigned' => $user->seesAllLeads() ? (int) $row->unassigned : 0,
+            'replied' => (int) $row->replied,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Lead::class);
+
+        // The list is where "what should I do with this one" is the question;
+        // other screens that reuse the row do not need the answer computed.
+        $request->attributes->set('with_next_action', true);
 
         $perPage = min((int) $request->input('per_page', 25), 100);
 

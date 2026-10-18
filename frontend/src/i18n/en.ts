@@ -573,6 +573,8 @@ export default {
   health: {
     connected: 'Connected',
     verifiedCount: 'Verified',
+    configuredCount: 'Set up',
+    ribbon: 'Where each source stands, from not configured to live verified',
     lastEventAny: 'Last event',
     lastSync: 'Last sync',
     syncAll: 'Sync all',
@@ -581,7 +583,7 @@ export default {
       credentials_missing: 'Waiting for credentials',
       platform_not_configured: 'Waiting for the platform to enable it',
       not_connected: 'Waiting for an account to be connected',
-      awaiting_first_event: 'Connected \u2014 waiting for the first real event',
+      awaiting_first_event: 'Credentials entered \u2014 waiting for the first real event',
       no_provider_selected: 'Waiting for a provider to be chosen',
     },
     short: {
@@ -1079,6 +1081,17 @@ export default {
   },
 
   leads: {
+    segments: {
+      label: 'Working lists',
+      all: 'All',
+      priority: 'Priority',
+      hot: 'Hot',
+      awaiting_contact: 'Awaiting contact',
+      overdue: 'Overdue follow-up',
+      unassigned: 'Unassigned',
+      replied: 'Replied',
+    },
+    nextStep: 'Next step',
     language: 'Language',
     searchPlaceholder: 'Search by name, phone or email…',
     title: 'Leads', subtitle: 'Every lead in one place', addLead: 'Add lead',
@@ -1237,6 +1250,15 @@ export default {
   },
 
   projects: {
+    trend: '{{count}} new leads in 14 days',
+    filesCount: '{{count}} files',
+    questionsCount: '{{count}} questions',
+    attention: {
+      priority: '{{count}} priority',
+      awaiting: '{{count}} awaiting contact',
+      hot: '{{count}} hot',
+      none: 'Nothing waiting on anybody here.',
+    },
     tabs: {
       overview: 'Overview',
       leads: 'Leads',
@@ -1298,6 +1320,17 @@ export default {
     emptyTitle: 'No projects yet', emptyBody: 'Add your first project so leads can be linked to it.',
   },
   reports: {
+    insights: {
+      title: 'What the numbers say',
+      leads_this_month: '{{count}} leads arrived in the last 30 days.',
+      leads_up: 'Leads are up {{change}}% ({{previous}} → {{count}}).',
+      leads_down: 'Leads are down {{change}}% ({{previous}} → {{count}}).',
+      leads_steady: 'Lead volume is steady: {{count}} against {{previous}} the period before.',
+      best_source: '{{best}} qualifies best ({{best_rate}}%), {{worst}} worst ({{worst_rate}}%).',
+      response_slow: '{{slow_share}}% of leads waited longer than {{target}} minutes for a first contact. Median {{median}} min.',
+      response_fast: 'First contact is quick: median {{median}} minutes against a target of {{target}}.',
+      biggest_leak: 'The biggest leak is between "{{from}}" and "{{to}}": {{lost}}% of leads are lost there.',
+    },
     tabs: { overview: 'Overview', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons', drivers: 'Conversion drivers' },
     teamHint: 'Measurements per owner — not a ranking of people',
     lostHint: 'Largest reason first — that is the one to fix',

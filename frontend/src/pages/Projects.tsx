@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, Pencil, Plus } from 'lucide-react'
+import { AlarmClock, Building2, Flame, Pencil, Plus, Star } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiPatch, apiPost, ApiError } from '@/lib/api'
 import { useCompanies } from '@/features/companies'
@@ -15,6 +15,7 @@ import {
   Badge, Button, Card, Drawer, EmptyState, ErrorState, Input, PageHeader,
   Select, SkeletonTable,
 } from '@/components/ui'
+import { MiniTrend } from '@/components/charts/MiniTrend'
 import type { Project, ProjectMetrics } from '@/types/api'
 
 const EMPTY = { name: '', developer_name: '', location: '', starting_price: '', status: 'active' }
@@ -343,9 +344,16 @@ function ProjectCard({
 
   return (
     <article
-      className="flex flex-col rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
+      className="relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
       data-testid="project-card"
     >
+      {/* The company's colour, or the workspace's: a card's owner at a glance,
+          and a quiet reason for a row of cards to look like a family. */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ background: project.company?.color ?? 'var(--brand)' }}
+      />
       <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-4 py-3">
         <div className="min-w-0">
           {/* The name is the way in: everything about a project that is not on
@@ -387,6 +395,15 @@ function ProjectCard({
           </span>
           <span className="t-caption">{t('projects.leadsCount')}</span>
         </Link>
+
+        {/* Whether it is moving: the last fortnight, drawn small. */}
+        {metrics?.trend && (
+          <MiniTrend
+            values={metrics.trend}
+            color={project.company?.color ?? 'var(--brand)'}
+            label={t('projects.trend', { count: metrics.trend.reduce((sum, n) => sum + n, 0) })}
+          />
+        )}
 
         {project.starting_price != null && (
           <span className="text-end">
@@ -438,6 +455,41 @@ function ProjectCard({
           to={`/leads?project_id=${project.id}&status[]=won`}
         />
       </dl>
+
+      {/*
+        What needs somebody, and only that. A card that lists four things that
+        are fine is a card nobody reads; when nothing is waiting it says so in
+        one quiet line, which is the answer a manager is glad to get.
+      */}
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-line)] px-4 py-2.5" data-testid="project-attention">
+        {(metrics?.priority ?? 0) > 0 && (
+          <AttentionChip tone="danger" icon={<Star className="size-3 fill-current" />} to={`/leads?project_id=${project.id}&priority=1`}>
+            {t('projects.attention.priority', { count: metrics?.priority })}
+          </AttentionChip>
+        )}
+        {(metrics?.awaiting_contact ?? 0) > 0 && (
+          <AttentionChip tone="danger" icon={<AlarmClock className="size-3" />} to={`/leads?project_id=${project.id}&awaiting_contact=1`}>
+            {t('projects.attention.awaiting', { count: metrics?.awaiting_contact })}
+          </AttentionChip>
+        )}
+        {(metrics?.hot ?? 0) > 0 && (
+          <AttentionChip tone="warning" icon={<Flame className="size-3" />} to={`/leads?project_id=${project.id}&temperature[]=hot`}>
+            {t('projects.attention.hot', { count: metrics?.hot })}
+          </AttentionChip>
+        )}
+        {!(metrics?.priority || metrics?.awaiting_contact || metrics?.hot) && (
+          <span className="t-caption">{t('projects.attention.none')}</span>
+        )}
+
+        <span className="ms-auto flex items-center gap-3 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          <Link to={`/projects/${project.id}`} className="hover:text-[var(--brand)]" data-testid="project-files-count">
+            {t('projects.filesCount', { count: metrics?.files ?? 0 })}
+          </Link>
+          <Link to={`/projects/${project.id}`} className="hover:text-[var(--brand)]">
+            {t('projects.questionsCount', { count: metrics?.questions ?? 0 })}
+          </Link>
+        </span>
+      </div>
     </article>
   )
 }
@@ -472,6 +524,30 @@ function ProjectMetric({
           </span>
         )}
       </dd>
+    </Link>
+  )
+}
+
+function AttentionChip({
+  tone, icon, to, children,
+}: {
+  tone: 'danger' | 'warning'
+  icon: React.ReactNode
+  to: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'pressable inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.75rem] font-medium',
+        tone === 'danger'
+          ? 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]'
+          : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]',
+      )}
+    >
+      {icon}
+      {children}
     </Link>
   )
 }

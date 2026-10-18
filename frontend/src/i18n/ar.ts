@@ -690,6 +690,8 @@ export default {
 
   health: {
     connected: 'مربوط',
+    configuredCount: 'مُعدّ',
+    ribbon: 'مستوى كل مصدر، من غير المُعدّ إلى المُتحقَّق فعليًا',
     verifiedCount: 'مُجرَّب فعليًا',
     lastEventAny: 'آخر حدث',
     lastSync: 'آخر مزامنة',
@@ -699,7 +701,7 @@ export default {
       credentials_missing: 'بانتظار بيانات الاتصال',
       platform_not_configured: 'بانتظار تفعيل الربط على المنصة',
       not_connected: 'بانتظار ربط الحساب',
-      awaiting_first_event: 'متصل — بانتظار أول حدث حقيقي',
+      awaiting_first_event: 'بيانات الاتصال مُدخلة — بانتظار أول حدث حقيقي',
       no_provider_selected: 'بانتظار اختيار مزوّد',
     },
     short: {
@@ -1231,6 +1233,17 @@ export default {
   },
 
   leads: {
+    segments: {
+      label: 'قوائم العمل',
+      all: 'الكل',
+      priority: 'أولوية',
+      hot: 'ساخن',
+      awaiting_contact: 'تنتظر التواصل',
+      overdue: 'متابعة متأخرة',
+      unassigned: 'بلا مسؤول',
+      replied: 'ردّوا',
+    },
+    nextStep: 'الخطوة التالية',
     language: 'اللغة',
     searchPlaceholder: 'ابحث بالاسم أو الجوال أو البريد…',
     title: 'العملاء المحتملون',
@@ -1455,6 +1468,15 @@ export default {
   },
 
   projects: {
+    trend: '{{count}} عميل جديد خلال ١٤ يومًا',
+    filesCount: '{{count}} ملف',
+    questionsCount: '{{count}} سؤال',
+    attention: {
+      priority: '{{count}} أولوية',
+      awaiting: '{{count}} تنتظر التواصل',
+      hot: '{{count}} ساخن',
+      none: 'لا شيء ينتظر أحدًا هنا.',
+    },
     tabs: {
       overview: 'نظرة عامة',
       leads: 'العملاء',
@@ -1524,6 +1546,17 @@ export default {
     emptyBody: 'أضف مشروعك الأول لتتمكن من ربط العملاء به.',
   },
   reports: {
+    insights: {
+      title: 'ما يقوله الرقم',
+      leads_this_month: 'وصل {{count}} عميل خلال ٣٠ يومًا.',
+      leads_up: 'ارتفع وصول العملاء {{change}}٪ ({{previous}} ← {{count}}).',
+      leads_down: 'انخفض وصول العملاء {{change}}٪ ({{previous}} ← {{count}}).',
+      leads_steady: 'وصول العملاء مستقر: {{count}} مقابل {{previous}} في الفترة السابقة.',
+      best_source: '{{best}} أفضل المصادر تأهيلًا ({{best_rate}}٪)، و{{worst}} الأضعف ({{worst_rate}}٪).',
+      response_slow: '{{slow_share}}٪ من العملاء تأخّر أول تواصل معهم عن {{target}} دقيقة. الوسيط {{median}} دقيقة.',
+      response_fast: 'أول تواصل سريع: الوسيط {{median}} دقيقة وهدفكم {{target}}.',
+      biggest_leak: 'أكبر تسرّب بين «{{from}}» و«{{to}}»: يضيع {{lost}}٪ من العملاء.',
+    },
     tabs: { overview: 'نظرة عامة', campaigns: 'الحملات', platforms: 'المنصات', team: 'فريق المبيعات', lost: 'أسباب الفقد', drivers: 'عوامل الإغلاق' },
     teamHint: 'قياسات لكل مسؤول — وليست ترتيبًا للأشخاص',
     lostHint: 'أكبر سبب أولًا — هذا هو ما يجب معالجته',

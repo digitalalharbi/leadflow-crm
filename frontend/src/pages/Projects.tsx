@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Pencil, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiPatch, apiPost, ApiError } from '@/lib/api'
+import { useCompanies } from '@/features/companies'
 import { fetchAssignableUsers, fetchProjectsWithMetrics } from '@/features/leads'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -30,6 +31,8 @@ export function ProjectsPage() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [team, setTeam] = useState<string[]>([])
+  const [companyId, setCompanyId] = useState('')
+  const { data: companyData } = useCompanies()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -52,6 +55,8 @@ export function ProjectsPage() {
         starting_price: form.starting_price ? Number(form.starting_price) : null,
         status: form.status,
         team,
+        // Null puts the project back with the holding.
+        company_id: companyId || null,
       }
 
       return editing ? apiPatch(`/projects/${editing.id}`, payload) : apiPost('/projects', payload)
@@ -78,6 +83,7 @@ export function ProjectsPage() {
     setEditing(null)
     setForm(EMPTY)
     setTeam([])
+    setCompanyId('')
     setFieldErrors({})
     setOpen(true)
   }
@@ -92,6 +98,7 @@ export function ProjectsPage() {
       status: project.status,
     })
     setTeam((project.team ?? []).map((member) => member.id))
+    setCompanyId(project.company?.id ?? '')
     setFieldErrors({})
     setOpen(true)
   }
@@ -101,6 +108,7 @@ export function ProjectsPage() {
     setEditing(null)
     setForm(EMPTY)
     setTeam([])
+    setCompanyId('')
   }
 
   function handleSubmit(event: FormEvent) {
@@ -192,6 +200,21 @@ export function ProjectsPage() {
             error={fieldErrors.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
+          {(companyData?.companies.length ?? 0) > 0 && (
+            <Select
+              label={t('company.title')}
+              hint={t('company.projectHint')}
+              value={companyId}
+              data-testid="project-company"
+              onChange={(e) => setCompanyId(e.target.value)}
+            >
+              <option value="">{t('company.holdingOwn')}</option>
+              {companyData?.companies.map((company) => (
+                <option key={company.id} value={company.id}>{company.name}</option>
+              ))}
+            </Select>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label={t('projects.developer')}
@@ -332,6 +355,13 @@ function ProjectCard({
             {project.name}
           </Link>
           <p className="t-caption mt-0.5 truncate">
+            {project.company && (
+              <span className="me-1.5 inline-flex items-center gap-1 font-medium text-[var(--color-ink)]" data-testid="project-company-chip">
+                <span aria-hidden className="size-1.5 rounded-full" style={{ background: project.company.color ?? 'var(--brand)' }} />
+                {project.company.name}
+                {' · '}
+              </span>
+            )}
             {[project.location, project.developer_name].filter(Boolean).join(' · ') || '—'}
           </p>
         </div>

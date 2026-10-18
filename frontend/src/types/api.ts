@@ -355,6 +355,8 @@ export interface Project {
   starting_price: number | null
   status: 'active' | 'paused' | 'sold_out'
   notes: string | null
+  /** The company this project belongs to; null means the holding's own. */
+  company?: { id: string; name: string; color: string | null } | null
   /**
    * The reps who work this project. Empty means anybody — the routing only
    * engages once somebody says a project has a team.

@@ -7,6 +7,7 @@ use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
+use App\Models\Scopes\CompanyScope;
 use App\Models\Scopes\ExcludesTestLeads;
 use App\Services\Leads\PhoneLanguage;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +41,7 @@ class Lead extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(new ExcludesTestLeads);
+        static::addGlobalScope(new CompanyScope);
 
         static::saving(function (self $lead) {
             if ($lead->first_contact_at === null && $lead->status?->impliesContactWasMade()) {

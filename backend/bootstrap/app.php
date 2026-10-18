@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureTenantIsActive;
 use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\ResolveCompanyContext;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Support\ApiExceptionRenderer;
 use Illuminate\Foundation\Application;
@@ -70,6 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'tenant' => ResolveTenantContext::class,
+            'company' => ResolveCompanyContext::class,
             'tenant.active' => EnsureTenantIsActive::class,
         ]);
 

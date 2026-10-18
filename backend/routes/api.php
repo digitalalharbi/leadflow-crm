@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
 use App\Http\Controllers\Api\V1\CommandCenterController;
+use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
@@ -104,7 +105,7 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', 'company'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
@@ -125,6 +126,12 @@ Route::prefix('v1')->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index']);
             Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
+            Route::get('/companies', [CompanyController::class, 'index']);
+            Route::post('/companies', [CompanyController::class, 'store']);
+            Route::patch('/companies/{uuid}', [CompanyController::class, 'update']);
+            Route::delete('/companies/{uuid}', [CompanyController::class, 'destroy']);
+            Route::put('/companies/{uuid}/members', [CompanyController::class, 'members']);
+            Route::get('/companies/{uuid}/projects', [CompanyController::class, 'projects']);
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);

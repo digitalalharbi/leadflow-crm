@@ -48,6 +48,12 @@ class User extends Authenticatable
     }
 
     /** The projects this rep works, if the workspace has said. */
+    /** The companies this person works in. None means all, which is how every workspace starts. */
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class);
+    }
+
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class);

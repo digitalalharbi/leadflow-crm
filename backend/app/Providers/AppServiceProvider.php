@@ -14,6 +14,7 @@ use App\Listeners\BroadcastLeadChange;
 use App\Listeners\RecordConversionOutcome;
 use App\Listeners\RunAutomationRules;
 use App\Models\AutomationRule;
+use App\Models\Company;
 use App\Models\FollowUp;
 use App\Models\Import;
 use App\Models\Integration;
@@ -23,6 +24,7 @@ use App\Models\Project;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\AutomationRulePolicy;
+use App\Policies\CompanyPolicy;
 use App\Policies\FollowUpPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\IntegrationPolicy;
@@ -31,6 +33,7 @@ use App\Policies\MessageTemplatePolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\TenantSettingsPolicy;
 use App\Policies\UserPolicy;
+use App\Support\CompanyContext;
 use App\Support\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -45,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+        $this->app->singleton(CompanyContext::class);
 
         /*
          * One client, one registry, for every code host. Bound here rather than
@@ -96,6 +100,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AutomationRule::class, AutomationRulePolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
+        Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(FollowUp::class, FollowUpPolicy::class);
         Gate::policy(Integration::class, IntegrationPolicy::class);

@@ -29,6 +29,10 @@ class LeadResource extends JsonResource
 
             'status' => $this->status?->value,
             'temperature' => $this->temperature?->value,
+            // Hot, and the one to call first. Not a fourth temperature.
+            'is_priority' => (bool) $this->is_priority,
+            // The project's own questions say this is not a buyer for it.
+            'wrong_fit' => (bool) $this->wrong_fit,
             'score' => $this->score,
             'qualification_status' => $this->qualification_status?->value,
             'qualified_at' => $this->qualified_at?->toIso8601String(),

@@ -49,6 +49,8 @@ export function LeadsPage() {
       date_from: searchParams.get('date_from') ?? undefined,
       date_to: searchParams.get('date_to') ?? undefined,
       overdue: searchParams.get('overdue') === '1' || undefined,
+      priority: searchParams.get('priority') === '1' || undefined,
+      wrong_fit: searchParams.get('wrong_fit') === '1' || undefined,
       /*
        * The drill-down from the data quality screen. Without this the URL
        * carries the filter, the list ignores it, and the page shows every lead
@@ -88,6 +90,8 @@ export function LeadsPage() {
     Boolean(filters.assigned_to) ||
     Boolean(filters.follow_up) ||
     Boolean(filters.overdue) ||
+    Boolean(filters.priority) ||
+    Boolean(filters.wrong_fit) ||
     Boolean(filters.data_issue) ||
     Boolean(filters.unassigned)
 
@@ -226,7 +230,7 @@ export function LeadsPage() {
                         {/* Below `sm` the badges have nowhere else to live. */}
                         <span className="mt-1.5 flex flex-wrap items-center gap-1 sm:hidden">
                           <StatusBadge status={lead.status} />
-                          <TemperatureBadge temperature={lead.temperature} />
+                          <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
                         </span>
                       </Td>
 

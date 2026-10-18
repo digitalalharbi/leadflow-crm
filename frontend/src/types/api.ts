@@ -90,6 +90,9 @@ export interface LeadListItem {
   email: string | null
   city: string | null
   status: LeadStatus
+  /** Hot, and the one to call first. */
+  is_priority?: boolean
+  wrong_fit?: boolean
   temperature: LeadTemperature
   score: number
   platform: string | null
@@ -141,6 +144,10 @@ export interface Lead extends LeadListItem {
   appointment_interest: boolean | null
   first_contact_at: string | null
   first_response_at: string | null
+  /** Hot, and the one to call first. Not a fourth temperature. */
+  is_priority?: boolean
+  /** The project's own questions say this is not a buyer for it. */
+  wrong_fit?: boolean
   whatsapp_opt_out_at: string | null
   email_opt_out_at: string | null
 }

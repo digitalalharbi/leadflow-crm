@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Domain\Qualification\ProjectQualification;
 use App\Enums\ActivityType;
 use App\Enums\FollowUpOutcome;
 use App\Enums\LeadTemperature;
@@ -121,7 +122,21 @@ class LeadScoringService
 
         $score += $this->engagement($lead, $add);
 
-        return $this->finalise($score, $reasons);
+        /*
+         * What this project asked and what the lead said. Added after
+         * engagement and before the clamp, so a project's own questions move the
+         * score by the same rules as everything else — capped, explained, and
+         * never able to push a lead past what the rest of the score allows.
+         */
+        $project = app(ProjectQualification::class)->evaluate($lead);
+
+        foreach ($project['reasons'] as $reason) {
+            $add($reason['key'], $reason['label'], $reason['points']);
+        }
+
+        $score += $project['points'];
+
+        return $this->finalise($score, $reasons, $project);
     }
 
     /**
@@ -189,9 +204,11 @@ class LeadScoringService
 
         $lead->score = $result['score'];
         $lead->temperature = $result['temperature'];
+        $lead->is_priority = $result['priority'];
+        $lead->wrong_fit = $result['wrong_fit'];
 
         return [
-            'changed' => $previousScore !== $result['score'] || $previousTemperature !== $result['temperature'],
+            'changed' => $previousScore !== $result['score'] || $previousTemperature !== $result['temperature'] || $lead->isDirty(['is_priority', 'wrong_fit']),
             'score' => $result['score'],
             'previous_score' => $previousScore,
             'temperature' => $result['temperature'],
@@ -241,6 +258,9 @@ class LeadScoringService
      */
     public function qualificationStatus(Lead $lead): QualificationStatus
     {
+        $project = app(ProjectQualification::class);
+        $asked = $project->questionsFor($lead);
+
         $answered = collect([
             $lead->purchase_purpose,
             $lead->budget_max ?? $lead->budget_min,
@@ -256,8 +276,14 @@ class LeadScoringService
             $answered++;
         }
 
+        // A project that asked required questions is not qualified until they are
+        // answered: five standard answers cannot stand in for "is this family
+        // buying a villa" when the project said that is what decides.
+        $unanswered = $asked->isEmpty() ? 0 : $project->evaluate($lead)['missing'];
+
         return match (true) {
-            $answered >= 5 => QualificationStatus::Qualified,
+            $answered >= 5 && $unanswered === 0 => QualificationStatus::Qualified,
+            $answered >= 5 => QualificationStatus::PartiallyQualified,
             $answered >= 2 => QualificationStatus::PartiallyQualified,
             default => QualificationStatus::Unqualified,
         };
@@ -307,22 +333,47 @@ class LeadScoringService
         return (float) $budget >= (float) $price * $tolerance ? 'matched' : 'mismatch';
     }
 
-    private function finalise(int $score, array $reasons): array
+    /**
+     * @param  array{priority?:bool,wrong_fit?:bool}  $project  what the project's own answers said
+     */
+    private function finalise(int $score, array $reasons, array $project = []): array
     {
         $score = max(0, min(100, $score));
+
+        // "Not a buyer for this" is a score of nothing, with the reason shown.
+        // It does not close the lead: a person is asked to look (see
+        // NextBestAction), because an answer ticked on a form is a claim.
+        if (! empty($project['wrong_fit'])) {
+            $score = 0;
+        }
 
         // A tenant's own thresholds win over the defaults: a developer selling
         // one villa a month and one selling two hundred flats do not agree on
         // what "hot" is worth chasing.
         $settings = $this->lead?->tenant?->settings;
 
+        $temperature = LeadTemperature::fromScore(
+            $score,
+            (int) ($settings?->score_warm_threshold ?? config('scoring.temperature.warm_from')),
+            (int) ($settings?->score_hot_threshold ?? config('scoring.temperature.hot_from')),
+        );
+
+        /*
+         * Priority: hot, and either a very high score or an answer the project
+         * said makes this the one to call first. Not a fourth temperature — a
+         * priority lead is still a hot one, in every count that has ever said
+         * so — and never on a lead whose answers say it is the wrong fit.
+         */
+        $wrongFit = ! empty($project['wrong_fit']);
+        $priority = ! $wrongFit
+            && $temperature === LeadTemperature::Hot
+            && ($score >= (int) config('scoring.temperature.priority_from') || ! empty($project['priority']));
+
         return [
             'score' => $score,
-            'temperature' => LeadTemperature::fromScore(
-                $score,
-                (int) ($settings?->score_warm_threshold ?? config('scoring.temperature.warm_from')),
-                (int) ($settings?->score_hot_threshold ?? config('scoring.temperature.hot_from')),
-            ),
+            'temperature' => $temperature,
+            'priority' => $priority,
+            'wrong_fit' => $wrongFit,
             'reasons' => $reasons,
         ];
     }

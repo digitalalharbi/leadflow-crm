@@ -62,7 +62,7 @@ describe('Arabic labels are Arabic', () => {
    * The interest scale specifically, because it is the one that was wrong and
    * the one a reader meets most often — on every lead row in the product.
    */
-  it('states the interest scale as three parallel Arabic levels', () => {
-    expect(ar.temperature).toEqual({ hot: 'مرتفع', warm: 'متوسط', cold: 'منخفض' })
+  it('states the interest scale as three parallel Arabic levels, and the priority beside them', () => {
+    expect(ar.temperature).toEqual({ hot: 'مرتفع', warm: 'متوسط', cold: 'منخفض', priority: 'أولوية' })
   })
 })

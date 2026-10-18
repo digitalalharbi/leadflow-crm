@@ -1,6 +1,6 @@
 import {
   AlertTriangle, BellRing, CalendarClock, Flame, MessageSquareWarning, PhoneCall,
-  Rocket, Sparkles, UserX, Workflow,
+  Rocket, ShieldQuestion, Sparkles, Star, UserX, Workflow,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -16,6 +16,8 @@ import { formatClock, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 const ICON: Record<AttentionKey, LucideIcon> = {
+  priority: Star,
+  wrong_fit: ShieldQuestion,
   sla_breached: AlertTriangle,
   overdue_follow_ups: BellRing,
   hot: Flame,

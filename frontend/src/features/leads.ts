@@ -14,6 +14,8 @@ export interface LeadFilters {
   date_from?: string
   date_to?: string
   overdue?: boolean
+  priority?: boolean
+  wrong_fit?: boolean
   unassigned?: boolean
   /** One of the data-quality issue keys; see DataQualityController. */
   data_issue?: string

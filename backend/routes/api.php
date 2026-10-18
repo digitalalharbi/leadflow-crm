@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\IntegrationController;
+use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\LeadEmailController;
 use App\Http\Controllers\Api\V1\LeadMessageController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
+use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -126,6 +128,12 @@ Route::prefix('v1')->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index']);
             Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
+            Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
+            Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
+            Route::patch('/project-questions/{uuid}', [ProjectQuestionController::class, 'update']);
+            Route::delete('/project-questions/{uuid}', [ProjectQuestionController::class, 'destroy']);
+            Route::get('/leads/{uuid}/answers', [LeadAnswerController::class, 'show']);
+            Route::put('/leads/{uuid}/answers', [LeadAnswerController::class, 'update']);
             Route::get('/companies', [CompanyController::class, 'index']);
             Route::post('/companies', [CompanyController::class, 'store']);
             Route::patch('/companies/{uuid}', [CompanyController::class, 'update']);

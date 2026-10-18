@@ -143,6 +143,7 @@ Route::prefix('v1')->group(function () {
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
+            Route::get('/leads/segments', [LeadController::class, 'segments']);
             Route::get('/leads', [LeadController::class, 'index']);
             Route::post('/leads', [LeadController::class, 'store']);
             Route::get('/leads/{uuid}', [LeadController::class, 'show']);
@@ -253,6 +254,7 @@ Route::prefix('v1')->group(function () {
 
             // Reports
             Route::get('/reports', [ReportController::class, 'index']);
+            Route::get('/reports/insights', [ReportController::class, 'insights']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
             Route::get('/campaign-spend', [CampaignSpendController::class, 'index']);
             Route::post('/campaign-spend', [CampaignSpendController::class, 'store']);

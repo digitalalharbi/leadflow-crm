@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Analytics\ConversionInsights;
+use App\Domain\Analytics\ReportInsights;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
@@ -49,6 +50,22 @@ class ReportController extends Controller
             'totals' => $this->totals($rows),
             'available' => self::REPORTS,
         ]);
+    }
+
+    /**
+     * The headline: what moved, what is best and where the funnel leaks.
+     *
+     * Over the leads this person may see — a manager's reports are the whole
+     * workspace's, and the company the screen is looking at narrows them like
+     * every other number.
+     */
+    public function insights(Request $request, ReportInsights $insights)
+    {
+        $this->authorize('export', Lead::class);
+
+        $target = (int) ($request->user()->tenant?->settings?->first_contact_target_minutes ?? 30);
+
+        return ApiResponse::success(['insights' => $insights->all($target)]);
     }
 
     /**

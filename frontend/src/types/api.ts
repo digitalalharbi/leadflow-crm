@@ -93,6 +93,8 @@ export interface LeadListItem {
   /** Hot, and the one to call first. */
   is_priority?: boolean
   wrong_fit?: boolean
+  /** What to do with it and how soon. Only on the leads list. */
+  next_action?: { action: string; urgency: 'critical' | 'high' | 'medium' | 'low'; reason: string }
   temperature: LeadTemperature
   score: number
   platform: string | null
@@ -381,6 +383,15 @@ export interface ProjectMetrics {
   appointments: number
   won: number
   qualification_rate: number
+  /** Hot, open. */
+  hot?: number
+  priority?: number
+  /** New and untouched past the workspace's own first-contact target. */
+  awaiting_contact?: number
+  /** Fourteen days of arrivals, oldest first. */
+  trend?: number[]
+  files?: number
+  questions?: number
 }
 
 export interface ChartPoint {

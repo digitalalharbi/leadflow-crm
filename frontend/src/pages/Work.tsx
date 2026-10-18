@@ -332,7 +332,7 @@ export function WorkPage() {
                     </Link>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <StatusBadge status={lead.status} />
-                      <TemperatureBadge temperature={lead.temperature} />
+                      <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
                       {/*
                         Which language to open the call in — read off the
                         number's country code, and shown only when it is not the

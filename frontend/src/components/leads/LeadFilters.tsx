@@ -105,6 +105,22 @@ export function LeadFiltersBar({
     })
   }
 
+  if (filters.priority) {
+    chips.push({
+      key: 'priority',
+      label: t('temperature.priority'),
+      clear: () => onChange({ priority: undefined }),
+    })
+  }
+
+  if (filters.wrong_fit) {
+    chips.push({
+      key: 'wrong_fit',
+      label: t('pq.wrongFit'),
+      clear: () => onChange({ wrong_fit: undefined }),
+    })
+  }
+
   if (filters.awaiting_contact) {
     chips.push({
       key: 'awaiting',

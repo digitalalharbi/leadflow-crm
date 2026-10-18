@@ -17,6 +17,7 @@ import {
   type DevelopmentActivity, type DevelopmentDeployment, type DevelopmentRun,
 } from '@/features/development'
 import { ProjectFiles } from '@/components/projects/ProjectFiles'
+import { ProjectQuestions } from '@/components/projects/ProjectQuestions'
 import {
   ProjectActivities, ProjectAutomations, ProjectCampaigns, ProjectIntegrations,
   ProjectLeads, ProjectNumbers, ProjectReports,
@@ -37,7 +38,7 @@ import type { Project } from '@/types/api'
  * for a different reader and was the only tab there was.
  */
 const TABS = [
-  'overview', 'leads', 'files', 'campaigns', 'automations',
+  'overview', 'leads', 'files', 'questions', 'campaigns', 'automations',
   'activities', 'reports', 'integrations', 'development',
 ] as const
 
@@ -100,6 +101,7 @@ export function ProjectDetailPage() {
 
       {tab === 'leads' && <ProjectLeads projectId={id} />}
       {tab === 'files' && <ProjectFiles projectId={id} />}
+      {tab === 'questions' && <ProjectQuestions projectId={id} />}
       {tab === 'campaigns' && <ProjectCampaigns projectId={id} />}
       {tab === 'automations' && <ProjectAutomations projectId={id} />}
       {tab === 'activities' && <ProjectActivities projectId={id} />}

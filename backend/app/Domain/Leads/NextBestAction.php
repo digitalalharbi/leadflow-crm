@@ -35,6 +35,31 @@ class NextBestAction
      */
     public function for(Lead $lead, int $target = 30): array
     {
+        return $this->boostPriority($lead, $this->decide($lead, $target));
+    }
+
+    /**
+     * A priority lead is worked a step earlier than the same situation would be
+     * for anybody else, and the reason says so. Never promoted to critical from
+     * "nothing to do" — priority changes the order of work, it does not invent
+     * work.
+     */
+    private function boostPriority(Lead $lead, array $result): array
+    {
+        if (! $lead->is_priority || in_array($result['action'], ['none', 'wait', 'review_fit'], true)) {
+            return $result;
+        }
+
+        $bumped = ['medium' => 'high', 'high' => 'critical'][$result['urgency']] ?? $result['urgency'];
+
+        return array_merge($result, [
+            'urgency' => $bumped,
+            'reason' => 'أولوية — '.$result['reason'],
+        ]);
+    }
+
+    private function decide(Lead $lead, int $target): array
+    {
         $minutesSinceCreated = (int) $lead->created_at->diffInMinutes(now());
 
         // Nothing to do, and saying so is a real answer — it is what lets a
@@ -42,6 +67,16 @@ class NextBestAction
         if ($lead->status->isClosed()) {
             return $this->result('none', 'none',
                 'هذا العميل مُغلق. لا إجراء مطلوب.');
+        }
+
+        /*
+         * The answers say this is not a buyer for this project. Not closed — a
+         * ticked box is a claim — but not worked as a hot lead either: a person
+         * is asked to look, and the reason says why.
+         */
+        if ($lead->wrong_fit) {
+            return $this->result('review_fit', 'medium',
+                'إجاباته تدل على أنه غير مناسب لهذا المشروع. راجعه ثم أغلقه أو صحّح الإجابة.');
         }
 
         if ($lead->assigned_to === null) {

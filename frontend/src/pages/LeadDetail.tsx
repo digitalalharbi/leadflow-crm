@@ -26,6 +26,7 @@ import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
 import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
 import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
+import { ProjectAnswers } from '@/components/leads/ProjectAnswers'
 import { LeadMessaging } from '@/components/email/LeadMessaging'
 import { cn } from '@/lib/cn'
 
@@ -249,7 +250,7 @@ export function LeadDetailPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="t-page-title">{lead.full_name}</h1>
                 <StatusBadge status={lead.status} testId="lead-status-badge" />
-                <TemperatureBadge temperature={lead.temperature} testId="lead-temperature-badge" />
+                <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} testId="lead-temperature-badge" />
                 {lead.re_engaged_count > 0 && (
                   <Badge tone="info">{t('leads.reEngagedCount', { count: lead.re_engaged_count })}</Badge>
                 )}
@@ -515,6 +516,7 @@ export function LeadDetailPage() {
           <JourneyCard lead={lead} />
 
           <QualificationCard lead={lead} />
+          <ProjectAnswers lead={lead} />
 
           <LeadMessaging lead={lead} />
 

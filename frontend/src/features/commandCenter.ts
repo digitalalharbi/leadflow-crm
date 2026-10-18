@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/api'
 
 export type AttentionKey =
+  | 'priority'
+  | 'wrong_fit'
   | 'sla_breached'
   | 'overdue_follow_ups'
   | 'hot'

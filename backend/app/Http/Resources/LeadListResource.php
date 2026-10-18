@@ -26,6 +26,10 @@ class LeadListResource extends JsonResource
             'city' => $this->city,
             'status' => $this->status?->value,
             'temperature' => $this->temperature?->value,
+            // Hot, and the one to call first. Not a fourth temperature.
+            'is_priority' => (bool) $this->is_priority,
+            // The project's own questions say this is not a buyer for it.
+            'wrong_fit' => (bool) $this->wrong_fit,
             'score' => $this->score,
             'platform' => $this->platform,
             'campaign_name' => $this->campaign_name,

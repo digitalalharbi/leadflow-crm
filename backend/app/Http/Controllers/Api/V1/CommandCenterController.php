@@ -47,6 +47,8 @@ class CommandCenterController extends Controller
                  count(*) filter (where first_contact_at is null and status = ? and created_at <= ?) as sla_breached,
                  count(*) filter (where next_follow_up_at < now()) as overdue_follow_ups,
                  count(*) filter (where temperature = ?) as hot,
+                 count(*) filter (where is_priority) as priority,
+                 count(*) filter (where wrong_fit) as wrong_fit,
                  count(*) filter (where assigned_to is null) as unassigned',
                 [LeadStatus::New->value, now()->subMinutes($target), 'hot'],
             )
@@ -67,8 +69,10 @@ class CommandCenterController extends Controller
             ->where('status', MessageStatus::Failed->value)->where('created_at', '>=', $since)->count();
 
         $attention = collect([
+            ['key' => 'priority', 'severity' => 'critical', 'count' => (int) $tally->priority, 'href' => '/leads?priority=1'],
             ['key' => 'sla_breached', 'severity' => 'critical', 'count' => (int) $tally->sla_breached, 'href' => '/work', 'minutes' => $target],
             ['key' => 'overdue_follow_ups', 'severity' => 'critical', 'count' => (int) $tally->overdue_follow_ups, 'href' => '/follow-ups'],
+            ['key' => 'wrong_fit', 'severity' => 'warning', 'count' => (int) $tally->wrong_fit, 'href' => '/leads?wrong_fit=1'],
             ['key' => 'hot', 'severity' => 'warning', 'count' => (int) $tally->hot, 'href' => '/leads?temperature=hot'],
             ['key' => 'appointments_awaiting_outcome', 'severity' => 'warning', 'count' => $awaitingOutcome, 'href' => '/follow-ups'],
             ['key' => 'unassigned', 'severity' => 'warning', 'count' => $user->seesAllLeads() ? (int) $tally->unassigned : 0, 'href' => '/leads'],
@@ -97,6 +101,8 @@ class CommandCenterController extends Controller
     {
         return $query
             ->with(['project:id,uuid,name', 'assignee:id,uuid,name'])
+            // A priority lead is always inside the window the ranking sees.
+            ->orderByDesc('is_priority')
             ->orderByRaw('first_contact_at is not null')
             ->orderBy('next_follow_up_at')
             ->orderByDesc('score')

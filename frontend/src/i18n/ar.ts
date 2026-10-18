@@ -1609,7 +1609,24 @@ export default {
       spend_spike: 'قفزة في الصرف',
       over_ceiling: 'فوق سقف الميزانية',
       fatigue: 'إرهاق الإعلان',
+      weak_creative: 'إعلان ضعيف',
+      winner_creative: 'الإعلان الأفضل',
     },
+  },
+
+  marketingSales: {
+    by: { platform: 'حسب المنصة', project: 'حسب المشروع', company: 'حسب الشركة' },
+    qualifiedBy: 'المؤهلون',
+    unassigned: 'غير مرتبط',
+  },
+  weekly: {
+    title: 'التقرير الأسبوعي',
+    generate: 'إنشاء تقرير الآن',
+    none: 'لا تقارير بعد — يُكتب أول تقرير يوم الخميس.',
+    platforms: 'المنصات',
+    best: 'الأفضل',
+    worst: 'الأعلى تكلفة للمؤهل',
+    notes: 'ملاحظات',
   },
 
   visual: {
@@ -1791,7 +1808,7 @@ export default {
       response_fast: 'أول تواصل سريع: الوسيط {{median}} دقيقة وهدفكم {{target}}.',
       biggest_leak: 'أكبر تسرّب بين «{{from}}» و«{{to}}»: يضيع {{lost}}٪ من العملاء.',
     },
-    tabs: { overview: 'نظرة عامة', campaigns: 'الحملات', platforms: 'المنصات', team: 'فريق المبيعات', lost: 'أسباب الفقد', drivers: 'عوامل الإغلاق' },
+    tabs: { overview: 'نظرة عامة', marketing: 'تسويق + مبيعات', weekly: 'التقارير الأسبوعية', campaigns: 'الحملات', platforms: 'المنصات', team: 'فريق المبيعات', lost: 'أسباب الفقد', drivers: 'عوامل الإغلاق' },
     teamHint: 'قياسات لكل مسؤول — وليست ترتيبًا للأشخاص',
     lostHint: 'أكبر سبب أولًا — هذا هو ما يجب معالجته',
     noLost: 'لا توجد صفقات مفقودة في هذه الفترة',

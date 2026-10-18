@@ -278,6 +278,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/agents', [AgentController::class, 'index']);
             Route::post('/agents/routines/{routine}/run', [AgentController::class, 'run']);
             Route::get('/agents/threads/{uuid}', [AgentController::class, 'thread'])->whereUuid('uuid');
+            Route::get('/agent-reports', [AgentController::class, 'reports']);
+            Route::get('/agent-reports/{uuid}', [AgentController::class, 'report'])->whereUuid('uuid');
+            Route::get('/reports/marketing-sales', [CampaignController::class, 'marketingSales']);
             Route::get('/client-rules', [ClientRuleController::class, 'show']);
             Route::put('/client-rules', [ClientRuleController::class, 'update']);
 

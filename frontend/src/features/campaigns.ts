@@ -174,6 +174,8 @@ export interface CampaignAd {
   name: string
   status: CampaignRow['status']
   ad_set: string | null
+  /** 0–100, how far click-through fell lately; null when there is too little to say. */
+  fatigue: number | null
   impressions: number | null
   clicks: number | null
   ctr: number | null

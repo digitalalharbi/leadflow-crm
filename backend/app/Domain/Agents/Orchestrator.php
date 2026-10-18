@@ -33,6 +33,8 @@ class Orchestrator
         'spend_spike' => 'قفزة في الصرف',
         'over_ceiling' => 'ميزانية فوق السقف',
         'fatigue' => 'إرهاق الإعلان',
+        'weak_creative' => 'إعلان ضعيف',
+        'winner_creative' => 'الإعلان الأفضل',
     ];
 
     public function __construct(
@@ -42,6 +44,8 @@ class Orchestrator
         private CampaignSyncer $syncer,
         private CampaignResolver $resolver,
         private LeadsAgent $leads,
+        private CreativeAgent $creative,
+        private ReportsAgent $reports,
     ) {}
 
     public function run(string $routine, ?User $by = null, ?int $projectId = null): AgentThread
@@ -68,6 +72,8 @@ class Orchestrator
                 'daily_analysis' => $this->dailyAnalysis($thread, $projectId),
                 'budget_guard' => $this->budgetGuard($thread, $projectId),
                 'lead_quality_review' => $this->leadQuality($thread),
+                'creative_review' => $this->creativeReview($thread),
+                'weekly_report' => $this->weeklyReport($thread, $projectId),
             };
 
             Routine::query()->where('key', $routine)->update(['last_run_at' => now(), 'last_status' => 'ok', 'last_summary' => $summary]);
@@ -154,6 +160,30 @@ class Orchestrator
         return sprintf('%d حملة · %d تراجع', $scored, count($drops));
     }
 
+    private function creativeReview(AgentThread $thread): string
+    {
+        $findings = $this->creative->review();
+        $thread->say('agent', 'creative', $this->describe($findings), ['findings' => array_map(fn (Finding $f) => $f->toArray(), $findings)]);
+
+        $tired = array_filter($findings, fn (Finding $f) => $f->key === 'fatigue');
+        if ($tired !== []) {
+            $this->alert('creative', 'مراجعة الإعلانات', sprintf('%d إعلان يحتاج تحديثًا', count($tired)));
+        }
+
+        return sprintf('%d ملاحظة', count($findings));
+    }
+
+    private function weeklyReport(AgentThread $thread, ?int $projectId): string
+    {
+        $report = $this->reports->weekly($projectId);
+        $t = $report->data['totals'];
+        $summary = sprintf('عملاء %d · مؤهلون %d · صفقات %d', $t['leads'], $t['qualified'], $t['won']);
+        $thread->say('agent', 'reports', $summary, ['report' => $report->uuid]);
+        $this->alert('reports', 'التقرير الأسبوعي جاهز', $summary, '/reports');
+
+        return $summary;
+    }
+
     /** @param  list<Finding>  $findings */
     private function describe(array $findings): string
     {
@@ -166,9 +196,9 @@ class Orchestrator
             ->implode(' · ');
     }
 
-    private function alert(string $agent, string $title, string $body): void
+    private function alert(string $agent, string $title, string $body, string $link = '/campaigns'): void
     {
         User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true)->get()
-            ->each(fn (User $u) => $u->notify(new AgentAlertNotification($agent, $title, $body, '/campaigns')));
+            ->each(fn (User $u) => $u->notify(new AgentAlertNotification($agent, $title, $body, $link)));
     }
 }

@@ -6,6 +6,7 @@ use App\Domain\Agents\AgentDirectory;
 use App\Domain\Agents\Orchestrator;
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
+use App\Models\AgentReport;
 use App\Models\AgentThread;
 use App\Models\Lead;
 use App\Models\Routine;
@@ -57,6 +58,29 @@ class AgentController extends Controller
         $this->authorize('export', Lead::class);
 
         return ApiResponse::success(['thread' => $this->present(AgentThread::query()->where('uuid', $uuid)->with('messages')->firstOrFail())]);
+    }
+
+    public function reports(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        return ApiResponse::success([
+            'reports' => AgentReport::query()->latest('id')->limit(30)->get()->map(fn (AgentReport $r) => [
+                'id' => $r->uuid, 'kind' => $r->kind, 'period_from' => $r->period_from->toDateString(), 'period_to' => $r->period_to->toDateString(),
+                'created_at' => $r->created_at?->toIso8601String(), 'totals' => $r->data['totals'] ?? null,
+            ]),
+        ]);
+    }
+
+    public function report(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+        $r = AgentReport::query()->where('uuid', $uuid)->firstOrFail();
+
+        return ApiResponse::success(['report' => [
+            'id' => $r->uuid, 'kind' => $r->kind, 'period_from' => $r->period_from->toDateString(), 'period_to' => $r->period_to->toDateString(),
+            'created_at' => $r->created_at?->toIso8601String(), 'data' => $r->data,
+        ]]);
     }
 
     private function present(AgentThread $t): array

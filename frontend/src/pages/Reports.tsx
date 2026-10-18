@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
 import { fetchDrivers, type Drivers } from '@/features/drivers'
+import { MarketingSalesTab } from '@/components/reports/MarketingSalesTab'
+import { WeeklyReportsTab } from '@/components/reports/WeeklyReportsTab'
 import { SpendModal } from '@/components/reports/SpendModal'
 import { InsightStrip } from '@/components/reports/InsightStrip'
 import { useApiError } from '@/hooks/useApiError'
@@ -22,7 +24,7 @@ import {
 import type { CampaignQualityRow, DashboardData, Project, Ref, ReportRow } from '@/types/api'
 import { cn } from '@/lib/cn'
 
-const TABS = ['overview', 'campaigns', 'platforms', 'team', 'lost', 'drivers'] as const
+const TABS = ['overview', 'marketing', 'campaigns', 'platforms', 'team', 'lost', 'drivers', 'weekly'] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -289,6 +291,10 @@ export function ReportsPage() {
       )}
 
       {tab === 'drivers' && <DriversTab query={drivers} translateError={translateError} />}
+
+      {tab === 'marketing' && <MarketingSalesTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} />}
+
+      {tab === 'weekly' && <WeeklyReportsTab />}
     </>
   )
 }

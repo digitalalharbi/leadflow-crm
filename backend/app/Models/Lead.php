@@ -175,7 +175,7 @@ class Lead extends Model
         'first_name', 'last_name', 'full_name',
         'phone', 'phone_normalized', 'email', 'city',
         'platform', 'source',
-        'campaign_name', 'campaign_id', 'adset_name', 'adset_id',
+        'campaign_name', 'campaign_id', 'campaign_ref_id', 'ad_set_ref_id', 'ad_ref_id', 'adset_name', 'adset_id',
         'ad_name', 'ad_id', 'form_name', 'form_id',
         'click_id', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
         'status', 'is_test', 'temperature', 'score',

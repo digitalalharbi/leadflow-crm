@@ -78,6 +78,12 @@ Schedule::command('leadflow:sync-sheets')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
 
+/*
+ * Ad accounts into the campaign tables, and leads onto their campaigns. Hourly:
+ * platforms report daily, so more often buys nothing and spends API quota.
+ */
+Schedule::command('leadflow:sync-campaigns')->hourly()->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 /*

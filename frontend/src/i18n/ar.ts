@@ -1526,7 +1526,7 @@ export default {
     leadsPerDay: 'العملاء يوميًا',
     ads: 'الإعلانات',
     noAds: 'لا إعلانات معروفة لهذه الحملة بعد.',
-    ctr: 'CTR',
+    ctr: 'نسبة النقر',
     figure: { spend: 'الصرف', revenue: 'الإيراد', roas: 'العائد', leads: 'عملاء', qualified: 'مؤهلون', won: 'صفقات', cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', cpa: 'تكلفة الصفقة', revenuePerLead: 'إيراد العميل' },
     insight: {
       no_qualified: 'لا عملاء مؤهلين',

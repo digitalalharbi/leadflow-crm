@@ -45,6 +45,7 @@ export function LeadsPage() {
       per_page: 25,
       status: multi('status'),
       temperature: multi('temperature'),
+      classification: multi('classification'),
       platform: multi('platform'),
       project_id: searchParams.get('project_id') ?? undefined,
       assigned_to: searchParams.get('assigned_to') ?? undefined,
@@ -88,6 +89,7 @@ export function LeadsPage() {
     Boolean(debouncedSearch) ||
     Boolean(filters.status?.length) ||
     Boolean(filters.temperature?.length) ||
+    Boolean(filters.classification?.length) ||
     Boolean(filters.platform?.length) ||
     Boolean(filters.project_id) ||
     Boolean(filters.assigned_to) ||

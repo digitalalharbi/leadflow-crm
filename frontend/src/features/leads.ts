@@ -8,6 +8,7 @@ export interface LeadFilters {
   search?: string
   status?: string[]
   temperature?: string[]
+  classification?: string[]
   platform?: string[]
   project_id?: string
   assigned_to?: string

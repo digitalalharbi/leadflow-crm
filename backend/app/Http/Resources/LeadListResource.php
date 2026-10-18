@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Domain\Leads\LeadClassification;
 use App\Domain\Leads\NextBestAction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -29,6 +30,8 @@ class LeadListResource extends JsonResource
             'temperature' => $this->temperature?->value,
             // Hot, and the one to call first. Not a fourth temperature.
             'is_priority' => (bool) $this->is_priority,
+            // One word for how seriously to take the lead, and why — see LeadClassification.
+            'classification' => LeadClassification::for($this->resource),
             // The project's own questions say this is not a buyer for it.
             'wrong_fit' => (bool) $this->wrong_fit,
             'score' => $this->score,

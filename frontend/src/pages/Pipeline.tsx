@@ -17,7 +17,10 @@ import {
 import type { LeadListItem, LeadStatus } from '@/types/api'
 import { cn } from '@/lib/cn'
 import { TEMPERATURE_COLOR } from '@/components/charts'
-import { formatDue, initials } from '@/lib/format'
+import { formatCompact, formatDue, initials } from '@/lib/format'
+import { PipelineHero } from '@/components/pipeline/PipelineHero'
+import { usePipelineOverview, type PipelineOverviewData } from '@/components/pipeline/overview'
+import { CLASSIFICATION_COLOR } from '@/components/visual/classification'
 
 interface Column {
   status: LeadStatus
@@ -69,6 +72,8 @@ export function PipelinePage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
   )
 
+  const overview = usePipelineOverview()
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['pipeline'],
     queryFn: () => apiGet<{ columns: Column[] }>('/pipeline'),
@@ -119,6 +124,8 @@ export function PipelinePage() {
       toast(translateError(caught) || t('pipeline.moveError'), 'error')
     },
     onSettled: () => {
+      // The overview shares the ['pipeline'] prefix, so the board and the
+      // picture above it are refreshed by one call and cannot disagree.
       void queryClient.invalidateQueries({ queryKey: ['pipeline'] })
       void queryClient.invalidateQueries({ queryKey: ['leads'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -162,6 +169,8 @@ export function PipelinePage() {
     <>
       <PageHeader title={t('pipeline.title')} subtitle={t('pipeline.subtitle')} />
 
+      <PipelineHero data={overview.data} />
+
       {isLoading || !data ? (
         <div className="scroll-x flex gap-3 pb-3" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -179,7 +188,7 @@ export function PipelinePage() {
           */}
           <div className="scroll-x flex gap-3 pb-4 max-sm:snap-x max-sm:snap-mandatory">
             {data.columns.map((column) => (
-              <PipelineColumn key={column.status} column={column} />
+              <PipelineColumn key={column.status} column={column} overview={overview.data} />
             ))}
           </div>
 
@@ -238,8 +247,10 @@ export function PipelinePage() {
   )
 }
 
-function PipelineColumn({ column }: { column: Column }) {
-  const { t } = useTranslation()
+function PipelineColumn({ column, overview }: { column: Column; overview: PipelineOverviewData | undefined }) {
+  const { t, i18n } = useTranslation()
+  const stage = overview?.stages.find((s) => s.status === column.status)
+  const keep = overview?.funnel.find((f) => f.key === column.status)?.keep ?? null
   const { setNodeRef, isOver } = useDroppable({ id: column.status })
 
   return (
@@ -277,11 +288,32 @@ function PipelineColumn({ column }: { column: Column }) {
             {column.total}
           </span>
         </div>
+
+        {/* The stage's own numbers: how many get here, what it is worth, how
+            long it has been waiting, how many are hot. Figures, not labels —
+            the icon-free layout reads the same in either direction. */}
+        {stage && (
+          <dl
+            className="mt-1 flex items-center gap-2 text-[0.6875rem] tabular-nums text-[var(--color-ink-muted)]"
+            dir="ltr"
+            data-testid={`stage-stats-${column.status}`}
+          >
+            {keep !== null && <dd title={t('pipelineBoard.funnel')}>↓ {keep}%</dd>}
+            {stage.value > 0 && <dd>{formatCompact(stage.value, i18n.language)}</dd>}
+            {stage.avg_age_days !== null && <dd title={t('pipelineBoard.age')}>{t('pipelineBoard.days', { count: Math.round(stage.avg_age_days) })}</dd>}
+            {stage.hot > 0 && (
+              <dd className="flex items-center gap-0.5">
+                <span className="size-1.5 rounded-full" style={{ background: CLASSIFICATION_COLOR.hot }} aria-hidden />
+                {stage.hot}
+              </dd>
+            )}
+          </dl>
+        )}
       </header>
 
       <div
         className="min-h-24 flex-1 space-y-2 overflow-y-auto p-2"
-        style={{ maxHeight: 'calc(100dvh - 15rem)' }}
+        style={{ maxHeight: '32rem' }}
       >
         {column.leads.length === 0 ? (
           <p className="px-2 py-8 text-center text-[0.75rem] text-[var(--color-ink-subtle)]">
@@ -348,9 +380,9 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
             colour is the whole message. */}
         <span
           className="mt-1 size-2 shrink-0 rounded-full"
-          style={{ background: TEMPERATURE_COLOR[lead.temperature] }}
-          title={t(`temperature.${lead.temperature}`)}
-          aria-label={t(`temperature.${lead.temperature}`)}
+          style={{ background: lead.classification ? CLASSIFICATION_COLOR[lead.classification.key] : TEMPERATURE_COLOR[lead.temperature] }}
+          title={lead.classification ? t(`classification.${lead.classification.key}`) : t(`temperature.${lead.temperature}`)}
+          aria-label={lead.classification ? t(`classification.${lead.classification.key}`) : t(`temperature.${lead.temperature}`)}
         />
       </div>
 

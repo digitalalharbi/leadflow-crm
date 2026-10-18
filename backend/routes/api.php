@@ -176,6 +176,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/leads/{uuid}/qualification', [QualificationController::class, 'update']);
 
             Route::get('/pipeline', [PipelineController::class, 'index']);
+            Route::get('/pipeline/overview', [PipelineController::class, 'overview']);
 
             // Follow-ups
             Route::get('/follow-ups', [FollowUpController::class, 'index']);

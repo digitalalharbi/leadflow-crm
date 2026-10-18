@@ -20,7 +20,12 @@ export function IconRail() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const logout = useAuth((s) => s.logout)
-  const { groups, settings } = useNavigation()
+  const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const nav = useNavigation()
+  // The console has two destinations and the header already carries both; a
+  // rail repeating them is the same link twice. It keeps only the way out.
+  const groups = isSuperAdmin ? [] : nav.groups
+  const settings = nav.settings
 
   async function signOut() {
     await logout()

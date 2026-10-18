@@ -36,6 +36,27 @@ class RuleTemplates
             ],
         ],
 
+        // The product's promise as one rule: arrive → assigned → brochure sent →
+        // owner told → wait → nudge if nothing came back → follow-up. Every
+        // delayed step is re-checked when it runs, so a customer who replied in
+        // the meantime is not nudged. The WhatsApp/email steps are not in here
+        // because they need a template the workspace has chosen; the editor adds
+        // them in two clicks, and nothing is ever sent from a default.
+        'welcome_sequence' => [
+            'name' => 'عميل جديد: بروشور ثم متابعة تلقائية',
+            'description' => 'يُسنَد العميل، يصله الملف المناسب، يُنبَّه المندوب، وإن لم يرد خلال ٤ ساعات يُذكَّر المندوب وتُحدَّد متابعة.',
+            'trigger' => 'lead.created',
+            'priority' => 8,
+            'conditions' => [],
+            'actions' => [
+                ['type' => 'assign', 'strategy' => 'round_robin'],
+                ['type' => 'share_file', 'kind' => '', 'send' => true, 'channel' => 'whatsapp'],
+                ['type' => 'notify', 'audience' => 'owner', 'message' => 'عميل جديد وصله الملف — تواصل معه.'],
+                ['type' => 'notify', 'audience' => 'owner', 'message' => 'لم يرد العميل بعد — حان وقت الاتصال.', 'delay_minutes' => 240],
+                ['type' => 'schedule_follow_up', 'in_hours' => 24, 'note' => 'متابعة بعد يوم دون رد', 'delay_minutes' => 1440],
+            ],
+        ],
+
         'no_reply_escalate' => [
             'name' => 'لا رد: تذكير ثم تصعيد',
             'description' => 'عميل لم يُتواصل معه رغم مرور ساعتين — تذكير للمندوب وتنبيه للإدارة.',

@@ -264,6 +264,7 @@ export default {
     byRule: 'Rule: {{name}}',
     when: 'When',
     delayNone: 'Straight away',
+    kpi: { active: 'Rules on', runs: 'Runs', actions: 'Actions done', success: 'Success rate' },
     delayAfter: 'After {{duration}}',
     delay_: {
       '60': 'an hour',

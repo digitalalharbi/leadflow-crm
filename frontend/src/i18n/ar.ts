@@ -358,6 +358,7 @@ export default {
     byRule: 'قاعدة: {{name}}',
     when: 'متى',
     delayNone: 'فورًا',
+    kpi: { active: 'قواعد تعمل', runs: 'تشغيلات', actions: 'إجراءات نُفِّذت', success: 'نسبة النجاح' },
     delayAfter: 'بعد {{duration}}',
     delay_: {
       '60': 'ساعة',

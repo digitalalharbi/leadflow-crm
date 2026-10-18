@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Sparkles, Trash2, Zap } from 'lucide-react'
+import { Activity, CircleCheck, Plus, Power, Sparkles, Trash2, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   createRule, deleteRule, fetchInsights, fetchRules, fetchSchema, fetchTemplates,
@@ -16,6 +16,9 @@ import {
 } from '@/components/ui'
 import { AutomationActivityChart, ChartCard, ChartLegend, SERIES } from '@/components/charts'
 import { RuleEditor } from '@/features/automation/RuleEditor'
+import { RuleFlow } from '@/components/automation/RuleFlow'
+import { KpiCard, RingProgress } from '@/components/visual'
+import { formatNumber } from '@/lib/format'
 
 /**
  * The rules screen.
@@ -115,6 +118,8 @@ export function AutomationPage() {
     )
   }
 
+  const summary = insights.data?.summary
+  const successRate = summary && summary.runs > 0 ? Math.round(((summary.runs - summary.failed) / summary.runs) * 100) : null
   const uninstalled = (templates.data?.templates ?? []).filter((template) => !template.installed)
 
   return (
@@ -135,6 +140,36 @@ export function AutomationPage() {
         with twelve enabled rules and a flat chart has a problem it would not
         otherwise find until a customer went uncalled.
       */}
+      {insights.data && rules.data && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="automation-kpis">
+          <KpiCard
+            label={t('automation.kpi.active')}
+            icon={Power}
+            value={`${rules.data.rules.filter((r) => r.is_enabled).length}/${rules.data.rules.length}`}
+          />
+          <KpiCard label={t('automation.kpi.runs')} icon={Activity} tone="neutral" value={formatNumber(insights.data.summary.runs, i18n.language)} />
+          <KpiCard label={t('automation.kpi.actions')} icon={Zap} value={formatNumber(insights.data.summary.actions, i18n.language)} />
+          <KpiCard
+            label={t('automation.kpi.success')}
+            icon={CircleCheck}
+            tone={insights.data.summary.failed > 0 ? 'warn' : 'good'}
+            value={
+              <span className="flex items-center gap-2.5" dir="ltr">
+                <RingProgress
+                  size={44}
+                  thickness={6}
+                  tone={insights.data.summary.failed > 0 ? 'warn' : 'good'}
+                  value={successRate ?? 100}
+                >
+                  {' '}
+                </RingProgress>
+                {successRate === null ? '—' : `${successRate}%`}
+              </span>
+            }
+          />
+        </div>
+      )}
+
       {insights.data && insights.data.summary.runs > 0 && (
         <ChartCard
           title={t('charts.automation.title')}
@@ -194,6 +229,7 @@ export function AutomationPage() {
                     <h3 className="t-body font-medium">{template.name}</h3>
                     <p className="t-caption">{template.description}</p>
                   </div>
+                  <RuleFlow trigger={template.trigger} conditions={template.conditions} actions={template.actions} />
                   <div className="mt-auto flex items-center justify-between gap-2">
                     <Badge tone="neutral">{t(`automation.trigger.${template.trigger}`)}</Badge>
                     <Button
@@ -233,7 +269,7 @@ export function AutomationPage() {
             {rules.data?.rules.map((rule) => (
               <Card key={rule.id}>
                 <CardBody className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="t-body font-medium">{rule.name}</span>
                       <Badge tone={rule.is_enabled ? 'success' : 'neutral'}>
@@ -241,6 +277,13 @@ export function AutomationPage() {
                       </Badge>
                       <Badge tone="neutral">{t(`automation.trigger.${rule.trigger}`)}</Badge>
                     </div>
+                    <RuleFlow
+                      testId={`rule-flow-${rule.id}`}
+                      trigger={rule.trigger}
+                      conditions={rule.conditions}
+                      actions={rule.actions}
+                      matched={rule.times_matched}
+                    />
                     <p className="t-caption">
                       {[
                         t('automation.conditionCount', { count: rule.conditions.length }),

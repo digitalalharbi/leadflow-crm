@@ -4,8 +4,13 @@ namespace Tests\Feature;
 
 use App\Domain\Automation\ActionExecutor;
 use App\Domain\Automation\RuleTemplates;
+use App\Enums\MessageStatus;
 use App\Models\AutomationRule;
 use App\Models\Lead;
+use App\Models\LeadMessage;
+use App\Models\Project;
+use App\Models\ProjectFile;
+use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -129,12 +134,31 @@ class AutomationTemplateTest extends TestCase
         // this test is about.
         $this->makeUser($this->t['tenant']);
 
+        // Likewise a brochure to send: a project with no files correctly reports
+        // that nothing was sent, and that is not the case this test is about.
+        $project = $this->asTenant($this->t['tenant'], function () {
+            $project = Project::create(['name' => 'مشروع القالب']);
+            ProjectFile::create([
+                'project_id' => $project->id, 'name' => 'بروشور', 'kind' => 'brochure',
+                'path' => 'project-files/'.uniqid().'.pdf', 'mime' => 'application/pdf',
+                'size_bytes' => 1024, 'is_active' => true,
+            ]);
+
+            return $project;
+        });
+
         $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create([
             'full_name' => 'عميل القالب',
             'phone_normalized' => '+9665009'.random_int(10000, 99999),
             'status' => 'new',
             'assigned_to' => $this->t['admin']->id,
+            'project_id' => $project->id,
         ]));
+
+        // WhatsApp is connected for this case: the real sender needs a live
+        // provider, and "not connected" is a correct, separately tested report.
+        $this->mock(WhatsappSender::class)
+            ->shouldReceive('sendDocument')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));
 
         $executor = app(ActionExecutor::class);
 
@@ -164,7 +188,7 @@ class AutomationTemplateTest extends TestCase
         $before = $this->actingAs($this->t['admin'])
             ->getJson('/api/v1/automation/templates')->assertOk()->json('data.templates');
 
-        $this->assertCount(6, $before);
+        $this->assertCount(7, $before);
         $this->assertFalse($before[0]['installed']);
 
         $this->actingAs($this->t['admin'])

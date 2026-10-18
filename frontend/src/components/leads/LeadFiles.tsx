@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, FileText, Send } from 'lucide-react'
+import { Check, FileText, Mail, MessageCircle, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatRelative } from '@/lib/format'
 import { Badge, Button, Card, CardBody, CardHeader, Select, Skeleton } from '@/components/ui'
-import { fetchFilesForLead, fetchLeadShares, shareFileWithLead } from '@/features/files'
+import { fetchFilesForLead, fetchLeadShares, sendFileToLead, shareFileWithLead } from '@/features/files'
 import type { Lead } from '@/types/api'
 
 /**
@@ -68,6 +68,23 @@ export function LeadFiles({ lead }: { lead: Lead }) {
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
+  /*
+   * Sent, not just linked: the same path an automation rule takes, so a rep's
+   * button and a rule choose the same file, say the same why, and leave the
+   * same trace on the timeline.
+   */
+  const deliver = useMutation({
+    mutationFn: ({ channel, fileId }: { channel: 'whatsapp' | 'email'; fileId: string }) =>
+      sendFileToLead(lead.id, channel, fileId),
+    onSuccess: (_, { channel }) => {
+      toast(t(channel === 'email' ? 'files.sentByEmail' : 'files.sentByWhatsapp'), 'success')
+      void queryClient.invalidateQueries({ queryKey: ['lead-shares', lead.id] })
+      void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] })
+      void queryClient.invalidateQueries({ queryKey: ['lead-messages', lead.id] })
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
   if (isLoading) return <Skeleton className="h-40" />
 
   const available = data?.available ?? []
@@ -94,11 +111,20 @@ export function LeadFiles({ lead }: { lead: Lead }) {
               <p className="t-caption">
                 {t('files.suggested')}{' '}
                 <span className="font-medium text-[var(--color-ink)]">{suggested.name}</span>
-                {data?.reason && (
-                  <>
+                {(data?.reasons?.length ?? 0) > 0 ? (
+                  <span data-testid="file-reasons">
                     {' — '}
-                    {t(`files.reason.${data.reason}`, { defaultValue: data.reason })}
-                  </>
+                    {data?.reasons
+                      .map((reason) => t(`files.reason.${reason}`, { defaultValue: reason }))
+                      .join(' · ')}
+                  </span>
+                ) : (
+                  data?.reason && (
+                    <>
+                      {' — '}
+                      {t(`files.reason.${data.reason}`, { defaultValue: data.reason })}
+                    </>
+                  )
                 )}
               </p>
             )}
@@ -126,6 +152,27 @@ export function LeadFiles({ lead }: { lead: Lead }) {
                 data-testid="share-file"
               >
                 {t('files.share')}
+              </Button>
+
+              <Button
+                variant="secondary"
+                icon={<MessageCircle className="size-4" />}
+                loading={deliver.isPending && deliver.variables?.channel === 'whatsapp'}
+                disabled={!selected || Boolean(lead.whatsapp_opt_out_at)}
+                onClick={() => deliver.mutate({ channel: 'whatsapp', fileId: selected })}
+                data-testid="send-file-whatsapp"
+              >
+                {t('files.sendWhatsapp')}
+              </Button>
+              <Button
+                variant="secondary"
+                icon={<Mail className="size-4" />}
+                loading={deliver.isPending && deliver.variables?.channel === 'email'}
+                disabled={!selected || !lead.email || Boolean(lead.email_opt_out_at)}
+                onClick={() => deliver.mutate({ channel: 'email', fileId: selected })}
+                data-testid="send-file-email"
+              >
+                {t('files.sendEmail')}
               </Button>
             </div>
           </div>

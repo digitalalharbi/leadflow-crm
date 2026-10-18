@@ -20,10 +20,13 @@ class ProjectFile extends Model
      * while uploading, and a list long enough to need thinking about is a list
      * everybody picks "other" from.
      */
-    public const KINDS = ['brochure', 'profile', 'price_list', 'investment_deck', 'financing_guide', 'other'];
+    public const KINDS = ['brochure', 'profile', 'price_list', 'investment_deck', 'financing_guide', 'offer', 'contract', 'other'];
+
+    /** Who a file speaks to. Null is anybody. */
+    public const AUDIENCES = ['investor', 'end_user', 'financing'];
 
     protected $fillable = [
-        'project_id', 'uploaded_by', 'name', 'kind', 'language',
+        'project_id', 'uploaded_by', 'name', 'kind', 'language', 'campaign', 'stages', 'audience',
         'path', 'mime', 'size_bytes', 'is_active', 'sort',
     ];
 
@@ -34,6 +37,7 @@ class ProjectFile extends Model
     {
         return [
             'is_active' => 'boolean',
+            'stages' => 'array',
             'size_bytes' => 'integer',
             'sort' => 'integer',
         ];

@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, CircleDashed, Minus, ShieldCheck, X } from 'lucide-react'
+import {
+  Archive, Check, CircleDashed, Database, FileText, Layers, Minus, ServerCog, ShieldCheck, Siren, X, Zap,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -9,7 +12,7 @@ import {
   Badge, Button, Card, CardBody, CardHeader, ErrorState, PageHeader, Skeleton, StatCard,
 } from '@/components/ui'
 import {
-  commission, fetchReadiness, type ReadinessItem, type ReadinessStatus,
+  commission, fetchReadiness, type InfraItem, type InfraState, type ReadinessItem, type ReadinessStatus,
 } from '@/features/readiness'
 import { cn } from '@/lib/cn'
 
@@ -69,6 +72,21 @@ export function ReadinessPage() {
               <ItemCard key={item.key} item={item} />
             ))}
           </div>
+
+          {/*
+            What the platform itself stands on. Apart from the integrations above:
+            those are connected by a customer, these are either there or not, and
+            the people to ask are different.
+          */}
+          <section className="mt-6" data-testid="infrastructure">
+            <h2 className="mb-1 text-[1rem] font-semibold">{t('readiness.infra.title')}</h2>
+            <p className="t-caption mb-3">{t('readiness.infra.hint')}</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {data.infrastructure.map((item) => (
+                <InfraCard key={item.key} item={item} />
+              ))}
+            </div>
+          </section>
         </>
       )}
     </>
@@ -173,6 +191,81 @@ function ItemCard({ item }: { item: ReadinessItem }) {
           </p>
         )}
       </CardBody>
+    </Card>
+  )
+}
+
+const INFRA_TONE: Record<InfraState, 'success' | 'warning' | 'neutral'> = {
+  live_verified: 'success',
+  ready: 'warning',
+  not_configured: 'neutral',
+}
+
+const INFRA_ICON: Record<InfraItem['key'], LucideIcon> = {
+  database: Database,
+  redis: Zap,
+  queues: Layers,
+  horizon: ServerCog,
+  backups: Archive,
+  logs: FileText,
+  error_tracking: Siren,
+}
+
+/**
+ * One piece of infrastructure, said the same way every time: where it stands,
+ * when that was last seen, the last thing that went wrong, and what to do next.
+ * The last line is the one to read — a status without a next step is a
+ * dashboard, and this is a to-do list that happens to have status on it.
+ */
+function InfraCard({ item }: { item: InfraItem }) {
+  const { t, i18n } = useTranslation()
+  const Icon = INFRA_ICON[item.key]
+
+  return (
+    <Card data-testid={`infra-${item.key}`}>
+      <div className="space-y-2.5 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+            <Icon className="size-4 text-[var(--color-ink-muted)]" aria-hidden />
+            {t(`readiness.infra.item.${item.key}`)}
+          </h3>
+          <Badge tone={INFRA_TONE[item.state]} testId={`infra-${item.key}-state`}>
+            {t(`readiness.infra.state.${item.state}`)}
+          </Badge>
+        </div>
+
+        <dl className="space-y-1.5 text-[0.8125rem]">
+          <div className="flex justify-between gap-3">
+            <dt className="text-[var(--color-ink-muted)]">{t('readiness.infra.lastCheck')}</dt>
+            <dd className="tabular-nums" data-testid={`infra-${item.key}-checked`}>
+              {formatRelative(item.last_check, i18n.language)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-[var(--color-ink-muted)]">{t('readiness.infra.lastError')}</dt>
+            <dd
+              className={cn('min-w-0 break-words text-end', item.last_error && 'text-[var(--color-danger)]')}
+              data-testid={`infra-${item.key}-error`}
+            >
+              {item.last_error ?? t('readiness.infra.none')}
+            </dd>
+          </div>
+        </dl>
+
+        <p
+          className={cn(
+            'rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.8125rem]',
+            item.required_action
+              ? 'bg-[color-mix(in_srgb,var(--color-warning)_10%,transparent)]'
+              : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-muted)]',
+          )}
+          data-testid={`infra-${item.key}-action`}
+        >
+          {item.required_action
+            ? t(`readiness.infra.action.${item.required_action}`, { defaultValue: item.required_action })
+            : t('readiness.infra.nothingToDo')}
+        </p>
+      </div>
     </Card>
   )
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle, BadgeDollarSign, Ban, CircleDollarSign, Megaphone, RefreshCw, Rocket, Target, TrendingUp, Users,
+  AlertTriangle, BadgeDollarSign, Ban, CircleDollarSign, Megaphone, RefreshCw, Rocket, Scale, Target, TrendingUp, Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,8 @@ import { AreaTrend, KpiCard, PipelineFunnel, RankBars, RingProgress } from '@/co
 import { TONE_COLOR, TONE_TINT } from '@/components/visual/tones'
 import { platformColor } from '@/components/charts'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
+import { ProposalInbox } from '@/components/campaigns/ProposalInbox'
+import { ClientRulesDrawer } from '@/components/campaigns/ClientRulesDrawer'
 import {
   campaignInsights, spendTrend, syncCampaigns, useCampaignPlatforms, useCampaigns, type CampaignsData, type Insight, type InsightKey,
 } from '@/features/campaigns'
@@ -42,6 +44,7 @@ export function CampaignsPage() {
   const translateError = useApiError()
   const [days, setDays] = useState(30)
   const [platform, setPlatform] = useState('')
+  const [rulesOpen, setRulesOpen] = useState(false)
 
   const { data, isLoading, isError, error, refetch } = useCampaigns(days, platform)
   const platforms = useCampaignPlatforms()
@@ -73,6 +76,9 @@ export function CampaignsPage() {
               <option value="">{t('campaigns.allPlatforms')}</option>
               {(platforms.data?.platforms ?? []).map((p) => <option key={p.key} value={p.key}>{t(`platforms.${p.key}`, { defaultValue: p.key })}</option>)}
             </Select>
+            <Button variant="ghost" icon={<Scale className="size-4" />} onClick={() => setRulesOpen(true)} data-testid="open-client-rules">
+              {t('rules.open')}
+            </Button>
             {anyConnected && (
               <Button variant="outline" icon={<RefreshCw className="size-4" />} loading={sync.isPending} onClick={() => sync.mutate()} data-testid="campaigns-sync">
                 {t('campaigns.sync')}
@@ -125,6 +131,8 @@ export function CampaignsPage() {
       ) : (
         <Overview data={data} money={money} />
       )}
+
+      <ClientRulesDrawer open={rulesOpen} onClose={() => setRulesOpen(false)} currency={currency} />
     </>
   )
 }
@@ -218,6 +226,11 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
           </CardBody>
         </Card>
       </div>
+
+      {/* What agents and people want changed, waiting for a decision. */}
+
+      <ProposalInbox currency={data.currency} />
+
 
       {insights.length > 0 && (
         <section data-testid="campaign-insights">

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
+use App\Http\Controllers\Api\V1\ClientRuleController;
 use App\Http\Controllers\Api\V1\CommandCenterController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -265,6 +267,15 @@ Route::prefix('v1')->group(function () {
             Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);
             Route::post('/campaigns/sync', [CampaignController::class, 'sync']);
             Route::get('/campaigns/{uuid}', [CampaignController::class, 'show'])->whereUuid('uuid');
+
+            // Nothing reaches an ad account except through here.
+            Route::get('/action-proposals', [ActionProposalController::class, 'index']);
+            Route::post('/action-proposals', [ActionProposalController::class, 'store']);
+            Route::patch('/action-proposals/{uuid}', [ActionProposalController::class, 'update'])->whereUuid('uuid');
+            Route::post('/action-proposals/{uuid}/approve', [ActionProposalController::class, 'approve'])->whereUuid('uuid');
+            Route::post('/action-proposals/{uuid}/reject', [ActionProposalController::class, 'reject'])->whereUuid('uuid');
+            Route::get('/client-rules', [ClientRuleController::class, 'show']);
+            Route::put('/client-rules', [ClientRuleController::class, 'update']);
 
             Route::get('/campaign-spend', [CampaignSpendController::class, 'index']);
             Route::post('/campaign-spend', [CampaignSpendController::class, 'store']);

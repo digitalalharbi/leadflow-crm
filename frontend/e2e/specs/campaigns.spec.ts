@@ -55,6 +55,39 @@ test.describe('الحملات — the campaign command center', () => {
     await expect(page.getByTestId('campaign-quality-donut')).toBeVisible()
   })
 
+  test('a change is filed for approval, and a campaign the platform does not know cannot be touched', async ({ page }) => {
+    await page.goto('/campaigns')
+    await page.getByTestId('campaign-card').first().click()
+
+    await page.getByTestId('campaign-budget').click()
+    await page.getByTestId('proposal-new-budget').fill('500')
+    await page.getByTestId('proposal-reason').fill('اختبار من المتصفح')
+    await page.getByTestId('proposal-submit').click()
+
+    // Known only from its leads: the gateway records the advice and refuses to run it.
+    const card = page.getByTestId('proposal-card').first()
+    await expect(card).toHaveAttribute('data-status', 'blocked')
+    await expect(card.getByTestId('proposal-blocks')).toContainText('ليست مربوطة بالمنصة')
+    await expect(card.getByTestId('proposal-approve')).toHaveCount(0)
+
+    await card.getByTestId('proposal-reject').click()
+    await expect(page.getByTestId('proposal-card').first()).toHaveAttribute('data-status', 'rejected')
+  })
+
+  test('client rules are saved and read back', async ({ page }) => {
+    await page.goto('/campaigns')
+    await page.getByTestId('open-client-rules').click()
+
+    await page.getByTestId('rule-maxChange').fill('15')
+    await page.getByTestId('rule-forbidden').fill('مضمون، مجاني')
+    await page.getByTestId('rules-save').click()
+    await expect(page.getByTestId('client-rules-drawer')).toBeHidden()
+
+    await page.getByTestId('open-client-rules').click()
+    await expect(page.getByTestId('rule-maxChange')).toHaveValue('15')
+    await expect(page.getByTestId('rule-forbidden')).toHaveValue('مضمون, مجاني')
+  })
+
   test('a sales rep is not offered campaigns at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
     await page.goto('/')

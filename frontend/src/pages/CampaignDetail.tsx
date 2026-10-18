@@ -7,6 +7,8 @@ import { AreaTrend, Donut, PipelineFunnel, StatusPill, type DonutSegment, type S
 import { CLASSIFICATION_COLOR, CLASSIFICATION_ORDER } from '@/components/visual/classification'
 import { platformColor } from '@/components/charts'
 import { useCampaign, type CampaignAd, type CampaignRow } from '@/features/campaigns'
+import { CampaignActions } from '@/components/campaigns/CampaignActions'
+import { ProposalInbox } from '@/components/campaigns/ProposalInbox'
 import { useApiError } from '@/hooks/useApiError'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 
@@ -86,6 +88,7 @@ export function CampaignDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {status && <StatusPill status={status} />}
+            <CampaignActions campaign={c} />
             <Select value={String(days)} onChange={(e) => setDays(Number(e.target.value))} className="filter-pill min-w-32" aria-label={t('common.date')}>
               {[7, 30, 90].map((d) => <option key={d} value={d}>{t('dashboard.lastDays', { count: d })}</option>)}
             </Select>
@@ -130,6 +133,8 @@ export function CampaignDetailPage() {
           </CardBody>
         </Card>
       </div>
+
+      <ProposalInbox campaignId={c.id} currency={c.currency ?? data.currency} />
 
       <section>
         <h2 className="t-card-title mb-2 px-1">{t('campaigns.ads')}</h2>

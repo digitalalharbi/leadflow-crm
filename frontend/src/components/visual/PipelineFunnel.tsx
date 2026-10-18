@@ -51,15 +51,15 @@ export function PipelineFunnel({ steps, testId }: { steps: FunnelStep[]; testId?
           <div className="flex items-center gap-3">
             <span className="w-24 shrink-0 truncate text-[0.8125rem] text-[var(--color-ink-muted)]">{row.label}</span>
             <div className="h-7 flex-1 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]">
-              <span
-                className="flex h-full items-center justify-end rounded-full px-3"
+              {row.width > 0 && <span
+                className="flex h-full items-center justify-end rounded-full"
                 data-chart-mark
                 style={{
                   width: `${row.width}%`,
                   background: colors[index],
                   transition: 'width var(--duration-slow) var(--ease-out-soft)',
                 }}
-              />
+              />}
             </div>
             <span className="w-12 shrink-0 text-end text-[0.9375rem] font-semibold tabular-nums">{formatNumber(row.count)}</span>
           </div>

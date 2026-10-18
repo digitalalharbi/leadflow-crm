@@ -1,0 +1,159 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Domain\Actions\ActionGateway;
+use App\Domain\Actions\ActionPolicy;
+use App\Domain\Campaigns\AdPlatform;
+use App\Http\Controllers\Controller;
+use App\Models\ActionProposal;
+use App\Models\Ad;
+use App\Models\AdSet;
+use App\Models\Campaign;
+use App\Models\Lead;
+use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+
+/**
+ * The approval inbox: what agents and people want changed on the ad accounts,
+ * and the decision on each.
+ */
+class ActionProposalController extends Controller
+{
+    public function __construct(private ActionGateway $gateway) {}
+
+    public function index(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $proposals = ActionProposal::query()
+            ->with(['campaign:id,uuid,name,platform', 'adSet:id,uuid,name', 'ad:id,uuid,name', 'proposer:id,name', 'decider:id,name'])
+            ->when($request->input('status'), fn ($q, $s) => $q->whereIn('status', (array) $s))
+            ->when($request->input('campaign_id'), fn ($q, $uuid) => $q->whereHas('campaign', fn ($c) => $c->where('uuid', $uuid)))
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
+        return ApiResponse::success([
+            'proposals' => $proposals->map(fn (ActionProposal $p) => $this->present($p))->all(),
+            'counts' => ActionProposal::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+        ]);
+    }
+
+    /** A person proposes a change — it still waits for approval like an agent's would. */
+    public function store(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $data = $request->validate([
+            'action' => ['required', Rule::in(ActionPolicy::ACTIONS)],
+            'campaign_id' => ['nullable', 'uuid'],
+            'ad_set_id' => ['nullable', 'uuid'],
+            'ad_id' => ['nullable', 'uuid'],
+            'platform' => ['nullable', Rule::in(AdPlatform::values())],
+            'payload' => ['nullable', 'array'],
+            'payload.daily_budget_minor' => ['nullable', 'integer', 'min:1'],
+            // Every key the vocabulary uses is named, so nothing unvalidated rides along.
+            'payload.name' => ['nullable', 'string', 'max:255'],
+            'payload.headline' => ['nullable', 'string', 'max:500'],
+            'payload.body' => ['nullable', 'string', 'max:5000'],
+            'payload.primary_text' => ['nullable', 'string', 'max:5000'],
+            'payload.status' => ['nullable', 'string', 'in:paused,active'],
+            'payload.starts_at' => ['nullable', 'date'],
+            'reason' => ['required', 'string', 'max:2000'],
+            'expected_impact' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $campaign = isset($data['campaign_id']) ? Campaign::query()->where('uuid', $data['campaign_id'])->firstOrFail() : null;
+        $adSet = isset($data['ad_set_id']) ? AdSet::query()->where('uuid', $data['ad_set_id'])->firstOrFail() : null;
+        $ad = isset($data['ad_id']) ? Ad::query()->where('uuid', $data['ad_id'])->firstOrFail() : null;
+        $campaign ??= $adSet?->campaign ?? $ad?->campaign;
+
+        $platform = $data['platform'] ?? $campaign?->platform;
+        abort_if($platform === null, 422, 'A platform or a campaign is required.');
+
+        $proposal = $this->gateway->propose([
+            'action' => $data['action'],
+            'platform' => $platform,
+            'campaign_id' => $campaign?->id,
+            'ad_set_id' => $adSet?->id,
+            'ad_id' => $ad?->id,
+            'project_id' => $campaign?->project_id,
+            'payload' => $data['payload'] ?? [],
+            'reason' => $data['reason'],
+            'expected_impact' => $data['expected_impact'] ?? null,
+        ], $request->user());
+
+        return ApiResponse::created(['proposal' => $this->present($proposal->fresh(['campaign', 'adSet', 'ad', 'proposer', 'decider']))]);
+    }
+
+    public function update(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+        $data = $request->validate([
+            'payload' => ['required', 'array'],
+            'payload.daily_budget_minor' => ['nullable', 'integer', 'min:1'],
+            'payload.name' => ['nullable', 'string', 'max:255'],
+            'payload.headline' => ['nullable', 'string', 'max:500'],
+            'payload.body' => ['nullable', 'string', 'max:5000'],
+            'payload.primary_text' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        return $this->decide(fn ($p) => $this->gateway->edit($p, $request->user(), $data['payload']), $uuid);
+    }
+
+    public function approve(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+
+        return $this->decide(fn ($p) => $this->gateway->approve($p, $request->user(), $request->input('note')), $uuid);
+    }
+
+    public function reject(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+
+        return $this->decide(fn ($p) => $this->gateway->reject($p, $request->user(), $request->input('note')), $uuid);
+    }
+
+    private function decide(callable $do, string $uuid)
+    {
+        $proposal = ActionProposal::query()->where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $proposal = $do($proposal);
+        } catch (InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), null, 409);
+        }
+
+        return ApiResponse::success(['proposal' => $this->present($proposal->fresh(['campaign', 'adSet', 'ad', 'proposer', 'decider']))]);
+    }
+
+    private function present(ActionProposal $p): array
+    {
+        return [
+            'id' => $p->uuid,
+            'action' => $p->action,
+            'platform' => $p->platform,
+            'status' => $p->status,
+            'payload' => $p->payload ?? [],
+            'reason' => $p->reason,
+            'expected_impact' => $p->expected_impact,
+            'proposed_by' => $p->proposed_by,
+            'agent' => $p->agent,
+            'proposer' => $p->proposer?->name,
+            'decider' => $p->decider?->name,
+            'decided_at' => $p->decided_at?->toIso8601String(),
+            'decision_note' => $p->decision_note,
+            'policy' => $p->policy ?? ['allowed' => true, 'blocks' => [], 'warnings' => [], 'limits' => []],
+            'error' => $p->error,
+            'executed_at' => $p->executed_at?->toIso8601String(),
+            'created_at' => $p->created_at?->toIso8601String(),
+            'campaign' => $p->campaign ? ['id' => $p->campaign->uuid, 'name' => $p->campaign->name, 'daily_budget_minor' => $p->campaign->daily_budget_minor] : null,
+            'ad_set' => $p->adSet?->name,
+            'ad' => $p->ad?->name,
+        ];
+    }
+}

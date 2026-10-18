@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Files\FileDelivery;
 use App\Domain\Files\FileForTheLead;
 use App\Domain\Files\ShareFile;
+use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FileShare;
 use App\Models\Lead;
@@ -29,6 +31,7 @@ class ProjectFileController extends Controller
     public function __construct(
         private readonly FileForTheLead $chooser,
         private readonly ShareFile $sharer,
+        private readonly FileDelivery $delivery,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -59,6 +62,7 @@ class ProjectFileController extends Controller
             // without one at all.
             'language' => ['sometimes', 'nullable', 'string', 'max:8'],
             'sort' => ['sometimes', 'integer', 'min:0', 'max:999'],
+            ...$this->targeting(),
         ]);
 
         $upload = $request->file('file');
@@ -76,6 +80,9 @@ class ProjectFileController extends Controller
             'name' => ($data['name'] ?? null) ?: $upload->getClientOriginalName(),
             'kind' => $data['kind'],
             'language' => $data['language'] ?? null,
+            'campaign' => ($data['campaign'] ?? null) ?: null,
+            'stages' => ($data['stages'] ?? null) ?: null,
+            'audience' => ($data['audience'] ?? null) ?: null,
             'path' => $path,
             'mime' => $upload->getClientMimeType(),
             'size_bytes' => $upload->getSize(),
@@ -111,6 +118,7 @@ class ProjectFileController extends Controller
             'language' => ['sometimes', 'nullable', 'string', 'max:8'],
             'is_active' => ['sometimes', 'boolean'],
             'sort' => ['sometimes', 'integer', 'min:0', 'max:999'],
+            ...$this->targeting(),
         ]));
 
         return ApiResponse::success(['file' => $this->present($file->refresh())]);
@@ -153,6 +161,8 @@ class ProjectFileController extends Controller
         return ApiResponse::success([
             'suggested' => $choice['file'] === null ? null : $this->present($choice['file']),
             'reason' => $choice['reason'],
+            // Every point the file earned, so "why that one" has a full answer.
+            'reasons' => $choice['reasons'] ?? [],
             'available' => $this->chooser->available($lead)
                 ->map(fn (ProjectFile $file) => $this->present($file))
                 ->values()
@@ -206,6 +216,64 @@ class ProjectFileController extends Controller
         ]);
     }
 
+    /**
+     * The three fields that say who a file is for. Null — or an empty list — is
+     * anybody, which is what every file uploaded before these existed already is.
+     *
+     * @return array<string,mixed>
+     */
+    private function targeting(): array
+    {
+        return [
+            'campaign' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'stages' => ['sometimes', 'nullable', 'array', 'max:12'],
+            'stages.*' => ['string', Rule::in(LeadStatus::values())],
+            'audience' => ['sometimes', 'nullable', Rule::in(ProjectFile::AUDIENCES)],
+        ];
+    }
+
+    /**
+     * Choose the file for this lead and send it, by the channel they will read.
+     * The same path an automation rule takes.
+     */
+    public function send(Request $request, string $leadUuid)
+    {
+        $lead = Lead::where('uuid', $leadUuid)->firstOrFail();
+        $this->authorize('update', $lead);
+
+        $data = $request->validate([
+            'channel' => ['required', Rule::in(['whatsapp', 'email'])],
+            'file' => ['sometimes', 'nullable', 'string', 'size:36'],
+            'kind' => ['sometimes', 'nullable', Rule::in(ProjectFile::KINDS)],
+        ]);
+
+        $file = null;
+
+        if (filled($data['file'] ?? null)) {
+            $file = ProjectFile::where('uuid', $data['file'])
+                ->where('project_id', $lead->project_id)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $file) {
+                return ApiResponse::error('That file is not available for this lead.', null, 422);
+            }
+        }
+
+        try {
+            $result = $this->delivery->deliver($lead, $data['channel'], $file, $data['kind'] ?? null, $request->user());
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), null, 422);
+        }
+
+        return ApiResponse::success([
+            'file' => $this->present($result['file']),
+            'share' => ['id' => $result['share']->uuid, 'url' => $result['share']->url()],
+            'reasons' => $result['reasons'],
+            'status' => $result['message']?->status->value,
+        ]);
+    }
+
     private function present(ProjectFile $file): array
     {
         return [
@@ -213,6 +281,9 @@ class ProjectFileController extends Controller
             'name' => $file->name,
             'kind' => $file->kind,
             'language' => $file->language,
+            'campaign' => $file->campaign,
+            'stages' => $file->stages ?? [],
+            'audience' => $file->audience,
             'mime' => $file->mime,
             'size_bytes' => $file->size_bytes,
             'is_active' => $file->is_active,

@@ -50,7 +50,7 @@ const ACTION_DEFAULTS: Record<string, Record<string, unknown>> = {
   send_email: { template_uuid: '' },
   // Left empty on purpose: with no kind, the chooser reads the lead's own
   // answers, which is the behaviour worth having by default.
-  share_file: { kind: '', send: true },
+  share_file: { kind: '', send: true, channel: 'whatsapp' },
 }
 
 function withDefaults(type: string): RuleAction {
@@ -661,6 +661,19 @@ function ActionDetail({
           >
             <option value="send">{t('automation.deliverySend')}</option>
             <option value="prepare">{t('automation.deliveryPrepare')}</option>
+          </Select>
+
+          {/* By which channel. WhatsApp unless the rule says email. */}
+          <Select
+            className="min-w-32"
+            label={labelled ? t('automation.fileChannel') : undefined}
+            value={String(action.channel ?? 'whatsapp')}
+            disabled={action.send === false}
+            onChange={(e) => onChange({ channel: e.target.value })}
+            data-testid="file-channel"
+          >
+            <option value="whatsapp">{t('whatsapp.channel')}</option>
+            <option value="email">{t('email.channel')}</option>
           </Select>
         </>
       )

@@ -396,6 +396,8 @@ class AutomationRuleController extends Controller
              */
             'actions.*.kind' => ['sometimes', 'nullable', Rule::in(ProjectFile::KINDS)],
             'actions.*.send' => ['sometimes', 'boolean'],
+            // Where the file goes. WhatsApp unless the rule says email.
+            'actions.*.channel' => ['sometimes', 'nullable', Rule::in(['whatsapp', 'email'])],
 
             /*
              * The parameters that used to fall off the rule on the way in.

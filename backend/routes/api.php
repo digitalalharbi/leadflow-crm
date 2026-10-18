@@ -235,6 +235,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'destroy']);
             Route::get('/leads/{uuid}/files', [ProjectFileController::class, 'forLead']);
             Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
+            Route::post('/leads/{uuid}/files/send', [ProjectFileController::class, 'send']);
             Route::get('/leads/{uuid}/shares', [ProjectFileController::class, 'sharesFor']);
 
             Route::get('/projects/{uuid}/activity', ProjectActivityController::class);

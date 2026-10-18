@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Domain\Leads\NextBestAction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,11 +42,30 @@ class LeadListResource extends JsonResource
                 'id' => $this->assignee->uuid,
                 'name' => $this->assignee->name,
             ] : null),
+            /*
+             * What to do with this lead, in a word and how urgently — so a list
+             * says "call now" beside the name instead of leaving a rep to work
+             * it out from a stage and a date. Only where the list asked for it.
+             */
+            'next_action' => $this->when($request->attributes->get('with_next_action'), fn () => $this->nextAction($request)),
             'next_follow_up_at' => $this->next_follow_up_at?->toIso8601String(),
             'is_overdue' => $this->next_follow_up_at !== null
                 && $this->next_follow_up_at->isPast()
                 && ! $this->status?->isClosed(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    /** @return array{action:string,urgency:string,reason:string} */
+    private function nextAction(Request $request): array
+    {
+        // One tenant, one target: read once per request rather than per row.
+        $target = $request->attributes->get('first_contact_target')
+            ?? tap((int) ($request->user()?->tenant?->settings?->first_contact_target_minutes ?? 30),
+                fn ($minutes) => $request->attributes->set('first_contact_target', $minutes));
+
+        $result = app(NextBestAction::class)->for($this->resource, $target);
+
+        return ['action' => $result['action'], 'urgency' => $result['urgency'], 'reason' => $result['reason']];
     }
 }

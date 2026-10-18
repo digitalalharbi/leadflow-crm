@@ -16,6 +16,10 @@ test.describe('File targeting', () => {
   let projectId = ''
   let leadId = ''
 
+  // Put the fixtures back: later specs rely on a project with no files and no
+  // questions, and a spec that leaves its own behind makes them fail for it.
+  test.afterAll(() => resetFixtures())
+
   test.beforeAll(async () => {
     resetFixtures()
 

@@ -11,6 +11,9 @@ import { useApiError } from '@/hooks/useApiError'
 import { cn } from '@/lib/cn'
 import { formatDue, telLink, whatsappLink } from '@/lib/format'
 import { LeadFiltersBar } from '@/components/leads/LeadFilters'
+import { LeadAvatar } from '@/components/leads/LeadAvatar'
+import { LeadSegments } from '@/components/leads/LeadSegments'
+import { NextActionChip } from '@/components/leads/NextActionChip'
 import { LeadFormDrawer } from '@/components/leads/LeadFormDrawer'
 import {
   Button, Card, EmptyState, ErrorState, PageHeader, Pagination,
@@ -126,6 +129,13 @@ export function LeadsPage() {
       />
 
       <Card className="overflow-hidden">
+        {/* Which of these needs me — before a single row is read. */}
+        <LeadSegments
+          filters={filters}
+          onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
+          showUnassigned={can.seeAllLeads(user)}
+        />
+
         <LeadFiltersBar
           filters={filters}
           onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
@@ -183,7 +193,7 @@ export function LeadsPage() {
             */}
             <TableWrap
               className={cn(
-                'md:max-h-[calc(100dvh-18rem)] md:overflow-y-auto',
+                'md:max-h-[calc(100dvh-21.5rem)] md:overflow-y-auto',
                 isFetching && 'opacity-60 transition-opacity',
               )}
               data-testid="leads-table-scroller"
@@ -198,8 +208,8 @@ export function LeadsPage() {
                     <Th className="hidden lg:table-cell">{t('leads.source')}</Th>
                     <Th className="hidden md:table-cell">{t('leads.status')}</Th>
                     <Th className="hidden sm:table-cell">{t('leads.temperature')}</Th>
+                    <Th className="hidden lg:table-cell">{t('leads.nextStep')}</Th>
                     <Th className="hidden xl:table-cell">{t('leads.assignedTo')}</Th>
-                    <Th className="hidden lg:table-cell">{t('leads.nextFollowUp')}</Th>
                     <Th className="text-end">{t('common.actions')}</Th>
                   </tr>
                 </thead>
@@ -207,6 +217,9 @@ export function LeadsPage() {
                   {leads.map((lead) => (
                     <Tr key={lead.id}>
                       <Td className="min-w-56">
+                        <div className="flex items-center gap-3">
+                          <LeadAvatar name={lead.full_name} temperature={lead.temperature} priority={lead.is_priority} />
+                          <div className="min-w-0">
                         <Link
                           to={`/leads/${lead.id}`}
                           className="block truncate font-medium hover:text-[var(--brand)]"
@@ -231,7 +244,10 @@ export function LeadsPage() {
                         <span className="mt-1.5 flex flex-wrap items-center gap-1 sm:hidden">
                           <StatusBadge status={lead.status} />
                           <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
+                          <NextActionChip action={lead.next_action} />
                         </span>
+                          </div>
+                        </div>
                       </Td>
 
                       <Td className="hidden lg:table-cell">
@@ -258,19 +274,42 @@ export function LeadsPage() {
                         )}
                       </Td>
                       <Td className="hidden md:table-cell"><StatusBadge status={lead.status} /></Td>
-                      <Td className="hidden sm:table-cell"><TemperatureBadge temperature={lead.temperature} /></Td>
+                      <Td className="hidden sm:table-cell">
+                        <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
+                        {/* The score as a line under the word: the badge says which bucket,
+                            the line says how far into it. */}
+                        <span
+                          className="mt-1.5 block h-1 w-16 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]"
+                          title={String(lead.score ?? 0)}
+                          aria-hidden
+                        >
+                          <span
+                            className="block h-full rounded-full"
+                            style={{
+                              width: `${Math.min(100, lead.score ?? 0)}%`,
+                              background: `var(--color-temp-${lead.temperature})`,
+                            }}
+                          />
+                        </span>
+                      </Td>
+                      <Td className="hidden lg:table-cell">
+                        {/* What to do, and when it is due — the two things a rep scans a row for. */}
+                        <NextActionChip action={lead.next_action} />
+                        {lead.next_follow_up_at && (
+                          <span
+                            className={cn(
+                              'mt-0.5 block whitespace-nowrap text-[0.75rem]',
+                              lead.is_overdue ? 'font-medium text-[var(--color-status-lost)]' : 'text-[var(--color-ink-muted)]',
+                            )}
+                          >
+                            {formatDue(lead.next_follow_up_at, i18n.language, lead.is_overdue)}
+                          </span>
+                        )}
+                        {!lead.next_follow_up_at && (!lead.next_action || ['wait', 'none'].includes(lead.next_action.action)) && '—'}
+                      </Td>
                       <Td className="hidden max-w-36 truncate xl:table-cell">
                         {lead.assignee?.name ?? (
                           <span className="text-[var(--color-ink-subtle)]">{t('common.unassigned')}</span>
-                        )}
-                      </Td>
-                      <Td className="hidden whitespace-nowrap lg:table-cell">
-                        {lead.next_follow_up_at ? (
-                          <span className={lead.is_overdue ? 'font-medium text-[var(--color-status-lost)]' : undefined}>
-                            {formatDue(lead.next_follow_up_at, i18n.language, lead.is_overdue)}
-                          </span>
-                        ) : (
-                          '—'
                         )}
                       </Td>
                       <Td>

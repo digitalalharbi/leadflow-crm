@@ -119,9 +119,9 @@ export function CommandPalette() {
         onClick={() => setOpen(true)}
         aria-label={t('search.open')}
         data-testid="open-command-palette"
-        className="grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+        className="chrome-circle"
       >
-        <Search className="size-4" aria-hidden />
+        <Search className="size-[1.125rem]" aria-hidden />
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title={t('search.title')}>

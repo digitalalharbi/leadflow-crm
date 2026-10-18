@@ -244,7 +244,7 @@ function InfraCard({ item }: { item: InfraItem }) {
           <div className="flex justify-between gap-3">
             <dt className="text-[var(--color-ink-muted)]">{t('readiness.infra.lastError')}</dt>
             <dd
-              className={cn('min-w-0 break-words text-end', item.last_error && 'text-[var(--color-danger)]')}
+              className={cn('min-w-0 break-words text-end', item.last_error && 'font-mono text-[0.75rem] text-[var(--color-danger)]')}
               data-testid={`infra-${item.key}-error`}
             >
               {item.last_error ?? t('readiness.infra.none')}

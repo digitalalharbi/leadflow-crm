@@ -1,81 +1,26 @@
 import { NavLink } from 'react-router-dom'
-import {
-  BarChart3, Building2, Columns3, LayoutDashboard, Plug, Settings,
-  Rocket, ShieldAlert, ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, X, Network,
-} from 'lucide-react'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
-import { apiGet } from '@/lib/api'
-import { can, useAuth } from '@/stores/auth'
+import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
 import { BrandLockup } from '@/components/brand'
+import { useNavigation } from './navigation'
 
-interface NavItem {
-  to: string
-  labelKey: string
-  Icon: typeof LayoutDashboard
-  visible: boolean
-  badge?: number
-}
-
+/**
+ * The phone drawer: every destination, labelled.
+ *
+ * Below the desktop breakpoint there is no icon rail and no pill track — an
+ * icon-only strip is the wrong tool on a thumb — so the same destinations, from
+ * the same source, open as a list that slides in from the start edge.
+ */
 export function Sidebar() {
   const { t } = useTranslation()
-  const user = useAuth((s) => s.user)
   const branding = useAuth((s) => s.branding)
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
   const sidebarOpen = useUi((s) => s.sidebarOpen)
   const setSidebarOpen = useUi((s) => s.setSidebarOpen)
-
-  // Overdue count sits next to "Follow-ups" — it is the number that should
-  // pull a rep back into the app.
-  const { data: counts } = useQuery({
-    queryKey: ['follow-up-counts'],
-    queryFn: () => apiGet<{ overdue: number; today: number; upcoming: number }>('/follow-ups/counts'),
-    enabled: !isSuperAdmin,
-    refetchInterval: 120_000,
-  })
-
-  const items: NavItem[] = isSuperAdmin
-    ? [
-        { to: '/platform', labelKey: 'nav.superAdmin', Icon: ShieldCheck, visible: true },
-        { to: '/readiness', labelKey: 'nav.readiness', Icon: Rocket, visible: true },
-      ]
-    : [
-        { to: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard, visible: true },
-        /*
-         * Directly under the dashboard, above the lead list. A rep who opens
-         * the list first starts by choosing; this screen is the one that tells
-         * them, so it comes first.
-         */
-        { to: '/work', labelKey: 'nav.work', Icon: Target, visible: true },
-        { to: '/leads', labelKey: 'nav.leads', Icon: Contact2, visible: true },
-        { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3, visible: true },
-        {
-          to: '/follow-ups',
-          labelKey: 'nav.followUps',
-          Icon: CalendarClock,
-          visible: true,
-          badge: (counts?.overdue ?? 0) + (counts?.today ?? 0),
-        },
-        // The holding's structure: admins shape it, and anybody with companies to
-        // choose between gets the same screen to choose from.
-        { to: '/companies', labelKey: 'nav.companies', Icon: Network, visible: can.seeAllLeads(user) },
-        { to: '/projects', labelKey: 'nav.projects', Icon: Building2, visible: true },
-        /*
-         * Rules act on everybody's leads, so the screen belongs to the people
-         * who already have workspace-wide authority — the same test the API
-         * applies, rather than a second, looser one in the navigation.
-         */
-        { to: '/automation', labelKey: 'nav.automation', Icon: Workflow, visible: can.seeAllLeads(user) },
-        { to: '/reports', labelKey: 'nav.reports', Icon: BarChart3, visible: can.viewReports(user) },
-        { to: '/data-quality', labelKey: 'nav.dataQuality', Icon: ShieldAlert, visible: can.viewReports(user) },
-        { to: '/integrations', labelKey: 'nav.integrations', Icon: Plug, visible: can.manageIntegrations(user) },
-        // Next to the sources it is about: the same people, the same question.
-        { to: '/readiness', labelKey: 'nav.readiness', Icon: Rocket, visible: can.manageIntegrations(user) },
-        { to: '/users', labelKey: 'nav.users', Icon: Users2, visible: can.seeAllLeads(user) },
-        { to: '/settings', labelKey: 'nav.settings', Icon: Settings, visible: true },
-      ]
+  const { all: items } = useNavigation()
 
   return (
     <>
@@ -92,7 +37,7 @@ export function Sidebar() {
       <aside
         data-open={sidebarOpen}
         className={cn(
-          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[13.5rem] flex-col',
+          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[16rem] max-w-[85vw] flex-col lg:hidden print:hidden',
           /*
            * The canvas colour, not white.
            *
@@ -100,7 +45,7 @@ export function Sidebar() {
            * the whole theme rests on cards being the only white things on the
            * screen, so the chrome has to recede for them to read as objects.
            */
-          'bg-[var(--color-canvas)]',
+          'rounded-e-[var(--radius-panel)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)]',
         )}
       >
         <div className="flex h-14 items-center justify-between gap-2 px-3">
@@ -130,7 +75,6 @@ export function Sidebar() {
           )}
 
           {items
-            .filter((item) => item.visible)
             .map(({ to, labelKey, Icon, badge }) => (
               <NavLink
                 key={to}
@@ -153,12 +97,9 @@ export function Sidebar() {
                      */
                     isActive
                       ? [
-                          'bg-[var(--color-surface)] font-semibold text-[var(--brand)]',
-                          'shadow-[var(--shadow-card)]',
-                          'before:absolute before:inset-y-2 before:start-0 before:w-0.5',
-                          'before:rounded-full before:bg-[var(--brand)]',
+                          'bg-[var(--brand)] font-semibold text-[var(--brand-contrast)]',
                         ].join(' ')
-                      : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]',
+                      : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-chrome-fill)] hover:text-[var(--color-ink)]',
                   )
                 }
               >

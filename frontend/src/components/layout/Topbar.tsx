@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Check, Globe, LogOut, Menu, Monitor, Moon, Sun, User as UserIcon } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Menu, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { CompanySwitcher } from '@/components/company/CompanySwitcher'
+import { BrandLockup } from '@/components/brand'
+import { useNavigation } from '@/components/layout/navigation'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -19,6 +21,7 @@ export function Topbar() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
+  const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
   const logout = useAuth((s) => s.logout)
   const toggleSidebar = useUi((s) => s.toggleSidebar)
   const appearance = useUi((s) => s.appearance)
@@ -44,109 +47,66 @@ export function Topbar() {
     navigate('/login', { replace: true })
   }
 
+  const { primary } = useNavigation()
+
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 bg-[var(--color-canvas)] px-3">
+    /*
+     * The floating header: one white capsule on the workspace, holding the
+     * brand, the primary destinations and the person's own controls. Sticky
+     * with an offset rather than pinned to the edge, so it keeps floating when
+     * the page scrolls under it.
+     */
+    <header
+      className="sticky top-3 z-20 flex h-16 items-center gap-3 rounded-[var(--radius-pill)] bg-[var(--color-surface)] px-3 shadow-[var(--shadow-card)] lg:h-[4.25rem] lg:px-4 print:hidden"
+      data-testid="app-header"
+    >
       <button
         type="button"
         onClick={toggleSidebar}
         aria-label={t('common.actions')}
-        className="grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
+        className="chrome-circle lg:hidden"
       >
         <Menu className="size-5" aria-hidden />
       </button>
 
-      <div className="flex-1" />
+      <BrandLockup to="/" size="md" />
+
+      {/*
+        The console says so in words as well as in colour. Colour alone is the
+        kind of cue that stops working on the day it matters — a tired operator,
+        a projector, a screenshot pasted into a ticket.
+      */}
+      {isSuperAdmin && (
+        <span className="hidden rounded-full bg-[var(--brand-soft)] px-3 py-1 text-[0.75rem] font-medium text-[var(--brand)] sm:inline" data-testid="console-badge">
+          {t('nav.platformConsole')}
+        </span>
+      )}
+
+      {/* The primary destinations, as a pill track with a white active pill. */}
+      <nav
+        aria-label={t('nav.primary')}
+        className="mx-auto hidden items-center gap-1 rounded-[var(--radius-pill)] bg-[var(--color-chrome-fill)] p-1.5 lg:flex"
+        data-testid="primary-nav"
+      >
+        {primary.map(({ to, labelKey }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            className={({ isActive }) => cn('nav-pill', isActive && 'nav-pill-active')}
+          >
+            {t(labelKey)}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="flex-1 lg:hidden" />
 
       {/* Holding → company: what every screen below is about. */}
       <CompanySwitcher />
 
-      {/* Language */}
-      <Dropdown
-        trigger={({ toggle }) => (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={t('settings.language')}
-            className="pressable grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
-          >
-            <Globe className="size-[1.125rem]" aria-hidden />
-          </button>
-        )}
-      >
-        {({ close }) => (
-          <>
-            {(['ar', 'en'] as const).map((locale) => (
-              <DropdownItem
-                key={locale}
-                onClick={() => {
-                  applyLocale(locale)
-                  close()
-                }}
-                icon={
-                  i18n.language === locale ? (
-                    <Check className="size-4" aria-hidden />
-                  ) : (
-                    <span className="size-4" aria-hidden />
-                  )
-                }
-              >
-                {locale === 'ar' ? 'العربية' : 'English'}
-              </DropdownItem>
-            ))}
-          </>
-        )}
-      </Dropdown>
-
-      {/*
-        Before the appearance toggle, because it is the only control here that
-        anybody uses more than once a day — and it answers to ⌘K anyway.
-      */}
+      {/* The one control used more than once a day; it answers to ⌘K anyway. */}
       <CommandPalette />
-
-      {/* Appearance */}
-      <Dropdown
-        trigger={({ toggle }) => (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={t('appearance.label')}
-            data-testid="appearance-menu"
-            className="pressable grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
-          >
-            {appearance === 'dark' ? (
-              <Moon className="size-[1.125rem]" aria-hidden />
-            ) : appearance === 'light' ? (
-              <Sun className="size-[1.125rem]" aria-hidden />
-            ) : (
-              <Monitor className="size-[1.125rem]" aria-hidden />
-            )}
-          </button>
-        )}
-      >
-        {({ close }) => (
-          <>
-            {(['system', 'light', 'dark'] as const).map((option) => (
-              <DropdownItem
-                key={option}
-                testId={`appearance-${option}`}
-                onClick={() => {
-                  setAppearance(option)
-                  close()
-                }}
-                icon={
-                  appearance === option ? (
-                    <Check className="size-4" aria-hidden />
-                  ) : (
-                    <span className="size-4" aria-hidden />
-                  )
-                }
-              >
-                {t(`appearance.${option}`)}
-              </DropdownItem>
-            ))}
-          </>
-        )}
-      </Dropdown>
 
       {/* Notifications */}
       <div className="relative">
@@ -154,7 +114,7 @@ export function Topbar() {
           type="button"
           onClick={() => setNotificationsOpen((v) => !v)}
           aria-label={t('nav.notifications')}
-          className="pressable relative grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+          className="chrome-circle relative"
         >
           <Bell className="size-[1.125rem]" aria-hidden />
           {unread > 0 && (
@@ -235,16 +195,16 @@ export function Topbar() {
                the avatar beside it is decorative — so below `sm` this button had
                no accessible name at all. */
             aria-label={user?.name ?? t('nav.profile')}
-            className="flex items-center gap-2 rounded-[var(--radius-control)] p-1 ps-2 hover:bg-[var(--color-surface-sunken)]"
+            className="flex items-center gap-1 rounded-full p-0.5 hover:bg-[var(--color-chrome-fill)]"
           >
-            <span className="hidden text-[0.8125rem] font-medium sm:block">{user?.name}</span>
             <span
-              className="grid size-8 place-items-center rounded-full text-[0.75rem] font-semibold text-white"
+              className="grid size-10 place-items-center rounded-full text-[0.8125rem] font-semibold text-white"
               style={{ background: 'var(--brand)' }}
               aria-hidden
             >
               {user ? initials(user.name) : <UserIcon className="size-4" />}
             </span>
+            <ChevronDown className="hidden size-3.5 text-[var(--color-ink-subtle)] sm:block" aria-hidden />
           </button>
         )}
       >
@@ -266,6 +226,46 @@ export function Topbar() {
             >
               {t('nav.profile')}
             </DropdownItem>
+            <div className="border-t border-[var(--color-line)] px-3 py-2" role="group" aria-label={t('settings.language')}>
+              <p className="mb-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">{t('settings.language')}</p>
+              <div className="flex gap-1">
+                {(['ar', 'en'] as const).map((locale) => (
+                  <button
+                    key={locale}
+                    type="button"
+                    data-testid={`language-${locale}`}
+                    aria-pressed={i18n.language === locale}
+                    onClick={() => {
+                      applyLocale(locale)
+                      close()
+                    }}
+                    className={cn('segment', i18n.language === locale && 'segment-active')}
+                  >
+                    {locale === 'ar' ? 'العربية' : 'English'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-[var(--color-line)] px-3 py-2" role="group" aria-label={t('appearance.label')} data-testid="appearance-menu">
+              <p className="mb-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">{t('appearance.label')}</p>
+              <div className="flex gap-1">
+                {(['system', 'light', 'dark'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    data-testid={`appearance-${option}`}
+                    aria-pressed={appearance === option}
+                    onClick={() => {
+                      setAppearance(option)
+                      close()
+                    }}
+                    className={cn('segment', appearance === option && 'segment-active')}
+                  >
+                    {t(`appearance.${option}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
             <DropdownItem danger icon={<LogOut className="size-4" />} onClick={handleSignOut} testId="sign-out">
               {t('auth.signOut')}
             </DropdownItem>

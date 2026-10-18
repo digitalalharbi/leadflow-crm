@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle, CalendarCheck, CalendarClock, ChevronDown, Flame, PhoneOff, Target, UserPlus,
+  AlertTriangle, CalendarClock, ChevronDown, PhoneOff, UserPlus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
-import { CommandCenter, CommandSide } from '@/components/dashboard/CommandCenter'
+import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
 import { HoldingOverview } from '@/components/company/HoldingOverview'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDue, formatNumber } from '@/lib/format'
@@ -18,8 +18,8 @@ import {
   Card, ErrorState, PageHeader, Select, Skeleton, SkeletonCards, StatusBadge, TemperatureBadge,
 } from '@/components/ui'
 import {
-  CampaignMatrix, CampaignQualityChart, ChartCard, ChartLegend, ConversionFunnel, DistributionBar,
-  LeadFlowChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart, SERIES, TEMPERATURE_COLOR,
+  CampaignMatrix, CampaignQualityChart, ChartCard, ConversionFunnel, DistributionBar,
+  PlatformPerformanceChart, ResponseTimeChart, TEMPERATURE_COLOR,
   VelocityChart,
 } from '@/components/charts'
 import type { DashboardData, LeadListItem } from '@/types/api'
@@ -87,24 +87,19 @@ export function DashboardPage() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
   const today = new Date().toISOString().slice(0, 10)
-  const comparison = data?.comparison ?? null
   const trend = data?.charts.trend.map((point) => point.count) ?? []
 
   return (
     <>
       <PageHeader
-        title={
-          user?.name
-            ? t('dashboard.greeting', { name: `، ${user.name.split(' ')[0]}` })
-            : t('dashboard.title')
-        }
-        subtitle={t('dashboard.subtitle')}
+        title={user?.name ? t('dashboard.welcomeBack') : t('dashboard.title')}
+        titleMuted={user?.name ? user.name.split(' ')[0] : undefined}
         actions={
           <div className="flex flex-wrap gap-2">
             <Select
               value={range}
               onChange={(e) => setRange(e.target.value)}
-              className="h-9 w-auto min-w-32"
+              className="filter-pill min-w-36"
               aria-label={t('common.date')}
               data-testid="range-filter"
             >
@@ -118,7 +113,7 @@ export function DashboardPage() {
               <Select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="h-9 w-auto min-w-36"
+                className="filter-pill min-w-40"
                 aria-label={t('leads.project')}
                 data-testid="project-filter"
               >
@@ -133,7 +128,7 @@ export function DashboardPage() {
               <Select
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className="h-9 w-auto min-w-36"
+                className="filter-pill min-w-40"
                 aria-label={t('leads.assignedTo')}
                 data-testid="owner-filter"
               >
@@ -162,105 +157,13 @@ export function DashboardPage() {
           {/* Holding → company → project, when the workspace has companies at all. */}
           <HoldingOverview />
 
-          {/* What needs a person right now — before any figure about a period. */}
-          <CommandCenter />
-
           {/*
-            The five figures a sales manager quotes in a meeting. Each carries
-            its change against the previous period of equal length — which is
-            absent, rather than invented, when no range is set.
+            The reference arrangement: what needs a person (the green card), the
+            month as bars, the headline figure, the funnel, and who to start
+            with. Everything on it is the same data as before, in the same
+            places the tests and the links expect it.
           */}
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
-            <MetricCard
-              label={t('dashboard.totalLeads')}
-              value={data.summary.total_leads}
-              previous={comparison?.total}
-              icon={<UserPlus className="size-4" />}
-              tone="brand"
-              to="/leads"
-              spark={trend}
-              testId="kpi-total"
-            />
-            <MetricCard
-              label={t('dashboard.qualified')}
-              value={data.summary.qualified}
-              previous={comparison?.qualified}
-              icon={<Target className="size-4" />}
-              to="/leads?status[]=qualified"
-              testId="kpi-qualified"
-            />
-            <MetricCard
-              label={t('dashboard.hotLeads')}
-              value={data.summary.hot_leads}
-              previous={comparison?.hot}
-              icon={<Flame className="size-4" />}
-              tone={data.summary.hot_leads > 0 ? 'warning' : 'neutral'}
-              to="/leads?temperature[]=hot"
-              testId="kpi-hot"
-            />
-            <MetricCard
-              label={t('dashboard.appointments')}
-              value={data.summary.appointments}
-              previous={comparison?.appointments}
-              icon={<CalendarCheck className="size-4" />}
-              to="/leads?status[]=appointment"
-              testId="kpi-appointments"
-            />
-            <MetricCard
-              label={t('dashboard.won')}
-              value={data.summary.won}
-              previous={comparison?.won}
-              icon={<CalendarCheck className="size-4" />}
-              tone="success"
-              to="/leads?status[]=won"
-              testId="kpi-won"
-            />
-          </section>
-
-          {/*
-            Under the five figures, because it is the context they are missing:
-            43 leads is excellent or alarming depending entirely on last week,
-            and a tile cannot say which.
-          */}
-          <div className="grid gap-3 lg:grid-cols-12">
-            <div className="lg:col-span-8">
-            <ChartCard
-              title={t('charts.leadFlow.title')}
-              description={t('charts.leadFlow.hint')}
-              height={240}
-              testId="lead-flow"
-              empty={(data.timeline ?? []).every((p) => p.leads + p.qualified + p.won === 0)}
-              emptyMessage={t('dashboard.noData')}
-              legend={
-                <ChartLegend
-                  items={[
-                    { key: 'leads', label: t('charts.leadFlow.leads'), color: SERIES[0] },
-                    { key: 'qualified', label: t('charts.leadFlow.qualified'), color: SERIES[1] },
-                    { key: 'won', label: t('charts.leadFlow.won'), color: SERIES[3] },
-                  ]}
-                />
-              }
-              table={{
-                head: [
-                  t('charts.leadFlow.day'),
-                  t('charts.leadFlow.leads'),
-                  t('charts.leadFlow.qualified'),
-                  t('charts.leadFlow.won'),
-                ],
-                rows: (data.timeline ?? []).map((point) => [
-                  point.date,
-                  point.leads,
-                  point.qualified,
-                  point.won,
-                ]),
-              }}
-            >
-              <LeadFlowChart points={data.timeline ?? []} />
-            </ChartCard>
-
-            </div>
-            <div className="lg:col-span-4"><CommandSide /></div>
-          </div>
+          <DashboardBoard data={data} trend={trend} />
 
           {/*
             A brand-new workspace has nothing to show, so the first thing an

@@ -98,7 +98,7 @@ export function CallSettingsCard() {
             placeholder={data?.account_sid_hint ?? 'AC…'}
             value={sid}
             onChange={(e) => setSid(e.target.value)}
-            data-testid="call-account-sid"
+            className="font-mono" data-testid="call-account-sid"
           />
           <Input
             label={t('calls.authToken')}
@@ -107,7 +107,7 @@ export function CallSettingsCard() {
             placeholder={data?.has_token ? '••••••••' : ''}
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            data-testid="call-auth-token"
+            className="font-mono" data-testid="call-auth-token"
           />
           <Input
             label={t('calls.fromNumber')}

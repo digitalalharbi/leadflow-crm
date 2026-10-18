@@ -68,7 +68,8 @@ test.describe('Product identity', () => {
   test('the theme can be switched and survives a reload', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
 
-    await page.getByTestId('appearance-menu').click()
+    // Appearance lives in the account menu now, beside language.
+    await page.getByTestId('account-menu').click()
     await page.getByTestId('appearance-dark').click()
 
     await expect(page.locator('html')).toHaveClass(/dark/)

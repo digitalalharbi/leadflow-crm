@@ -66,3 +66,15 @@ Login, drawers and modals.
   no numeric screenshot diff has been run.
 * On a short laptop (≤ 820 px high) the frame tightens (margins, header, rail
   items) to keep the working screens inside 1366×768.
+
+## Visual primitives (`frontend/src/components/visual`)
+
+The vocabulary every screen draws with: `Donut`, `RingProgress`, `ProgressBar`,
+`PipelineFunnel`, `RankBars`, `KpiCard`/`Delta`, `ActionCard`, `StatusPill`.
+Rules: colour comes from `tones.ts` (token-driven, white-label safe, brand ramps via
+`color-mix`); state is shown by a badge (icon + colour + one word from the nine-word
+status vocabulary) and never explained in a sentence; geometry is computed by pure
+functions (`arcs`, `funnelRows`, `rank`, `clampPercent`) that are unit-tested. Technical
+terms (API, OAuth, webhook, payload, queue, cursor, internal IDs) live only under
+Advanced / Diagnostics / Settings. Arabic UI face is Noto Sans Arabic Variable
+(IBM Plex Sans Arabic is a documented fallback and is not shipped); numbers are tabular.

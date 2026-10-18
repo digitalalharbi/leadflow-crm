@@ -1188,6 +1188,20 @@ export default {
     emptyUpcoming: 'No upcoming follow-ups.', emptyCompleted: 'No completed follow-ups.',
     created: 'Follow-up scheduled.', completedMsg: 'Follow-up completed.',
   },
+  visual: {
+    status: {
+      healthy: 'Healthy',
+      attention: 'Needs attention',
+      risk: 'At risk',
+      overdue: 'Overdue',
+      pending: 'Pending',
+      completed: 'Completed',
+      active: 'Active',
+      paused: 'Paused',
+      today: 'Today',
+    },
+  },
+
   company: {
     title: 'Companies',
     subtitle: 'The businesses inside the holding, and how each is doing. Choose one to make every screen about it.',

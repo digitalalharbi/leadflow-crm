@@ -1,4 +1,6 @@
 import { BrandLockup, BrandMark, BrandWordmark } from '@/components/brand'
+import { ActionCard, Donut, KpiCard, PipelineFunnel, RankBars, RingProgress, StatusPill, ProgressBar, type StatusKey } from '@/components/visual'
+import { Users, Phone } from 'lucide-react'
 import { Badge, Button, Card, CardBody, CardHeader, Input, Select, StatusBadge, TemperatureBadge, Textarea } from '@/components/ui'
 
 /**
@@ -81,6 +83,48 @@ export function DesignSystemPage() {
             <span className="t-metric">2,481</span>
             <span className="t-caption">عميل محتمل</span>
           </div>
+        </div>
+      </Section>
+
+      <Section title="العناصر البصرية">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Donut
+            centerValue="120"
+            centerLabel="Leads"
+            segments={[
+              { key: 'a', label: 'Meta', value: 60, color: 'var(--brand)' },
+              { key: 'b', label: 'Google', value: 40, color: 'var(--color-status-won)' },
+              { key: 'c', label: 'Other', value: 20, color: 'var(--color-status-lost)' },
+            ]}
+          />
+          <PipelineFunnel
+            steps={[
+              { key: 'n', label: 'New', count: 120 },
+              { key: 'c', label: 'Contacted', count: 80 },
+              { key: 'q', label: 'Qualified', count: 32 },
+              { key: 'w', label: 'Won', count: 9 },
+            ]}
+          />
+          <RankBars
+            items={[
+              { key: 'a', label: 'Meta A', value: 54, note: '41%' },
+              { key: 'b', label: 'Meta B', value: 31, note: '71%' },
+              { key: 'c', label: 'Google', value: 12 },
+            ]}
+          />
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <KpiCard label="Total Leads" value="1,240" icon={Users} />
+          <ActionCard icon={Phone} title="Call now" count={7} tone="bad" to="/work" />
+          <div className="flex items-center gap-4">
+            <RingProgress value={72} tone="good">72</RingProgress>
+            <ProgressBar value={45} className="w-32" />
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2">
+          {(['healthy', 'attention', 'risk', 'overdue', 'pending', 'completed', 'active', 'paused', 'today'] as StatusKey[]).map((k) => (
+            <StatusPill key={k} status={k} />
+          ))}
         </div>
       </Section>
 

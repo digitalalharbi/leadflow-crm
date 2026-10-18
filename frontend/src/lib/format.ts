@@ -164,3 +164,15 @@ export function formatCompact(value: number | null | undefined, lang = 'ar'): st
     maximumFractionDigits: 1,
   }).format(value)
 }
+
+/** SAR 120K, $42K — money that has to fit in a card. */
+export function formatMoneyCompact(value: number | null | undefined, currency = 'SAR', lang = 'ar'): string {
+  if (value === null || value === undefined) return '—'
+
+  return new Intl.NumberFormat(lang.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', {
+    style: 'currency',
+    currency,
+    notation: Math.abs(value) >= 10_000 ? 'compact' : 'standard',
+    maximumFractionDigits: Math.abs(value) >= 10_000 ? 1 : 0,
+  }).format(value)
+}

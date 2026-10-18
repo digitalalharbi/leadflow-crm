@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload,
+  Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload, Rocket,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
@@ -177,6 +177,11 @@ export function IntegrationsPage() {
             <Button variant="outline" icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
               {t('integrations.importCsv')}
             </Button>
+            {/* Readiness lives here, not in the main menu: it is the technical
+                view of the same question this page answers for people. */}
+            <Link to="/readiness" data-testid="open-readiness">
+              <Button variant="ghost" icon={<Rocket className="size-4" />}>{t('nav.readiness')}</Button>
+            </Link>
           </>
         }
       />

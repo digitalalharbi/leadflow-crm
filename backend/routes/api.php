@@ -264,6 +264,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/campaigns', [CampaignController::class, 'index']);
             Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);
             Route::post('/campaigns/sync', [CampaignController::class, 'sync']);
+            Route::get('/campaigns/{uuid}', [CampaignController::class, 'show'])->whereUuid('uuid');
 
             Route::get('/campaign-spend', [CampaignSpendController::class, 'index']);
             Route::post('/campaign-spend', [CampaignSpendController::class, 'store']);

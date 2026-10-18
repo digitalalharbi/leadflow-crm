@@ -1,6 +1,6 @@
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings, ShieldAlert,
-  ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow,
+  ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, Megaphone,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -25,7 +25,7 @@ export interface Navigation {
   all: NavItem[]
 }
 
-const PRIMARY = ['/', '/work', '/leads', '/projects', '/reports']
+const PRIMARY = ['/', '/work', '/leads', '/pipeline', '/campaigns', '/projects', '/reports']
 
 /**
  * Where a person can go, decided once.
@@ -69,6 +69,8 @@ export function useNavigation(): Navigation {
       { to: '/work', labelKey: 'nav.work', Icon: Target },
       { to: '/leads', labelKey: 'nav.leads', Icon: Contact2 },
       { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3 },
+      // Money and ad accounts: the people who may read reports.
+      ...(reports ? [{ to: '/campaigns', labelKey: 'nav.campaigns', Icon: Megaphone }] : []),
       {
         to: '/follow-ups',
         labelKey: 'nav.followUps',
@@ -87,7 +89,6 @@ export function useNavigation(): Navigation {
     ],
     [
       ...(integrations ? [{ to: '/integrations', labelKey: 'nav.integrations', Icon: Plug }] : []),
-      ...(integrations ? [{ to: '/readiness', labelKey: 'nav.readiness', Icon: Rocket }] : []),
       ...(seesAll ? [{ to: '/users', labelKey: 'nav.users', Icon: Users2 }] : []),
     ],
   ].filter((group) => group.length > 0)

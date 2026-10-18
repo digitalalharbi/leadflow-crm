@@ -178,7 +178,7 @@ class CampaignAgentsTest extends TestCase
         $this->actingAs($rep)->postJson('/api/v1/agents/routines/daily_analysis/run')->assertForbidden();
 
         $data = $this->actingAs($this->t['admin'])->getJson('/api/v1/agents')->assertOk()->json('data');
-        $this->assertCount(4, $data['agents']);
+        $this->assertCount(6, $data['agents']);
         $this->assertNotEmpty($data['threads']);
 
         $other = $this->provisionTenant('Other', ['admin_email' => 'x@example.test']);

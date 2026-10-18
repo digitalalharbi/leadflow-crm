@@ -102,6 +102,29 @@ test.describe('الحملات — the campaign command center', () => {
     await expect(panel.getByTestId('agent-analyst')).not.toContainText('لم يعمل بعد')
   })
 
+  test('reports join marketing and sales, by platform, project and company', async ({ page }) => {
+    await page.goto('/reports')
+    await page.getByTestId('tab-marketing').click()
+
+    const tab = page.getByTestId('marketing-sales')
+    await expect(tab.getByTestId('marketing-group-card').first()).toBeVisible()
+    const platforms = await tab.getByTestId('marketing-group-card').count()
+    expect(platforms).toBeGreaterThan(1)
+
+    await tab.getByTestId('marketing-group').getByRole('tab', { name: 'حسب المشروع' }).click()
+    await expect(tab.getByTestId('marketing-group-card').first()).toBeVisible()
+  })
+
+  test('the reports agent writes a weekly report that says where its numbers came from', async ({ page }) => {
+    await page.goto('/reports')
+    await page.getByTestId('tab-weekly').click()
+    await page.getByTestId('generate-report').click()
+
+    await page.getByTestId('weekly-report-card').first().click()
+    const drawer = page.getByTestId('weekly-report-drawer')
+    await expect(drawer.getByTestId('report-notes')).toContainText('الفواتير الرسمية هي المرجع')
+  })
+
   test('a sales rep is not offered campaigns at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
     await page.goto('/')

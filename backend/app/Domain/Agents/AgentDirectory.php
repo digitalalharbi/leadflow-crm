@@ -19,6 +19,8 @@ class AgentDirectory
         'orchestrator' => ['المنسّق', 'يستقبل الطلب أو الـ Routine ويوزعه على الوكيل المختص، ويجمع الردود. لا ينفذ شيئًا بنفسه.', []],
         'analyst' => ['المحلل', 'تحليل يومي، مقارنة بأهداف العميل، كشف الشذوذ وإرهاق الإعلانات. قراءة فقط.', ['get_metrics', 'get_history', 'compare_targets']],
         'leads' => ['وكيل العملاء', 'يقيس جودة العملاء لكل حملة، يرفع أو يخفض تقييمهم، وينبّه عند تراجع الجودة.', ['get_leads', 'score_campaign_quality', 'notify']],
+        'creative' => ['وكيل الإبداع', 'يقيّم الإعلانات: الإرهاق، الضعيف، والأفضل أداءً. قراءة ومسودات فقط.', ['get_ad_creatives', 'get_ad_metrics']],
+        'reports' => ['وكيل التقارير', 'يجهز التقرير الأسبوعي بصيغته الثابتة ويحفظه.', ['build_report', 'save_report']],
         'campaign' => ['وكيل الحملات', 'يقترح الإيقاف والتشغيل وتعديل الميزانية. كل اقتراح ينتظر موافقة بشرية.', ['list_campaigns', 'get_metrics', 'propose_pause', 'propose_resume', 'propose_budget']],
     ];
 
@@ -28,6 +30,8 @@ class AgentDirectory
         'daily_analysis' => ['analyst', '45 8 * * *'],
         'budget_guard' => ['analyst', '0 */2 * * *'],
         'lead_quality_review' => ['leads', '0 9 * * *'],
+        'creative_review' => ['creative', '0 10 * * 0,3'],
+        'weekly_report' => ['reports', '0 14 * * 4'],
     ];
 
     public function ensure(): void

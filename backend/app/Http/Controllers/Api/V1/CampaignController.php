@@ -64,6 +64,45 @@ class CampaignController extends Controller
     }
 
     /**
+     * Marketing and sales in one table, grouped the way the business asks:
+     * by platform, by project, or by company. Each group is the sum of its
+     * campaigns, so drilling down from a company lands on the same numbers.
+     */
+    public function marketingSales(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        [$from, $to] = $this->window($request);
+        $metrics = new CampaignMetrics($request->user(), $from, $to);
+        $rows = collect($metrics->rows());
+        $group = in_array($request->input('group'), ['platform', 'project', 'company'], true) ? $request->input('group') : 'platform';
+
+        $projects = Project::query()->with('company:id,uuid,name')->get(['id', 'uuid', 'name', 'company_id'])->keyBy('uuid');
+
+        $key = fn (array $r) => match ($group) {
+            'platform' => [$r['platform'], null],
+            'project' => [$r['project']['id'] ?? '—', $r['project']['name'] ?? null],
+            'company' => [
+                $projects->get($r['project']['id'] ?? '')?->company?->uuid ?? '—',
+                $projects->get($r['project']['id'] ?? '')?->company?->name,
+            ],
+        };
+
+        $groups = $rows->groupBy(fn ($r) => $key($r)[0])->map(function ($g, $id) use ($metrics, $key) {
+            $totals = $metrics->totals($g->all());
+
+            return ['key' => (string) $id, 'name' => $key($g->first())[1]] + $totals;
+        })->sortByDesc('qualified')->values()->all();
+
+        return ApiResponse::success([
+            'group' => $group,
+            'rows' => $groups,
+            'totals' => $metrics->totals($rows->all()),
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+        ]);
+    }
+
+    /**
      * Every platform, and what is true of it right now.
      *
      * `built` is whether an adapter exists; `connected` is whether the workspace

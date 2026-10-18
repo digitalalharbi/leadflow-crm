@@ -2,6 +2,7 @@
 
 namespace App\Domain\Campaigns;
 
+use App\Domain\Agents\CreativeAgent;
 use App\Domain\Leads\LeadClassification;
 use App\Enums\LeadStatus;
 use App\Models\Campaign;
@@ -10,6 +11,7 @@ use App\Models\ConversionExport;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -160,8 +162,10 @@ class CampaignMetrics
             ->get()
             ->keyBy('ad_ref_id');
 
+        $creative = app(CreativeAgent::class)->adStats(CarbonImmutable::parse($this->to->toDateString()), $campaign->id);
+
         $ads = $campaign->ads()->with(['creative', 'adSet:id,name'])->whereNull('archived_at')->get()
-            ->map(function ($ad) use ($adSpend, $adCrm) {
+            ->map(function ($ad) use ($adSpend, $adCrm, $creative) {
                 $p = $adSpend->get($ad->id);
                 $c = $adCrm->get($ad->id);
                 $crm = $c ? $this->crmRow($c) : $this->emptyCrm();
@@ -173,6 +177,7 @@ class CampaignMetrics
                     'name' => $ad->name,
                     'status' => $ad->status,
                     'ad_set' => $ad->adSet?->name,
+                    'fatigue' => isset($creative[$ad->id]) ? CreativeAgent::fatigue($creative[$ad->id]) : null,
                     'impressions' => $p ? $impressions : null,
                     'clicks' => $p ? (int) $p->clicks : null,
                     'ctr' => $impressions > 0 ? round(((int) $p->clicks) / $impressions * 100, 2) : null,

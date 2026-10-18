@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, RefreshCcw, Type, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, RefreshCcw, Type, Users, Waves } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, ErrorState, PageHeader, Select, Skeleton } from '@/components/ui'
 import { AreaTrend, Donut, PipelineFunnel, RingProgress, StatusPill, healthTone, type DonutSegment, type StatusKey } from '@/components/visual'
@@ -224,6 +224,16 @@ function AdCard({ ad, money, platform }: { ad: CampaignAd; money: (v: number | n
         )}
         <span className="absolute start-2 top-2 size-2.5 rounded-full ring-2 ring-[var(--color-surface)]" style={{ background: platformColor(platform) }} aria-hidden />
         {status && <span className="absolute end-2 top-2"><StatusPill status={status} iconOnly /></span>}
+        {ad.fatigue !== null && ad.fatigue >= 30 && (
+          <span
+            className="absolute bottom-2 start-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--color-warning)] shadow-[var(--shadow-card)]"
+            title={t('agentsPanel.finding.fatigue')}
+            data-testid="ad-fatigue"
+          >
+            <Waves className="size-3" aria-hidden />
+            <span dir="ltr">{ad.fatigue}%</span>
+          </span>
+        )}
       </div>
       <div className="space-y-2 p-3">
         <p className="truncate text-[0.8125rem] font-semibold" dir="auto">{ad.name}</p>

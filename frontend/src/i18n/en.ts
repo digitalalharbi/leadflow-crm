@@ -1389,7 +1389,24 @@ export default {
       spend_spike: 'Spend spike',
       over_ceiling: 'Over the budget ceiling',
       fatigue: 'Ad fatigue',
+      weak_creative: 'Weak creative',
+      winner_creative: 'Best creative',
     },
+  },
+
+  marketingSales: {
+    by: { platform: 'By platform', project: 'By project', company: 'By company' },
+    qualifiedBy: 'Qualified',
+    unassigned: 'Unassigned',
+  },
+  weekly: {
+    title: 'Weekly report',
+    generate: 'Write a report now',
+    none: 'No reports yet — the first is written on Thursday.',
+    platforms: 'Platforms',
+    best: 'Best',
+    worst: 'Costliest per qualified',
+    notes: 'Notes',
   },
 
   visual: {
@@ -1563,7 +1580,7 @@ export default {
       response_fast: 'First contact is quick: median {{median}} minutes against a target of {{target}}.',
       biggest_leak: 'The biggest leak is between "{{from}}" and "{{to}}": {{lost}}% of leads are lost there.',
     },
-    tabs: { overview: 'Overview', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons', drivers: 'Conversion drivers' },
+    tabs: { overview: 'Overview', marketing: 'Marketing + sales', weekly: 'Weekly reports', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons', drivers: 'Conversion drivers' },
     teamHint: 'Measurements per owner — not a ranking of people',
     lostHint: 'Largest reason first — that is the one to fix',
     noLost: 'No lost deals in this period',

@@ -191,6 +191,8 @@ export interface CampaignAd {
 
 export interface CampaignDetailData {
   campaign: CampaignRow
+  /** Per event, how many outcomes were reported back to the platform, by status. */
+  feedback: Record<'qualified' | 'appointment' | 'won', Partial<Record<'sent' | 'pending' | 'awaiting_credentials' | 'failed' | 'unmatchable', number>>>
   ads: CampaignAd[]
   leads_daily: { date: string; count: number }[]
   classification: { key: import('@/types/api').ClassificationKey; count: number }[]

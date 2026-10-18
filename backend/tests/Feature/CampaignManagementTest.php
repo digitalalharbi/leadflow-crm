@@ -307,6 +307,7 @@ class CampaignManagementTest extends TestCase
         $this->assertSame('video', $data['ads'][0]['creative']['format']);
         $this->assertSame(2, array_sum(array_column($data['leads_daily'], 'count')));
         $this->assertSame(2, array_sum(array_column($data['classification'], 'count')));
+        $this->assertArrayHasKey('won', $data['feedback']);
 
         // Another workspace cannot open it.
         $other = $this->provisionTenant('Peek Co', ['admin_email' => 'peek@example.test']);

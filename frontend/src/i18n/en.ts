@@ -1309,6 +1309,7 @@ export default {
     ctr: 'CTR',
     figure: { spend: 'Spend', revenue: 'Revenue', roas: 'ROAS', leads: 'Leads', qualified: 'Qualified', won: 'Won', cpl: 'CPL', cpql: 'Cost / qualified', cpa: 'Cost / deal', revenuePerLead: 'Revenue / lead' },
     qualityScore: 'Lead quality',
+    feedback: { title: 'Told back to the platform', qualified: 'Qualified', appointment: 'Appointments', won: 'Won' },
     insight: {
       no_qualified: 'No qualified leads',
       forms_not_customers: 'Forms, not customers',

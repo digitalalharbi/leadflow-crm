@@ -4,7 +4,9 @@ namespace App\Listeners;
 
 use App\Domain\Conversions\ConversionEvent;
 use App\Domain\Conversions\ConversionRecorder;
+use App\Enums\LeadStatus;
 use App\Events\Contracts\LeadDomainEvent;
+use App\Events\LeadStageChanged;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -29,9 +31,12 @@ class RecordConversionOutcome implements ShouldQueue
 
     public function handle(LeadDomainEvent $event): void
     {
-        $outcome = match ($event->name()) {
-            'lead.qualified' => ConversionEvent::Qualified,
-            'lead.won' => ConversionEvent::Won,
+        $outcome = match (true) {
+            $event->name() === 'lead.qualified' => ConversionEvent::Qualified,
+            $event->name() === 'lead.won' => ConversionEvent::Won,
+            // A booked visit is the signal between "qualified" and "sold", and
+            // the one an algorithm can learn from within days rather than months.
+            $event instanceof LeadStageChanged && $event->to === LeadStatus::Appointment => ConversionEvent::Appointment,
             default => null,
         };
 

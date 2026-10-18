@@ -1529,6 +1529,7 @@ export default {
     ctr: 'نسبة النقر',
     figure: { spend: 'الصرف', revenue: 'الإيراد', roas: 'العائد', leads: 'عملاء', qualified: 'مؤهلون', won: 'صفقات', cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', cpa: 'تكلفة الصفقة', revenuePerLead: 'إيراد العميل' },
     qualityScore: 'جودة العملاء',
+    feedback: { title: 'ما أُبلغت به المنصة', qualified: 'مؤهلون', appointment: 'مواعيد', won: 'صفقات' },
     insight: {
       no_qualified: 'لا عملاء مؤهلين',
       forms_not_customers: 'نماذج لا عملاء',

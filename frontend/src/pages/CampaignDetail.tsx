@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Type, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, RefreshCcw, Type, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, ErrorState, PageHeader, Select, Skeleton } from '@/components/ui'
 import { AreaTrend, Donut, PipelineFunnel, RingProgress, StatusPill, healthTone, type DonutSegment, type StatusKey } from '@/components/visual'
 import { CLASSIFICATION_COLOR, CLASSIFICATION_ORDER } from '@/components/visual/classification'
 import { platformColor } from '@/components/charts'
-import { useCampaign, type CampaignAd, type CampaignRow } from '@/features/campaigns'
+import { useCampaign, type CampaignAd, type CampaignDetailData, type CampaignRow } from '@/features/campaigns'
 import { CampaignActions } from '@/components/campaigns/CampaignActions'
 import { ProposalInbox } from '@/components/campaigns/ProposalInbox'
 import { useApiError } from '@/hooks/useApiError'
@@ -144,6 +144,8 @@ export function CampaignDetailPage() {
         </Card>
       </div>
 
+      <FeedbackLoop feedback={data.feedback} />
+
       <ProposalInbox campaignId={c.id} currency={c.currency ?? data.currency} />
 
       <section>
@@ -157,6 +159,49 @@ export function CampaignDetailPage() {
         )}
       </section>
     </div>
+  )
+}
+
+/**
+ * What this campaign's ad platform has been told about the people it brought:
+ * qualified, booked, sold. It is the loop that lets the platform's algorithm
+ * optimise for customers instead of for form submissions — and an outcome that
+ * could not be matched to a person on the platform is shown as such, not hidden.
+ */
+function FeedbackLoop({ feedback }: { feedback: CampaignDetailData['feedback'] }) {
+  const { t } = useTranslation()
+  const events = ['qualified', 'appointment', 'won'] as const
+  const total = (e: (typeof events)[number]) => Object.values(feedback[e] ?? {}).reduce((a, b) => a + (b ?? 0), 0)
+
+  if (events.every((e) => total(e) === 0)) return null
+
+  return (
+    <Card data-testid="feedback-loop">
+      <CardBody>
+        <h2 className="t-card-title mb-3 flex items-center gap-1.5"><RefreshCcw className="size-4 text-[var(--brand)]" aria-hidden />{t('campaigns.feedback.title')}</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {events.map((e) => {
+            const f = feedback[e] ?? {}
+            const sent = f.sent ?? 0
+            const waiting = (f.pending ?? 0) + (f.awaiting_credentials ?? 0)
+            const lost = (f.unmatchable ?? 0) + (f.failed ?? 0)
+            const all = Math.max(1, sent + waiting + lost)
+
+            return (
+              <div key={e} data-testid={`feedback-${e}`}>
+                <p className="text-[1.25rem] font-bold tabular-nums" dir="ltr">{sent}<span className="text-[0.75rem] font-normal text-[var(--color-ink-muted)]">/{sent + waiting + lost}</span></p>
+                <p className="mb-1.5 text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`campaigns.feedback.${e}`)}</p>
+                <div className="flex h-1.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" aria-hidden>
+                  <span style={{ width: `${(sent / all) * 100}%`, background: 'var(--color-status-won)' }} />
+                  <span style={{ width: `${(waiting / all) * 100}%`, background: 'var(--color-warning)', opacity: 0.6 }} />
+                  <span style={{ width: `${(lost / all) * 100}%`, background: 'var(--color-status-invalid)', opacity: 0.5 }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </CardBody>
+    </Card>
   )
 }
 

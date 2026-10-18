@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, ArrowRight, CalendarPlus, Check, ClipboardCheck, Flame, MessageCircle,
-  Phone, StickyNote, Trash2, UserCheck,
+  ArrowLeft, ArrowRight, CalendarCheck, CalendarPlus, Check, ClipboardCheck, FileText, Flame, Mail,
+  MessageCircle, Phone, StickyNote, Trash2, UserCheck,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,7 +17,7 @@ import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, Dropdown, DropdownItem, ErrorState,
-  Input, Modal, Select, Skeleton, StatusBadge, TemperatureBadge, Textarea,
+  Input, Modal, Select, Skeleton, StatusBadge, Tabs, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
 import { LeadFiles } from '@/components/leads/LeadFiles'
@@ -27,10 +27,13 @@ import { ScoreRing } from '@/components/leads/ScoreRing'
 import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
 import { QualificationCard, QualificationDrawer } from '@/components/leads/QualificationCard'
 import { ProjectAnswers } from '@/components/leads/ProjectAnswers'
-import { LeadMessaging } from '@/components/email/LeadMessaging'
+import { LeadMessaging, rememberedChannel } from '@/components/email/LeadMessaging'
 import { cn } from '@/lib/cn'
-
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'qualified', 'appointment', 'won', 'lost']
+import { CLASSIFICATION_COLOR } from '@/components/visual/classification'
+import { StageTrack } from '@/components/lead/StageTrack'
+import { NextActionBanner } from '@/components/lead/NextActionBanner'
+import { AppointmentDialog } from '@/components/lead/AppointmentDialog'
+import { AppointmentsPanel, CallsPanel, SourceChain } from '@/components/lead/SidePanels'
 
 export function LeadDetailPage() {
   const { id = '' } = useParams()
@@ -55,6 +58,10 @@ export function LeadDetailPage() {
   const [followUpNote, setFollowUpNote] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [qualifyOpen, setQualifyOpen] = useState(false)
+  const [appointmentOpen, setAppointmentOpen] = useState(false)
+  const [channel, setChannel] = useState<'whatsapp' | 'email'>(rememberedChannel)
+  const [history, setHistory] = useState<'timeline' | 'automation'>('timeline')
+  const messagingRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['lead', id],
@@ -190,6 +197,15 @@ export function LeadDetailPage() {
 
   const Back = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft
 
+  function scrollToId(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function openChannel(next: 'whatsapp' | 'email') {
+    setChannel(next)
+    messagingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (isError) {
     return (
       <Card>
@@ -220,6 +236,32 @@ export function LeadDetailPage() {
     company: branding?.company_name ?? '',
   })
 
+  // The banner's button does what its label says, using the same handlers as
+  // the dock — so advice and action cannot drift apart.
+  function actOnNext(action: string) {
+    switch (action) {
+      case 'call_now':
+      case 'follow_up':
+        if (lead.phone) contactMutation.mutate('call')
+        break
+      case 'reply_now':
+        openChannel('whatsapp')
+        break
+      case 'book_meeting':
+        setAppointmentOpen(true)
+        break
+      case 'schedule_follow_up':
+        setFollowUpOpen(true)
+        break
+      case 'review_fit':
+        setQualifyOpen(true)
+        break
+      case 'assign':
+        document.querySelector<HTMLElement>('[data-testid="action-assign"]')?.click()
+        break
+    }
+  }
+
   return (
     <>
       <Link
@@ -230,9 +272,9 @@ export function LeadDetailPage() {
         {t('leads.title')}
       </Link>
 
-      {/* Header: identity + the actions a rep reaches for first. */}
+      {/* Header: who, how serious, where they are, and the actions a rep reaches for first. */}
       <Card className="mb-4">
-        <CardBody className="flex flex-wrap items-start justify-between gap-4">
+        <CardBody className="space-y-4">
           <div className="flex min-w-0 items-start gap-4">
             {/*
               The score leads, because the first question a rep has is whether
@@ -257,10 +299,19 @@ export function LeadDetailPage() {
                 {lead.is_overdue && <Badge tone="danger">{t('leads.overdue')}</Badge>}
               </div>
 
+              {/* Why the system calls this lead what it does, in a few words. */}
+              {lead.classification && (
+                <p className="mt-1 flex items-center gap-1.5 text-[0.75rem] text-[var(--color-ink-muted)]" data-testid="lead-classification">
+                  <span className="size-2 rounded-full" style={{ background: CLASSIFICATION_COLOR[lead.classification.key] }} aria-hidden />
+                  <span className="font-medium text-[var(--color-ink)]">{t(`classification.${lead.classification.key}`)}</span>
+                  <span>· {t(`classification.reason.${lead.classification.reason}`)}</span>
+                </p>
+              )}
+
               {/*
-                The five facts that decide what happens next, on one line:
-                who to call, who owns them, which project, where they came
-                from, and when they were last touched.
+                The facts that decide what happens next, on one line: who to
+                call, who owns them, which project, where they came from, and
+                when they were last touched.
               */}
               <dl className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                 {lead.phone && (
@@ -306,11 +357,12 @@ export function LeadDetailPage() {
           </div>
 
           {/*
-            Every action a rep performs on a lead lives here, above the fold:
-            call, WhatsApp, note, follow-up, temperature and assignment. Nothing
-            that is done dozens of times a day should require scrolling.
+            Every act a rep performs on a lead, one press away and without
+            leaving it: the six on the left are the conversation (call, WhatsApp,
+            email, a file, a visit, a follow-up); the round icons are the rarer
+            ones. Nothing done dozens of times a day needs scrolling to.
           */}
-          <div className="flex flex-wrap gap-2" data-testid="lead-quick-actions">
+          <div className="flex flex-wrap items-center gap-2" data-testid="lead-quick-actions">
             {lead.phone && (
               <a
                 href={`tel:${lead.phone}`}
@@ -345,22 +397,16 @@ export function LeadDetailPage() {
               </a>
             )}
 
-            <Button
-              variant="outline"
-              icon={<ClipboardCheck className="size-4" />}
-              onClick={() => setQualifyOpen(true)}
-              data-testid="action-qualify"
-            >
-              {t('qualification.action')}
+            <Button variant="outline" icon={<Mail className="size-4" />} onClick={() => openChannel('email')} data-testid="action-email">
+              {t('leadView.email')}
             </Button>
 
-            <Button
-              variant="outline"
-              icon={<StickyNote className="size-4" />}
-              onClick={() => setNoteOpen(true)}
-              data-testid="action-note"
-            >
-              {t('leads.addNote')}
+            <Button variant="outline" icon={<FileText className="size-4" />} onClick={() => scrollToId('lead-files')} data-testid="action-file">
+              {t('leadView.file')}
+            </Button>
+
+            <Button variant="outline" icon={<CalendarCheck className="size-4" />} onClick={() => setAppointmentOpen(true)} data-testid="action-appointment">
+              {t('leadView.appointment')}
             </Button>
 
             <Button
@@ -372,18 +418,41 @@ export function LeadDetailPage() {
               {t('leads.setFollowUp')}
             </Button>
 
+            <span className="mx-0.5 hidden h-6 w-px bg-[var(--color-chrome-fill)] sm:block" aria-hidden />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('qualification.action')}
+              title={t('qualification.action')}
+              onClick={() => setQualifyOpen(true)}
+              data-testid="action-qualify"
+              icon={<ClipboardCheck className="size-4" />}
+            />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('leads.addNote')}
+              title={t('leads.addNote')}
+              onClick={() => setNoteOpen(true)}
+              data-testid="action-note"
+              icon={<StickyNote className="size-4" />}
+            />
+
             {/* Temperature: three options, so a dropdown beats a separate page. */}
             <Dropdown
               trigger={({ toggle }) => (
                 <Button
-                  variant="outline"
-                  icon={<Flame className="size-4" />}
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('leads.temperature')}
+                  title={t('leads.temperature')}
                   onClick={toggle}
                   loading={temperatureMutation.isPending}
                   data-testid="action-temperature"
-                >
-                  {t('leads.temperature')}
-                </Button>
+                  icon={<Flame className="size-4" />}
+                />
               )}
             >
               {({ close }) => (
@@ -414,14 +483,15 @@ export function LeadDetailPage() {
               <Dropdown
                 trigger={({ toggle }) => (
                   <Button
-                    variant="outline"
-                    icon={<UserCheck className="size-4" />}
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('leads.assign')}
+                    title={t('leads.assign')}
                     onClick={toggle}
                     loading={assignMutation.isPending}
                     data-testid="action-assign"
-                  >
-                    {t('leads.assign')}
-                  </Button>
+                    icon={<UserCheck className="size-4" />}
+                  />
                 )}
               >
                 {({ close }) => (
@@ -465,150 +535,81 @@ export function LeadDetailPage() {
             )}
 
             {can.manageTenant(user) && (
-              <Button variant="ghost" size="icon" aria-label={t('common.delete')} onClick={() => setDeleteOpen(true)}>
-                <Trash2 className="size-4" />
-              </Button>
+              <Button variant="ghost" size="icon" aria-label={t('common.delete')} title={t('common.delete')} onClick={() => setDeleteOpen(true)} icon={<Trash2 className="size-4" />} />
             )}
           </div>
         </CardBody>
 
-        {/* Stage switcher — one tap, no dropdown hunting. */}
-        <div className="scroll-x border-t border-[var(--color-border)] px-5 py-3">
-          <div className="flex items-center gap-1.5" data-testid="stage-switcher">
-            <span className="me-1 shrink-0 text-[0.75rem] font-medium text-[var(--color-ink-subtle)]">
-              {t('leads.changeStatus')}
-            </span>
-            {STATUSES.map((status) => (
-              <button
-                key={status}
-                type="button"
-                disabled={statusMutation.isPending}
-                onClick={() =>
-                  status === 'lost'
-                    ? setLostOpen(true)
-                    : status === 'won'
-                      ? setWonOpen(true)
-                      : statusMutation.mutate(status)
-                }
-                className={cn(
-                  'rounded-[var(--radius-control)] border px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
-                  lead.status === status
-                    ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]'
-                    : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
-                )}
-              >
-                {t(`status.${status}`)}
-              </button>
-            ))}
-          </div>
+        {/* The path, and the control that moves the lead along it. */}
+        <div className="border-t border-[var(--color-line)] px-4 py-3 sm:px-6">
+          <StageTrack
+            status={lead.status}
+            disabled={statusMutation.isPending}
+            onPick={(status) =>
+              status === 'lost' ? setLostOpen(true) : status === 'won' ? setWonOpen(true) : statusMutation.mutate(status)
+            }
+          />
         </div>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/*
-          Ordered by what a rep does, not by what the database holds: see
-          where it stands, qualify, talk, note. The journey leads because it is
-          orientation rather than history — it is the only thing on the page
-          that says how long this lead has been waiting right now. Attribution and the contact
-          details sit in the sidebar — read occasionally, acted on rarely.
+          Ordered by what a rep does: see what to do, talk, send, qualify, then
+          history. The side column is orientation — how the lead has moved,
+          who has rung, what is booked, where it came from — read at a glance
+          and acted on rarely.
         */}
         <div className="space-y-4 lg:col-span-2">
-          <JourneyCard lead={lead} />
+          <NextActionBanner action={data.next_action} onAct={actOnNext} />
 
-          <QualificationCard lead={lead} />
-          <ProjectAnswers lead={lead} />
-
-          <LeadMessaging lead={lead} />
+          <div ref={messagingRef}>
+            <LeadMessaging lead={lead} channel={channel} onChannel={setChannel} />
+          </div>
 
           {/*
             Under the conversation, because sending a brochure is the same kind
             of act as sending a message, and the answer to "did they open it"
             belongs next to "did they reply".
           */}
-          <LeadFiles lead={lead} />
+          <div id="lead-files">
+            <LeadFiles lead={lead} />
+          </div>
 
-          <Card>
-            <CardHeader
-              title={t('leads.notes')}
-              action={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={<StickyNote className="size-4" />}
-                  onClick={() => setNoteOpen(true)}
-                >
-                  {t('leads.addNote')}
-                </Button>
-              }
-            />
-            {notes.length === 0 ? (
-              <p className="px-5 py-8 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
-                {t('leads.noNotes')}
-              </p>
-            ) : (
-              <CardBody>
-                <ul className="space-y-2.5" data-testid="notes-list">
-                  {notes.map((entry) => (
-                    <li key={entry.id} className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3">
-                      <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
-                      <p className="mt-1.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
-                        {entry.user?.name} · {formatRelative(entry.created_at, i18n.language)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </CardBody>
-            )}
-          </Card>
-
-          <Card>
-            <CardHeader title={t('leads.timeline_')} />
-            <LeadTimeline activities={activities} />
-          </Card>
+          <QualificationCard lead={lead} />
+          <ProjectAnswers lead={lead} />
 
           {/*
-            Below the human timeline, not inside it. What a rep did and what a
-            rule did are different kinds of fact, and interleaving them makes
-            the automation look like somebody's work.
+            What a rep did and what a rule did are different kinds of fact, so
+            they are two views of one card rather than one interleaved list —
+            interleaving makes the automation look like somebody's work.
           */}
           <Card>
-            <CardHeader
-              title={t('automation.trace.title')}
-              description={t('automation.trace.description')}
-            />
-            <AutomationTrace leadId={lead.id} />
+            <div className="px-4 pt-4">
+              <Tabs
+                testId="history-tabs"
+                value={history}
+                onChange={setHistory}
+                items={[
+                  { key: 'timeline', label: t('leadView.timeline') },
+                  { key: 'automation', label: t('leadView.automation') },
+                ]}
+              />
+            </div>
+            {history === 'timeline' ? (
+              <LeadTimeline activities={activities} />
+            ) : (
+              <AutomationTrace leadId={lead.id} />
+            )}
           </Card>
         </div>
 
         <div className="space-y-4">
-          <DetailCard title={t('leads.contactInfo')}>
-            <Row label={t('leads.phone')} value={lead.phone} ltr />
-            <Row label={t('leads.email')} value={lead.email} ltr />
-            <Row label={t('leads.city')} value={lead.city} />
-          </DetailCard>
+          <JourneyCard lead={lead} />
 
-          {/* Interest used to be repeated here; the qualification card above
-              shows the same answers, editable, so this was two places to read
-              and one place to change. */}
-          <DetailCard title={t('leads.interest')}>
-            <Row label={t('leads.project')} value={lead.project?.name} />
-            <Row label={t('leads.firstContact')} value={formatDateTime(lead.first_contact_at, i18n.language)} />
-            <Row label={t('leads.firstResponse')} value={formatDateTime(lead.first_response_at, i18n.language)} />
-          </DetailCard>
-
-          <DetailCard title={t('leads.attribution')}>
-            <Row
-              label={t('leads.platform')}
-              value={lead.platform ? t(`platforms.${lead.platform}`, { defaultValue: lead.platform }) : null}
-            />
-            <Row label={t('leads.campaign')} value={lead.campaign_name} />
-            <Row label={t('leads.adset')} value={lead.adset_name} />
-            <Row label={t('leads.ad')} value={lead.ad_name} />
-            <Row label={t('leads.form')} value={lead.form_name} />
-          </DetailCard>
+          <CallsPanel calls={data.calls} />
+          <AppointmentsPanel appointments={data.appointments} />
 
           <DetailCard title={t('followUps.title')}>
-            <Row label={t('leads.lastContact')} value={formatDateTime(lead.last_contact_at, i18n.language)} />
             <Row
               label={t('leads.nextFollowUp')}
               value={lead.next_follow_up_at ? formatDateTime(lead.next_follow_up_at, i18n.language) : null}
@@ -632,6 +633,43 @@ export function LeadDetailPage() {
             )}
           </DetailCard>
 
+          <Card>
+            <CardHeader
+              title={t('leads.notes')}
+              action={
+                <Button size="sm" variant="ghost" icon={<StickyNote className="size-4" />} onClick={() => setNoteOpen(true)}>
+                  {t('leads.addNote')}
+                </Button>
+              }
+            />
+            {notes.length === 0 ? (
+              <p className="px-5 py-6 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+                {t('leads.noNotes')}
+              </p>
+            ) : (
+              <CardBody>
+                <ul className="space-y-2.5" data-testid="notes-list">
+                  {notes.map((entry) => (
+                    <li key={entry.id} className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3">
+                      <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
+                      <p className="mt-1.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
+                        {entry.user?.name} · {formatRelative(entry.created_at, i18n.language)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            )}
+          </Card>
+
+          <SourceChain lead={lead} />
+
+          <DetailCard title={t('leads.contactInfo')}>
+            <Row label={t('leads.phone')} value={lead.phone} ltr />
+            <Row label={t('leads.email')} value={lead.email} ltr />
+            <Row label={t('leads.city')} value={lead.city} />
+          </DetailCard>
+
           {lead.status === 'lost' && lead.lost_reason && (
             <DetailCard title={t('leads.lostReason')}>
               <Row label={t('leads.lostReason')} value={lead.lost_reason.label} />
@@ -640,6 +678,13 @@ export function LeadDetailPage() {
           )}
         </div>
       </div>
+
+      <AppointmentDialog
+        leadId={lead.id}
+        open={appointmentOpen}
+        onClose={() => setAppointmentOpen(false)}
+        onBooked={refresh}
+      />
 
       {/* Reachable from the quick actions as well as the card, because a rep on
           a call should not have to find the card first. */}

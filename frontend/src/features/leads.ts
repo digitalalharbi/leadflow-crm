@@ -1,6 +1,6 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
 import type {
-  FollowUp, Lead, LeadActivity, LeadListItem, LeadNote, LeadStatus,
+  FollowUp, Lead, LeadActivity, LeadAppointment, LeadCall, LeadListItem, LeadNote, LeadStatus, NextAction,
   LeadTemperature, PaginationMeta, Project, ProjectMetrics, Ref,
 } from '@/types/api'
 
@@ -42,6 +42,9 @@ export interface LeadDetailResponse {
   activities: LeadActivity[]
   notes: LeadNote[]
   follow_ups: FollowUp[]
+  next_action: NextAction
+  calls: LeadCall[]
+  appointments: LeadAppointment[]
 }
 
 export function fetchLead(id: string) {

@@ -601,3 +601,33 @@ export interface EmailSettings {
   status: string
   last_error: string | null
 }
+
+
+/** A call made from the lead screen, newest first. */
+export interface LeadCall {
+  id: string
+  direction: string
+  status: 'initiated' | 'ringing' | 'answered' | 'completed' | 'failed' | 'no_answer'
+  outcome: string | null
+  duration_seconds: number | null
+  by: string | null
+  at: string | null
+}
+
+export interface LeadAppointment {
+  id: string
+  scheduled_at: string
+  duration_minutes: number
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  location: string | null
+  notes: string | null
+  outcome_note: string | null
+  is_past: boolean
+  assignee?: { id: string; name: string } | null
+}
+
+export interface NextAction {
+  action: string
+  urgency: 'critical' | 'high' | 'medium' | 'low'
+  reason: string
+}

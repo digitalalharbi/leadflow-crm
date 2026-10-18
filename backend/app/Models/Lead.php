@@ -298,6 +298,11 @@ class Lead extends Model
         return $this->hasMany(FollowUp::class);
     }
 
+    public function calls(): HasMany
+    {
+        return $this->hasMany(Call::class);
+    }
+
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class)->orderBy('scheduled_at');

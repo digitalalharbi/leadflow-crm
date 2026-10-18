@@ -15,13 +15,27 @@ import type { Lead } from '@/types/api'
  */
 let lastChannel: 'whatsapp' | 'email' = 'whatsapp'
 
-export function LeadMessaging({ lead }: { lead: Lead }) {
+/** The channel last used in this visit, so a page that controls the tabs starts on it too. */
+export const rememberedChannel = (): 'whatsapp' | 'email' => lastChannel
+
+export function LeadMessaging({
+  lead,
+  channel: controlled,
+  onChannel,
+}: {
+  lead: Lead
+  /** Set by a parent that also has buttons which open a channel (the lead's action dock). */
+  channel?: 'whatsapp' | 'email'
+  onChannel?: (channel: 'whatsapp' | 'email') => void
+}) {
   const { t } = useTranslation()
-  const [channel, setChannel] = useState<'whatsapp' | 'email'>(lastChannel)
+  const [own, setOwn] = useState<'whatsapp' | 'email'>(lastChannel)
+  const channel = controlled ?? own
 
   const choose = (next: 'whatsapp' | 'email') => {
     lastChannel = next
-    setChannel(next)
+    setOwn(next)
+    onChannel?.(next)
   }
 
   return (

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
+use App\Domain\Leads\NextBestAction;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeLeadStatusRequest;
 use App\Http\Requests\StoreLeadRequest;
 use App\Http\Requests\UpdateLeadRequest;
+use App\Http\Resources\AppointmentResource;
 use App\Http\Resources\FollowUpResource;
 use App\Http\Resources\LeadActivityResource;
 use App\Http\Resources\LeadListResource;
@@ -25,6 +27,7 @@ use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\LostReason;
 use App\Models\Project;
+use App\Models\TenantSetting;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\ActivityLogger;
@@ -148,7 +151,40 @@ class LeadController extends Controller
             'follow_ups' => FollowUpResource::collection(
                 $lead->followUps()->with('assignee:id,uuid,name')->orderBy('due_at')->get()
             ),
+            // What to do next, decided by the same rules the work queue uses, so
+            // the lead screen and the queue cannot give two answers.
+            'next_action' => $this->nextAction($request, $lead),
+            // The rep's name comes from a join, not an eager load: an eager load is
+            // skipped when there are no calls, which would make a quiet lead cost
+            // fewer queries than a busy one and break the constant-cost guarantee.
+            'calls' => $lead->calls()
+                ->leftJoin('users', 'users.id', '=', 'calls.user_id')
+                ->select('calls.*', 'users.name as by_name')
+                ->latest('calls.id')->limit(10)->get()->map(fn ($call) => [
+                    'id' => $call->uuid,
+                    'direction' => $call->direction,
+                    'status' => $call->status,
+                    'outcome' => $call->outcome,
+                    'duration_seconds' => $call->duration_seconds,
+                    'by' => $call->by_name,
+                    'at' => ($call->started_at ?? $call->created_at)?->toIso8601String(),
+                ])->all(),
+            'appointments' => AppointmentResource::collection(
+                $lead->appointments()->orderByDesc('scheduled_at')->limit(10)->get()
+            ),
         ]);
+    }
+
+    /** @return array{action:string,urgency:string,reason:string} */
+    private function nextAction(Request $request, Lead $lead): array
+    {
+        // A direct read rather than `$user->tenant->settings`: a lazy relation costs
+        // queries only the first time it is touched, which makes cost depend on
+        // what the request happened to load before.
+        $target = (int) (TenantSetting::query()->value('first_contact_target_minutes') ?? 30);
+        $result = app(NextBestAction::class)->for($lead, $target);
+
+        return ['action' => $result['action'], 'urgency' => $result['urgency'], 'reason' => $result['reason']];
     }
 
     /**

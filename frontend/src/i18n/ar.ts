@@ -1442,6 +1442,37 @@ export default {
     leads: 'عميل',
   },
 
+  leadView: {
+    email: 'بريد',
+    file: 'ملف',
+    appointment: 'موعد',
+    more: 'المزيد',
+    booked: 'تم حجز الموعد.',
+    bookTitle: 'حجز موعد',
+    book: 'احجز',
+    when: 'التاريخ والوقت',
+    duration: 'المدة',
+    minutes: '{{count}} دقيقة',
+    location: 'المكان',
+    calls: 'المكالمات',
+    noCalls: 'لا مكالمات بعد',
+    appointments: 'المواعيد',
+    noAppointments: 'لا مواعيد',
+    source: 'المصدر',
+    history: 'السجل',
+    timeline: 'سجل النشاط',
+    automation: 'الأتمتة',
+    callStatus: {
+      initiated: 'بدأت',
+      ringing: 'ترن',
+      answered: 'أُجيبت',
+      completed: 'تمت',
+      failed: 'فشلت',
+      no_answer: 'لم يرد',
+    },
+    chain: { platform: 'المنصة', campaign: 'الحملة', adset: 'المجموعة', ad: 'الإعلان', form: 'النموذج' },
+  },
+
   visual: {
     status: {
       healthy: 'سليم',

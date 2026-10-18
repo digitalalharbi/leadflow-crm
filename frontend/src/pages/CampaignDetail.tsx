@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Type, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, ErrorState, PageHeader, Select, Skeleton } from '@/components/ui'
-import { AreaTrend, Donut, PipelineFunnel, StatusPill, type DonutSegment, type StatusKey } from '@/components/visual'
+import { AreaTrend, Donut, PipelineFunnel, RingProgress, StatusPill, healthTone, type DonutSegment, type StatusKey } from '@/components/visual'
 import { CLASSIFICATION_COLOR, CLASSIFICATION_ORDER } from '@/components/visual/classification'
 import { platformColor } from '@/components/charts'
 import { useCampaign, type CampaignAd, type CampaignRow } from '@/features/campaigns'
@@ -113,7 +113,17 @@ export function CampaignDetailPage() {
       <div className="grid gap-3 lg:grid-cols-12">
         <Card className="lg:col-span-5">
           <CardBody>
-            <h2 className="t-card-title mb-3">{t('campaigns.quality')}</h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="t-card-title">{t('campaigns.quality')}</h2>
+              {c.quality_score !== null && (
+                <span className="flex items-center gap-2 text-[0.75rem] text-[var(--color-ink-muted)]" data-testid="detail-quality-score">
+                  {t('campaigns.qualityScore')}
+                  <RingProgress size={40} thickness={5} value={c.quality_score} tone={healthTone(c.quality_score)}>
+                    <span className="text-[0.75rem] font-bold tabular-nums">{c.quality_score}</span>
+                  </RingProgress>
+                </span>
+              )}
+            </div>
             <PipelineFunnel
               testId="campaign-detail-funnel"
               steps={(['leads', 'valid', 'engaged', 'qualified', 'appointments', 'won'] as const).map((key) => ({ key, label: t(`campaigns.stage.${key}`), count: c[key] }))}

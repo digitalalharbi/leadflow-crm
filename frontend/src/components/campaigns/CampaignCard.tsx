@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MiniTrend } from '@/components/charts/MiniTrend'
 import { platformColor } from '@/components/charts'
-import { StatusPill, type StatusKey } from '@/components/visual'
+import { RingProgress, StatusPill, healthTone, type StatusKey } from '@/components/visual'
 import type { CampaignRow } from '@/features/campaigns'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 
@@ -46,6 +46,13 @@ export function CampaignCard({ campaign, currency }: { campaign: CampaignRow; cu
             {campaign.project && ` · ${campaign.project.name}`}
           </p>
         </div>
+        {campaign.quality_score !== null && (
+          <span title={t('campaigns.qualityScore')} data-testid="quality-score">
+            <RingProgress size={34} thickness={4} value={campaign.quality_score} tone={healthTone(campaign.quality_score)}>
+              <span className="text-[0.6875rem] font-bold tabular-nums">{campaign.quality_score}</span>
+            </RingProgress>
+          </span>
+        )}
         {status && <StatusPill status={status} iconOnly />}
       </div>
 

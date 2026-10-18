@@ -15,6 +15,9 @@ export interface CampaignRow {
   daily_budget: number | null
   currency: string | null
   last_synced_at: string | null
+  /** 0–100, the Leads Agent's answer to "forms or customers?"; null until judged. */
+  quality_score: number | null
+  quality_previous: number | null
   spend_source: 'platform' | 'manual' | null
   impressions: number | null
   clicks: number | null

@@ -1308,6 +1308,7 @@ export default {
     noAds: 'No ads known for this campaign yet.',
     ctr: 'CTR',
     figure: { spend: 'Spend', revenue: 'Revenue', roas: 'ROAS', leads: 'Leads', qualified: 'Qualified', won: 'Won', cpl: 'CPL', cpql: 'Cost / qualified', cpa: 'Cost / deal', revenuePerLead: 'Revenue / lead' },
+    qualityScore: 'Lead quality',
     insight: {
       no_qualified: 'No qualified leads',
       forms_not_customers: 'Forms, not customers',

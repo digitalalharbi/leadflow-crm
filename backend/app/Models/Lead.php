@@ -298,6 +298,12 @@ class Lead extends Model
         return $this->hasMany(FollowUp::class);
     }
 
+    /** The campaign row this lead was attributed to (see CampaignResolver). */
+    public function campaignRef(): BelongsTo
+    {
+        return $this->belongsTo(Campaign::class, 'campaign_ref_id');
+    }
+
     public function calls(): HasMany
     {
         return $this->hasMany(Call::class);

@@ -87,6 +87,8 @@ class CampaignMetrics
                 'daily_budget' => $campaign->daily_budget_minor !== null ? round($campaign->daily_budget_minor / 100, 2) : null,
                 'currency' => $campaign->currency,
                 'last_synced_at' => $campaign->last_synced_at?->toIso8601String(),
+                'quality_score' => $campaign->quality_score,
+                'quality_previous' => $campaign->quality_previous,
                 'spend_source' => $spendSource,
                 'impressions' => $p['impressions'] ?? null,
                 'clicks' => $p['clicks'] ?? null,

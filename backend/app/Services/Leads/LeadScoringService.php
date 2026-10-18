@@ -122,6 +122,17 @@ class LeadScoringService
 
         $score += $this->engagement($lead, $add);
 
+        // The campaign's track record, once there is one (see LeadsAgent).
+        $quality = $lead->campaign_ref_id ? $lead->campaignRef?->quality_score : null;
+
+        if ($quality !== null && $quality >= 70) {
+            $add('campaign_quality_high', 'حملة تجلب عملاء جادين', $secondary['campaign_quality_high']);
+            $score += $secondary['campaign_quality_high'];
+        } elseif ($quality !== null && $quality < 30) {
+            $add('campaign_quality_low', 'حملة أغلب عملائها غير جادين', $secondary['campaign_quality_low']);
+            $score += $secondary['campaign_quality_low'];
+        }
+
         /*
          * What this project asked and what the lead said. Added after
          * engagement and before the clamp, so a project's own questions move the

@@ -18,6 +18,7 @@ class AgentDirectory
     public const AGENTS = [
         'orchestrator' => ['المنسّق', 'يستقبل الطلب أو الـ Routine ويوزعه على الوكيل المختص، ويجمع الردود. لا ينفذ شيئًا بنفسه.', []],
         'analyst' => ['المحلل', 'تحليل يومي، مقارنة بأهداف العميل، كشف الشذوذ وإرهاق الإعلانات. قراءة فقط.', ['get_metrics', 'get_history', 'compare_targets']],
+        'leads' => ['وكيل العملاء', 'يقيس جودة العملاء لكل حملة، يرفع أو يخفض تقييمهم، وينبّه عند تراجع الجودة.', ['get_leads', 'score_campaign_quality', 'notify']],
         'campaign' => ['وكيل الحملات', 'يقترح الإيقاف والتشغيل وتعديل الميزانية. كل اقتراح ينتظر موافقة بشرية.', ['list_campaigns', 'get_metrics', 'propose_pause', 'propose_resume', 'propose_budget']],
     ];
 
@@ -26,6 +27,7 @@ class AgentDirectory
         'hourly_sync' => ['orchestrator', '0 * * * *'],
         'daily_analysis' => ['analyst', '45 8 * * *'],
         'budget_guard' => ['analyst', '0 */2 * * *'],
+        'lead_quality_review' => ['leads', '0 9 * * *'],
     ];
 
     public function ensure(): void

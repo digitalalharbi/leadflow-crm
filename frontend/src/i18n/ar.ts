@@ -101,6 +101,15 @@ export default {
     profile: 'الملف الشخصي',
   },
   work: {
+    signal: {
+      replied: 'ردّ على واتساب',
+      brochure_opened: 'فتح البروشور',
+      email_clicked: 'ضغط رابط البريد',
+      email_opened: 'فتح البريد',
+      qualified: 'أكمل التأهيل',
+      priority: 'أولوية',
+      no_reply: 'لم يرد على الأتمتة',
+    },
     pulse: {
       automated: 'تتولاهم الأتمتة',
       reached: 'وصلهم تواصل',
@@ -1543,6 +1552,17 @@ export default {
     invalid: 'غير صالح',
     no_response: 'بلا استجابة',
   },
+  pack: {
+    title: 'حزمة الأتمتة للمشروع',
+    hint: 'سبع إجابات فقط، والمسار يعمل لعملاء هذا المشروع وحده.',
+    journeyOn: 'رحلة العميل تعمل',
+    journeyOff: 'رحلة العميل موقوفة',
+    complete: 'أكمل الحزمة',
+    completed: 'اكتملت الحزمة — رسائل المشروع وأسئلته جاهزة.',
+    servicePlaceholder: 'مثال: فلل، شقق، أراضٍ',
+    step: { service: 'الخدمة', language: 'اللغة', brochure: 'البروشور', whatsapp_template: 'رسالة واتساب', email_template: 'رسالة البريد', qualification: 'أسئلة التأهيل', sales_team: 'فريق المبيعات' },
+    detail: { project: 'خاصة بالمشروع', general: 'عامة', everyone: 'كل الفريق', ar: 'العربية', en: 'الإنجليزية' },
+  },
   workspace: {
     why: { title: 'لماذا هذا العميل', campaign: 'الحملة' },
     automation: {
@@ -1840,6 +1860,8 @@ export default {
       over_target: 'تكلفة المؤهل فوق الهدف',
       cpl_over_target: 'تكلفة العميل فوق الهدف',
       outperforming: 'أفضل من الهدف',
+      low_qualified_rate: 'نسبة المؤهلين أقل من 10%',
+      many_invalid: 'عملاء غير صالحين كثيرون',
       quality_drop: 'تراجع الجودة',
       spend_spike: 'قفزة في الصرف',
       over_ceiling: 'فوق سقف الميزانية',

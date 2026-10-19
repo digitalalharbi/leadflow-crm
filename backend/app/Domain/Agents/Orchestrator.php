@@ -7,6 +7,7 @@ use App\Domain\Campaigns\CampaignSyncer;
 use App\Enums\Role;
 use App\Models\AdConnection;
 use App\Models\AgentThread;
+use App\Models\AutomationActionLog;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\Routine;
@@ -30,6 +31,8 @@ class Orchestrator
         'cpl_over_target' => 'تكلفة العميل فوق الهدف',
         'outperforming' => 'أفضل من الهدف',
         'quality_drop' => 'تراجع جودة العملاء',
+        'low_qualified_rate' => 'تحذير جودة: نسبة المؤهلين أقل من 10%',
+        'many_invalid' => 'عملاء غير صالحين كثيرون — راجِع الحملة',
         'spend_spike' => 'قفزة في الصرف',
         'over_ceiling' => 'ميزانية فوق السقف',
         'fatigue' => 'إرهاق الإعلان',
@@ -74,6 +77,8 @@ class Orchestrator
                 'lead_quality_review' => $this->leadQuality($thread),
                 'creative_review' => $this->creativeReview($thread),
                 'weekly_report' => $this->weeklyReport($thread, $projectId),
+                'hot_lead_review' => $this->hotLeads($thread),
+                'stale_lead_review' => $this->staleLeads($thread),
             };
 
             Routine::query()->where('key', $routine)->update(['last_run_at' => now(), 'last_status' => 'ok', 'last_summary' => $summary]);
@@ -155,9 +160,37 @@ class Orchestrator
 
         if ($drops !== []) {
             $this->alert('leads', 'جودة العملاء', $this->describe($drops));
+
+            foreach ($drops as $finding) {
+                AutomationActionLog::create([
+                    'rule_name' => 'جودة عملاء الحملة', 'trigger' => 'routine.lead_quality_review',
+                    'action_type' => 'campaign_quality_warning', 'channel' => 'team', 'mode' => 'recommend',
+                    'result' => AutomationActionLog::NEEDS_HUMAN,
+                    'after' => $finding->campaign->name ?? null,
+                    'description' => $this->describe([$finding]), 'happened_at' => now(),
+                ]);
+            }
         }
 
         return sprintf('%d حملة · %d تراجع', $scored, count($drops));
+    }
+
+    private function hotLeads(AgentThread $thread): string
+    {
+        $raised = app(SalesAgent::class)->hotLeadReview();
+        $summary = sprintf('نُبّه %d مندوب · %d للإدارة', $raised['owners'], $raised['managers']);
+        $thread->say('agent', 'sales', $summary, $raised);
+
+        return $summary;
+    }
+
+    private function staleLeads(AgentThread $thread): string
+    {
+        $revived = app(FollowUpAgent::class)->staleLeadReview();
+        $summary = sprintf('عاد %d عميل راكد إلى الرعاية الآلية', $revived);
+        $thread->say('agent', 'follow_up', $summary, ['revived' => $revived]);
+
+        return $summary;
     }
 
     private function creativeReview(AgentThread $thread): string

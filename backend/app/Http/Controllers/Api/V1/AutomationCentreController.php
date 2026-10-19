@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Agents\AgentDirectory;
 use App\Domain\Automation\ActionWords;
 use App\Domain\Automation\AutomationCentre;
+use App\Domain\Automation\AutomationPack;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationActionLog;
 use App\Models\AutomationRule;
@@ -112,6 +113,30 @@ class AutomationCentreController extends Controller
         ]);
 
         return ApiResponse::success(['routines' => $system->concat($agents)->values()->all()]);
+    }
+
+    public function pack(string $uuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('viewAny', AutomationRule::class);
+
+        return ApiResponse::success(['pack' => app(AutomationPack::class)->status($project)]);
+    }
+
+    public function completePack(Request $request, string $uuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('create', AutomationRule::class);
+
+        $data = $request->validate([
+            'service' => ['sometimes', 'nullable', 'string', 'max:160'],
+            'language' => ['sometimes', 'nullable', Rule::in(['ar', 'en'])],
+        ]);
+
+        $pack = app(AutomationPack::class)->complete($project, $data);
+        $this->audit->log('project.automation_pack', $request->user(), null, ['project' => $project->name]);
+
+        return ApiResponse::success(['pack' => $pack]);
     }
 
     public function scoring(string $uuid)

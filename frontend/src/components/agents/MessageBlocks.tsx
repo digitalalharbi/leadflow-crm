@@ -11,7 +11,7 @@ import { formatMoneyCompact, formatNumber } from '@/lib/format'
 
 const FINDING_ICON: Record<string, LucideIcon> = {
   no_results: ShieldAlert, over_target: Gauge, cpl_over_target: Gauge, outperforming: Rocket,
-  quality_drop: TrendingDown, spend_spike: Activity, over_ceiling: AlertTriangle, fatigue: Waves,
+  quality_drop: TrendingDown, low_qualified_rate: TrendingDown, many_invalid: TrendingDown, spend_spike: Activity, over_ceiling: AlertTriangle, fatigue: Waves,
   weak_creative: AlertTriangle, winner_creative: Rocket,
 }
 

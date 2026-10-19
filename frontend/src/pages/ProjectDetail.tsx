@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, GitBranch, GitMerge, GitPullRequest, Rocket, Tag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -54,7 +54,10 @@ export function ProjectDetailPage() {
    * CI runs and deployments, with the tab row pointing at the tab they were not
    * on.
    */
-  const [tab, setTab] = useState<ProjectTab>('overview')
+  // The tab can be linked to — the automation pack points at files and questions.
+  const [searchParams] = useSearchParams()
+  const linked = searchParams.get('tab') as ProjectTab | null
+  const [tab, setTab] = useState<ProjectTab>(linked && (TABS as readonly string[]).includes(linked) ? linked : 'overview')
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],

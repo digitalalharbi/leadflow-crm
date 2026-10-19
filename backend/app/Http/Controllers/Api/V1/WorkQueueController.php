@@ -8,6 +8,7 @@ use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadListResource;
 use App\Models\Lead;
+use App\Models\LeadEngagement;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -93,6 +94,7 @@ class WorkQueueController extends Controller
              */
             'queue' => $this->queue($ranked),
             'timeline' => $this->timeline($top['lead']),
+            'signals' => $this->signals($top['lead']),
         ]);
     }
 
@@ -131,6 +133,30 @@ class WorkQueueController extends Controller
      * rep dials, which is the one piece of history that changes what they say
      * when the call connects.
      */
+    /**
+     * Why this lead, in what the customer did: replied, opened the brochure,
+     * opened or clicked an email, answered the questions. The facts behind
+     * the reason, as a row of chips a rep reads in a second.
+     */
+    private function signals(Lead $lead): array
+    {
+        $recent = LeadEngagement::where('lead_id', $lead->id)
+            ->where('happened_at', '>=', now()->subDays(7))
+            ->pluck('type')
+            ->unique()
+            ->all();
+
+        return array_values(array_filter([
+            $lead->first_response_at ? 'replied' : null,
+            in_array(LeadEngagement::FILE_OPENED, $recent, true) ? 'brochure_opened' : null,
+            in_array(LeadEngagement::LINK_CLICKED, $recent, true) ? 'email_clicked' : null,
+            in_array(LeadEngagement::EMAIL_OPENED, $recent, true) ? 'email_opened' : null,
+            $lead->qualification_status?->value === 'qualified' ? 'qualified' : null,
+            $lead->is_priority ? 'priority' : null,
+            $lead->needs_human_reason === 'no_reply' ? 'no_reply' : null,
+        ]));
+    }
+
     private function timeline(Lead $lead): array
     {
         return $lead->activities()

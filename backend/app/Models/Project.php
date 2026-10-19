@@ -22,7 +22,7 @@ class Project extends Model
     }
 
     protected $fillable = [
-        'company_id', 'name', 'developer_name', 'location', 'starting_price', 'status', 'notes',
+        'company_id', 'name', 'service', 'language', 'developer_name', 'location', 'starting_price', 'status', 'notes',
     ];
 
     protected function casts(): array

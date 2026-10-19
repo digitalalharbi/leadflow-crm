@@ -33,7 +33,7 @@ export function useProposals(params: { status?: ProposalStatus[]; campaign_id?: 
   })
 }
 
-export function propose(body: { action: string; campaign_id?: string; payload?: Record<string, unknown>; reason: string; expected_impact?: string }) {
+export function propose(body: { action: string; campaign_id?: string; ad_set_id?: string; ad_id?: string; account_id?: string; payload?: Record<string, unknown>; reason: string; expected_impact?: string }) {
   return apiPost<{ proposal: Proposal }>('/action-proposals', body)
 }
 

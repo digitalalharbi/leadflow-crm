@@ -13,6 +13,7 @@ export interface DraftView {
   kind: 'copy' | 'hook' | 'variation'
   items: string[]
   rationale: string | null
+  source?: 'agent' | 'user'
   status: string
   flags: string[]
 }

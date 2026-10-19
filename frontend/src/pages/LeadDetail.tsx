@@ -21,8 +21,8 @@ import {
 } from '@/components/ui'
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
+import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
 import { LeadFiles } from '@/components/leads/LeadFiles'
-import { LeadTimeline } from '@/components/leads/LeadTimeline'
 import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
 import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
@@ -67,7 +67,7 @@ export function LeadDetailPage() {
   const [history, setHistory] = useState<'timeline' | 'automation'>('timeline')
   const messagingRef = useRef<HTMLDivElement>(null)
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, dataUpdatedAt, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['lead', id],
     queryFn: () => fetchLead(id),
     enabled: Boolean(id),
@@ -231,7 +231,7 @@ export function LeadDetailPage() {
     )
   }
 
-  const { lead, activities, notes, follow_ups: followUps } = data
+  const { lead, notes, follow_ups: followUps } = data
 
   const waHref = whatsappLink(lead.whatsapp, branding ? undefined : null, {
     name: lead.full_name,
@@ -632,7 +632,7 @@ export function LeadDetailPage() {
               />
             </div>
             {history === 'timeline' ? (
-              <LeadTimeline activities={activities} />
+              <JourneyTimeline leadId={lead.id} version={dataUpdatedAt} />
             ) : (
               <AutomationTrace leadId={lead.id} />
             )}

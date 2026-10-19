@@ -46,6 +46,15 @@ export default {
     settings: 'Settings', superAdmin: 'Platform', notifications: 'Notifications', profile: 'Profile',
     platformConsole: 'Platform console',
   },
+  leadJourney: {
+    filter: 'Filter by kind',
+    empty: 'Nothing has happened yet.',
+    kind: {
+      source: 'Source', automation: 'Automation', whatsapp: 'WhatsApp', email: 'Email', file: 'File', call: 'Call',
+      appointment: 'Appointment', followup: 'Follow-up', stage: 'Stage', score: 'Score', revenue: 'Revenue', note: 'Note',
+    },
+    actor: { customer: 'Customer', automation: 'Automation', person: 'Rep', system: 'System' },
+  },
   intel: {
     health: 'Health',
     healthHint: 'A blend of engagement, intent, freshness, reachability and completeness',

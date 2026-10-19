@@ -20,6 +20,7 @@ import {
   Input, Modal, Select, Skeleton, StatusBadge, Tabs, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
+import { DuplicatesBanner } from '@/components/lead/DuplicatesBanner'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
 import { LeadFiles } from '@/components/leads/LeadFiles'
@@ -611,6 +612,8 @@ export function LeadDetailPage() {
         do next and why this lead, who is holding it (the journey or a person),
         how engaged they are, and what they told us.
       */}
+      {can.seeAllLeads(user) && <DuplicatesBanner leadId={lead.id} onMerged={() => void queryClient.invalidateQueries({ queryKey: ['lead', id] })} />}
+
       <IntelligenceStrip intelligence={data.intelligence} />
 
       <div className="grid gap-4 lg:grid-cols-3">

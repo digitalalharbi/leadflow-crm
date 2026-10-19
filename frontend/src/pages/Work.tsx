@@ -321,6 +321,15 @@ export function WorkPage() {
                     <p className="t-caption truncate" data-testid="work-reason">
                       {action.reason}
                     </p>
+                    {(data?.signals?.length ?? 0) > 0 && (
+                      <ul className="mt-1 flex flex-wrap gap-1" data-testid="work-signals">
+                        {data!.signals!.map((signal) => (
+                          <li key={signal} className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.6875rem] font-medium">
+                            {t(`work.signal.${signal}`)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
 

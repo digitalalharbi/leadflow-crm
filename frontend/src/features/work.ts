@@ -58,6 +58,8 @@ export interface NextInQueue {
    */
   queue: QueuedLead[]
   timeline: QueueTimelineEntry[]
+  /** What the customer did that makes this lead the one now. */
+  signals?: string[]
 }
 
 /** `skip` carries the leads passed over in this sitting, so "skip" actually

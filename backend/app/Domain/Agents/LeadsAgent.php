@@ -32,6 +32,11 @@ class LeadsAgent
 
     public const DROP_ALERT = 15;
 
+    /** "Qualified rate below 10% on more than 50 leads" — the campaign quality warning. */
+    public const QUALITY_FLOOR = 0.10;
+
+    public const QUALITY_MIN_LEADS = 50;
+
     /** @return list<Finding> campaigns whose quality fell */
     public function review(?CarbonImmutable $today = null): array
     {
@@ -54,6 +59,19 @@ class LeadsAgent
                 'quality_score' => $score,
                 'quality_scored_at' => now(),
             ])->save();
+
+            $leads = max(1, (int) $row['leads']);
+
+            /*
+             * Marketing's side of the loop: a campaign bringing plenty of
+             * leads and few real buyers. Said to the team as a warning, never
+             * acted on — pausing a campaign goes through the approval policy.
+             */
+            if ($row['leads'] > self::QUALITY_MIN_LEADS && ($row['qualified'] / $leads) < self::QUALITY_FLOOR) {
+                $drops[] = new Finding('low_qualified_rate', 'bad', $campaign, ['qualified_rate' => round($row['qualified'] / $leads * 100, 1), 'leads' => $row['leads']]);
+            } elseif ($row['leads'] > 20 && (($row['leads'] - $row['valid']) / $leads) > 0.3) {
+                $drops[] = new Finding('many_invalid', 'warn', $campaign, ['invalid_rate' => round(($row['leads'] - $row['valid']) / $leads * 100, 1), 'leads' => $row['leads']]);
+            }
 
             if ($previous !== null && $previous - $score >= self::DROP_ALERT) {
                 $drops[] = new Finding('quality_drop', 'warn', $campaign, ['quality' => $score, 'previous_quality' => $previous, 'leads' => $row['leads']]);

@@ -16,7 +16,7 @@ const FINDING_ICON: Record<string, LucideIcon> = {
   over_target: Gauge,
   cpl_over_target: Gauge,
   outperforming: Rocket,
-  quality_drop: TrendingDown,
+  quality_drop: TrendingDown, low_qualified_rate: TrendingDown, many_invalid: TrendingDown,
   spend_spike: Activity,
   over_ceiling: AlertTriangle,
   fatigue: Waves,

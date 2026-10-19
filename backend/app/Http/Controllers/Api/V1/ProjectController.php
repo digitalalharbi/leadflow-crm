@@ -211,6 +211,8 @@ class ProjectController extends Controller
 
         return $request->validate([
             'name' => [$required, 'string', 'max:255'],
+            'service' => ['sometimes', 'nullable', 'string', 'max:160'],
+            'language' => ['sometimes', 'nullable', 'in:ar,en'],
             'developer_name' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'starting_price' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],

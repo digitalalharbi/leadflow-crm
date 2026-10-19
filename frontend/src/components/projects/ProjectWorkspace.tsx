@@ -12,6 +12,7 @@ import { fetchLeads } from '@/features/leads'
 import { fetchRules } from '@/features/automation'
 import { useCampaigns } from '@/features/campaigns'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
+import { AutomationPackCard } from '@/components/projects/AutomationPackCard'
 import {
   fetchProjectActivity, fetchProjectReport, fetchProjectSummary, type ReportRow,
 } from '@/features/projectWorkspace'
@@ -257,36 +258,39 @@ export function ProjectAutomations({ projectId }: { projectId: string }) {
   const general = rules.filter((rule) => !scoped.includes(rule) && rule.is_enabled).length
 
   return (
-    <Card>
-      <CardHeader
-        title={t('projects.workspace.automationsTitle')}
-        description={t('projects.workspace.automationsGeneral', { count: general })}
-        action={
-          <Link to="/automation" className="t-small text-[var(--brand)] hover:underline">
-            {t('projects.workspace.manageRules')}
-          </Link>
-        }
-      />
-      <CardBody>
-        {scoped.length === 0 ? (
-          <p className="t-caption" data-testid="project-rules-empty">{t('projects.workspace.noScopedRules')}</p>
-        ) : (
-          <ul className="space-y-2" data-testid="project-rules">
-            {scoped.map((rule) => (
-              <li key={rule.id} className="flex items-center justify-between gap-2">
-                <span className="t-small flex items-center gap-2 font-medium">
-                  <Zap className="size-4 text-[var(--color-ink-muted)]" aria-hidden />
-                  {rule.name}
-                </span>
-                <Badge tone={rule.is_enabled ? 'success' : 'neutral'}>
-                  {rule.is_enabled ? t('projects.workspace.ruleOn') : t('projects.workspace.ruleOff')}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardBody>
-    </Card>
+    <div className="space-y-3">
+      <AutomationPackCard projectId={projectId} />
+      <Card>
+        <CardHeader
+          title={t('projects.workspace.automationsTitle')}
+          description={t('projects.workspace.automationsGeneral', { count: general })}
+          action={
+            <Link to="/automation" className="t-small text-[var(--brand)] hover:underline">
+              {t('projects.workspace.manageRules')}
+            </Link>
+          }
+        />
+        <CardBody>
+          {scoped.length === 0 ? (
+            <p className="t-caption" data-testid="project-rules-empty">{t('projects.workspace.noScopedRules')}</p>
+          ) : (
+            <ul className="space-y-2" data-testid="project-rules">
+              {scoped.map((rule) => (
+                <li key={rule.id} className="flex items-center justify-between gap-2">
+                  <span className="t-small flex items-center gap-2 font-medium">
+                    <Zap className="size-4 text-[var(--color-ink-muted)]" aria-hidden />
+                    {rule.name}
+                  </span>
+                  <Badge tone={rule.is_enabled ? 'success' : 'neutral'}>
+                    {rule.is_enabled ? t('projects.workspace.ruleOn') : t('projects.workspace.ruleOff')}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+    </div>
   )
 }
 

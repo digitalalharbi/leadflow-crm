@@ -250,3 +250,24 @@ export interface RoutineRow {
 export function fetchRoutines() {
   return apiGet<{ routines: RoutineRow[] }>('/automation/routines')
 }
+
+export interface PackStep {
+  key: 'service' | 'language' | 'brochure' | 'whatsapp_template' | 'email_template' | 'qualification' | 'sales_team'
+  done: boolean
+  detail: string | null
+}
+
+export interface AutomationPackStatus {
+  steps: PackStep[]
+  done: number
+  total: number
+  journey_on: boolean
+}
+
+export function fetchAutomationPack(projectId: string) {
+  return apiGet<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack`)
+}
+
+export function completeAutomationPack(projectId: string, answers: { service?: string; language?: string }) {
+  return apiPost<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack`, answers)
+}

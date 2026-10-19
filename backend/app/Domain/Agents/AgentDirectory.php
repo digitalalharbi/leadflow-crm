@@ -21,6 +21,8 @@ class AgentDirectory
         'leads' => ['وكيل العملاء', 'يقيس جودة العملاء لكل حملة، يرفع أو يخفض تقييمهم، وينبّه عند تراجع الجودة.', ['get_leads', 'score_campaign_quality', 'notify']],
         'creative' => ['وكيل الإبداع', 'يقيّم الإعلانات: الإرهاق، الضعيف، والأفضل أداءً. قراءة ومسودات فقط.', ['get_ad_creatives', 'get_ad_metrics']],
         'reports' => ['وكيل التقارير', 'يجهز التقرير الأسبوعي بصيغته الثابتة ويحفظه.', ['build_report', 'save_report']],
+        'sales' => ['وكيل المبيعات', 'يحدد الإجراء الأفضل التالي، ويرفع العملاء الساخنين الذين لم يتواصل معهم أحد إلى المندوب ثم الإدارة.', ['get_leads', 'notify']],
+        'follow_up' => ['وكيل المتابعة', 'يضبط توقيت المتابعات والتذكيرات، ويعيد العملاء الراكدين إلى الرعاية الآلية.', ['get_leads', 'start_nurture']],
         'campaign' => ['وكيل الحملات', 'يقترح الإيقاف والتشغيل وتعديل الميزانية. كل اقتراح ينتظر موافقة بشرية.', ['list_campaigns', 'get_metrics', 'propose_pause', 'propose_resume', 'propose_budget']],
     ];
 
@@ -32,6 +34,8 @@ class AgentDirectory
         'lead_quality_review' => ['leads', '0 9 * * *'],
         'creative_review' => ['creative', '0 10 * * 0,3'],
         'weekly_report' => ['reports', '0 14 * * 4'],
+        'hot_lead_review' => ['sales', '*/30 * * * *'],
+        'stale_lead_review' => ['follow_up', '0 11 * * *'],
     ];
 
     public function ensure(): void

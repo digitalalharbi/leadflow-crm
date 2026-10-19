@@ -47,6 +47,15 @@ export default {
     platformConsole: 'Platform console',
   },
   work: {
+    signal: {
+      replied: 'Replied on WhatsApp',
+      brochure_opened: 'Opened the brochure',
+      email_clicked: 'Clicked the email',
+      email_opened: 'Opened the email',
+      qualified: 'Qualified',
+      priority: 'Priority',
+      no_reply: 'Silent to automation',
+    },
     pulse: {
       automated: 'Handled by automation',
       reached: 'Reached',
@@ -1347,6 +1356,17 @@ export default {
     appointment: 'Appointment', negotiation: 'Negotiating', won: 'Won', lost: 'Lost',
     invalid: 'Invalid', no_response: 'No response',
   },
+  pack: {
+    title: 'Project automation pack',
+    hint: 'Seven answers, and the journey runs for this project on its own.',
+    journeyOn: 'Lead journey on',
+    journeyOff: 'Lead journey off',
+    complete: 'Complete the pack',
+    completed: 'Pack complete — the project messages and questions are ready.',
+    servicePlaceholder: 'e.g. villas, apartments, land',
+    step: { service: 'Service', language: 'Language', brochure: 'Brochure', whatsapp_template: 'WhatsApp message', email_template: 'Email message', qualification: 'Qualification questions', sales_team: 'Sales team' },
+    detail: { project: 'Project-specific', general: 'General', everyone: 'Whole team', ar: 'Arabic', en: 'English' },
+  },
   workspace: {
     why: { title: 'Why this lead', campaign: 'Campaign' },
     automation: {
@@ -1619,6 +1639,8 @@ export default {
       over_target: 'Cost per qualified over target',
       cpl_over_target: 'CPL over target',
       outperforming: 'Beating the target',
+      low_qualified_rate: 'Qualified rate under 10%',
+      many_invalid: 'Many invalid leads',
       quality_drop: 'Quality dropped',
       spend_spike: 'Spend spike',
       over_ceiling: 'Over the budget ceiling',

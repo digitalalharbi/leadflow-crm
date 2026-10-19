@@ -211,6 +211,9 @@ class NoLeadWaitsForAPersonTest extends TestCase
         $this->assertSame('reply_now', $queue['action']['action']);
         $this->assertSame('critical', $queue['action']['urgency']);
         $this->assertStringContainsString('أكمل نفس المحادثة', $queue['action']['reason']);
+
+        // And the facts behind the reason, as signals.
+        $this->assertContains('replied', $queue['signals']);
     }
 
     public function test_a_reply_that_races_a_reminder_still_stops_it(): void

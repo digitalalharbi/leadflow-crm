@@ -67,6 +67,8 @@ export function LeadsPage() {
        * in the one place a manager went looking for the difference.
        */
       data_issue: searchParams.get('data_issue') ?? undefined,
+      // The command center's "stalled" row and the saved lists link here.
+      view: searchParams.get('view') ?? undefined,
       unassigned: searchParams.get('unassigned') === 'true' || undefined,
     }
   })
@@ -103,6 +105,7 @@ export function LeadsPage() {
     Boolean(filters.priority) ||
     Boolean(filters.wrong_fit) ||
     Boolean(filters.data_issue) ||
+    Boolean(filters.view) ||
     Boolean(filters.unassigned)
 
   function resetFilters() {

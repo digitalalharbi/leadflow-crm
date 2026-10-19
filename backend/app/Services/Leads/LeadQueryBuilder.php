@@ -3,6 +3,7 @@
 namespace App\Services\Leads;
 
 use App\Domain\Leads\LeadClassification;
+use App\Domain\Leads\LeadViews;
 use App\Enums\LeadStatus;
 use App\Models\ConversionExport;
 use App\Models\Lead;
@@ -133,6 +134,8 @@ class LeadQueryBuilder
             ->when($request->boolean('priority'), fn ($q) => $q->where('is_priority', true))
             ->when($request->boolean('wrong_fit'), fn ($q) => $q->where('wrong_fit', true))
             ->when($request->boolean('overdue'), fn ($q) => $q->overdueFollowUp())
+            // The saved lists (needs a person, no reply, high value, new today, qualified, stalled).
+            ->when($request->filled('view'), fn ($q) => LeadViews::apply($q, (string) $request->input('view'), (string) ($request->user()?->tenant?->settings?->timezone ?: 'UTC')))
             ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('assigned_to'))
             // Arrived and still untouched past the workspace's own target. The
             // dashboard panel links here, so the list has to mean the same thing

@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
+use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SheetSourceController;
@@ -172,6 +173,9 @@ Route::prefix('v1')->group(function () {
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
             Route::get('/leads/segments', [LeadController::class, 'segments']);
+            Route::get('/leads/saved-views', [SavedViewController::class, 'index']);
+            Route::post('/leads/saved-views', [SavedViewController::class, 'store']);
+            Route::delete('/leads/saved-views/{uuid}', [SavedViewController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/leads/overview', [LeadController::class, 'overview']);
             Route::get('/leads', [LeadController::class, 'index']);
             Route::post('/leads', [LeadController::class, 'store']);

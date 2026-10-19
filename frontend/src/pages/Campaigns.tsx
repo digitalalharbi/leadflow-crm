@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle, BadgeDollarSign, Ban, CircleDollarSign, Megaphone, RefreshCw, Rocket, Scale, Target, TrendingUp, Users,
+  AlertTriangle, BadgeDollarSign, Ban, CircleDollarSign, Megaphone, RefreshCw, Images, Rocket, Scale, Target, TrendingUp, Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -77,6 +77,9 @@ export function CampaignsPage() {
               <option value="">{t('campaigns.allPlatforms')}</option>
               {(platforms.data?.platforms ?? []).map((p) => <option key={p.key} value={p.key}>{t(`platforms.${p.key}`, { defaultValue: p.key })}</option>)}
             </Select>
+            <Link to="/creatives" data-testid="open-creatives">
+              <Button variant="outline" icon={<Images className="size-4" />}>{t('creatives.title')}</Button>
+            </Link>
             <Button variant="ghost" icon={<Scale className="size-4" />} onClick={() => setRulesOpen(true)} data-testid="open-client-rules">
               {t('rules.open')}
             </Button>

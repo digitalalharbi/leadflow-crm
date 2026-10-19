@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Globe } from 'lucide-react'
+import { BadgeCheck, CalendarCheck, Globe, Inbox, Megaphone, MessageCircle, Repeat2, Timer, Trophy } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { apiGet, ApiError } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useApiError } from '@/hooks/useApiError'
@@ -113,7 +114,7 @@ export function LoginPage() {
         </div>
 
         <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-sm rounded-[1.75rem] bg-[var(--color-surface)] p-7 shadow-[var(--shadow-card)] sm:p-8" data-testid="login-card">
             <h1 className="t-display">{t('auth.welcome')}</h1>
             <p className="t-small mt-1.5 text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
 
@@ -227,6 +228,8 @@ export function LoginPage() {
             ownBackground ? 'text-white' : 'text-[var(--color-ink)] dark:text-white',
           )}
         >
+          {!ownBackground && <JourneyRibbon />}
+
           <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
             {branding?.company_name ?? systemName}
           </h2>
@@ -253,8 +256,63 @@ export function LoginPage() {
               {t('brand.subtext')}
             </p>
           )}
+          {!ownBackground && (
+            <ul className="mt-6 space-y-2.5" data-testid="login-pillars">
+              {PILLARS.map(({ key, icon: Icon }) => (
+                <li key={key} className="flex items-center gap-3 text-[0.875rem] font-medium">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--color-surface)]/80 text-[var(--brand)] shadow-[var(--shadow-card)]" aria-hidden>
+                    <Icon className="size-4" />
+                  </span>
+                  {t(`brand.pillars.${key}`)}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
+  )
+}
+
+const PILLARS: Array<{ key: 'ads' | 'speed' | 'loop'; icon: LucideIcon }> = [
+  { key: 'ads', icon: Megaphone },
+  { key: 'speed', icon: Timer },
+  { key: 'loop', icon: Repeat2 },
+]
+
+const JOURNEY: Array<{ key: string; icon: LucideIcon }> = [
+  { key: 'arrived', icon: Inbox },
+  { key: 'contacted', icon: MessageCircle },
+  { key: 'qualified', icon: BadgeCheck },
+  { key: 'appointment', icon: CalendarCheck },
+  { key: 'won', icon: Trophy },
+]
+
+/**
+ * The path a lead takes, drawn as five stops on one line — what the product
+ * does, said before anyone signs in. No numbers on it on purpose: a figure on
+ * a login screen reads as somebody's data, and this one would belong to nobody.
+ */
+function JourneyRibbon() {
+  const { t } = useTranslation()
+
+  return (
+    <ol className="relative mb-8 flex max-w-md items-start justify-between rounded-[1.5rem] bg-[var(--color-surface)]/70 p-4 backdrop-blur-sm" data-testid="login-journey">
+      <span aria-hidden className="absolute inset-x-9 top-9 h-0.5 rounded-full bg-[color-mix(in_srgb,var(--brand)_35%,transparent)]" />
+      {JOURNEY.map(({ key, icon: Icon }, index) => (
+        <li key={key} className="relative flex flex-col items-center gap-1.5">
+          <span
+            className={cn(
+              'grid size-10 place-items-center rounded-full shadow-[var(--shadow-card)]',
+              index === JOURNEY.length - 1 ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-surface)] text-[var(--brand)]',
+            )}
+            aria-hidden
+          >
+            <Icon className="size-[1.125rem]" />
+          </span>
+          <span className="text-[0.75rem] font-medium">{t(`brand.journey.${key}`)}</span>
+        </li>
+      ))}
+    </ol>
   )
 }

@@ -101,6 +101,15 @@ export default {
     profile: 'الملف الشخصي',
   },
   work: {
+    pulse: {
+      reached: 'وصلهم تواصل',
+      ofOpen: '{{reached}} من {{open}} مفتوح',
+    },
+    mix: {
+      critical: 'الآن',
+      high: 'اليوم',
+      medium: 'لاحقًا',
+    },
     queue: {
       title: 'الدور',
       empty: 'لا أحد بعد هذا العميل.',
@@ -1032,6 +1041,16 @@ export default {
   },
 
   readiness: {
+    hero: {
+      proven: 'مُثبت فعليًا',
+      ofTotal: '{{proven}} من {{total}} بندًا',
+      integrations: 'التكاملات',
+      blocking: 'ما يفصل عن الإطلاق',
+      nothingBlocking: 'لا شيء يمنع الإطلاق.',
+      yourMove: 'جرّب الآن',
+      theirMove: 'جهة خارجية',
+      checksPassed: '{{done}} من {{total}} فحوصات',
+    },
     infra: {
       title: 'البنية التشغيلية',
       hint: 'ما تقف عليه المنصة نفسها. كل بند يُفحص فعليًا: لا يكفي أن يكون الإعداد مكتوبًا.',
@@ -2129,7 +2148,16 @@ export default {
 
   appearance: { label: 'المظهر', system: 'حسب الجهاز', light: 'فاتح', dark: 'داكن' },
 
-  brand: { tagline: 'حوّل الاهتمام إلى فرصة', subtext: 'إدارة العملاء المحتملين، التأهيل والمتابعة في مكان واحد.' },
+  brand: {
+    tagline: 'حوّل الاهتمام إلى فرصة',
+    subtext: 'إدارة العملاء المحتملين، التأهيل والمتابعة في مكان واحد.',
+    journey: { arrived: 'وصل', contacted: 'تواصل', qualified: 'تأهّل', appointment: 'موعد', won: 'صفقة' },
+    pillars: {
+      ads: 'حملاتك على كل المنصات في شاشة واحدة',
+      speed: 'تواصل آلي مع كل عميل خلال دقائق من وصوله',
+      loop: 'كل صفقة تعود إلى الحملة التي جاءت بها',
+    },
+  },
 
   funnel: { replied: 'ردّوا', total: 'كل العملاء', contacted: 'تم التواصل', qualified: 'مؤهلون', appointment: 'مواعيد', won: 'تم البيع' },
 

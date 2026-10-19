@@ -125,9 +125,10 @@ test.describe('Dashboard', () => {
 
     expect(repTotal).toBeLessThan(adminTotal)
 
-    // And the navigation a rep has no business seeing is simply absent.
-    await expect(page.getByRole('link', { name: 'التقارير' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'مصادر العملاء' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'الفريق' })).toHaveCount(0)
+    // And the navigation a rep has no business seeing is simply absent. Exact names:
+    // the journey strip's "ينتظر الفريق" is a rep's own link, not the Team page.
+    await expect(page.getByRole('link', { name: 'التقارير', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'مصادر العملاء', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'الفريق', exact: true })).toHaveCount(0)
   })
 })

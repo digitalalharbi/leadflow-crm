@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward } from 'lucide-react'
+import { BellRing, CalendarPlus, Flame, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   fetchNextInQueue, fetchWorkSummary, logContact, recordCall, recordOutcome,
-  OUTCOMES, type NextAction, type Outcome, type QueuedLead, type QueueTimelineEntry,
+  OUTCOMES, type NextAction, type Outcome, type QueuedLead, type QueueTimelineEntry, type WorkSummary,
 } from '@/features/work'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -17,6 +18,7 @@ import {
   PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { RingProgress } from '@/components/visual'
 
 /**
  * One lead, one decision, one keystroke.
@@ -231,24 +233,10 @@ export function WorkPage() {
         }
       />
 
-      {/* Four numbers on one line. They are the reason the rep is here, so they
-          cost one row and never a card each. */}
-      {summary.data && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <QueueStat label={t('work.stats.uncontacted')} value={summary.data.uncontacted} />
-          <QueueStat
-            label={t('work.stats.overdueFirstContact')}
-            value={summary.data.overdue_first_contact}
-            alarming
-          />
-          <QueueStat
-            label={t('work.stats.overdueFollowUps')}
-            value={summary.data.overdue_follow_ups}
-            alarming
-          />
-          <QueueStat label={t('work.stats.hot')} value={summary.data.hot} />
-        </div>
-      )}
+      {/* The shift at a glance: how much of the open list has heard from us,
+          and the four numbers that are the reason the rep is here — one row,
+          never a card each. */}
+      {summary.data && <WorkPulse summary={summary.data} />}
 
       {!lead || !action ? (
         <Card>
@@ -275,7 +263,8 @@ export function WorkPage() {
           <aside className="order-2 lg:order-1 lg:col-span-3">
             <Card className="h-full">
               <CardHeader title={t('work.queue.title')} />
-              <CardBody className="max-h-[22rem] space-y-1 overflow-y-auto p-2 lg:max-h-[calc(100dvh-19rem)]">
+              <QueueMix queue={queue} />
+              <CardBody className="max-h-[22rem] space-y-0.5 overflow-y-auto p-2 lg:max-h-[calc(100dvh-21rem)]">
                 {queue.length === 0 ? (
                   <p className="t-caption px-1.5 py-1">{t('work.queue.empty')}</p>
                 ) : (
@@ -283,21 +272,24 @@ export function WorkPage() {
                     <div
                       key={item.id}
                       data-testid={`queue-item-${item.id}`}
-                      className="rounded-[var(--radius-control)] px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-muted)]"
+                      className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-muted)]"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="t-small truncate font-medium">{item.name}</span>
-                        {item.urgency && item.urgency !== 'none' && (
-                          <Badge tone={URGENCY_BADGE[item.urgency]}>
-                            {t(`work.urgency.${item.urgency}`)}
-                          </Badge>
-                        )}
+                      <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: URGENCY_DOT[item.urgency ?? 'none'] }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="t-small truncate font-medium">{item.name}</span>
+                          {item.urgency && item.urgency !== 'none' && (
+                            <Badge tone={URGENCY_BADGE[item.urgency]}>
+                              {t(`work.urgency.${item.urgency}`)}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="t-caption truncate">
+                          {[item.action ? t(`work.action.${item.action}`) : null, item.city]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
                       </div>
-                      <p className="t-caption truncate">
-                        {[item.action ? t(`work.action.${item.action}`) : null, item.city]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </p>
                     </div>
                   ))
                 )}
@@ -309,19 +301,37 @@ export function WorkPage() {
             <Card className={cn('border-2', URGENCY[action.urgency])} data-testid="work-card">
               <CardBody className="space-y-2.5">
                 {/* Why this lead, before who it is. The reason is the product. */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={URGENCY_BADGE[action.urgency]} testId="work-urgency">
-                    {t(`work.urgency.${action.urgency}`)}
-                  </Badge>
-                  <span className="t-small font-medium" data-testid="work-action">
-                    {t(`work.action.${action.action}`)}
+                <div className="flex items-center gap-2.5 rounded-xl bg-[var(--color-surface)]/70 p-2">
+                  <span
+                    aria-hidden
+                    className="grid size-8 shrink-0 place-items-center rounded-full text-white"
+                    style={{ background: URGENCY_DOT[action.urgency] }}
+                  >
+                    <Zap className="size-4" />
                   </span>
-                  <span className="t-caption truncate" data-testid="work-reason">
-                    {action.reason}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="t-small font-semibold" data-testid="work-action">
+                        {t(`work.action.${action.action}`)}
+                      </span>
+                      <Badge tone={URGENCY_BADGE[action.urgency]} testId="work-urgency">
+                        {t(`work.urgency.${action.urgency}`)}
+                      </Badge>
+                    </div>
+                    <p className="t-caption truncate" data-testid="work-reason">
+                      {action.reason}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-start justify-between gap-3 border-t border-[var(--color-border)] pt-2.5">
+                <div className="flex flex-wrap items-start justify-between gap-3 pt-0.5">
+                  <div className="flex min-w-0 items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--brand-tint)] text-[1rem] font-bold text-[var(--brand-deep)]"
+                  >
+                    {initials(lead.full_name)}
+                  </span>
                   <div className="min-w-0 space-y-1">
                     <Link
                       to={`/leads/${lead.id}`}
@@ -352,6 +362,7 @@ export function WorkPage() {
                       {' · '}
                       {t('work.arrived', { when: formatLastSeen(lead.created_at, i18n.language) })}
                     </p>
+                  </div>
                   </div>
 
                   {/* The number, still the biggest thing on the card: this
@@ -465,16 +476,25 @@ export function WorkPage() {
                 {timeline.length === 0 ? (
                   <p className="t-caption">{t('work.timeline.empty')}</p>
                 ) : (
-                  timeline.map((entry: QueueTimelineEntry) => (
-                    <div key={entry.id} className="flex items-baseline justify-between gap-2">
-                      <span className="t-small truncate">
-                        {t(`activity.${entry.type}`, { defaultValue: entry.type })}
-                      </span>
-                      <span className="t-caption shrink-0">
-                        {entry.at ? formatLastSeen(entry.at, i18n.language) : ''}
-                      </span>
-                    </div>
-                  ))
+                  <ol className="relative space-y-2.5 ps-4 before:absolute before:inset-y-1 before:start-[0.3125rem] before:w-px before:bg-[var(--color-line)]">
+                    {timeline.map((entry: QueueTimelineEntry, index) => (
+                      <li key={entry.id} className="relative flex items-baseline justify-between gap-2">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'absolute -start-4 top-1.5 size-2.5 rounded-full border-2 border-[var(--color-surface)]',
+                            index === 0 ? 'bg-[var(--brand)]' : 'bg-[var(--color-border-strong)]',
+                          )}
+                        />
+                        <span className="t-small truncate">
+                          {t(`activity.${entry.type}`, { defaultValue: entry.type })}
+                        </span>
+                        <span className="t-caption shrink-0">
+                          {entry.at ? formatLastSeen(entry.at, i18n.language) : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
                 )}
               </CardBody>
             </Card>
@@ -513,26 +533,99 @@ function Kbd({ children }: { children: React.ReactNode }) {
   )
 }
 
-function QueueStat({
-  label,
-  value,
-  alarming = false,
-}: {
-  label: string
-  value: number
-  alarming?: boolean
-}) {
+/** Urgency as a colour for a dot or a disc — the same three meanings as the badge. */
+const URGENCY_DOT: Record<NextAction['urgency'], string> = {
+  critical: 'var(--color-danger)',
+  high: 'var(--color-warning)',
+  medium: 'var(--brand)',
+  low: 'var(--color-ink-subtle)',
+  none: 'var(--color-border-strong)',
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+
+  return parts.slice(0, 2).map((part) => part[0]).join('') || '·'
+}
+
+/**
+ * The shift in one row. The ring is the share of the open list that has heard
+ * from somebody — the one number a rep can move by working this screen — and
+ * the four tiles beside it are the reasons the queue is ordered the way it is.
+ */
+function WorkPulse({ summary }: { summary: WorkSummary }) {
+  const { t } = useTranslation()
+  const reached = Math.max(0, summary.open - summary.uncontacted)
+  const percent = summary.open > 0 ? Math.round((reached / summary.open) * 100) : 100
+
+  const tiles: Array<{ key: string; label: string; value: number; icon: LucideIcon; alarming?: boolean }> = [
+    { key: 'uncontacted', label: t('work.stats.uncontacted'), value: summary.uncontacted, icon: UserX },
+    { key: 'overdue-first', label: t('work.stats.overdueFirstContact'), value: summary.overdue_first_contact, icon: TimerOff, alarming: true },
+    { key: 'overdue-follow', label: t('work.stats.overdueFollowUps'), value: summary.overdue_follow_ups, icon: BellRing, alarming: true },
+    { key: 'hot', label: t('work.stats.hot'), value: summary.hot, icon: Flame },
+  ]
+
   return (
-    <div className="flex items-baseline justify-between gap-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-card)]">
-      <p className="t-caption truncate">{label}</p>
-      <p
-        className={cn(
-          'text-[1.0625rem] font-semibold leading-none tabular-nums',
-          alarming && value > 0 && 'text-[var(--color-danger)]',
-        )}
-      >
-        {value}
-      </p>
+    <div className="grid gap-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-card)] sm:grid-cols-[auto_1fr]" data-testid="work-pulse">
+      <div className="flex items-center gap-2.5 px-1.5">
+        <RingProgress value={percent} size={44} thickness={5} tone={percent >= 80 ? 'good' : 'warn'} label={t('work.pulse.reached')}>
+          <span className="text-[0.6875rem] font-bold tabular-nums" dir="ltr">{percent}%</span>
+        </RingProgress>
+        <div className="leading-tight">
+          <p className="text-[0.8125rem] font-semibold">{t('work.pulse.reached')}</p>
+          <p className="t-caption tabular-nums">{t('work.pulse.ofOpen', { reached, open: summary.open })}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {tiles.map(({ key, label, value, icon: Icon, alarming }) => {
+          const hot = alarming && value > 0
+
+          return (
+            <div
+              key={key}
+              className={cn(
+                'flex items-center gap-2 rounded-xl px-2.5 py-1.5',
+                hot ? 'bg-[color-mix(in_srgb,var(--color-danger)_8%,transparent)]' : 'bg-[var(--color-surface-muted)]',
+              )}
+              data-testid={`work-stat-${key}`}
+            >
+              <Icon className={cn('size-4 shrink-0', hot ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink-muted)]')} aria-hidden />
+              <p className="t-caption min-w-0 flex-1 truncate">{label}</p>
+              <p className={cn('text-[1.0625rem] font-bold leading-none tabular-nums', hot && 'text-[var(--color-danger)]')}>{value}</p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** What the queue behind the card is made of, by urgency — one bar, three counts. */
+function QueueMix({ queue }: { queue: QueuedLead[] }) {
+  const { t } = useTranslation()
+  if (queue.length === 0) return null
+
+  const groups = (['critical', 'high', 'medium'] as const).map((urgency) => ({
+    urgency,
+    count: queue.filter((item) => (urgency === 'medium' ? !['critical', 'high'].includes(item.urgency ?? 'none') : item.urgency === urgency)).length,
+  }))
+
+  return (
+    <div className="px-4 pb-1" data-testid="queue-mix">
+      <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" dir="ltr">
+        {groups.filter((g) => g.count > 0).map((g) => (
+          <span key={g.urgency} className="h-full" data-chart-mark style={{ width: `${(g.count / queue.length) * 100}%`, background: URGENCY_DOT[g.urgency] }} />
+        ))}
+      </div>
+      <ul className="mt-1 flex flex-wrap gap-x-2.5 text-[0.6875rem] text-[var(--color-ink-muted)]">
+        {groups.map((g) => (
+          <li key={g.urgency} className="flex items-center gap-1">
+            <span aria-hidden className="size-1.5 rounded-full" style={{ background: URGENCY_DOT[g.urgency] }} />
+            {t(`work.mix.${g.urgency}`)}
+            <span className="font-semibold tabular-nums text-[var(--color-ink)]">{g.count}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

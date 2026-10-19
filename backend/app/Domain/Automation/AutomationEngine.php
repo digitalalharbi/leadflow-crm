@@ -210,6 +210,11 @@ class AutomationEngine
         string $correlation,
         ?string $trigger = null,
     ): array {
+        // The journey's waits run at the project's own pace: gentle doubles them, intensive halves them.
+        if ($rule->template_key === 'lead_journey') {
+            $delayMinutes = (int) max(1, round($delayMinutes * ProjectSettings::cadenceFactor($lead)));
+        }
+
         $runAt = now()->addMinutes($delayMinutes);
 
         $scheduled = ScheduledAction::create([

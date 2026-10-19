@@ -8,7 +8,6 @@ use App\Enums\MessageStatus;
 use App\Models\FileShare;
 use App\Models\Lead;
 use App\Models\LeadMessage;
-use App\Models\Project;
 use App\Models\TenantSetting;
 use Illuminate\Support\Carbon;
 
@@ -49,6 +48,11 @@ class Guardrails
         //     `start_nurture` is how a rep hands it back.
         if ($lead->automation_state === Lead::AUTOMATION_HANDED_OFF && $type !== 'start_nurture') {
             return $this->block('human_takeover', 'العميل مع المندوب — توقفت الرسائل الآلية.');
+        }
+
+        // 1b — the project's automation has been paused by somebody.
+        if (! ProjectSettings::isActive($lead)) {
+            return $this->block('project_paused', 'أُوقفت أتمتة هذا المشروع — لا رسائل آلية.');
         }
 
         // 2 — the same message, or the same brochure, twice.
@@ -127,8 +131,7 @@ class Guardrails
     public function quietHours(Lead $lead): array
     {
         $settings = $this->settings($lead);
-        $project = $lead->project_id ? Project::withoutGlobalScopes()->find($lead->project_id) : null;
-        $own = (array) ($project?->automation_settings['quiet_hours'] ?? []);
+        $own = (array) (ProjectSettings::forLead($lead)['quiet_hours'] ?? []);
 
         return [
             'enabled' => (bool) ($own['enabled'] ?? $settings?->quiet_hours_enabled ?? false),

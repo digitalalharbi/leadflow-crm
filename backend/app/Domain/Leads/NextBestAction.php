@@ -2,6 +2,7 @@
 
 namespace App\Domain\Leads;
 
+use App\Domain\Automation\ProjectSettings;
 use App\Enums\LeadStatus;
 use App\Models\Lead;
 use App\Support\ArabicDuration;
@@ -60,6 +61,9 @@ class NextBestAction
 
     private function decide(Lead $lead, int $target): array
     {
+        // A project with its own first-contact target is judged against it.
+        $target = ProjectSettings::firstContactTarget($lead, $target);
+
         $minutesSinceCreated = (int) $lead->created_at->diffInMinutes(now());
 
         // Nothing to do, and saying so is a real answer — it is what lets a

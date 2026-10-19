@@ -26,7 +26,7 @@ class EveryProjectGetsAnAutomationPackTest extends TestCase
         $before = $this->actingAs($t['admin'])->getJson("/api/v1/projects/{$project->uuid}/automation-pack")->assertOk()->json('data.pack');
         $steps = collect($before['steps'])->keyBy('key');
 
-        $this->assertSame(7, $before['total']);
+        $this->assertSame(11, $before['total']);
         $this->assertTrue($before['journey_on']);
         $this->assertFalse($steps['service']['done']);
         $this->assertFalse($steps['qualification']['done']);

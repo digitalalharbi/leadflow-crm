@@ -246,12 +246,15 @@ Route::prefix('v1')->group(function () {
             Route::get('/projects/{uuid}/scoring', [AutomationCentreController::class, 'scoring'])->whereUuid('uuid');
             Route::get('/projects/{uuid}/automation-pack', [AutomationCentreController::class, 'pack'])->whereUuid('uuid');
             Route::post('/projects/{uuid}/automation-pack', [AutomationCentreController::class, 'completePack'])->whereUuid('uuid');
+            Route::post('/projects/{uuid}/automation-pack/activate', [AutomationCentreController::class, 'activatePack'])->whereUuid('uuid');
+            Route::post('/projects/{uuid}/automation-pack/pause', [AutomationCentreController::class, 'pausePack'])->whereUuid('uuid');
             Route::patch('/projects/{uuid}/scoring', [AutomationCentreController::class, 'updateScoring'])->whereUuid('uuid');
             Route::get('/automation/rules', [AutomationRuleController::class, 'index']);
             Route::post('/automation/rules', [AutomationRuleController::class, 'store']);
             Route::patch('/automation/rules/{uuid}', [AutomationRuleController::class, 'update']);
             Route::delete('/automation/rules/{uuid}', [AutomationRuleController::class, 'destroy']);
             Route::get('/automation/rules/{uuid}/preview', [AutomationRuleController::class, 'preview']);
+            Route::get('/automation/rules/{uuid}/simulate', [AutomationRuleController::class, 'simulate']);
             Route::post('/automation/rules/{uuid}/duplicate', [AutomationRuleController::class, 'duplicate']);
             Route::get('/leads/{leadUuid}/automation-runs', [AutomationRuleController::class, 'runsForLead']);
 

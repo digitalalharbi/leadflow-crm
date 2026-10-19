@@ -2,20 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Automation\ActionLog;
 use App\Domain\Automation\AutomationInsights;
 use App\Domain\Automation\ConditionEvaluator;
 use App\Domain\Automation\RuleTemplates;
 use App\Domain\Leads\OutcomeRecorder;
 use App\Enums\LeadStatus;
+use App\Enums\LeadTemperature;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Lead;
 use App\Models\MessageTemplate;
+use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Models\ScheduledAction;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -38,6 +43,10 @@ class AutomationRuleController extends Controller
         // nothing — which is the only way "after two unanswered calls…" can be
         // written at all.
         'lead.outcome_recorded',
+        // What the customer did, and what did not happen.
+        'lead.sheet_row', 'lead.email_opened', 'lead.email_clicked', 'lead.file_opened',
+        'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
+        'lead.re_engaged', 'lead.sla_breached',
     ];
 
     private const FIELDS = [
@@ -50,6 +59,8 @@ class AutomationRuleController extends Controller
         'assigned_to', 'is_assigned', 'has_phone', 'has_email', 'has_whatsapp',
         're_engaged_count', 'minutes_since_created', 'minutes_since_first_contact',
         'minutes_since_last_contact', 'was_contacted', 'has_replied',
+        'is_priority', 'classification', 'language', 'provider', 'campaign_id', 'ad_name',
+        'automation_state', 'attempts', 'no_reply_minutes',
     ];
 
     private const OPERATORS = [
@@ -62,6 +73,7 @@ class AutomationRuleController extends Controller
         'schedule_follow_up', 'add_note', 'notify', 'stop_follow_ups',
         'send_whatsapp', 'send_email', 'share_file',
         'ask_qualification', 'set_priority', 'hand_off',
+        'set_temperature', 'stop_automation', 'start_nurture', 'create_call_task', 'request_appointment',
     ];
 
     public function index(Request $request)
@@ -74,7 +86,22 @@ class AutomationRuleController extends Controller
             ->orderBy('priority')
             ->get();
 
-        return ApiResponse::success(['rules' => $rules->map(fn ($r) => $this->present($r))]);
+        /*
+         * The table's last two columns: how each rule last ran, and which
+         * project it is for. One query each, not one per row.
+         */
+        $lastRuns = collect(DB::select(
+            'select distinct on (automation_rule_id) automation_rule_id, outcome, created_at from automation_runs where automation_rule_id = any(?) order by automation_rule_id, created_at desc',
+            ['{'.$rules->pluck('id')->implode(',').'}'],
+        ))->keyBy('automation_rule_id');
+
+        $projectIds = $rules->flatMap(fn ($r) => collect($r->conditions ?? [])->where('field', 'project_id')->pluck('value'))->filter()->unique();
+        $projects = Project::whereIn('uuid', $projectIds->all())->pluck('name', 'uuid');
+
+        return ApiResponse::success(['rules' => $rules->map(fn ($r) => $this->present($r) + [
+            'last_run' => isset($lastRuns[$r->id]) ? ['outcome' => $lastRuns[$r->id]->outcome, 'at' => Carbon::parse($lastRuns[$r->id]->created_at)->toIso8601String()] : null,
+            'project' => ($uuid = collect($r->conditions ?? [])->firstWhere('field', 'project_id')['value'] ?? null) ? ($projects[$uuid] ?? null) : null,
+        ])]);
     }
 
     /**
@@ -311,6 +338,7 @@ class AutomationRuleController extends Controller
         }
 
         $action->resolve(ScheduledAction::CANCELLED, 'أُلغي بواسطة '.$request->user()->name.'.');
+        app(ActionLog::class)->resolveScheduled($action->id, $action->action ?? [], [], 'أُلغي بواسطة '.$request->user()->name.'.');
 
         return ApiResponse::success(null, 'Scheduled action cancelled.');
     }
@@ -323,6 +351,7 @@ class AutomationRuleController extends Controller
             'name' => [$required, 'string', 'max:120'],
             'trigger' => [$required, Rule::in(self::TRIGGERS)],
             'is_enabled' => ['sometimes', 'boolean'],
+            'mode' => ['sometimes', Rule::in(AutomationRule::MODES)],
             'priority' => ['sometimes', 'integer', 'min:1', 'max:1000'],
             'stops_processing' => ['sometimes', 'boolean'],
 
@@ -343,7 +372,12 @@ class AutomationRuleController extends Controller
              * it meant when it was written.
              */
             'condition_match' => ['sometimes', Rule::in(ConditionEvaluator::matches())],
-            'conditions.*.field' => ['required', Rule::in(self::FIELDS)],
+            // A known field, or `custom.<key>` — any answer the form or sheet carried.
+            'conditions.*.field' => ['required', 'string', 'max:80', function ($attribute, $value, $fail) {
+                if (! in_array($value, self::FIELDS, true) && ! preg_match('/^custom\.[a-z0-9_]{1,60}$/', (string) $value)) {
+                    $fail('حقل غير معروف.');
+                }
+            }],
             'conditions.*.operator' => ['required', Rule::in(self::OPERATORS)],
             'conditions.*.value' => ['nullable'],
 
@@ -397,6 +431,7 @@ class AutomationRuleController extends Controller
             'actions.*.unless' => ['sometimes', 'nullable', Rule::in(['replied'])],
             'actions.*.reason' => ['sometimes', 'nullable', Rule::in(['replied', 'qualified', 'no_reply', 'unreached', 'asked_for_human', 'needs_human'])],
             'actions.*.when' => ['sometimes', 'nullable', Rule::in(['hot', 'unreached'])],
+            'actions.*.temperature' => ['required_if:actions.*.type,set_temperature', Rule::in(LeadTemperature::values())],
 
             /*
              * Optional on purpose. Left out, the chooser reads the lead's own
@@ -463,6 +498,8 @@ class AutomationRuleController extends Controller
             'name' => $rule->name,
             'trigger' => $rule->trigger,
             'is_enabled' => $rule->is_enabled,
+            'mode' => $rule->mode ?? AutomationRule::MODE_AUTO,
+            'template_key' => $rule->template_key,
             'priority' => $rule->priority,
             'stops_processing' => $rule->stops_processing,
             'conditions' => $rule->conditions,

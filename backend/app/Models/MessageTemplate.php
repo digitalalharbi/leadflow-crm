@@ -19,7 +19,7 @@ class MessageTemplate extends Model
     use BelongsToTenant, HasFactory, HasUuid;
 
     /** Placeholders a template may use. Anything else is left alone. */
-    public const VARIABLES = ['name', 'agent', 'company', 'project', 'questions'];
+    public const VARIABLES = ['name', 'agent', 'company', 'project', 'questions', 'link'];
 
     /**
      * What a message is *for*, so a journey can ask for "the welcome message"
@@ -30,6 +30,20 @@ class MessageTemplate extends Model
 
     /** Who a message is written for, read off what the lead told us. */
     public const AUDIENCES = ['investment', 'end_user'];
+
+    /** The brochure, as a link — the only way a file can open a conversation. */
+    public const BROCHURE_DEFAULT = [
+        'name' => 'بروشور المشروع',
+        'purpose' => 'brochure',
+        'body' => 'مرحبًا {{name}}، هذا بروشور {{project}}: {{link}}',
+    ];
+
+    /** A gentle message for somebody who has gone quiet, or gone cold. */
+    public const NURTURE_DEFAULT = [
+        'name' => 'متابعة لطيفة',
+        'purpose' => 'nurture',
+        'body' => 'مرحبًا {{name}}، ما زلنا هنا إن احتجت أي تفاصيل عن {{project}}. يسعدنا مساعدتك متى ما ناسبك.',
+    ];
 
     /** Asks the project's own questions, numbered, in one message. */
     public const QUALIFICATION_DEFAULT = [

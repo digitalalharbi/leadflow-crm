@@ -61,7 +61,7 @@ class FileDelivery
              * brochure. The link rides in the caption so the one signal that
              * matters — they tapped it — arrives only when a person did.
              */
-            'whatsapp' => $this->whatsapp->sendDocument($lead, $file, $share->url(), $by),
+            'whatsapp' => $this->whatsapp->sendFile($lead, $file, $share->url(), $by),
             'email' => $this->email->send(
                 $lead,
                 $file->name,

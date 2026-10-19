@@ -167,7 +167,7 @@ class AutomationTemplateTest extends TestCase
         // WhatsApp is connected for this case: the real sender needs a live
         // provider, and "not connected" is a correct, separately tested report.
         $whatsapp = $this->mock(WhatsappSender::class);
-        $whatsapp->shouldReceive('sendDocument')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));
+        $whatsapp->shouldReceive('sendFile')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));
         $whatsapp->shouldReceive('sendSaved')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent, 'provider' => 'whatsapp_cloud']));
 
         $executor = app(ActionExecutor::class);

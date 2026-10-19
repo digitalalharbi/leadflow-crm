@@ -7,6 +7,7 @@ use App\Domain\Files\FileForTheLead;
 use App\Domain\Files\ShareFile;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
+use App\Enums\LeadTemperature;
 use App\Enums\MessageStatus;
 use App\Enums\Role;
 use App\Models\FollowUp;
@@ -14,6 +15,7 @@ use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Models\LostReason;
 use App\Models\MessageTemplate;
+use App\Models\ScheduledAction;
 use App\Models\User;
 use App\Notifications\AutomationNotification;
 use App\Services\Email\EmailSender;
@@ -79,6 +81,11 @@ class ActionExecutor
                 'ask_qualification' => $this->askQualification($lead, $action),
                 'set_priority' => $this->setPriority($lead, $action),
                 'hand_off' => $this->handOff($lead, $action),
+                'set_temperature' => $this->setTemperature($lead, $action),
+                'stop_automation' => $this->stopAutomation($lead, $action),
+                'start_nurture' => $this->startNurture($lead, $action),
+                'create_call_task' => $this->createCallTask($lead, $action),
+                'request_appointment' => $this->sendWhatsapp($lead, ['purpose' => 'appointment'] + $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
         } catch (\Throwable $e) {
@@ -197,14 +204,19 @@ class ActionExecutor
             return ['ok' => false, 'description' => 'لم يُحدَّد مقدار التغيير في التقييم.'];
         }
 
-        // Clamped, so a rule cannot drive a lead to 900 or below zero.
+        /*
+         * Kept as an adjustment beside the facts, and the score recomputed.
+         * Writing the score directly and then re-scoring — which this did —
+         * threw the adjustment away in the same breath: every "+20 on reply"
+         * rule reported success and moved nothing.
+         */
         $before = (int) $lead->score;
-        $after = max(0, min(100, $before + $by));
-
-        $lead->forceFill(['score' => $after])->save();
+        $lead->score_adjustment = max(-100, min(100, (int) $lead->score_adjustment + $by));
         $this->scoring->apply($lead);
+        $lead->save();
+        $after = (int) $lead->score;
 
-        return ['ok' => true, 'description' => "التقييم {$before} ← {$after}."];
+        return ['ok' => true, 'description' => "التقييم {$before} ← {$after}.", 'before' => (string) $before, 'after' => (string) $after];
     }
 
     private function addTag(Lead $lead, array $action): array
@@ -354,6 +366,10 @@ class ActionExecutor
      */
     private function sendWhatsapp(Lead $lead, array $action): array
     {
+        if (blank($lead->phone_normalized) && blank($lead->whatsapp)) {
+            return ['ok' => true, 'result' => 'skipped', 'description' => 'لا رقم لهذا العميل — تُجووزت الخطوة.'];
+        }
+
         $template = $this->template($lead, 'whatsapp', $action);
 
         if (is_string($template)) {
@@ -402,6 +418,11 @@ class ActionExecutor
      */
     private function sendEmail(Lead $lead, array $action): array
     {
+        // Not a failure to report: there is nobody to write to on this channel.
+        if (blank($lead->email)) {
+            return ['ok' => true, 'result' => 'skipped', 'description' => 'لا بريد لهذا العميل — تُجووزت الخطوة.'];
+        }
+
         $template = $this->template($lead, 'email', $action);
 
         if (is_string($template)) {
@@ -595,7 +616,7 @@ class ActionExecutor
         $lead->forceFill(['is_priority' => true])->save();
         $this->activities->log($lead, ActivityType::NoteAdded, null, 'أصبح العميل أولوية تلقائيًا.', $this->signature($action));
 
-        return ['ok' => true, 'description' => 'أصبح العميل أولوية.'];
+        return ['ok' => true, 'description' => 'أصبح العميل أولوية.', 'before' => 'عادي', 'after' => 'أولوية'];
     }
 
     /**
@@ -636,7 +657,68 @@ class ActionExecutor
             $this->notify($lead, ['audience' => 'owner', 'message' => "{$lead->full_name}: {$words} — دورك الآن.", 'rule_name' => $action['rule_name'] ?? null]);
         }
 
-        return ['ok' => true, 'description' => "سُلِّم للمندوب ({$words})."];
+        return ['ok' => true, 'description' => "سُلِّم للمندوب ({$words}).", 'handed_off' => true, 'after' => $words];
+    }
+
+    /** Hot, warm or cold — the classification a rep sorts by. */
+    private function setTemperature(Lead $lead, array $action): array
+    {
+        $to = LeadTemperature::tryFrom((string) ($action['temperature'] ?? ''));
+
+        if (! $to) {
+            return ['ok' => false, 'description' => 'لم يُحدَّد التصنيف.'];
+        }
+
+        $before = $lead->temperature?->value;
+        $lead->forceFill(['temperature' => $to])->save();
+
+        return ['ok' => true, 'description' => "التصنيف {$before} ← {$to->value}.", 'before' => $before, 'after' => $to->value];
+    }
+
+    /**
+     * Stops every waiting step of every rule for this lead — the customer
+     * asked to stop, or a person is taking over and wants quiet.
+     */
+    private function stopAutomation(Lead $lead, array $action): array
+    {
+        $pending = ScheduledAction::where('lead_id', $lead->id)->where('status', ScheduledAction::PENDING)->get();
+
+        foreach ($pending as $step) {
+            $step->resolve(ScheduledAction::CANCELLED, 'أُوقفت الأتمتة لهذا العميل.');
+            app(ActionLog::class)->resolveScheduled($step->id, $step->action ?? [], [], 'أُوقفت الأتمتة لهذا العميل.');
+        }
+
+        $lead->forceFill(['automation_state' => Lead::AUTOMATION_HANDED_OFF, 'needs_human_reason' => $lead->needs_human_reason ?? 'needs_human', 'handed_off_at' => $lead->handed_off_at ?? now()])->save();
+
+        return ['ok' => true, 'description' => 'أُوقفت الأتمتة ('.$pending->count().' خطوة منتظرة أُلغيت).', 'after' => 'متوقفة'];
+    }
+
+    /**
+     * Back to the journey: a cold lead, or one a rep could not reach, gets the
+     * gentle nurture message and automation looks after it again.
+     */
+    private function startNurture(Lead $lead, array $action): array
+    {
+        $sent = $this->sendWhatsapp($lead, ['purpose' => 'nurture'] + $action);
+
+        if (! $sent['ok']) {
+            $sent = $this->sendEmail($lead, ['purpose' => 'nurture'] + $action);
+        }
+
+        if ($sent['ok'] && $lead->fresh()?->automation_state !== Lead::AUTOMATION_NURTURING) {
+            $lead->forceFill(['automation_state' => Lead::AUTOMATION_NURTURING])->saveQuietly();
+        }
+
+        return $sent + ['after' => 'رعاية آلية'];
+    }
+
+    /** A call for the owner to make, as a follow-up that says so. */
+    private function createCallTask(Lead $lead, array $action): array
+    {
+        return $this->scheduleFollowUp($lead, [
+            'in_hours' => max(1, (int) ($action['in_hours'] ?? 1)),
+            'note' => trim((string) ($action['note'] ?? '')) ?: 'اتصال بالعميل',
+        ] + $action);
     }
 
     private function stopFollowUps(Lead $lead, array $action): array

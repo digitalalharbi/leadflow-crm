@@ -33,6 +33,7 @@ class AutomationEngine
     private const MAX_DEPTH = 3;
 
     public function __construct(
+        private ActionLog $logs,
         private ConditionEvaluator $conditions,
         private ActionExecutor $actions,
     ) {}
@@ -48,7 +49,22 @@ class AutomationEngine
             return;
         }
 
-        $rules = AutomationRule::query()->forTrigger($event->name())->get();
+        /*
+         * A lead that arrived from a sheet is a new lead *and* a new sheet
+         * row; a rule may listen for either, and both run.
+         */
+        $triggers = [$event->name()];
+
+        if ($event->name() === 'lead.created' && $event->lead()->provider === 'google_sheets') {
+            $triggers[] = 'lead.sheet_row';
+        }
+
+        $rules = AutomationRule::query()
+            ->whereIn('trigger', $triggers)
+            ->where('is_enabled', true)
+            ->orderBy('priority')
+            ->orderBy('id')
+            ->get();
 
         if ($rules->isEmpty()) {
             return;
@@ -90,6 +106,34 @@ class AutomationEngine
 
         $applied = [];
         $failed = false;
+        $mode = $rule->mode ?: AutomationRule::MODE_AUTO;
+
+        /*
+         * Watching or advising rather than acting. Monitor writes what it
+         * would have done and nothing else; Recommend puts the same list in
+         * front of the lead's owner as a person's decision. Neither touches
+         * the customer.
+         */
+        if ($mode !== AutomationRule::MODE_AUTO) {
+            foreach ($rule->actions ?? [] as $action) {
+                $this->logs->record($lead, $rule, $event->name(), $action, $mode === AutomationRule::MODE_MONITOR ? 'skipped' : 'needs_human', [
+                    'description' => ($mode === AutomationRule::MODE_MONITOR ? 'مراقبة — كان سيُنفّذ: ' : 'توصية — ينتظر قرارك: ').ActionWords::for($action),
+                ], $mode);
+                $applied[] = ['type' => $action['type'] ?? 'unknown', 'ok' => true, 'description' => $mode === AutomationRule::MODE_MONITOR ? 'مراقبة فقط.' : 'توصية للمسؤول.'];
+            }
+
+            if ($mode === AutomationRule::MODE_RECOMMEND) {
+                $this->actions->execute($lead, [
+                    'type' => 'notify', 'audience' => 'owner', 'rule_name' => $rule->name,
+                    'message' => "توصية من «{$rule->name}»: ".collect($rule->actions ?? [])->map(fn ($a) => ActionWords::for($a))->implode('، '),
+                ]);
+            }
+
+            $this->record($rule, $event, 'applied', $mode === AutomationRule::MODE_MONITOR ? 'وضع المراقبة' : 'وضع التوصية', $applied, $correlation, $startedAt);
+            $rule->forceFill(['times_matched' => $rule->times_matched + 1, 'last_matched_at' => now()])->saveQuietly();
+
+            return (bool) $rule->stops_processing;
+        }
 
         foreach ($rule->actions ?? [] as $action) {
             /*
@@ -121,12 +165,13 @@ class AutomationEngine
             $delay = (int) ($action['delay_minutes'] ?? 0);
 
             if ($delay > 0) {
-                $applied[] = $this->schedule($rule, $lead, $action, $delay, $correlation);
+                $applied[] = $this->schedule($rule, $lead, $action, $delay, $correlation, $event->name());
 
                 continue;
             }
 
             $result = $this->actions->execute($lead->fresh() ?? $lead, $action);
+            $this->logs->fromResult($lead, $rule, $event->name(), $action, $result);
             $applied[] = [
                 'type' => $action['type'] ?? 'unknown',
                 'ok' => $result['ok'],
@@ -163,6 +208,7 @@ class AutomationEngine
         array $action,
         int $delayMinutes,
         string $correlation,
+        ?string $trigger = null,
     ): array {
         $runAt = now()->addMinutes($delayMinutes);
 
@@ -176,6 +222,12 @@ class AutomationEngine
             'run_at' => $runAt,
             'status' => ScheduledAction::PENDING,
             'correlation_id' => $correlation,
+        ]);
+
+        $this->logs->record($lead, $rule, $trigger, $action, 'waiting', [
+            'description' => 'ينتظر حتى '.$runAt->format('Y-m-d H:i').' — '.ActionWords::for($action),
+            'scheduled_action_id' => $scheduled->id,
+            'happened_at' => $runAt,
         ]);
 
         RunScheduledAction::dispatch($scheduled->id)->delay($runAt);

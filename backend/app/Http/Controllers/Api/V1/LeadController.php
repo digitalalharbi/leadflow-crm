@@ -12,6 +12,7 @@ use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
+use App\Events\LeadSignal;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeLeadStatusRequest;
 use App\Http\Requests\StoreLeadRequest;
@@ -588,6 +589,8 @@ class LeadController extends Controller
         ]);
 
         $call->forceFill($data + ['ended_at' => now()])->save();
+
+        LeadSignal::dispatch($lead, 'lead.call_completed', ['call_status' => $data['status'], 'outcome' => $data['outcome'] ?? null], $request->user());
 
         return ApiResponse::success(['call' => [
             'id' => $call->uuid,

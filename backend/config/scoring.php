@@ -84,6 +84,16 @@ return [
      * The floor every lead that arrived through a real campaign starts from.
      * Someone who filled in a form is not a zero.
      */
+    /*
+     * Off unless a project turns them on: a workspace's scores must not move
+     * under it because a release added a rule. A project's own scoring sets
+     * them (see the automation centre's scoring card).
+     */
+    'extra' => [
+        'qualification_completed' => 0,
+        'no_reply_24h' => 0,
+    ],
+
     'baseline' => 15,
 
     'temperature' => [

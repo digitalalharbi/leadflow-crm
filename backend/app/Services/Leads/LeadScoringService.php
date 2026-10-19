@@ -9,6 +9,8 @@ use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
 use App\Models\Lead;
 use App\Models\LeadEngagement;
+use App\Models\LeadMessage;
+use App\Models\Project;
 
 /**
  * Why a lead is worth calling, as a number and as a list of reasons.
@@ -28,6 +30,9 @@ class LeadScoringService
     /** The lead being evaluated, so finalise() can read its tenant's thresholds. */
     private ?Lead $lead = null;
 
+    /** This project's own weights and thresholds, for the evaluation under way. */
+    private array $project = [];
+
     /** Timelines that count as "buying soon". */
     private const SOON = ['immediate', 'within_month', 'within_1_month', 'within_3_months'];
 
@@ -40,7 +45,17 @@ class LeadScoringService
     {
         $this->lead = $lead;
 
+        /*
+         * A project can weigh behaviour its own way — a villa project may
+         * value a booked visit far above an opened email — and set its own
+         * hot and priority lines. Anything it leaves unset is the workspace's.
+         */
+        $this->project = $lead->project_id ? (array) (Project::whereKey($lead->project_id)->value('scoring') ?? []) : [];
+        $this->project = is_string($this->project) ? (json_decode($this->project, true) ?: []) : $this->project;
+
         $weights = config('scoring.weights');
+        $weights['replied_on_whatsapp'] = (int) ($this->project['whatsapp_reply'] ?? $weights['replied_on_whatsapp']);
+        $weights['wants_appointment'] = (int) ($this->project['appointment_request'] ?? $weights['wants_appointment']);
         $secondary = config('scoring.secondary');
         $reasons = [];
 
@@ -147,7 +162,44 @@ class LeadScoringService
 
         $score += $project['points'];
 
+        // Every question the project asks, answered.
+        $completed = (int) ($this->project['qualification_completed'] ?? config('scoring.extra.qualification_completed', 0));
+
+        if ($completed !== 0 && ($project['answered_all'] ?? false)) {
+            $add('qualification_completed', 'أجاب عن كل أسئلة التأهيل', $completed);
+            $score += $completed;
+        }
+
+        // Quiet for a day after we last wrote.
+        $silence = (int) ($this->project['no_reply_24h'] ?? config('scoring.extra.no_reply_24h', 0));
+
+        if ($silence !== 0 && $this->quietForADay($lead)) {
+            $add('no_reply_24h', 'لم يرد خلال 24 ساعة', $silence);
+            $score += $silence;
+        }
+
+        // What the workspace's own rules added or took away.
+        if ((int) $lead->score_adjustment !== 0) {
+            $add('rule_adjustment', 'قواعد الأتمتة', (int) $lead->score_adjustment);
+            $score += (int) $lead->score_adjustment;
+        }
+
         return $this->finalise($score, $reasons, $project);
+    }
+
+    private function quietForADay(Lead $lead): bool
+    {
+        if ($lead->id === null) {
+            return false;
+        }
+
+        $lastOut = LeadMessage::where('lead_id', $lead->id)->where('direction', 'outbound')->max('created_at');
+
+        if ($lastOut === null || now()->diffInHours($lastOut, true) < 24) {
+            return false;
+        }
+
+        return ! LeadMessage::where('lead_id', $lead->id)->where('direction', 'inbound')->where('created_at', '>=', $lastOut)->exists();
     }
 
     /**
@@ -171,7 +223,12 @@ class LeadScoringService
      */
     private function engagement(Lead $lead, callable $add): int
     {
-        $weights = config('scoring.engagement');
+        $weights = array_merge(config('scoring.engagement'), array_filter([
+            'email_opened' => $this->project['email_open'] ?? null,
+            'link_clicked' => $this->project['email_click'] ?? null,
+            'file_opened' => $this->project['brochure_open'] ?? null,
+            'max' => $this->project['engagement_max'] ?? null,
+        ], fn ($v) => $v !== null));
 
         $events = LeadEngagement::query()
             ->where('lead_id', $lead->id)
@@ -365,8 +422,8 @@ class LeadScoringService
 
         $temperature = LeadTemperature::fromScore(
             $score,
-            (int) ($settings?->score_warm_threshold ?? config('scoring.temperature.warm_from')),
-            (int) ($settings?->score_hot_threshold ?? config('scoring.temperature.hot_from')),
+            (int) ($this->project['warm_from'] ?? $settings?->score_warm_threshold ?? config('scoring.temperature.warm_from')),
+            (int) ($this->project['hot_from'] ?? $settings?->score_hot_threshold ?? config('scoring.temperature.hot_from')),
         );
 
         /*
@@ -378,7 +435,7 @@ class LeadScoringService
         $wrongFit = ! empty($project['wrong_fit']);
         $priority = ! $wrongFit
             && $temperature === LeadTemperature::Hot
-            && ($score >= (int) config('scoring.temperature.priority_from') || ! empty($project['priority']));
+            && ($score >= (int) ($this->project['priority_from'] ?? config('scoring.temperature.priority_from')) || ! empty($project['priority']));
 
         return [
             'score' => $score,

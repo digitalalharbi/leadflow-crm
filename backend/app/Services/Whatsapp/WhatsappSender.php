@@ -2,6 +2,7 @@
 
 namespace App\Services\Whatsapp;
 
+use App\Domain\Automation\TemplatePicker;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -125,9 +126,9 @@ class WhatsappSender
     /**
      * @throws RuntimeException
      */
-    private function sendTemplate(Lead $lead, MessageTemplate $template, ?User $actor, string $previewBody): LeadMessage
+    private function sendTemplate(Lead $lead, MessageTemplate $template, ?User $actor, string $previewBody, array $extra = []): LeadMessage
     {
-        $values = $this->renderer->values($lead, $actor);
+        $values = $this->renderer->values($lead, $actor, null, $extra);
         $parameters = [];
 
         foreach ((array) $template->meta_parameters as $key) {
@@ -172,6 +173,35 @@ class WhatsappSender
      *
      * @throws RuntimeException
      */
+    /**
+     * A project file, the way that will reach a lead today.
+     *
+     * Inside the customer's window it goes as the document itself. Outside it
+     * — every brand-new lead, since nobody has written to us yet — a document
+     * is refused by Meta, so the link goes in the workspace's approved
+     * "brochure" message instead. Without one, that is said plainly.
+     *
+     * @throws RuntimeException
+     */
+    public function sendFile(Lead $lead, ProjectFile $file, string $url, ?User $actor = null): LeadMessage
+    {
+        $live = $this->manager->isLive($this->manager->integration());
+
+        if (! $live || $this->windowOpen($lead)) {
+            return $this->sendDocument($lead, $file, $url, $actor);
+        }
+
+        $template = app(TemplatePicker::class)->pick($lead, 'whatsapp', 'brochure');
+
+        if (! $template || blank($template->meta_template_name)) {
+            throw new RuntimeException('This lead has not written to us yet, so a file can only go in an approved brochure template — and there is none.');
+        }
+
+        $preview = $this->renderer->render($template->body, $lead, $actor, null, ['link' => $url]);
+
+        return $this->sendTemplate($lead, $template, $actor, $preview, ['link' => $url]);
+    }
+
     public function sendDocument(Lead $lead, ProjectFile $file, ?string $caption = null, ?User $actor = null): LeadMessage
     {
         return $this->dispatch($lead, [

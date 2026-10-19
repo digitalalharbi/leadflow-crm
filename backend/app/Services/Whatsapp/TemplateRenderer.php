@@ -28,9 +28,9 @@ class TemplateRenderer
      *
      * @return array<string,?string>
      */
-    public function values(Lead $lead, ?User $agent = null, ?string $company = null): array
+    public function values(Lead $lead, ?User $agent = null, ?string $company = null, array $extra = []): array
     {
-        return [
+        return $extra + [
             // A lead that arrived as a bare phone number has no first name, and
             // greeting someone by their own phone number is worse than not
             // greeting them — so an unusable name is dropped like any other
@@ -43,9 +43,9 @@ class TemplateRenderer
         ];
     }
 
-    public function render(string $template, Lead $lead, ?User $agent = null, ?string $company = null): string
+    public function render(string $template, Lead $lead, ?User $agent = null, ?string $company = null, array $extra = []): string
     {
-        $values = $this->values($lead, $agent, $company);
+        $values = $this->values($lead, $agent, $company, $extra);
 
         $rendered = $template;
 

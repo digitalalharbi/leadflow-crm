@@ -40,7 +40,7 @@ class RuleTemplates
          */
         'lead_journey' => [
             'name' => 'رحلة العميل: تواصل آلي من أول دقيقة',
-            'description' => 'ترحيب واتساب وبريد فورًا، ثم البروشور المناسب، ثم أسئلة التأهيل، وتذكير إن لم يرد، ثم تسليم لمندوب.',
+            'description' => 'ترحيب واتساب وبريد فورًا، ثم البروشور، ثم أسئلة التأهيل، وتذكير بعد 15 دقيقة إن لم يرد، ثم تسليم لمندوب.',
             'trigger' => 'lead.created',
             'priority' => 6,
             'conditions' => [],
@@ -50,7 +50,7 @@ class RuleTemplates
                 ['type' => 'share_file', 'kind' => '', 'send' => true, 'channel' => 'whatsapp'],
                 ['type' => 'hand_off', 'reason' => 'unreached', 'when' => 'unreached'],
                 ['type' => 'ask_qualification', 'delay_minutes' => 3, 'unless' => 'replied'],
-                ['type' => 'send_whatsapp', 'purpose' => 'reminder', 'delay_minutes' => 180, 'unless' => 'replied'],
+                ['type' => 'send_whatsapp', 'purpose' => 'reminder', 'delay_minutes' => 15, 'unless' => 'replied'],
                 ['type' => 'send_email', 'purpose' => 'nurture', 'delay_minutes' => 1440, 'unless' => 'replied'],
                 ['type' => 'hand_off', 'reason' => 'no_reply', 'delay_minutes' => 2880, 'unless' => 'replied'],
             ],
@@ -183,6 +183,90 @@ class RuleTemplates
                 ['type' => 'add_tag', 'tag' => 'صفقة ناجحة'],
                 ['type' => 'notify', 'audience' => 'managers', 'message' => 'صفقة ناجحة — راجع الحملة التي جاءت منها.'],
             ],
+        ],
+
+        // ---- The pack: one press each. -----------------------------------
+        'new_lead_welcome' => [
+            'name' => 'ترحيب بالعميل الجديد',
+            'description' => 'عميل جديد ← واتساب + بريد + بروشور فورًا.',
+            'trigger' => 'lead.created', 'priority' => 7, 'conditions' => [['field' => 'has_phone', 'operator' => 'equals', 'value' => true]],
+            'actions' => [['type' => 'send_whatsapp', 'purpose' => 'welcome'], ['type' => 'send_email', 'purpose' => 'welcome'], ['type' => 'share_file', 'kind' => '', 'send' => true, 'channel' => 'whatsapp']],
+        ],
+        'instant_whatsapp' => [
+            'name' => 'واتساب فوري', 'description' => 'عميل جديد ← رسالة ترحيب على واتساب.',
+            'trigger' => 'lead.created', 'priority' => 7, 'conditions' => [],
+            'actions' => [['type' => 'send_whatsapp', 'purpose' => 'welcome']],
+        ],
+        'instant_email' => [
+            'name' => 'بريد فوري', 'description' => 'عميل جديد بريده معروف ← بريد ترحيب.',
+            'trigger' => 'lead.created', 'priority' => 7, 'conditions' => [['field' => 'has_email', 'operator' => 'equals', 'value' => true]],
+            'actions' => [['type' => 'send_email', 'purpose' => 'welcome']],
+        ],
+        'send_brochure' => [
+            'name' => 'إرسال البروشور', 'description' => 'عميل جديد ← البروشور المناسب لمشروعه.',
+            'trigger' => 'lead.created', 'priority' => 8, 'conditions' => [],
+            'actions' => [['type' => 'share_file', 'kind' => '', 'send' => true, 'channel' => 'whatsapp']],
+        ],
+        'qualification_flow' => [
+            'name' => 'مسار التأهيل', 'description' => 'بعد 3 دقائق ← أسئلة المشروع، إن لم يرد بعد.',
+            'trigger' => 'lead.created', 'priority' => 9, 'conditions' => [],
+            'actions' => [['type' => 'ask_qualification', 'delay_minutes' => 3, 'unless' => 'replied']],
+        ],
+        'no_reply_follow_up' => [
+            'name' => 'لا رد 15 دقيقة', 'description' => 'لا رد 15 د ← تذكير واتساب.',
+            'trigger' => 'lead.no_reply', 'priority' => 12, 'conditions' => [['field' => 'no_reply_minutes', 'operator' => 'equals', 'value' => 15]],
+            'actions' => [['type' => 'send_whatsapp', 'purpose' => 'reminder']],
+        ],
+        'hot_lead_escalation' => [
+            'name' => 'تصعيد العميل الساخن', 'description' => 'أصبح ساخنًا ← أولوية + تسليم للمندوب.',
+            'trigger' => 'lead.score_changed', 'priority' => 5, 'conditions' => [['field' => 'temperature', 'operator' => 'equals', 'value' => 'hot']],
+            'actions' => [['type' => 'set_priority'], ['type' => 'hand_off', 'reason' => 'needs_human']],
+        ],
+        'priority_lead' => [
+            'name' => 'تقييم ≥ 80: أولوية', 'description' => 'التقييم 80 فأكثر ← أولوية وتنبيه المندوب.',
+            'trigger' => 'lead.score_changed', 'priority' => 5, 'conditions' => [['field' => 'score', 'operator' => 'greater_than', 'value' => 79]],
+            'actions' => [['type' => 'set_priority'], ['type' => 'notify', 'audience' => 'owner', 'message' => 'عميل وصل تقييمه 80 — أولوية.']],
+        ],
+        'no_answer_retry' => [
+            'name' => 'لم يرد على الاتصال: إعادة', 'description' => 'لم يرد ← واتساب تذكير + مهمة اتصال بعد ساعتين.',
+            'trigger' => 'lead.outcome_recorded', 'priority' => 15, 'conditions' => [['field' => 'last_outcome', 'operator' => 'equals', 'value' => 'no_answer']],
+            'actions' => [['type' => 'send_whatsapp', 'purpose' => 'reminder'], ['type' => 'create_call_task', 'in_hours' => 2, 'note' => 'إعادة الاتصال']],
+        ],
+        'cold_lead_nurture' => [
+            'name' => 'رعاية العميل البارد', 'description' => 'أصبح باردًا ← رسالة رعاية ويعود للأتمتة.',
+            'trigger' => 'lead.score_changed', 'priority' => 25, 'conditions' => [['field' => 'temperature', 'operator' => 'equals', 'value' => 'cold']],
+            'actions' => [['type' => 'start_nurture']],
+        ],
+        're_engagement' => [
+            'name' => 'إعادة التنشيط', 'description' => 'صامت 7 أيام ← رسالة متابعة لطيفة.',
+            'trigger' => 'lead.no_reply', 'priority' => 30, 'conditions' => [['field' => 'no_reply_minutes', 'operator' => 'equals', 'value' => 10080]],
+            'actions' => [['type' => 'send_whatsapp', 'purpose' => 'nurture']],
+        ],
+        'invalid_lead' => [
+            'name' => 'عميل غير صالح', 'description' => 'بلا جوال ولا بريد ← غير صالح وإيقاف الأتمتة.',
+            'trigger' => 'lead.created', 'priority' => 1, 'condition_match' => 'all',
+            'conditions' => [['field' => 'has_phone', 'operator' => 'equals', 'value' => false], ['field' => 'has_email', 'operator' => 'equals', 'value' => false]],
+            'actions' => [['type' => 'change_stage', 'status' => 'invalid'], ['type' => 'stop_automation']],
+        ],
+        'duplicate_lead' => [
+            'name' => 'عميل عاد من جديد', 'description' => 'رقم معروف وصل مرة أخرى ← تقييم +5 وتنبيه المندوب.',
+            'trigger' => 'lead.re_engaged', 'priority' => 10, 'conditions' => [],
+            'actions' => [['type' => 'adjust_score', 'by' => 5], ['type' => 'notify', 'audience' => 'owner', 'message' => 'عميل عاد وسجّل اهتمامه مرة أخرى.']],
+        ],
+        'sla_breach' => [
+            'name' => 'تجاوز مهلة أول تواصل', 'description' => 'تجاوز المهلة ← تسليم ومهمة اتصال عاجلة.',
+            'trigger' => 'lead.sla_breached', 'priority' => 5, 'conditions' => [],
+            'actions' => [['type' => 'create_call_task', 'in_hours' => 1, 'note' => 'اتصال عاجل — تجاوز المهلة'], ['type' => 'notify', 'audience' => 'managers', 'message' => 'عميل تجاوز مهلة أول تواصل.']],
+        ],
+        'lost_lead_follow_up' => [
+            'name' => 'متابعة العميل المفقود', 'description' => 'بعد 30 يومًا من الخسارة ← رسالة رعاية.',
+            'trigger' => 'lead.lost', 'priority' => 45, 'conditions' => [],
+            'actions' => [['type' => 'send_whatsapp', 'purpose' => 'nurture', 'delay_minutes' => 43200, 'unless' => 'replied']],
+        ],
+        'brochure_opened' => [
+            'name' => 'فتح البروشور', 'description' => 'فتح البروشور ← تقييم +15.',
+            'trigger' => 'lead.file_opened', 'priority' => 20, 'conditions' => [],
+            'actions' => [['type' => 'adjust_score', 'by' => 15]],
         ],
     ];
 

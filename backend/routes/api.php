@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
@@ -232,6 +233,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/automation/templates', [AutomationRuleController::class, 'templates']);
             Route::post('/automation/templates/{key}', [AutomationRuleController::class, 'installTemplate']);
             Route::get('/automation/insights', [AutomationRuleController::class, 'insights']);
+            Route::get('/automation/summary', [AutomationCentreController::class, 'summary']);
+            Route::get('/automation/history', [AutomationCentreController::class, 'history']);
+            Route::get('/projects/{uuid}/scoring', [AutomationCentreController::class, 'scoring'])->whereUuid('uuid');
+            Route::patch('/projects/{uuid}/scoring', [AutomationCentreController::class, 'updateScoring'])->whereUuid('uuid');
             Route::get('/automation/rules', [AutomationRuleController::class, 'index']);
             Route::post('/automation/rules', [AutomationRuleController::class, 'store']);
             Route::patch('/automation/rules/{uuid}', [AutomationRuleController::class, 'update']);

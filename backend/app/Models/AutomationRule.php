@@ -18,8 +18,19 @@ class AutomationRule extends Model
 {
     use BelongsToTenant, HasUuid, SoftDeletes;
 
+    /** Do it. */
+    public const MODE_AUTO = 'auto';
+
+    /** Tell the lead's owner what it would do, and let them decide. */
+    public const MODE_RECOMMEND = 'recommend';
+
+    /** Only write down what it would have done. */
+    public const MODE_MONITOR = 'monitor';
+
+    public const MODES = [self::MODE_AUTO, self::MODE_RECOMMEND, self::MODE_MONITOR];
+
     protected $fillable = [
-        'name', 'trigger', 'template_key', 'is_enabled', 'priority',
+        'name', 'trigger', 'template_key', 'is_enabled', 'mode', 'priority',
         'stops_processing', 'conditions', 'condition_match', 'actions', 'created_by',
     ];
 

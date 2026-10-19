@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ActivityType;
 use App\Enums\MessageStatus;
+use App\Events\LeadSignal;
 use App\Models\Lead;
 use App\Models\LeadEngagement;
 use App\Models\LeadMessage;
@@ -144,6 +145,8 @@ class EmailTrackingController extends Controller
                 ]);
 
                 $this->scoring->refresh($lead, 'engagement');
+
+                LeadSignal::dispatch($lead->fresh(), $type === LeadEngagement::EMAIL_OPENED ? 'lead.email_opened' : 'lead.email_clicked', ['message' => $message->uuid]);
             });
         } catch (\Throwable $e) {
             report($e);

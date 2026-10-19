@@ -45,7 +45,7 @@ class MessageTemplateTest extends TestCase
 
         $response->assertSuccessful();
         $this->assertNotEmpty($response->json('data.templates'));
-        $this->assertSame(['name', 'agent', 'company', 'project', 'questions'], $response->json('data.variables'));
+        $this->assertSame(['name', 'agent', 'company', 'project', 'questions', 'link'], $response->json('data.variables'));
     }
 
     public function test_a_filled_template_reads_as_a_person_wrote_it(): void

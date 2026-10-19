@@ -49,11 +49,13 @@ class ProjectQualification
         $priority = false;
         $wrongFit = false;
         $missing = 0;
+        $unanswered = 0;
 
         foreach ($questions as $question) {
             $value = $answers[$question->id]->value ?? null;
 
             if ($this->isBlank($value)) {
+                $unanswered++;
                 $question->is_required && $missing++;
 
                 continue;
@@ -93,6 +95,7 @@ class ProjectQualification
             'priority' => $priority,
             'wrong_fit' => $wrongFit,
             'missing' => $missing,
+            'answered_all' => $unanswered === 0,
         ];
     }
 

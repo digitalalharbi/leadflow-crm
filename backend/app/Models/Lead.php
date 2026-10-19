@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Domain\Automation\ActionLog;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
+use App\Events\LeadSignal;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\CompanyScope;
@@ -40,6 +42,20 @@ class Lead extends Model
      */
     protected static function booted(): void
     {
+        /*
+         * A score that moved is a trigger: "score reached 80 → priority" is the
+         * most common rule anybody writes. Quiet saves stay quiet, and the
+         * engine's depth limit stops a rule that moves the score from looping.
+         */
+        static::updated(function (Lead $lead) {
+            if ($lead->wasChanged('score')) {
+                LeadSignal::dispatch($lead, 'lead.score_changed', [
+                    'from' => (int) $lead->getOriginal('score'),
+                    'to' => (int) $lead->score,
+                ]);
+            }
+        });
+
         static::addGlobalScope(new ExcludesTestLeads);
         static::addGlobalScope(new CompanyScope);
 
@@ -170,10 +186,10 @@ class Lead extends Model
             ->where('status', ScheduledAction::PENDING)
             ->get()
             ->filter(fn (ScheduledAction $action) => ($action->action['unless'] ?? null) === 'replied')
-            ->each(fn (ScheduledAction $action) => $action->resolve(
-                ScheduledAction::CANCELLED,
-                'ردّ العميل — لم تعد هذه الخطوة لازمة.',
-            ));
+            ->each(function (ScheduledAction $action) {
+                $action->resolve(ScheduledAction::CANCELLED, 'ردّ العميل — لم تعد هذه الخطوة لازمة.');
+                app(ActionLog::class)->resolveScheduled($action->id, $action->action ?? [], [], 'ردّ العميل — لم تعد هذه الخطوة لازمة.');
+            });
     }
 
     protected static function cancelPromisedWork(self $lead): void
@@ -182,10 +198,10 @@ class Lead extends Model
             ->where('lead_id', $lead->id)
             ->where('status', ScheduledAction::PENDING)
             ->get()
-            ->each(fn (ScheduledAction $action) => $action->resolve(
-                ScheduledAction::CANCELLED,
-                'أُغلق العميل قبل موعد التنفيذ.',
-            ));
+            ->each(function (ScheduledAction $action) {
+                $action->resolve(ScheduledAction::CANCELLED, 'أُغلق العميل قبل موعد التنفيذ.');
+                app(ActionLog::class)->resolveScheduled($action->id, $action->action ?? [], [], 'أُغلق العميل قبل موعد التنفيذ.');
+            });
     }
 
     /** Automation is talking to this lead; reps see it only if it turns hot. */

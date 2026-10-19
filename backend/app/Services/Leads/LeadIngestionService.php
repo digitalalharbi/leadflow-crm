@@ -9,6 +9,7 @@ use App\Domain\Leads\DuplicateMatcher;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadCreated;
+use App\Events\LeadSignal;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
@@ -232,6 +233,8 @@ class LeadIngestionService
             // later: it is the only place that records the record came back.
             'restored' => $restored,
         ]);
+
+        LeadSignal::dispatch($lead, 'lead.re_engaged', ['provider' => $incoming->provider->value, 'restored' => $restored]);
 
         return IngestionResult::reEngaged($lead->refresh(), $restored);
     }

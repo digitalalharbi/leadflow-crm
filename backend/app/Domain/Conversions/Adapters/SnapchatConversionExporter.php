@@ -4,9 +4,11 @@ namespace App\Domain\Conversions\Adapters;
 
 use App\Domain\Conversions\Hashing;
 use App\Models\ConversionExport;
-use App\Models\Integration;
 
-/** Snapchat's Conversions API. */
+/**
+ * Snapchat Conversions API v3: events in a `data` array, authenticated with
+ * the access token on the URL as Snap documents it.
+ */
 class SnapchatConversionExporter extends AbstractConversionExporter
 {
     public function platform(): string
@@ -19,21 +21,18 @@ class SnapchatConversionExporter extends AbstractConversionExporter
         return ['access_token', 'pixel_id'];
     }
 
-    protected function endpoint(Integration $integration): string
+    protected function endpoint(array $credentials): string
     {
-        return 'https://tr.snapchat.com/v3/'
-            .data_get($integration->credentials, 'pixel_id')
-            .'/events';
+        return 'https://tr.snapchat.com/v3/'.rawurlencode((string) ($credentials['pixel_id'] ?? '')).'/events?access_token='.rawurlencode((string) ($credentials['access_token'] ?? ''));
     }
 
-    protected function body(ConversionExport $export, Integration $integration): array
+    protected function body(ConversionExport $export, array $credentials): array
     {
         $lead = $export->lead;
 
-        return [
+        return ['data' => [[
             'event_name' => $export->event->standardName(),
             'event_time' => $export->occurred_at->timestamp,
-            'event_source_url' => null,
             'action_source' => 'OFFLINE',
             'event_id' => 'leadflow-'.$export->id,
             'user_data' => array_filter([
@@ -45,6 +44,6 @@ class SnapchatConversionExporter extends AbstractConversionExporter
                 'value' => $export->value,
                 'currency' => $export->currency,
             ]),
-        ];
+        ]]];
     }
 }

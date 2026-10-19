@@ -5,9 +5,9 @@ namespace App\Domain\Campaigns\Adapters;
 use App\Domain\Campaigns\AdPlatform;
 use App\Models\AdAccount;
 use App\Models\AdConnection;
+use App\Support\GoogleAdsToken;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -292,25 +292,9 @@ class GoogleAdsAdapter extends AbstractAdAdapter
         return Http::withToken($this->accessToken($c))->withHeaders($headers)->acceptJson()->timeout(30);
     }
 
-    /** Minted from the refresh token; cached a little under its lifetime, never logged. */
     private function accessToken(AdConnection $c): string
     {
-        $key = 'google-ads-token:'.($c->uuid ?? 'standin').':'.sha1((string) $c->credential('refresh_token'));
-
-        return Cache::remember($key, 3000, function () use ($c) {
-            $response = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
-                'client_id' => $c->credential('client_id'),
-                'client_secret' => $c->credential('client_secret'),
-                'refresh_token' => $c->credential('refresh_token'),
-                'grant_type' => 'refresh_token',
-            ]);
-
-            if ($response->failed() || ! $response->json('access_token')) {
-                throw new RuntimeException('Google refused the refresh token: '.$response->json('error_description', $response->json('error', 'unknown')));
-            }
-
-            return (string) $response->json('access_token');
-        });
+        return GoogleAdsToken::mint((string) $c->credential('client_id'), (string) $c->credential('client_secret'), (string) $c->credential('refresh_token'));
     }
 
     private function check(bool $failed, $response): void

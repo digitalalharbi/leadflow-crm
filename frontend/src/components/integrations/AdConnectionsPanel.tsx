@@ -4,6 +4,7 @@ import { Check, CircleSlash, Link2, Plug, ShieldCheck, Unplug, X as XIcon } from
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, Drawer, Input, Skeleton } from '@/components/ui'
 import { platformColor } from '@/components/charts'
+import { ConversionHealthPanel } from './ConversionHealthPanel'
 import {
   AD_PLATFORMS, LADDER, disconnectAdConnection, saveAdConnection, testAdConnection, useAdConnection, type AdConnectionView,
 } from '@/features/adConnections'
@@ -37,6 +38,7 @@ export function AdConnectionsPanel() {
         {AD_PLATFORMS.map((p) => <PlatformCard key={p} platform={p} onOpen={() => setOpen(p)} />)}
       </div>
       {open && <ConnectDrawer platform={open} onClose={() => setOpen(null)} />}
+      <div className="mt-4"><ConversionHealthPanel /></div>
     </section>
   )
 }

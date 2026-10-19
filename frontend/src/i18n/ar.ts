@@ -1727,6 +1727,19 @@ export default {
     source: { agent: 'من الوكيل', user: 'كتبها شخص' },
   },
 
+  qualityReport: {
+    level: { platform: 'المنصة', campaign: 'الحملة', ad_set: 'المجموعة', ad: 'الإعلان', creative: 'الإبداع' },
+    realCustomers: 'عملاء حقيقيون',
+    col: { spend: 'الصرف', leads: 'عملاء', valid: 'صالحون', engaged: 'تفاعلوا', qualified: 'مؤهلون', appointments: 'مواعيد', won: 'صفقات', revenue: 'الإيراد', cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', cac: 'تكلفة الصفقة', roas: 'العائد' },
+  },
+  conversionHealth: {
+    title: 'إرجاع النتائج للمنصات',
+    bar: '{{sent}} أُرسل، {{waiting}} ينتظر، {{lost}} لم يصل',
+    missing: 'ينقص: {{keys}}',
+    lastSent: 'آخر إرسال {{when}}',
+    none: 'لم يُرسَل شيء بعد',
+  },
+
   visual: {
     status: {
       healthy: 'سليم',
@@ -1906,7 +1919,7 @@ export default {
       response_fast: 'أول تواصل سريع: الوسيط {{median}} دقيقة وهدفكم {{target}}.',
       biggest_leak: 'أكبر تسرّب بين «{{from}}» و«{{to}}»: يضيع {{lost}}٪ من العملاء.',
     },
-    tabs: { overview: 'نظرة عامة', marketing: 'تسويق + مبيعات', weekly: 'التقارير الأسبوعية', campaigns: 'الحملات', platforms: 'المنصات', team: 'فريق المبيعات', lost: 'أسباب الفقد', drivers: 'عوامل الإغلاق' },
+    tabs: { overview: 'نظرة عامة', marketing: 'تسويق + مبيعات', quality: 'جودة المبيعات', weekly: 'التقارير الأسبوعية', campaigns: 'الحملات', platforms: 'المنصات', team: 'فريق المبيعات', lost: 'أسباب الفقد', drivers: 'عوامل الإغلاق' },
     teamHint: 'قياسات لكل مسؤول — وليست ترتيبًا للأشخاص',
     lostHint: 'أكبر سبب أولًا — هذا هو ما يجب معالجته',
     noLost: 'لا توجد صفقات مفقودة في هذه الفترة',

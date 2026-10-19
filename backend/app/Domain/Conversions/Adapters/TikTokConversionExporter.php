@@ -4,9 +4,12 @@ namespace App\Domain\Conversions\Adapters;
 
 use App\Domain\Conversions\Hashing;
 use App\Models\ConversionExport;
-use App\Models\Integration;
 
-/** TikTok's Events API, offline variant. */
+/**
+ * TikTok Events API 2.0, offline event set. Authenticated with the
+ * `Access-Token` header; TikTok answers 200 with a non-zero `code` when it
+ * refuses, so the body is read, not just the status line.
+ */
 class TikTokConversionExporter extends AbstractConversionExporter
 {
     public function platform(): string
@@ -19,18 +22,28 @@ class TikTokConversionExporter extends AbstractConversionExporter
         return ['access_token', 'event_set_id'];
     }
 
-    protected function endpoint(Integration $integration): string
+    protected function endpoint(array $credentials): string
     {
         return 'https://business-api.tiktok.com/open_api/v1.3/event/track/';
     }
 
-    protected function body(ConversionExport $export, Integration $integration): array
+    protected function headers(array $credentials, string $url, array $body): array
+    {
+        return ['Access-Token' => (string) ($credentials['access_token'] ?? '')];
+    }
+
+    protected function accepted(array $json): bool
+    {
+        return (int) ($json['code'] ?? -1) === 0;
+    }
+
+    protected function body(ConversionExport $export, array $credentials): array
     {
         $lead = $export->lead;
 
         return [
             'event_source' => 'offline',
-            'event_source_id' => data_get($integration->credentials, 'event_set_id'),
+            'event_source_id' => $credentials['event_set_id'] ?? null,
             'data' => [[
                 'event' => $export->event->standardName(),
                 'event_time' => $export->occurred_at->timestamp,

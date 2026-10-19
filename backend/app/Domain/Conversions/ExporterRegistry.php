@@ -3,9 +3,11 @@
 namespace App\Domain\Conversions;
 
 use App\Domain\Conversions\Adapters\GoogleAdsConversionExporter;
+use App\Domain\Conversions\Adapters\LinkedInConversionExporter;
 use App\Domain\Conversions\Adapters\MetaConversionExporter;
 use App\Domain\Conversions\Adapters\SnapchatConversionExporter;
 use App\Domain\Conversions\Adapters\TikTokConversionExporter;
+use App\Domain\Conversions\Adapters\XConversionExporter;
 
 class ExporterRegistry
 {
@@ -15,6 +17,8 @@ class ExporterRegistry
         'google_ads' => GoogleAdsConversionExporter::class,
         'tiktok' => TikTokConversionExporter::class,
         'snapchat' => SnapchatConversionExporter::class,
+        'linkedin' => LinkedInConversionExporter::class,
+        'x' => XConversionExporter::class,
     ];
 
     public function has(?string $platform): bool

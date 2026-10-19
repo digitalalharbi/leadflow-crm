@@ -25,16 +25,20 @@ class DispatchFollowUpReminders extends Command
 
         foreach ($tenants as $tenant) {
             $context->withTenant($tenant, function () use (&$sent) {
-                $due = FollowUp::query()->dueToday()->with('lead', 'assignee')->get();
-                $overdue = FollowUp::query()->overdue()->with('lead', 'assignee')->get();
+                // Each is announced once when it falls due and once if it slips —
+                // the job runs hourly, and a reminder that repeats hourly is muted.
+                $overdue = FollowUp::query()->overdue()->whereNull('overdue_reminded_at')->with('lead', 'assignee')->get();
+                $due = FollowUp::query()->dueToday()->whereNull('reminded_at')->whereNotIn('id', $overdue->pluck('id'))->with('lead', 'assignee')->get();
 
                 foreach ($due as $followUp) {
                     $followUp->assignee?->notify(new FollowUpDueNotification($followUp, overdue: false));
+                    $followUp->forceFill(['reminded_at' => now()])->saveQuietly();
                     $sent++;
                 }
 
                 foreach ($overdue as $followUp) {
                     $followUp->assignee?->notify(new FollowUpDueNotification($followUp, overdue: true));
+                    $followUp->forceFill(['reminded_at' => $followUp->reminded_at ?? now(), 'overdue_reminded_at' => now()])->saveQuietly();
                     $sent++;
                 }
             });

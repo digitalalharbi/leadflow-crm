@@ -4,6 +4,7 @@ namespace App\Domain\Agents;
 
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Campaigns\CampaignSyncer;
+use App\Domain\Notifications\AlertGate;
 use App\Enums\Role;
 use App\Models\AdConnection;
 use App\Models\AgentThread;
@@ -231,6 +232,11 @@ class Orchestrator
 
     private function alert(string $agent, string $title, string $body, string $link = '/campaigns'): void
     {
+        // The same finding is announced once a day, however often the agent looks.
+        if (! AlertGate::once("agent:{$agent}:".md5($title.$body).':'.now()->toDateString())) {
+            return;
+        }
+
         User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true)->get()
             ->each(fn (User $u) => $u->notify(new AgentAlertNotification($agent, $title, $body, $link)));
     }

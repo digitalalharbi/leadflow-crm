@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Automation\ActionLog;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
@@ -58,6 +59,8 @@ class Lead extends Model
 
         static::addGlobalScope(new ExcludesTestLeads);
         static::addGlobalScope(new CompanyScope);
+
+        static::saved(fn (self $lead) => ImportantAlerts::leadSaved($lead));
 
         static::saving(function (self $lead) {
             // The clock "time in stage" reads. A new lead starts it on arrival.

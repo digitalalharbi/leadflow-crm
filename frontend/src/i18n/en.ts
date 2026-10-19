@@ -1314,7 +1314,6 @@ export default {
 
   leads: {
     classification: 'Classification',
-    score: 'Score',
     neverContacted: 'Not contacted yet',
     segments: {
       label: 'Working lists',

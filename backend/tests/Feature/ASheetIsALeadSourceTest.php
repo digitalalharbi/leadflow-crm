@@ -100,7 +100,7 @@ class ASheetIsALeadSourceTest extends TestCase
         Http::fake([
             'sheets.googleapis.com/v4/spreadsheets/sheet-abc/values/*' => function ($request) use ($headers) {
                 // The header read asks for row 1; everything else is data.
-                if (str_contains(urldecode($request->url()), '!A1:Z1')) {
+                if (str_contains(urldecode($request->url()), '!1:1')) {
                     return Http::response(['values' => [$headers]], 200);
                 }
 
@@ -258,7 +258,7 @@ class ASheetIsALeadSourceTest extends TestCase
     {
         $this->fakeSheet([], [
             'sheets.googleapis.com/v4/spreadsheets/sheet-abc/values/*' => function ($request) {
-                if (str_contains(urldecode($request->url()), '!A1:Z1')) {
+                if (str_contains(urldecode($request->url()), '!1:1')) {
                     return Http::response(['values' => [['الاسم', 'الجوال', 'المدينة']]], 200);
                 }
 

@@ -69,13 +69,14 @@ Schedule::command('leadflow:reconcile-repositories')
 /*
  * Leads that arrive in a spreadsheet.
  *
- * Every fifteen minutes, incremental from each sheet's own cursor. A team
- * running its campaign through a sheet gets the same speed-to-lead as one
- * running it through a webhook, which is the entire reason this is scheduled
- * rather than a button somebody remembers to press.
+ * Every minute, incremental from each sheet's own cursor — two small reads
+ * per sheet, well inside Google's quota. A sheet with its Apps Script ping
+ * installed is synced within seconds of a row arriving; this sweep is the
+ * floor for one without it. Speed-to-lead is the product, so a lead that sat
+ * in a sheet for fifteen minutes before anybody wrote to it was a defect.
  */
 Schedule::command('leadflow:sync-sheets')
-    ->everyFifteenMinutes()
+    ->everyMinute()
     ->withoutOverlapping();
 
 /*

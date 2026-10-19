@@ -67,7 +67,13 @@ class SheetReader
      */
     public function rows(Integration $connection, string $spreadsheetId, string $sheet, int $fromRow, int $limit): array
     {
-        $range = sprintf('%s!A%d:Z%d', $sheet, $fromRow, $fromRow + $limit - 1);
+        /*
+         * Whole rows, not A:Z. A Meta lead export runs past column Z once the
+         * form has a few custom questions, and a fixed width silently dropped
+         * every answer to the right of it. The tab name is quoted because a
+         * name with a space or an apostrophe is otherwise not a range at all.
+         */
+        $range = sprintf("'%s'!%d:%d", str_replace("'", "''", $sheet), $fromRow, $fromRow + $limit - 1);
 
         $result = $this->get(
             $connection,

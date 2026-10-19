@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Domain\Sheets\SheetImporter;
 use App\Models\SheetSource;
 use App\Support\TenantContext;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -15,9 +16,21 @@ use Illuminate\Foundation\Queue\Queueable;
  * was revoked must not stop every other workspace's sheet from syncing, and a
  * first import of several thousand rows must not hold the queue behind it.
  */
-class SyncSheetSource implements ShouldQueue
+class SyncSheetSource implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    /**
+     * One sync per sheet in flight. The sweep runs every minute and a ping can
+     * arrive at any time; two syncs of one sheet would read the same rows
+     * twice and race on its cursor.
+     */
+    public int $uniqueFor = 600;
+
+    public function uniqueId(): string
+    {
+        return 'sheet-'.$this->sourceId;
+    }
 
     public int $tries = 2;
 

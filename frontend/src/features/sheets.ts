@@ -35,10 +35,36 @@ export interface SheetSource {
   sheet_name: string
   header_row: number
   mapping: Record<string, string>
+  /** Fields a person chose by hand; the guess never overwrites these. */
+  overrides: Record<string, string | null>
+  /** How sure the automatic mapping is, per field, 0–1. */
+  confidence: Record<string, number>
+  /** Fields with two equally likely columns — the only choice left to a person. */
+  ambiguous: MappingChoice[]
+  /** Columns that are not a known field and are kept as custom fields. */
+  custom_columns: string[]
+  headers: string[]
+  /** What the sheet's Apps Script trigger calls when a row is added. */
+  ping_url: string
+  last_push_at: string | null
   defaults: Record<string, unknown> | null
   is_active: boolean
   health: SheetHealth
   last_run: SheetRun | null
+}
+
+export interface MappingChoice {
+  field: string
+  candidates: string[]
+}
+
+/** The mapping worked out from the header row and a few real rows. */
+export interface MappingGuess {
+  mapping: Record<string, string>
+  confidence: Record<string, number>
+  ambiguous: MappingChoice[]
+  custom: Record<string, string>
+  usable: boolean
 }
 
 export interface SheetsPayload {
@@ -72,7 +98,7 @@ export function previewSheet(body: {
   header_row?: number
   mapping?: Record<string, string>
 }) {
-  return apiPost<{ headers: string[]; rows: string[][]; mapped: Array<Record<string, string | null>> }>(
+  return apiPost<{ headers: string[]; rows: string[][]; mapped: Array<Record<string, string | null>>; guess: MappingGuess }>(
     '/integrations/sheets/preview',
     body,
   )
@@ -83,10 +109,35 @@ export function connectSheet(body: {
   spreadsheet_name?: string | null
   sheet_name: string
   header_row?: number
-  mapping: Record<string, string>
+  /** Only what a person changed; the rest is worked out on the server. */
+  mapping?: Record<string, string>
   defaults?: Record<string, unknown> | null
 }) {
   return apiPost<{ source: SheetSource }>('/integrations/sheets', body)
+}
+
+/** A person's choice for one or more fields, kept through every later re-map. */
+export function remapSheet(id: string, overrides: Record<string, string | null>) {
+  return apiPatch<{ source: SheetSource }>(`/integrations/sheets/${id}/mapping`, { overrides })
+}
+
+/** The few lines a sheet needs so a new row is synced in seconds. */
+export function appsScriptFor(pingUrl: string): string {
+  return [
+    'function onLeadRowAdded(e) {',
+    `  UrlFetchApp.fetch('${pingUrl}', { method: 'post', muteHttpExceptions: true });`,
+    '}',
+    '// Triggers → Add trigger → onLeadRowAdded → From spreadsheet → On change',
+  ].join('\n')
+}
+
+export type ConfidenceLevel = 'certain' | 'likely' | 'check'
+
+export function confidenceLevel(value: number | undefined): ConfidenceLevel {
+  if (value === undefined) return 'check'
+  if (value >= 0.95) return 'certain'
+
+  return value >= 0.75 ? 'likely' : 'check'
 }
 
 export function updateSheet(id: string, body: Partial<{ mapping: Record<string, string>; is_active: boolean; cursor_row: number }>) {

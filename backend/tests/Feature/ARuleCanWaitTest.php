@@ -39,6 +39,7 @@ class ARuleCanWaitTest extends TestCase
     {
         parent::setUp();
         $this->t = $this->provisionTenant('Patience Co');
+        $this->withoutJourney($this->t['tenant']);
         Queue::fake();
     }
 

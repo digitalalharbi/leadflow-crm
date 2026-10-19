@@ -32,6 +32,10 @@ class LeadResource extends JsonResource
             'temperature' => $this->temperature?->value,
             // Hot, and the one to call first. Not a fourth temperature.
             'is_priority' => (bool) $this->is_priority,
+            // Whether the journey is still talking to them, or it is a person's
+            // turn — and why.
+            'automation_state' => $this->automation_state,
+            'needs_human_reason' => $this->needs_human_reason,
             // One word for how seriously to take the lead, and why — see LeadClassification.
             'classification' => LeadClassification::for($this->resource),
             // The project's own questions say this is not a buyer for it.

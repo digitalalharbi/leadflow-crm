@@ -332,9 +332,11 @@ class AutomationRuleApiTest extends TestCase
             'actions' => [['type' => 'add_note', 'body' => 'x']],
         ]));
 
-        $this->actingAs($this->t['admin'])
+        $listed = $this->actingAs($this->t['admin'])
             ->getJson('/api/v1/automation/rules')->assertOk()
-            ->assertJsonCount(0, 'data.rules');
+            ->json('data.rules.*.id');
+
+        $this->assertNotContains($theirs->uuid, $listed);
 
         $this->actingAs($this->t['admin'])
             ->deleteJson("/api/v1/automation/rules/{$theirs->uuid}")

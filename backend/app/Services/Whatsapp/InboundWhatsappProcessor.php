@@ -6,6 +6,7 @@ use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
+use App\Events\LeadReplied;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadMessage;
@@ -134,6 +135,15 @@ class InboundWhatsappProcessor
 
         $body = $this->extractBody($message);
 
+        /*
+         * A reply, as opposed to a second message in a row: the last thing in
+         * the thread was ours (or there is nothing yet). Only a reply moves
+         * the lead — raises its score, hands it to a person — so a customer
+         * who sends five messages is not scored five times.
+         */
+        $last = LeadMessage::where('lead_id', $lead->id)->latest('id')->value('direction');
+        $isReply = $last === null || $last === MessageDirection::Outbound || $last === MessageDirection::Outbound->value;
+
         LeadMessage::create([
             'lead_id' => $lead->id,
             'direction' => MessageDirection::Inbound,
@@ -162,6 +172,11 @@ class InboundWhatsappProcessor
         $lead->saveQuietly();
 
         $this->activities->log($lead, ActivityType::WhatsappReceived, null, Str::limit($body ?? '', 140));
+
+        if ($isReply) {
+            $lead->stopWaitingForReply();
+            LeadReplied::dispatch($lead, null, ['channel' => 'whatsapp']);
+        }
 
         if ($before !== $lead->score) {
             $this->activities->log($lead, ActivityType::ScoreChanged, null, null, [

@@ -147,6 +147,7 @@ class DuplicateRuleTest extends TestCase
             ->postJson("/api/v1/automation/rules/{$rule->uuid}/duplicate")
             ->assertNotFound();
 
-        $this->assertSame(1, AutomationRule::withoutGlobalScopes()->count());
+        // Nothing was copied into the other workspace.
+        $this->assertSame(0, AutomationRule::withoutGlobalScopes()->where('tenant_id', $other['tenant']->id)->where('name', $rule->name)->count());
     }
 }

@@ -20,6 +20,12 @@ class MessageTemplateResource extends JsonResource
             'meta_template_name' => $this->meta_template_name,
             'meta_language' => $this->meta_language,
             'meta_parameters' => $this->meta_parameters ?? [],
+            'purpose' => $this->purpose,
+            'project_id' => $this->project?->uuid,
+            'project_name' => $this->project?->name,
+            'language' => $this->language,
+            'stage' => $this->stage,
+            'audience' => $this->audience,
             // Whether this message can start a conversation, which is the one
             // thing the screen needs to know about it.
             'can_start_conversation' => filled($this->meta_template_name),

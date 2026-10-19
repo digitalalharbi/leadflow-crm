@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Models\Project;
 use App\Models\ProjectFile;
+use App\Models\ProjectQuestion;
 use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -33,6 +34,8 @@ class AutomationTemplateTest extends TestCase
     {
         parent::setUp();
         $this->t = $this->provisionTenant('Templates Co');
+        // The gallery is tested against a workspace that has none of it yet.
+        $this->withoutJourney($this->t['tenant']);
     }
 
     /** @return array<string, array{string}> */
@@ -147,8 +150,14 @@ class AutomationTemplateTest extends TestCase
             return $project;
         });
 
+        // And a question to ask, for the journey's qualification step.
+        $this->asTenant($this->t['tenant'], fn () => ProjectQuestion::create([
+            'project_id' => $project->id, 'key' => 'budget', 'label' => 'ما ميزانيتك؟', 'type' => 'text', 'is_active' => true,
+        ]));
+
         $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create([
             'full_name' => 'عميل القالب',
+            'email' => 'template@example.com',
             'phone_normalized' => '+9665009'.random_int(10000, 99999),
             'status' => 'new',
             'assigned_to' => $this->t['admin']->id,
@@ -157,8 +166,9 @@ class AutomationTemplateTest extends TestCase
 
         // WhatsApp is connected for this case: the real sender needs a live
         // provider, and "not connected" is a correct, separately tested report.
-        $this->mock(WhatsappSender::class)
-            ->shouldReceive('sendDocument')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));
+        $whatsapp = $this->mock(WhatsappSender::class);
+        $whatsapp->shouldReceive('sendDocument')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));
+        $whatsapp->shouldReceive('sendSaved')->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent, 'provider' => 'whatsapp_cloud']));
 
         $executor = app(ActionExecutor::class);
 
@@ -188,7 +198,7 @@ class AutomationTemplateTest extends TestCase
         $before = $this->actingAs($this->t['admin'])
             ->getJson('/api/v1/automation/templates')->assertOk()->json('data.templates');
 
-        $this->assertCount(7, $before);
+        $this->assertCount(count(RuleTemplates::keys()), $before);
         $this->assertFalse($before[0]['installed']);
 
         $this->actingAs($this->t['admin'])

@@ -2,7 +2,9 @@
 
 namespace Tests;
 
+use App\Domain\Automation\JourneyInstaller;
 use App\Enums\Role;
+use App\Models\AutomationRule;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantProvisioningService;
@@ -49,6 +51,18 @@ abstract class TestCase extends BaseTestCase
             'role' => $role,
             'is_active' => true,
         ], $attributes));
+    }
+
+    /**
+     * A workspace without the lead journey every workspace now starts with.
+     *
+     * For tests about the rule engine's own mechanics — ordering, delays,
+     * tenancy, the trace — which read "the rules in this workspace" and are
+     * about the rules they write themselves, not the ones installed for them.
+     */
+    protected function withoutJourney(Tenant $tenant): void
+    {
+        $this->asTenant($tenant, fn () => AutomationRule::whereIn('template_key', JourneyInstaller::RULES)->forceDelete());
     }
 
     /** Runs a closure with the tenant context bound, for direct model work in tests. */

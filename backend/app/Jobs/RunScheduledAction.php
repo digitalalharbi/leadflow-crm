@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Domain\Automation\ActionExecutor;
+use App\Enums\MessageDirection;
 use App\Models\Lead;
+use App\Models\LeadMessage;
 use App\Models\ScheduledAction;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -63,6 +65,26 @@ class RunScheduledAction implements ShouldQueue
             $scheduled->resolve(ScheduledAction::CANCELLED, 'أُغلق العميل قبل موعد التنفيذ.');
 
             return;
+        }
+
+        /*
+         * A step that only makes sense if the customer stayed quiet — a
+         * reminder, a nudge, a hand-off for silence — is void once they spoke.
+         * Re-checked here as well as cancelled on the reply, because a reply
+         * and this job can race.
+         */
+        if (($scheduled->action['unless'] ?? null) === 'replied') {
+            $replied = LeadMessage::withoutGlobalScopes()
+                ->where('lead_id', $lead->id)
+                ->where('direction', MessageDirection::Inbound->value)
+                ->where('created_at', '>=', $scheduled->created_at)
+                ->exists();
+
+            if ($replied) {
+                $scheduled->resolve(ScheduledAction::CANCELLED, 'ردّ العميل — لم تعد هذه الخطوة لازمة.');
+
+                return;
+            }
         }
 
         $tenants->withTenant($lead->tenant, function () use ($actions, $scheduled, $lead) {

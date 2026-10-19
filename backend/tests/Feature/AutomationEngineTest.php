@@ -31,6 +31,7 @@ class AutomationEngineTest extends TestCase
         parent::setUp();
 
         $this->t = $this->provisionTenant('Automation Co');
+        $this->withoutJourney($this->t['tenant']);
         $this->engine = app(AutomationEngine::class);
     }
 

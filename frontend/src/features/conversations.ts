@@ -41,6 +41,11 @@ export type TemplatePayload = {
   meta_template_name?: string | null
   meta_language?: string | null
   meta_parameters?: string[] | null
+  purpose?: string | null
+  project_id?: string | null
+  language?: string | null
+  stage?: string | null
+  audience?: string | null
 }
 
 export function createMessageTemplate(payload: TemplatePayload) {

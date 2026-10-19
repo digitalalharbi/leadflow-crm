@@ -10,6 +10,7 @@ use App\Enums\Role;
 use App\Models\CommissioningRun;
 use App\Models\Integration;
 use App\Models\Lead;
+use App\Models\LeadEngagement;
 use App\Models\LeadMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,7 +70,7 @@ class ProductionReadinessTest extends TestCase
         );
 
         $this->assertSame(
-            ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads'],
+            ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude'],
             $items->pluck('key')->all(),
         );
 
@@ -336,5 +337,31 @@ class ProductionReadinessTest extends TestCase
         $row = collect($response->json('data.items'))->firstWhere('key', 'whatsapp');
 
         $this->assertNull($row['last_commissioning']);
+    }
+
+    public function test_email_is_only_live_when_a_customer_actually_opened_one(): void
+    {
+        $row = fn () => collect($this->actingAs($this->t['admin'])->getJson('/api/v1/readiness')->json('data.items'))->firstWhere('key', 'email');
+
+        // The log mailer: nothing reaches anybody.
+        $this->assertSame(ProductionReadiness::EXTERNAL, $row()['status']);
+
+        config(['mail.default' => 'smtp']);
+        $this->assertSame(ProductionReadiness::READY, $row()['status']);
+
+        $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create(['full_name' => 'x', 'phone' => '+966550000009', 'phone_normalized' => '+966550000009']));
+        $this->asTenant($this->t['tenant'], fn () => LeadEngagement::create(['lead_id' => $lead->id, 'type' => LeadEngagement::EMAIL_OPENED, 'happened_at' => now()]));
+        $this->assertSame(ProductionReadiness::LIVE, $row()['status']);
+    }
+
+    public function test_claude_is_ready_with_a_key_and_live_only_once_it_answered(): void
+    {
+        $row = fn () => collect($this->actingAs($this->t['admin'])->getJson('/api/v1/readiness')->json('data.items'))->firstWhere('key', 'claude');
+
+        config(['services.anthropic.key' => null]);
+        $this->assertSame(ProductionReadiness::EXTERNAL, $row()['status']);
+
+        config(['services.anthropic.key' => 'sk-test']);
+        $this->assertSame(ProductionReadiness::READY, $row()['status']);
     }
 }

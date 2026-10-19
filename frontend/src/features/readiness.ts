@@ -18,7 +18,7 @@ export interface CommissioningStep {
 }
 
 export interface ReadinessItem {
-  key: 'vps' | 'domain' | 'google' | 'whatsapp' | 'twilio' | 'ads'
+  key: 'vps' | 'domain' | 'google' | 'whatsapp' | 'twilio' | 'ads' | 'email' | 'claude'
   status: ReadinessStatus
   blocker: string | null
   checks: Array<{ key: string; ok: boolean }>

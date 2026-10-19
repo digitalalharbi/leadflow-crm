@@ -43,6 +43,8 @@ export interface LeadDetailResponse {
   notes: LeadNote[]
   follow_ups: FollowUp[]
   next_action: NextAction
+  /** What the customer did that makes now the moment: replied, opened the brochure… */
+  signals?: string[]
   calls: LeadCall[]
   appointments: LeadAppointment[]
 }

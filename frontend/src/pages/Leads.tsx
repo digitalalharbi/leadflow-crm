@@ -215,7 +215,7 @@ export function LeadsPage() {
                         travel the full width of the table for one lead. */}
                     <Th className="min-w-52">{t('leads.name')}</Th>
                     <Th className="hidden sm:table-cell">{t('leads.score')}</Th>
-                    <Th className="hidden md:table-cell">{t('leads.classification')}</Th>
+                    <Th className="hidden md:table-cell">{t('leads.status')}</Th>
                     <Th className="hidden xl:table-cell">{t('leads.project')}</Th>
                     <Th className="hidden lg:table-cell">{t('leads.source')}</Th>
                     <Th className="hidden xl:table-cell">{t('leads.lastContact')}</Th>
@@ -232,9 +232,17 @@ export function LeadsPage() {
                           <div className="min-w-0">
                         <Link
                           to={`/leads/${lead.id}`}
-                          className="block truncate font-medium hover:text-[var(--brand)]"
+                          className="flex items-center gap-1.5 truncate font-medium hover:text-[var(--brand)]"
                         >
-                          {lead.full_name}
+                          {lead.classification && (
+                            <span
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ background: CLASSIFICATION_COLOR[lead.classification.key] }}
+                              title={t(`classification.${lead.classification.key}`)}
+                              aria-label={t(`classification.${lead.classification.key}`)}
+                            />
+                          )}
+                          <span className="truncate">{lead.full_name}</span>
                         </Link>
 
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -269,16 +277,7 @@ export function LeadsPage() {
                           </span>
                         </span>
                       </Td>
-                      <Td className="hidden md:table-cell">
-                        {lead.classification ? (
-                          <span className="flex items-center gap-1.5 text-[0.8125rem] font-medium" title={t(`classification.reason.${lead.classification.reason}`)}>
-                            <span className="size-2 shrink-0 rounded-full" style={{ background: CLASSIFICATION_COLOR[lead.classification.key] }} aria-hidden />
-                            {t(`classification.${lead.classification.key}`)}
-                          </span>
-                        ) : (
-                          <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
-                        )}
-                      </Td>
+                      <Td className="hidden md:table-cell"><StatusBadge status={lead.status} /></Td>
                       <Td className="hidden max-w-36 truncate xl:table-cell text-[0.8125rem]">
                         {lead.project?.name ?? <span className="text-[var(--color-ink-subtle)]">—</span>}
                       </Td>

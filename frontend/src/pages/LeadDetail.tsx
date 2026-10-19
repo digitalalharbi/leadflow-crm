@@ -690,7 +690,7 @@ export function LeadDetailPage() {
 
         <div className="space-y-4">
           <NextActionBanner action={data.next_action} onAct={actOnNext} />
-          <WhyThisLead lead={lead} />
+          <WhyThisLead lead={lead} signals={data.signals ?? []} />
           <AutomationStatus lead={lead} onShowSteps={() => { setHistory('automation'); document.querySelector('[data-testid="history-tabs"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
           <Engagement lead={lead} />
           <QualificationCard lead={lead} />

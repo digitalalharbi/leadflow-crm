@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlarmClock, Building2, Flame, Pencil, Plus, Star } from 'lucide-react'
+import { AlarmClock, Building2, CalendarCheck, Flame, Pencil, Plus, Star, Target, Trophy, Users } from 'lucide-react'
+import { Donut, KpiCard, brandRamp, type DonutSegment } from '@/components/visual'
 import { useTranslation } from 'react-i18next'
 import { apiPatch, apiPost, ApiError } from '@/lib/api'
 import { useCompanies } from '@/features/companies'
@@ -12,7 +13,7 @@ import { Link } from 'react-router-dom'
 import { formatCurrency, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import {
-  Badge, Button, Card, Drawer, EmptyState, ErrorState, Input, PageHeader,
+  Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, PageHeader,
   Select, SkeletonTable,
 } from '@/components/ui'
 import { MiniTrend } from '@/components/charts/MiniTrend'
@@ -137,6 +138,12 @@ export function ProjectsPage() {
           ) : undefined
         }
       />
+
+      {/*
+        All projects at a glance before the cards: how many leads, how many
+        qualified, booked and sold, and which project brings them.
+      */}
+      {(data?.metrics?.length ?? 0) > 0 && <ProjectsSummary projects={projects} metrics={data!.metrics} />}
 
       <Card className="overflow-hidden">
         {isError ? (
@@ -549,5 +556,38 @@ function AttentionChip({
       {icon}
       {children}
     </Link>
+  )
+}
+
+/** The portfolio in one row: four totals and a donut of leads by project. */
+function ProjectsSummary({ projects, metrics }: { projects: Project[]; metrics: ProjectMetrics[] }) {
+  const { t, i18n } = useTranslation()
+  const sum = (key: 'leads' | 'qualified' | 'appointments' | 'won') => metrics.reduce((total, row) => total + (row[key] ?? 0), 0)
+  const names = new Map(projects.map((p) => [p.id, p]))
+  const segments: DonutSegment[] = metrics
+    .filter((row) => row.leads > 0)
+    .map((row, index) => ({
+      key: row.id,
+      label: names.get(row.id)?.name ?? '—',
+      value: row.leads,
+      color: names.get(row.id)?.company?.color ?? brandRamp(Math.max(3, metrics.length))[index % Math.max(3, metrics.length)],
+      href: `/projects/${row.id}`,
+    }))
+
+  return (
+    <div className="mb-3 grid gap-3 lg:grid-cols-12" data-testid="projects-summary">
+      <div className="grid min-w-0 grid-cols-2 gap-3 lg:col-span-7 [&>*]:min-w-0">
+        <KpiCard label={t('projects.summary.leads')} icon={Users} value={formatNumber(sum('leads'), i18n.language)} />
+        <KpiCard label={t('projects.summary.qualified')} icon={Target} tone="good" value={formatNumber(sum('qualified'), i18n.language)} />
+        <KpiCard label={t('projects.summary.appointments')} icon={CalendarCheck} tone="warn" value={formatNumber(sum('appointments'), i18n.language)} />
+        <KpiCard label={t('projects.summary.won')} icon={Trophy} tone="good" value={formatNumber(sum('won'), i18n.language)} />
+      </div>
+      <Card className="min-w-0 lg:col-span-5">
+        <CardBody>
+          <h2 className="t-card-title mb-3">{t('projects.summary.byProject')}</h2>
+          <Donut size={128} thickness={15} legend="side" segments={segments} centerValue={formatNumber(sum('leads'), i18n.language)} testId="projects-donut" />
+        </CardBody>
+      </Card>
+    </div>
   )
 }

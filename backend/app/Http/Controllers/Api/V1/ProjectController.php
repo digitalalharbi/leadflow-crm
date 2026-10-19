@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Automation\AutomationPack;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
@@ -144,6 +145,16 @@ class ProjectController extends Controller
         $data = $this->withCompany($data);
 
         $project = Project::create($data);
+
+        /*
+         * Every new project starts with its automation pack: a welcome on
+         * WhatsApp and by email written for it, and starter questions — so its
+         * first lead is answered in a minute, not after somebody remembers to
+         * set it up. The journey itself is the workspace's and already applies.
+         */
+        app(AutomationPack::class)->complete($project, [
+            'language' => $data['language'] ?? (str_starts_with((string) ($request->user()->tenant?->settings?->locale ?? 'ar'), 'en') ? 'en' : 'ar'),
+        ]);
 
         if ($team !== null) {
             $project->team()->sync(

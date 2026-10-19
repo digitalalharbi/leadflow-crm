@@ -6,8 +6,12 @@ use App\Console\Commands\Heartbeat;
 use App\Domain\Integrations\IntegrationHealthReport;
 use App\Domain\Sheets\GoogleOAuth;
 use App\Jobs\QueueHeartbeat;
+use App\Models\AgentMessage;
 use App\Models\CommissioningRun;
+use App\Models\LeadEngagement;
 use App\Models\SheetSyncRun;
+use App\Models\TenantSetting;
+use App\Services\Email\EmailManager;
 use App\Services\Whatsapp\WhatsappManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -65,6 +69,8 @@ class ProductionReadiness
             $workspace ? $this->whatsapp($rows, $last) : $this->perWorkspace('whatsapp'),
             $workspace ? $this->twilio($rows, $last) : $this->perWorkspace('twilio'),
             $workspace ? $this->ads($rows, $last) : $this->perWorkspace('ads'),
+            $workspace ? $this->email() : $this->perWorkspace('email'),
+            $workspace ? $this->claude() : $this->perWorkspace('claude'),
         ];
 
         $summary = array_count_values(array_column($items, 'status'));
@@ -284,6 +290,60 @@ class ProductionReadiness
         $item['children'] = $children;
 
         return $item;
+    }
+
+    /**
+     * Email: a real mail server configured is "ready"; an email a customer
+     * actually opened or clicked — a pixel or a link only a real inbox fetches
+     * — is the proof it reaches people. The log driver proves nothing.
+     */
+    private function email(): array
+    {
+        $manager = app(EmailManager::class);
+        $configured = $manager->provider() !== 'mock';
+        $proven = LeadEngagement::whereIn('type', [LeadEngagement::EMAIL_OPENED, LeadEngagement::LINK_CLICKED])->exists();
+        $replies = filled(config('services.email_inbound.domain')) && filled(config('services.email_inbound.secret'));
+
+        $status = match (true) {
+            $configured && $proven => self::LIVE,
+            $configured => self::READY,
+            default => self::EXTERNAL,
+        };
+
+        return $this->item('email', $status, match ($status) {
+            self::LIVE => $replies ? null : 'replies_not_routed',
+            self::READY => 'awaiting_first_event',
+            default => 'credentials_missing',
+        }, [
+            'mail_server' => $configured,
+            'opened_by_a_customer' => $proven,
+            'replies_routed' => $replies,
+        ], commissionable: false);
+    }
+
+    /**
+     * Claude for the agents: a key is "ready"; an answer the model actually
+     * gave is the proof. Without a key the agents work from their rules.
+     */
+    private function claude(): array
+    {
+        $key = filled(config('services.anthropic.key')) || filled(TenantSetting::query()->value('ai_api_key'));
+        $answered = AgentMessage::query()->where('data->mode', 'ai')->exists();
+
+        $status = match (true) {
+            $key && $answered => self::LIVE,
+            $key => self::READY,
+            default => self::EXTERNAL,
+        };
+
+        return $this->item('claude', $status, match ($status) {
+            self::LIVE => null,
+            self::READY => 'awaiting_first_event',
+            default => 'credentials_missing',
+        }, [
+            'api_key' => $key,
+            'model_answered' => $answered,
+        ], commissionable: false);
     }
 
     /** A row for something that is configured by each workspace, not by the platform. */

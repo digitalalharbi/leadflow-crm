@@ -54,6 +54,17 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
+     * This process as a production deployment: told it is production, at an
+     * HTTPS address on a public name. The integration ladder will not say
+     * "live" for anything less, so a test that asserts live runs here.
+     */
+    protected function asProductionDeployment(): void
+    {
+        $this->app['env'] = 'production';
+        config(['app.url' => 'https://app.muhtam-production.example.sa']);
+    }
+
+    /**
      * A workspace without the lead journey every workspace now starts with.
      *
      * For tests about the rule engine's own mechanics — ordering, delays,

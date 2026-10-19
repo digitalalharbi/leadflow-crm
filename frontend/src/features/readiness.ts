@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from '@/lib/api'
+import type { IntegrationState } from '@/features/integrationState'
 
 /**
  * Is this deployment live, and what is it waiting for.
@@ -17,9 +18,22 @@ export interface CommissioningStep {
   detail: string
 }
 
+/** One fact a rung stands on, with the time it was observed when there is one. */
+export interface Evidence {
+  key: string
+  ok: boolean
+  at: string | null
+  detail: string | null
+}
+
+export type DeploymentKind = 'local' | 'staging' | 'production'
+
 export interface ReadinessItem {
   key: 'vps' | 'domain' | 'google' | 'whatsapp' | 'twilio' | 'ads' | 'email' | 'claude'
   status: ReadinessStatus
+  /** The rung of the six-state ladder, computed from `evidence`. */
+  state: IntegrationState
+  evidence: Evidence[]
   blocker: string | null
   checks: Array<{ key: string; ok: boolean }>
   commissionable: boolean
@@ -33,6 +47,9 @@ export type InfraState = 'not_configured' | 'ready' | 'live_verified'
 export interface InfraItem {
   key: 'database' | 'redis' | 'queues' | 'horizon' | 'backups' | 'logs' | 'error_tracking'
   state: InfraState
+  /** The same six-rung ladder as every other row. */
+  ladder: IntegrationState
+  evidence: Evidence[]
   status: ReadinessStatus
   /** When it was last *seen* — a heartbeat's own time, or now for a probe. */
   last_check: string
@@ -44,6 +61,10 @@ export interface InfraItem {
 
 export interface ReadinessReport {
   scope: 'workspace' | 'platform'
+  /** What this server is — from what is observable, not from what a document says. */
+  deployment: { kind: DeploymentKind; url: string; environment: string; https: boolean; public_host: boolean }
+  /** Every row on the screen, counted by rung. */
+  ladder: Record<IntegrationState, number>
   items: ReadinessItem[]
   infrastructure: InfraItem[]
   infrastructure_summary: Partial<Record<InfraState, number>>

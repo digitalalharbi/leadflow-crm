@@ -4,15 +4,16 @@ namespace App\Domain\Readiness;
 
 use App\Console\Commands\Heartbeat;
 use App\Domain\Integrations\IntegrationHealthReport;
+use App\Domain\Integrations\IntegrationState;
 use App\Domain\Sheets\GoogleOAuth;
 use App\Jobs\QueueHeartbeat;
 use App\Models\AgentMessage;
 use App\Models\CommissioningRun;
-use App\Models\LeadEngagement;
 use App\Models\SheetSyncRun;
 use App\Models\TenantSetting;
 use App\Services\Email\EmailManager;
 use App\Services\Whatsapp\WhatsappManager;
+use App\Support\Deployment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -69,16 +70,27 @@ class ProductionReadiness
             $workspace ? $this->whatsapp($rows, $last) : $this->perWorkspace('whatsapp'),
             $workspace ? $this->twilio($rows, $last) : $this->perWorkspace('twilio'),
             $workspace ? $this->ads($rows, $last) : $this->perWorkspace('ads'),
-            $workspace ? $this->email() : $this->perWorkspace('email'),
+            $workspace ? $this->email($rows) : $this->perWorkspace('email'),
             $workspace ? $this->claude() : $this->perWorkspace('claude'),
         ];
 
+        $items = $this->withLadder($items, $rows, $last, $workspace);
+
         $summary = array_count_values(array_column($items, 'status'));
 
-        $infrastructure = $this->infrastructure->all();
+        // Infrastructure rows already carry the older `state`; the ladder goes
+        // under its own name so neither can overwrite the other.
+        $infrastructure = array_map(function (array $row) {
+            $result = app(ReadinessLadder::class)->infrastructure($row);
+
+            return $row + ['ladder' => $result['state'], 'evidence' => $result['evidence']];
+        }, $this->infrastructure->all());
 
         return [
             'scope' => $workspace ? 'workspace' : 'platform',
+            // What this process is: Local, Staging or Production — from what is
+            // observable, so the screen can say it before it says anything else.
+            'deployment' => Deployment::describe(),
             'items' => $items,
             /*
              * What the platform stands on. Apart from `items` on purpose: those
@@ -87,12 +99,76 @@ class ProductionReadiness
              */
             'infrastructure' => $infrastructure,
             'infrastructure_summary' => array_count_values(array_column($infrastructure, 'state')),
+            // The six rungs, counted across everything on the screen.
+            'ladder' => $this->ladderCounts(array_merge($items, $infrastructure)),
             'summary' => [
                 self::LIVE => $summary[self::LIVE] ?? 0,
                 self::READY => $summary[self::READY] ?? 0,
                 self::EXTERNAL => $summary[self::EXTERNAL] ?? 0,
             ],
         ];
+    }
+
+    /**
+     * Each row on the six-rung ladder, with its evidence.
+     *
+     * @param  array<int,array<string,mixed>>  $items
+     */
+    private function withLadder(array $items, $rows, array $last, bool $workspace): array
+    {
+        $ladder = app(ReadinessLadder::class);
+        $health = fn (string $key) => $workspace ? $rows->get($key) : null;
+
+        return array_map(function (array $item) use ($ladder, $health, $last, $workspace) {
+            $key = $item['key'];
+
+            $result = match ($key) {
+                'vps', 'domain' => $ladder->server($item['status'], $item['checks']),
+                'google' => $ladder->integration($health('google_sheets'), $last['google'] ?? null),
+                'whatsapp' => $ladder->integration($health('whatsapp'), $last['whatsapp'] ?? null),
+                'twilio' => $ladder->integration($health('calls'), $last['twilio'] ?? null),
+                'email' => $ladder->integration($health('email'), $last['email'] ?? null),
+                'ads' => $ladder->best(
+                    array_values(array_filter(array_map($health, ['meta', 'tiktok', 'google_ads', 'snapchat', 'linkedin']))),
+                    $last['ads'] ?? null,
+                ),
+                'claude' => $workspace
+                    ? $ladder->claude(
+                        filled(config('services.anthropic.key')) || filled(TenantSetting::query()->value('ai_api_key')),
+                        AgentMessage::query()->where('data->mode', 'ai')->latest('id')->first()?->created_at?->toIso8601String(),
+                    )
+                    : ['state' => 'not_configured', 'evidence' => []],
+                default => ['state' => 'not_configured', 'evidence' => []],
+            };
+
+            /*
+             * The older three-word status must not say more than the ladder:
+             * "live" off a production deployment is "ready, and waiting to be
+             * seen live in production".
+             */
+            if ($item['status'] === self::LIVE && ! in_array($result['state'], [IntegrationState::LIVE_VERIFIED, IntegrationState::PRODUCTION_VERIFIED], true)) {
+                $item['status'] = self::READY;
+                $item['blocker'] = 'not_recorded_in_production';
+            }
+
+            return $item + $result;
+        }, $items);
+    }
+
+    /** @param  array<int,array<string,mixed>>  $rows */
+    private function ladderCounts(array $rows): array
+    {
+        $counts = array_fill_keys(IntegrationState::LADDER, 0);
+
+        foreach ($rows as $row) {
+            $state = $row['ladder'] ?? $row['state'] ?? '';
+
+            if (isset($counts[$state])) {
+                $counts[$state]++;
+            }
+        }
+
+        return $counts;
     }
 
     // ----------------------------------------------------------------- rows
@@ -138,11 +214,7 @@ class ProductionReadiness
          * `.test` and the documentation domains all parse and all fail to be
          * reachable by a customer, which is the one property a domain is for.
          */
-        $public = $host !== ''
-            && ! in_array($host, ['localhost', '127.0.0.1', '::1'], true)
-            && filter_var($host, FILTER_VALIDATE_IP) === false
-            && preg_match('/(^|\.)(test|local|localhost|invalid|internal)$|(^|\.)example\.(com|org|net)$/i', $host) !== 1
-            && str_contains($host, '.');
+        $public = Deployment::publicHost($host);
 
         /*
          * This very request, as the evidence. If the person reading the screen
@@ -297,11 +369,14 @@ class ProductionReadiness
      * actually opened or clicked — a pixel or a link only a real inbox fetches
      * — is the proof it reaches people. The log driver proves nothing.
      */
-    private function email(): array
+    private function email($rows): array
     {
         $manager = app(EmailManager::class);
         $configured = $manager->provider() !== 'mock';
-        $proven = LeadEngagement::whereIn('type', [LeadEngagement::EMAIL_OPENED, LeadEngagement::LINK_CLICKED])->exists();
+        // The same proof the Integrations screen uses: a customer's own mail
+        // client fetched a message we sent over a real transport. One source,
+        // so the two screens cannot disagree about whether email is working.
+        $proven = ($rows->get('email')['verification'] ?? null) === IntegrationHealthReport::EXTERNALLY_VERIFIED;
         $replies = filled(config('services.email_inbound.domain')) && filled(config('services.email_inbound.secret'));
 
         $status = match (true) {

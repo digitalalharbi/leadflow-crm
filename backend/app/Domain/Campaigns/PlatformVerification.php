@@ -5,6 +5,7 @@ namespace App\Domain\Campaigns;
 use App\Domain\Campaigns\Contracts\AdPlatformAdapter;
 use App\Domain\Integrations\IntegrationState;
 use App\Models\AdConnection;
+use App\Support\Deployment;
 
 /**
  * How far each ad platform has actually been proven, on the same six-rung
@@ -34,9 +35,15 @@ class PlatformVerification
         }
 
         if ($connection->last_sync_ok_at) {
+            // A real sync outside a production deployment proves the account
+            // and the token, not the deployment: ready, never live.
+            if (! Deployment::isProduction()) {
+                return IntegrationState::READY;
+            }
+
             $fresh = $connection->last_sync_ok_at->greaterThan(now()->subDay());
 
-            return app()->environment('production') && $fresh && blank($connection->last_error)
+            return $fresh && blank($connection->last_error)
                 ? IntegrationState::PRODUCTION_VERIFIED
                 : IntegrationState::LIVE_VERIFIED;
         }

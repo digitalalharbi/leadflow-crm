@@ -16,18 +16,41 @@ test.describe('Production readiness', () => {
     await page.goto('/readiness')
   })
 
-  test('lists the six things a deployment is waiting on', async ({ page }) => {
-    for (const key of ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads']) {
+  test('lists the eight things a deployment is waiting on', async ({ page }) => {
+    for (const key of ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude']) {
       await expect(page.getByTestId(`readiness-${key}`), `${key} is missing`).toBeVisible()
     }
   })
 
+  test('says first what this deployment is, and it is not production', async ({ page }) => {
+    const kind = page.getByTestId('deployment-kind')
+
+    await expect(kind).toBeVisible()
+    await expect(kind).toHaveAttribute('data-kind', 'local')
+    await expect(kind).toContainText('محلي')
+  })
+
   test('claims nothing is live from a developer machine', async ({ page }) => {
-    for (const key of ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads']) {
-      await expect(page.getByTestId(`readiness-${key}-status`)).not.toContainText('مُجرَّب فعليًا')
+    for (const key of ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude']) {
+      const status = page.getByTestId(`readiness-${key}-status`)
+
+      await expect(status).not.toContainText('مُجرَّب فعليًا')
+      await expect(status).not.toContainText('مُجرَّب في الإنتاج')
     }
 
-    await expect(page.getByTestId('readiness-vps-status')).toContainText('بانتظار التحقق الخارجي')
+    // The server and the domain are not configured at all here.
+    await expect(page.getByTestId('readiness-vps-status')).toContainText('غير مُعدّ')
+  })
+
+  test('every row stands on evidence, and a developer machine never records it as production', async ({ page }) => {
+    for (const key of ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude']) {
+      const evidence = page.getByTestId(`readiness-${key}-evidence`)
+
+      await expect(evidence, `${key} has no evidence`).toBeVisible()
+    }
+
+    const production = page.getByTestId('readiness-whatsapp-evidence').locator('[data-evidence="recorded_in_production"]')
+    await expect(production).toHaveAttribute('data-ok', 'false')
   })
 
   test('every waiting row says what it is waiting for', async ({ page }) => {
@@ -55,8 +78,11 @@ test.describe('Production readiness', () => {
     const last = page.getByTestId('readiness-whatsapp-last')
     await expect(last).toBeVisible()
     await expect(last).toContainText('فشل')
-    // And the row did not become ready on the strength of having been asked.
-    await expect(page.getByTestId('readiness-whatsapp-status')).toContainText('بانتظار التحقق الخارجي')
+    // And the row did not climb the ladder on the strength of having been asked.
+    const status = page.getByTestId('readiness-whatsapp-status')
+    for (const risen of ['جاهز', 'مُجرَّب فعليًا', 'مُجرَّب في الإنتاج']) {
+      await expect(status).not.toContainText(risen)
+    }
   })
 
   test('never scrolls sideways', async ({ page }) => {
@@ -87,15 +113,23 @@ test.describe('Production readiness', () => {
     }
   })
 
-  test('the database is the one thing that has been observed working', async ({ page }) => {
-    // The page itself is a query that answered.
-    await expect(page.getByTestId('infra-database-state')).toContainText('مُتحقَّق فعليًا')
+  test('the database is the one thing that has been observed working — and only here', async ({ page }) => {
+    // The page itself is a query that answered: it works, on this machine. That
+    // is "ready", and it is not production evidence.
+    await expect(page.getByTestId('infra-database-state')).toHaveText('جاهز')
+    await expect(page.getByTestId('infra-database-state')).not.toContainText('مُجرَّب في الإنتاج')
   })
 
   test('a developer machine claims nothing it cannot have seen', async ({ page }) => {
-    // No error tracker, no recorded backup: nothing here is entitled to green.
-    await expect(page.getByTestId('infra-error_tracking-state')).not.toContainText('مُتحقَّق فعليًا')
-    await expect(page.getByTestId('infra-backups-state')).not.toContainText('مُتحقَّق فعليًا')
+    // No error tracker, no recorded backup, and nothing recorded in production.
+    for (const key of ['database', 'redis', 'queues', 'horizon', 'backups', 'logs', 'error_tracking']) {
+      const state = page.getByTestId(`infra-${key}-state`)
+
+      await expect(state).not.toContainText('مُجرَّب فعليًا')
+      await expect(state).not.toContainText('مُجرَّب في الإنتاج')
+    }
+
+    await expect(page.getByTestId('infra-error_tracking-state')).toContainText('غير مُعدّ')
     await expect(page.getByTestId('infra-backups-action')).not.toContainText('لا إجراء مطلوب')
   })
 })

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Archive, ArrowDown, Check, CircleDashed, Database, FileText, Layers, Minus, ServerCog, ShieldCheck, Siren, X, Zap,
+  Archive, ArrowDown, Check, CircleDashed, Database, FileText, Globe, Layers, Minus, ServerCog, ShieldCheck, Siren, X, Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -12,8 +12,10 @@ import {
   Badge, Button, Card, CardBody, CardHeader, ErrorState, PageHeader, Skeleton,
 } from '@/components/ui'
 import { ProgressBar, RingProgress } from '@/components/visual'
+import { RUNG_COLOR } from '@/components/integrations/IntegrationGrid'
+import { INTEGRATION_STATES, STATE_TONE } from '@/features/integrationState'
 import {
-  commission, fetchReadiness, type InfraItem, type InfraState, type ReadinessItem, type ReadinessReport, type ReadinessStatus,
+  commission, fetchReadiness, type Evidence, type InfraItem, type ReadinessItem, type ReadinessReport, type ReadinessStatus,
 } from '@/features/readiness'
 import { cn } from '@/lib/cn'
 
@@ -51,6 +53,7 @@ export function ReadinessPage() {
         <Skeleton className="h-64" />
       ) : (
         <>
+          <DeploymentBanner deployment={data.deployment} />
           <ReadinessHero report={data} />
 
           <div className="grid gap-3 lg:grid-cols-2" data-testid="readiness-items">
@@ -79,17 +82,49 @@ export function ReadinessPage() {
   )
 }
 
-const LADDER: Array<{ key: ReadinessStatus; color: string }> = [
-  { key: 'live_verified', color: 'var(--brand)' },
-  { key: 'ready', color: 'var(--color-warning)' },
-  { key: 'external_verification_required', color: 'var(--color-ink-subtle)' },
-]
+/**
+ * Local, Staging or Production — said first, because every rung below it is
+ * only as meaningful as the place it was observed. Production needs a reachable
+ * HTTPS address on a public name, not merely a setting.
+ */
+function DeploymentBanner({ deployment }: { deployment: ReadinessReport['deployment'] }) {
+  const { t } = useTranslation()
+  const production = deployment.kind === 'production'
 
-const INFRA_LADDER: Array<{ key: InfraState; color: string }> = [
-  { key: 'live_verified', color: 'var(--brand)' },
-  { key: 'ready', color: 'var(--color-warning)' },
-  { key: 'not_configured', color: 'var(--color-ink-subtle)' },
-]
+  return (
+    <Card className="mb-3" data-testid="deployment-banner">
+      <div className="flex flex-wrap items-center gap-4 p-4">
+        <span
+          className={cn(
+            'grid size-11 shrink-0 place-items-center rounded-full',
+            production ? 'bg-[color-mix(in_srgb,var(--brand)_14%,transparent)] text-[var(--brand)]' : 'bg-[color-mix(in_srgb,var(--color-warning)_16%,transparent)] text-[color-mix(in_srgb,var(--color-warning)_80%,black)]',
+          )}
+          aria-hidden
+        >
+          <Globe className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[1.125rem] font-extrabold" data-testid="deployment-kind" data-kind={deployment.kind}>
+            {t(`readiness.deployment.${deployment.kind}`)}
+          </p>
+          <p className="t-caption">{t(`readiness.deployment.hint.${deployment.kind}`)}</p>
+        </div>
+        <ul className="flex flex-wrap gap-1.5 text-[0.75rem]" dir="ltr">
+          {[
+            [deployment.environment, deployment.environment === 'production'],
+            ['HTTPS', deployment.https],
+            [t('readiness.deployment.publicName'), deployment.public_host],
+          ].map(([label, ok]) => (
+            <li key={String(label)} className={cn('flex items-center gap-1 rounded-full px-2.5 py-1 font-medium', ok ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
+              {ok ? <Check className="size-3" aria-hidden /> : <X className="size-3" aria-hidden />}
+              {label}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  )
+}
 
 /**
  * The answer before the evidence: how much of this deployment is proven, how
@@ -101,9 +136,10 @@ function ReadinessHero({ report }: { report: ReadinessReport }) {
   const { t } = useTranslation()
 
   const total = report.items.length + report.infrastructure.length
-  const proven = report.summary.live_verified + (report.infrastructure_summary.live_verified ?? 0)
+  // Proven means seen working in production — the two rungs a deployment earns.
+  const proven = (report.ladder.live_verified ?? 0) + (report.ladder.production_verified ?? 0)
   const percent = total > 0 ? Math.round((proven / total) * 100) : 0
-  const blocking = report.items.filter((item) => item.status !== 'live_verified')
+  const blocking = report.items.filter((item) => item.state !== 'live_verified' && item.state !== 'production_verified')
 
   return (
     <Card className="mb-3" data-testid="readiness-summary">
@@ -118,16 +154,11 @@ function ReadinessHero({ report }: { report: ReadinessReport }) {
           </div>
         </div>
 
-        <div className="space-y-4 lg:col-span-4">
+        <div className="lg:col-span-4">
           <LadderBar
-            title={t('readiness.hero.integrations')}
+            title={t('readiness.hero.ladder')}
             testId="readiness-ladder"
-            steps={LADDER.map(({ key, color }) => ({ key, color, label: t(`readiness.status.${key}`), count: report.summary[key] }))}
-          />
-          <LadderBar
-            title={t('readiness.infra.title')}
-            testId="infra-ladder"
-            steps={INFRA_LADDER.map(({ key, color }) => ({ key, color, label: t(`readiness.infra.state.${key}`), count: report.infrastructure_summary[key] ?? 0 }))}
+            steps={INTEGRATION_STATES.map((key) => ({ key, color: RUNG_COLOR[key], label: t(`integrationState.${key}`), count: report.ladder[key] ?? 0 }))}
           />
         </div>
 
@@ -140,7 +171,7 @@ function ReadinessHero({ report }: { report: ReadinessReport }) {
               {blocking.slice(0, 4).map((item) => (
                 <li key={item.key}>
                   <a href={`#readiness-${item.key}`} className="flex items-center gap-2.5 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 hover:bg-[var(--color-chrome-fill)]">
-                    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: LADDER.find((l) => l.key === item.status)?.color }} />
+                    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: RUNG_COLOR[item.state] }} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[0.8125rem] font-medium">{t(`readiness.item.${item.key}`)}</span>
                       {item.blocker && (
@@ -213,34 +244,41 @@ function ItemCard({ item }: { item: ReadinessItem }) {
         title={t(`readiness.item.${item.key}`)}
         description={item.blocker ? t(`readiness.blocker.${item.blocker}`, { defaultValue: item.blocker }) : t('readiness.nothingWaiting')}
         action={
-          <Badge tone={TONE[item.status]} testId={`readiness-${item.key}-status`}>
-            {t(`readiness.status.${item.status}`)}
+          <Badge tone={STATE_TONE[item.state]} testId={`readiness-${item.key}-status`}>
+            {t(`integrationState.${item.state}`)}
           </Badge>
         }
       />
       <CardBody className="space-y-3">
+        <EvidenceList evidence={item.evidence} testId={`readiness-${item.key}-evidence`} />
+
         {item.checks.length > 0 && (
-          <ProgressBar
-            value={(item.checks.filter((check) => check.ok).length / item.checks.length) * 100}
-            tone={item.checks.every((check) => check.ok) ? 'good' : 'warn'}
-            label={t('readiness.hero.checksPassed', { done: item.checks.filter((check) => check.ok).length, total: item.checks.length })}
-          />
-        )}
-        {item.checks.length > 0 && (
-          <ul className="space-y-1" data-testid={`readiness-${item.key}-checks`}>
-            {item.checks.map((check) => (
-              <li key={check.key} className="t-caption flex items-center gap-2">
-                {check.ok ? (
-                  <Check className="size-3.5 text-[var(--color-success)]" aria-hidden />
-                ) : (
-                  <X className="size-3.5 text-[var(--color-ink-subtle)]" aria-hidden />
-                )}
-                <span className={cn(!check.ok && 'text-[var(--color-ink-muted)]')}>
-                  {t(`readiness.check.${check.key}`, { defaultValue: check.key })}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[0.75rem] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+              <span className="min-w-0 flex-1">
+                <ProgressBar
+                  value={(item.checks.filter((check) => check.ok).length / item.checks.length) * 100}
+                  tone={item.checks.every((check) => check.ok) ? 'good' : 'warn'}
+                  label={t('readiness.hero.checksPassed', { done: item.checks.filter((check) => check.ok).length, total: item.checks.length })}
+                />
+              </span>
+              {t('readiness.hero.setupDetails')}
+            </summary>
+            <ul className="mt-2 space-y-1" data-testid={`readiness-${item.key}-checks`}>
+              {item.checks.map((check) => (
+                <li key={check.key} className="t-caption flex items-center gap-2">
+                  {check.ok ? (
+                    <Check className="size-3.5 text-[var(--color-success)]" aria-hidden />
+                  ) : (
+                    <X className="size-3.5 text-[var(--color-ink-subtle)]" aria-hidden />
+                  )}
+                  <span className={cn(!check.ok && 'text-[var(--color-ink-muted)]')}>
+                    {t(`readiness.check.${check.key}`, { defaultValue: check.key })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
 
         {item.children && (
@@ -299,12 +337,6 @@ function ItemCard({ item }: { item: ReadinessItem }) {
   )
 }
 
-const INFRA_TONE: Record<InfraState, 'success' | 'warning' | 'neutral'> = {
-  live_verified: 'success',
-  ready: 'warning',
-  not_configured: 'neutral',
-}
-
 const INFRA_ICON: Record<InfraItem['key'], LucideIcon> = {
   database: Database,
   redis: Zap,
@@ -330,8 +362,8 @@ function InfraRow({ item }: { item: InfraItem }) {
       <h3 className="flex items-center gap-2 text-[0.875rem] font-semibold md:col-span-3">
         <Icon className="size-4 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
         {t(`readiness.infra.item.${item.key}`)}
-        <Badge tone={INFRA_TONE[item.state]} testId={`infra-${item.key}-state`}>
-          {t(`readiness.infra.state.${item.state}`)}
+        <Badge tone={STATE_TONE[item.ladder]} testId={`infra-${item.key}-state`}>
+          {t(`integrationState.${item.ladder}`)}
         </Badge>
       </h3>
 
@@ -365,6 +397,44 @@ function InfraRow({ item }: { item: InfraItem }) {
           ? t(`readiness.infra.action.${item.required_action}`, { defaultValue: item.required_action })
           : t('readiness.infra.nothingToDo')}
       </p>
+    </div>
+  )
+}
+
+/**
+ * What a rung stands on: each fact as a tick or a cross, and when it was seen.
+ * A row's badge is computed from these, so a green rung with a red fact above
+ * it cannot happen — and a reader can see exactly which fact is missing.
+ */
+function EvidenceList({ evidence, testId }: { evidence: Evidence[]; testId: string }) {
+  const { t, i18n } = useTranslation()
+
+  if (evidence.length === 0) return null
+
+  return (
+    <div data-testid={testId}>
+      <p className="mb-1 text-[0.75rem] font-semibold text-[var(--color-ink-muted)]">{t('readiness.evidence.title')}</p>
+      <ul className="space-y-1">
+        {evidence.map((fact) => (
+          <li key={fact.key} className="flex items-start gap-2 text-[0.8125rem]" data-evidence={fact.key} data-ok={fact.ok}>
+            {fact.ok ? (
+              <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--color-success)]" aria-hidden />
+            ) : (
+              <X className="mt-0.5 size-3.5 shrink-0 text-[var(--color-ink-subtle)]" aria-hidden />
+            )}
+            <span className={cn('min-w-0 flex-1', !fact.ok && 'text-[var(--color-ink-muted)]')}>
+              {t(`readiness.evidence.${fact.key}`, { defaultValue: fact.key })}
+              {fact.detail && fact.key === 'recorded_in_production' && (
+                <span className="ms-1.5 rounded-full bg-[var(--color-chrome-fill)] px-1.5 py-0.5 text-[0.6875rem]">{t(`readiness.deployment.${fact.detail}`, { defaultValue: fact.detail })}</span>
+              )}
+              {fact.detail && fact.key === 'no_current_error' && !fact.ok && (
+                <span className="ms-1.5 font-mono text-[0.6875rem] text-[var(--color-danger)]" dir="ltr">{fact.detail}</span>
+              )}
+            </span>
+            {fact.at && <span className="shrink-0 text-[0.6875rem] tabular-nums text-[var(--color-ink-subtle)]">{formatRelative(fact.at, i18n.language)}</span>}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -4,6 +4,7 @@ namespace App\Domain\Conversions;
 
 use App\Domain\Integrations\IntegrationState;
 use App\Models\ConversionExport;
+use App\Support\Deployment;
 
 /**
  * Whether sales are actually reaching each ad platform.
@@ -41,7 +42,10 @@ final class ConversionHealth
             $state = match (true) {
                 ! $configured => IntegrationState::NOT_CONFIGURED,
                 $sentAt === null => IntegrationState::CODE_VERIFIED,
-                app()->environment('production') && strtotime((string) $sentAt) >= now()->subDays(7)->timestamp => IntegrationState::PRODUCTION_VERIFIED,
+                // A conversion the platform accepted, sent from a developer machine
+                // or staging, proves the credentials. Live is a claim about production.
+                ! Deployment::isProduction() => IntegrationState::READY,
+                strtotime((string) $sentAt) >= now()->subDays(7)->timestamp => IntegrationState::PRODUCTION_VERIFIED,
                 default => IntegrationState::LIVE_VERIFIED,
             };
 

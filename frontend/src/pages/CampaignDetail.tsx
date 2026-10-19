@@ -126,7 +126,12 @@ export function CampaignDetailPage() {
             </div>
             <PipelineFunnel
               testId="campaign-detail-funnel"
-              steps={(['leads', 'valid', 'engaged', 'qualified', 'appointments', 'won'] as const).map((key) => ({ key, label: t(`campaigns.stage.${key}`), count: c[key] }))}
+              steps={(['leads', 'valid', 'engaged', 'qualified', 'appointments', 'won'] as const).map((key) => ({
+                key,
+                label: t(`campaigns.stage.${key}`),
+                count: c[key],
+                costPer: c.spend !== null && c[key] > 0 ? money(Math.round(c.spend / c[key])) : null,
+              }))}
             />
           </CardBody>
         </Card>
@@ -139,7 +144,7 @@ export function CampaignDetailPage() {
         <Card className="lg:col-span-4">
           <CardBody>
             <h2 className="t-card-title mb-3">{t('campaigns.leadsPerDay')}</h2>
-            <AreaTrend points={daily} height={150} testId="campaign-leads-trend" />
+            <AreaTrend points={daily} height={300} axes valueLabel={t('campaigns.leadsPerDay')} testId="campaign-leads-trend" />
           </CardBody>
         </Card>
       </div>

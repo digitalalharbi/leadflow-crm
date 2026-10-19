@@ -1,5 +1,6 @@
 export default {
   common: {
+    others: 'أخرى',
     appName: 'مهتم',
     save: 'حفظ',
     saving: 'جارٍ الحفظ…',

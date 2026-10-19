@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arcs, brandRamp, clampPercent, funnelRows, healthTone, rank, STATUS, type StatusKey } from './index'
+import { arcs, brandRamp, foldSlivers, clampPercent, funnelRows, healthTone, rank, STATUS, type StatusKey } from './index'
 
 describe('visual primitives', () => {
   it('drops empty and non-finite donut segments and sums fractions to one', () => {
@@ -32,7 +32,7 @@ describe('visual primitives', () => {
   })
 
   it('keeps a tiny step visible and survives an empty funnel', () => {
-    expect(funnelRows([{ key: 'n', label: 'N', count: 1000 }, { key: 'c', label: 'C', count: 1 }])[1].width).toBe(6)
+    expect(funnelRows([{ key: 'n', label: 'N', count: 1000 }, { key: 'c', label: 'C', count: 1 }])[1].width).toBe(8)
     expect(funnelRows([])).toEqual([])
   })
 
@@ -66,5 +66,24 @@ describe('visual primitives', () => {
     const ramp = brandRamp(4)
     expect(ramp).toHaveLength(4)
     expect(ramp[3]).toContain('100%')
+  })
+})
+
+describe('foldSlivers', () => {
+  const others = { key: 'o', value: 0 }
+
+  it('folds two or more slivers into one arc when the ring is crowded', () => {
+    const segs = [
+      { key: 'a', value: 50 }, { key: 'b', value: 30 }, { key: 'c', value: 14 },
+      { key: 'd', value: 3 }, { key: 'e', value: 2 }, { key: 'f', value: 1 },
+    ]
+    const folded = foldSlivers(segs, others)
+    expect(folded.map((s) => s.key)).toEqual(['a', 'b', 'c', 'o'])
+    expect(folded[3].value).toBe(6)
+  })
+
+  it('leaves a short list alone, slivers and all', () => {
+    const segs = [{ key: 'a', value: 97 }, { key: 'b', value: 2 }, { key: 'c', value: 1 }]
+    expect(foldSlivers(segs, others)).toBe(segs)
   })
 })

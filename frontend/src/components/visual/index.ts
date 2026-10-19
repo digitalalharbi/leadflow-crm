@@ -1,4 +1,4 @@
-export { Donut, arcs, type DonutSegment, type Arc } from './Donut'
+export { Donut, arcs, foldSlivers, SLIVER, type DonutSegment, type Arc } from './Donut'
 export { RingProgress, clampPercent } from './RingProgress'
 export { ProgressBar } from './ProgressBar'
 export { PipelineFunnel, funnelRows, type FunnelStep } from './PipelineFunnel'

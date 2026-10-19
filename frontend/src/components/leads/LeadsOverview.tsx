@@ -106,7 +106,9 @@ export function LeadsOverview({ query }: { query: Record<string, unknown> }) {
             <h2 className="t-card-title mb-3">{t('leadsOverview.trend')}</h2>
             <AreaTrend
               testId="lead-trend"
-              height={112}
+              height={200}
+              axes
+              valueLabel={t('leadsOverview.trend')}
               points={data.trend.map((p) => ({
                 label: new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { day: 'numeric', month: 'short' }).format(new Date(p.date)),
                 value: p.count,

@@ -23,12 +23,14 @@ export function ChartTooltip({
   return (
     <div
       className={cn(
-        'pointer-events-none min-w-[10rem] rounded-[var(--radius-control)] px-3 py-2.5',
+        // One tooltip card for every chart: a raised surface, a hairline, a
+        // 12px radius, the title quieter than the figures beneath it.
+        'pointer-events-none min-w-[10rem] rounded-xl border border-[var(--color-border-strong)] px-3 py-2.5',
         'bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)]',
         className,
       )}
     >
-      {title && <p className="t-small mb-1.5 font-semibold">{title}</p>}
+      {title && <p className="mb-1.5 text-[0.75rem] font-semibold text-[var(--color-ink-muted)]">{title}</p>}
 
       <dl className="space-y-1">
         {rows.map((row) => (

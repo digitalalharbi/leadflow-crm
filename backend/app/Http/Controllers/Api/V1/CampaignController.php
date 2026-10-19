@@ -6,10 +6,11 @@ use App\Domain\Campaigns\AdPlatform;
 use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Domain\Campaigns\CampaignMetrics;
 use App\Domain\Campaigns\CampaignSyncer;
+use App\Domain\Campaigns\PlatformVerification;
 use App\Http\Controllers\Controller;
 use App\Models\AdAccount;
+use App\Models\AdConnection;
 use App\Models\Campaign;
-use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Support\ApiResponse;
@@ -114,23 +115,25 @@ class CampaignController extends Controller
         $this->authorize('export', Lead::class);
 
         $registry = app(AdPlatformRegistry::class);
-        $integrations = Integration::query()->where('is_active', true)->get()->keyBy(fn ($i) => $i->provider?->value);
+        $verification = app(PlatformVerification::class);
         $accounts = AdAccount::query()->get()->groupBy('platform');
 
         return ApiResponse::success([
-            'platforms' => collect(AdPlatform::cases())->map(function (AdPlatform $platform) use ($registry, $integrations, $accounts) {
+            'platforms' => collect(AdPlatform::cases())->map(function (AdPlatform $platform) use ($registry, $verification, $accounts) {
                 $adapter = $registry->get($platform->value);
-                $integration = $integrations->get($platform->value);
+                $connection = AdConnection::for($platform->value);
                 $mine = $accounts->get($platform->value, collect());
 
                 return [
                     'key' => $platform->value,
                     'built' => $adapter->isImplemented(),
-                    'connected' => $adapter->isConfigured($integration),
+                    'connected' => $adapter->isConfigured($connection),
+                    'state' => $verification->state($adapter, $connection),
                     'actions' => $adapter->actions(),
+                    'capabilities' => $adapter->capabilities(),
                     'accounts' => $mine->count(),
-                    'last_synced_at' => $mine->max('last_synced_at')?->toIso8601String(),
-                    'last_error' => $mine->pluck('last_error')->filter()->first(),
+                    'last_synced_at' => ($connection?->last_sync_ok_at ?? $mine->max('last_synced_at'))?->toIso8601String(),
+                    'last_error' => $connection?->last_error ?? $mine->pluck('last_error')->filter()->first(),
                 ];
             })->values()->all(),
         ]);
@@ -145,15 +148,15 @@ class CampaignController extends Controller
         $totals = ['accounts' => 0, 'campaigns' => 0, 'ads' => 0, 'snapshots' => 0];
         $errors = [];
 
-        foreach (Integration::query()->where('is_active', true)->get() as $integration) {
-            $result = $syncer->sync($integration, 7);
+        foreach (AdConnection::active() as $connection) {
+            $result = $syncer->sync($connection, 7);
 
             foreach (array_keys($totals) as $key) {
                 $totals[$key] += $result[$key];
             }
 
             if ($result['error'] !== null) {
-                $errors[] = ['platform' => $integration->provider?->value, 'message' => $result['error']];
+                $errors[] = ['platform' => $connection->platform, 'message' => $result['error']];
             }
         }
 

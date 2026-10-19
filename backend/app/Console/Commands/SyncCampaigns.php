@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Campaigns\CampaignSyncer;
-use App\Models\Integration;
+use App\Models\AdConnection;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Support\TenantContext;
@@ -35,7 +35,7 @@ class SyncCampaigns extends Command
         foreach ($tenants as $tenant) {
             try {
                 $context->withTenant($tenant, function () use ($syncer, $resolver, &$broken, &$linked, $tenant) {
-                    foreach (Integration::query()->where('is_active', true)->get() as $integration) {
+                    foreach (AdConnection::active() as $integration) {
                         $result = $syncer->sync($integration, (int) $this->option('days'));
 
                         if ($result['error'] !== null) {

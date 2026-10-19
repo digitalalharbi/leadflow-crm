@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ActionLogEntry;
 use App\Models\ActionProposal;
 use App\Models\AdAccount;
+use App\Models\AdSet;
 use App\Models\Campaign;
 use App\Models\ClientRule;
 use App\Models\Integration;
@@ -139,7 +140,21 @@ class ActionGatewayTest extends TestCase
 
         $this->assertSame('paused', $created['payload']['status']);
         $this->assertSame('blocked', $created['status']);
-        $this->assertContains('platform_not_built', $created['policy']['blocks']);
+        $this->assertContains('no_account', $created['policy']['blocks']);
+    }
+
+    public function test_an_action_the_platform_does_not_offer_is_refused_with_its_reason(): void
+    {
+        $campaign = $this->asTenant($this->t['tenant'], fn () => Campaign::create(['platform' => 'tiktok', 'external_id' => 't1', 'name' => 'تيك توك', 'origin' => 'sync']));
+        $adSet = $this->asTenant($this->t['tenant'], fn () => AdSet::create(['campaign_id' => $campaign->id, 'external_id' => 'g1', 'name' => 'مجموعة']));
+
+        $proposal = $this->actingAs($this->t['admin'])->postJson('/api/v1/action-proposals', [
+            'action' => 'duplicate_ad_set', 'ad_set_id' => $adSet->uuid, 'reason' => 'اختبار',
+        ])->assertCreated()->json('data.proposal');
+
+        $this->assertSame('blocked', $proposal['status']);
+        $this->assertContains('not_supported', $proposal['policy']['blocks']);
+        $this->assertSame('platform_has_no_copy', $proposal['policy']['limits']['unsupported_reason']);
     }
 
     public function test_a_campaign_known_only_from_its_leads_cannot_be_paused(): void

@@ -1348,6 +1348,9 @@ export default {
       change_too_large: 'More than {{max_change_pct}}% — allowed {{min}} to {{max}}',
       must_start_paused: 'A new campaign starts paused',
       forbidden_words: 'Contains forbidden words',
+      no_account: 'Choose the ad account',
+      targeting_missing: 'Give the targeting',
+      schedule_missing: 'Give a start or an end',
     },
   },
   rules: {
@@ -1407,6 +1410,40 @@ export default {
     best: 'Best',
     worst: 'Costliest per qualified',
     notes: 'Notes',
+  },
+
+  adConnections: {
+    title: 'Ad accounts',
+    connect: 'Connect',
+    manage: 'Manage',
+    sandbox: 'Sandbox',
+    live: 'Live',
+    mode: 'Account type',
+    actions: 'Available actions',
+    supported: '{{count}} of {{total}} actions available',
+    synced: 'Synced {{when}}',
+    drawerTitle: 'Connect {{platform}}',
+    drawerHint: 'Stored encrypted and never shown again. The connection is tested as soon as it is saved.',
+    saveAndTest: 'Save and test',
+    disconnect: 'Disconnect',
+    testOk: 'Connected — {{count}} accounts.',
+    testFailed: 'Could not connect.',
+    accountsHint: 'Optional: account ids, comma separated',
+    field: {
+      access_token: 'Access token', app_id: 'App ID', secret: 'App secret', developer_token: 'Developer token',
+      client_id: 'Client ID', client_secret: 'Client secret', refresh_token: 'Refresh token', login_customer_id: 'Manager account ID',
+      consumer_key: 'API key', consumer_secret: 'API secret', access_token_secret: 'Access token secret', account_ids: 'Account ids',
+    },
+    reason: {
+      not_built: 'Not built yet',
+      platform_has_no_copy: 'The platform has no copy for ad sets',
+      needs_media_upload: 'Needs a media upload in the platform',
+      needs_asset_editor: 'Needs the asset editor',
+      needs_post_composer: 'Needs a post to be composed',
+      posts_are_immutable: 'Posts cannot be edited',
+      criteria_not_built: 'Targeting criteria not built',
+      platform_not_built: 'Platform not built',
+    },
   },
 
   visual: {
@@ -1742,6 +1779,7 @@ export default {
   },
 
   integrations: {
+    view: { sources: 'Lead sources', ads: 'Ad accounts' },
     showDetail: 'Show detail',
     hideDetail: 'Hide detail',
     lastSync: 'Last sync',

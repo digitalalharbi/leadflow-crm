@@ -14,7 +14,7 @@ class AdAccount extends Model
     use BelongsToTenant, HasUuid;
 
     protected $fillable = [
-        'project_id', 'integration_id', 'platform', 'external_id', 'name',
+        'project_id', 'integration_id', 'ad_connection_id', 'platform', 'external_id', 'name',
         'currency', 'status', 'last_synced_at', 'last_error',
     ];
 

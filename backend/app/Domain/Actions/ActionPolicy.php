@@ -4,8 +4,8 @@ namespace App\Domain\Actions;
 
 use App\Domain\Campaigns\Contracts\AdPlatformAdapter;
 use App\Models\ActionProposal;
+use App\Models\AdConnection;
 use App\Models\ClientRule;
-use App\Models\Integration;
 use Carbon\CarbonImmutable;
 
 /**
@@ -31,7 +31,7 @@ class ActionPolicy
     /**
      * @return array{allowed: bool, blocks: list<string>, warnings: list<string>, limits: array<string, mixed>}
      */
-    public function check(ActionProposal $proposal, ClientRule $rules, AdPlatformAdapter $adapter, ?Integration $integration, bool $executing = false): array
+    public function check(ActionProposal $proposal, ClientRule $rules, AdPlatformAdapter $adapter, ?AdConnection $connection, bool $executing = false): array
     {
         $blocks = [];
         $warnings = [];
@@ -46,14 +46,21 @@ class ActionPolicy
             $blocks[] = 'platform_not_built';
         } elseif (! in_array($proposal->action, $adapter->actions(), true)) {
             $blocks[] = 'not_supported';
-        } elseif (! $adapter->isConfigured($integration)) {
+            $limits['unsupported_reason'] = $adapter->capabilities()[$proposal->action]['reason'] ?? null;
+        } elseif (! $adapter->isConfigured($connection)) {
             // Proposing against an unconnected account is allowed — it is advice.
             // Running it is not.
             $executing ? $blocks[] = 'not_connected' : $warnings[] = 'not_connected';
         }
 
-        if (in_array($proposal->action, self::NEEDS_TARGET, true) && $this->target($proposal) === null) {
+        $target = $this->target($proposal);
+
+        if (in_array($proposal->action, self::NEEDS_TARGET, true) && $target['external_id'] === null) {
             $blocks[] = 'no_platform_id';
+        }
+
+        if ($target['account_external_id'] === null && $proposal->action === 'create_campaign') {
+            $blocks[] = 'no_account';
         }
 
         if ($this->isBlackout($rules->blackout_days ?? [])) {
@@ -89,6 +96,14 @@ class ActionPolicy
             }
         }
 
+        if ($proposal->action === 'update_targeting' && ! is_array($payload['targeting'] ?? null)) {
+            $blocks[] = 'targeting_missing';
+        }
+
+        if ($proposal->action === 'schedule' && blank($payload['starts_at'] ?? null) && blank($payload['ends_at'] ?? null)) {
+            $blocks[] = 'schedule_missing';
+        }
+
         if ($proposal->action === 'create_campaign' && ($payload['status'] ?? 'paused') !== 'paused') {
             // Never live on creation, as Meta's own agent tools insist.
             $blocks[] = 'must_start_paused';
@@ -115,16 +130,30 @@ class ActionPolicy
         ];
     }
 
-    /** @return array{level: string, external_id: string}|null */
-    public function target(ActionProposal $proposal): ?array
+    /**
+     * What the platform needs to find the object: its level and id, the ad
+     * account it lives in, and — for an ad — the ad set it belongs to, which
+     * some platforms put in the ad's own address.
+     *
+     * @return array{level: ?string, external_id: ?string, account_external_id: ?string, parent_external_id: ?string}
+     */
+    public function target(ActionProposal $proposal): array
     {
+        $campaign = $proposal->campaign ?? $proposal->adSet?->campaign ?? $proposal->ad?->campaign;
+        $account = $campaign?->account?->external_id ?? (($proposal->payload ?? [])['account_external_id'] ?? null);
+
         foreach (['ad' => $proposal->ad, 'ad_set' => $proposal->adSet, 'campaign' => $proposal->campaign] as $level => $entity) {
             if ($entity !== null) {
-                return $entity->external_id ? ['level' => $level, 'external_id' => $entity->external_id] : null;
+                return [
+                    'level' => $level,
+                    'external_id' => $entity->external_id,
+                    'account_external_id' => $account,
+                    'parent_external_id' => $level === 'ad' ? $proposal->ad?->adSet?->external_id : null,
+                ];
             }
         }
 
-        return null;
+        return ['level' => null, 'external_id' => null, 'account_external_id' => $account, 'parent_external_id' => null];
     }
 
     /** @param  list<string>  $days  ISO dates ("2026-11-27") or weekday names ("friday") */

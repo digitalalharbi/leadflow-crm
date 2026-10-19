@@ -4,9 +4,9 @@ namespace App\Domain\Campaigns;
 
 use App\Models\Ad;
 use App\Models\AdAccount;
+use App\Models\AdConnection;
 use App\Models\Campaign;
 use App\Models\Creative;
-use App\Models\Integration;
 use App\Models\MetricSnapshot;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -31,34 +31,34 @@ class CampaignSyncer
     /**
      * @return array{accounts: int, campaigns: int, ads: int, snapshots: int, error: ?string}
      */
-    public function sync(Integration $integration, int $days = 7): array
+    public function sync(AdConnection $connection, int $days = 7): array
     {
         $result = ['accounts' => 0, 'campaigns' => 0, 'ads' => 0, 'snapshots' => 0, 'error' => null];
 
-        $platform = $integration->provider?->value;
-        $adapter = $platform ? $this->registry->get($platform) : null;
+        $platform = $connection->platform;
+        $adapter = $this->registry->get($platform);
 
-        if ($adapter === null || ! $adapter->isImplemented() || ! $adapter->isConfigured($integration)) {
+        if (! $adapter->isImplemented() || ! $adapter->isConfigured($connection)) {
             return $result;
         }
 
         try {
-            $accounts = $adapter->accounts($integration);
+            $accounts = $adapter->accounts($connection);
         } catch (Throwable $e) {
-            return $this->failed($integration, $result, $e);
+            return $this->failed($connection, $result, $e);
         }
 
         foreach ($accounts as $row) {
             $account = AdAccount::query()->firstOrNew(['platform' => $platform, 'external_id' => $row['external_id']]);
             $account->fill([
-                'integration_id' => $integration->id,
+                'ad_connection_id' => $connection->exists ? $connection->id : null,
                 'name' => $row['name'] ?? $account->name,
                 'currency' => $row['currency'] ?? $account->currency,
                 'status' => $row['status'] ?? 'active',
             ])->save();
 
             try {
-                $counts = $this->syncAccount($adapter, $integration, $account, $days);
+                $counts = $this->syncAccount($adapter, $connection, $account, $days);
                 $result['campaigns'] += $counts['campaigns'];
                 $result['ads'] += $counts['ads'];
                 $result['snapshots'] += $counts['snapshots'];
@@ -71,12 +71,19 @@ class CampaignSyncer
             }
         }
 
+        // Evidence for the verification ladder: data actually came back.
+        if ($connection->exists) {
+            $connection->forceFill($result['error'] === null && $result['accounts'] > 0
+                ? ['last_sync_ok_at' => now(), 'last_error' => null]
+                : ['last_error' => $result['error'] ?? 'No ad accounts were returned.'])->save();
+        }
+
         return $result;
     }
 
-    private function syncAccount($adapter, Integration $integration, AdAccount $account, int $days): array
+    private function syncAccount($adapter, AdConnection $connection, AdAccount $account, int $days): array
     {
-        $structure = $adapter->structure($integration, $account);
+        $structure = $adapter->structure($connection, $account);
         $platform = $account->platform;
 
         $campaigns = [];
@@ -120,6 +127,7 @@ class CampaignSyncer
                 'name' => $row['name'],
                 'status' => $row['status'] ?? 'unknown',
                 'daily_budget_minor' => $row['daily_budget_minor'] ?? null,
+                'targeting' => $row['targeting'] ?? $adSet->targeting,
                 'archived_at' => null,
             ]);
             $adSets[$row['external_id']] = $adSet;
@@ -153,7 +161,7 @@ class CampaignSyncer
 
         $snapshots = 0;
         $to = CarbonImmutable::today();
-        $rows = $adapter->metrics($integration, $account, $to->subDays(max(1, $days) - 1), $to);
+        $rows = $adapter->metrics($connection, $account, $to->subDays(max(1, $days) - 1), $to);
 
         DB::transaction(function () use ($rows, $campaigns, $adSets, $ads, $account, $platform, &$snapshots) {
             foreach ($rows as $row) {
@@ -193,9 +201,11 @@ class CampaignSyncer
         return ['campaigns' => count($campaigns), 'ads' => count($ads), 'snapshots' => $snapshots];
     }
 
-    private function failed(Integration $integration, array $result, Throwable $e): array
+    private function failed(AdConnection $connection, array $result, Throwable $e): array
     {
-        $integration->forceFill(['last_error' => mb_substr($e->getMessage(), 0, 500)])->save();
+        if ($connection->exists) {
+            $connection->forceFill(['last_error' => mb_substr($e->getMessage(), 0, 500)])->save();
+        }
         $result['error'] = $e->getMessage();
 
         return $result;

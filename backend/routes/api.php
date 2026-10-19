@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ActionProposalController;
+use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -266,6 +267,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
             Route::get('/campaigns', [CampaignController::class, 'index']);
             Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);
+            Route::get('/ad-connections/{platform}', [AdConnectionController::class, 'show']);
+            Route::put('/ad-connections/{platform}', [AdConnectionController::class, 'update']);
+            Route::post('/ad-connections/{platform}/test', [AdConnectionController::class, 'test']);
+            Route::delete('/ad-connections/{platform}', [AdConnectionController::class, 'destroy']);
+            Route::get('/ad-connections/{platform}/lead-forms', [AdConnectionController::class, 'leadForms']);
             Route::post('/campaigns/sync', [CampaignController::class, 'sync']);
             Route::get('/campaigns/{uuid}', [CampaignController::class, 'show'])->whereUuid('uuid');
 

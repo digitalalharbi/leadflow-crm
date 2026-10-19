@@ -8,6 +8,7 @@ use App\Domain\Campaigns\AdPlatform;
 use App\Http\Controllers\Controller;
 use App\Models\ActionProposal;
 use App\Models\Ad;
+use App\Models\AdAccount;
 use App\Models\AdSet;
 use App\Models\Campaign;
 use App\Models\Lead;
@@ -62,6 +63,13 @@ class ActionProposalController extends Controller
             'payload.primary_text' => ['nullable', 'string', 'max:5000'],
             'payload.status' => ['nullable', 'string', 'in:paused,active'],
             'payload.starts_at' => ['nullable', 'date'],
+            'payload.ends_at' => ['nullable', 'date'],
+            'payload.objective' => ['nullable', 'string', 'max:64'],
+            'payload.channel' => ['nullable', 'string', 'max:32'],
+            'payload.creative_id' => ['nullable', 'string', 'max:64'],
+            'payload.funding_instrument_id' => ['nullable', 'string', 'max:64'],
+            'payload.targeting' => ['nullable', 'array'],
+            'account_id' => ['nullable', 'uuid'],
             'reason' => ['required', 'string', 'max:2000'],
             'expected_impact' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -71,8 +79,14 @@ class ActionProposalController extends Controller
         $ad = isset($data['ad_id']) ? Ad::query()->where('uuid', $data['ad_id'])->firstOrFail() : null;
         $campaign ??= $adSet?->campaign ?? $ad?->campaign;
 
-        $platform = $data['platform'] ?? $campaign?->platform;
+        // A new campaign lives in an ad account, not under another campaign.
+        $account = isset($data['account_id']) ? AdAccount::query()->where('uuid', $data['account_id'])->firstOrFail() : null;
+        $platform = $data['platform'] ?? $campaign?->platform ?? $account?->platform;
         abort_if($platform === null, 422, 'A platform or a campaign is required.');
+
+        if ($account) {
+            $data['payload'] = ($data['payload'] ?? []) + ['account_external_id' => $account->external_id];
+        }
 
         $proposal = $this->gateway->propose([
             'action' => $data['action'],

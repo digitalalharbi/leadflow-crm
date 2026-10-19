@@ -47,6 +47,15 @@ export default {
     platformConsole: 'Platform console',
   },
   work: {
+    pulse: {
+      reached: 'Reached',
+      ofOpen: '{{reached}} of {{open}} open',
+    },
+    mix: {
+      critical: 'Now',
+      high: 'Today',
+      medium: 'Later',
+    },
     queue: {
       title: 'Up next',
       empty: 'Nobody behind this one.',
@@ -878,6 +887,16 @@ export default {
   },
 
   readiness: {
+    hero: {
+      proven: 'Proven live',
+      ofTotal: '{{proven}} of {{total}} items',
+      integrations: 'Integrations',
+      blocking: 'Between you and launch',
+      nothingBlocking: 'Nothing stands in the way.',
+      yourMove: 'Check now',
+      theirMove: 'External',
+      checksPassed: '{{done}} of {{total}} checks',
+    },
     infra: {
       title: 'Infrastructure',
       hint: 'What the platform itself stands on. Each is actually checked: a setting written down is not enough.',
@@ -1836,7 +1855,16 @@ export default {
 
   appearance: { label: 'Appearance', system: 'Match device', light: 'Light', dark: 'Dark' },
 
-  brand: { tagline: 'Turn interest into opportunity', subtext: 'Leads, qualification and follow-up in one place.' },
+  brand: {
+    tagline: 'Turn interest into opportunity',
+    subtext: 'Leads, qualification and follow-up in one place.',
+    journey: { arrived: 'Arrived', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewing', won: 'Deal' },
+    pillars: {
+      ads: 'Every ad platform on one screen',
+      speed: 'Automatic first contact within minutes',
+      loop: 'Every deal traced back to the campaign that brought it',
+    },
+  },
 
   funnel: { replied: 'Replied', total: 'All leads', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewings', won: 'Sold' },
 

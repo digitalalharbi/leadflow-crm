@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\StageAnnouncer;
 use App\Enums\ActivityType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadResource;
@@ -93,6 +94,8 @@ class QualificationController extends Controller
                 ]);
             }
         });
+
+        app(StageAnnouncer::class)->qualifiedByAnswers($lead, $before['qualification_status']?->value, $request->user());
 
         $lead->refresh()->load(['assignee:id,uuid,name', 'project:id,uuid,name', 'lostReason:id,uuid,label']);
 

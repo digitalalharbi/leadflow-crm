@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, ArrowRight, CalendarCheck, CalendarPlus, Check, ClipboardCheck, FileText, Flame, Mail,
-  MessageCircle, Phone, StickyNote, Trash2, UserCheck,
+  MessageCircle, Pencil, Phone, StickyNote, ThumbsDown, ThumbsUp, Trash2, UserCheck,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -34,6 +34,8 @@ import { StageTrack } from '@/components/lead/StageTrack'
 import { NextActionBanner } from '@/components/lead/NextActionBanner'
 import { AppointmentDialog } from '@/components/lead/AppointmentDialog'
 import { AppointmentsPanel, CallsPanel, SourceChain } from '@/components/lead/SidePanels'
+import { AutomationStatus, Engagement, WhyThisLead } from '@/components/lead/WorkspaceSide'
+import { LeadFormDrawer } from '@/components/leads/LeadFormDrawer'
 
 export function LeadDetailPage() {
   const { id = '' } = useParams()
@@ -49,6 +51,7 @@ export function LeadDetailPage() {
   const [note, setNote] = useState('')
   const [noteOpen, setNoteOpen] = useState(false)
   const [lostOpen, setLostOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [wonOpen, setWonOpen] = useState(false)
   const [dealValue, setDealValue] = useState('')
   const [lostReasonId, setLostReasonId] = useState('')
@@ -346,6 +349,7 @@ export function LeadDetailPage() {
                     dot={platformColor(lead.platform)}
                   />
                 )}
+                {lead.campaign_name && <Fact label={t('workspace.why.campaign')} value={lead.campaign_name} />}
                 {lead.last_contact_at && (
                   <Fact
                     label={t('leads.lastContact')}
@@ -417,6 +421,40 @@ export function LeadDetailPage() {
             >
               {t('leads.setFollowUp')}
             </Button>
+
+            <Button variant="outline" icon={<Pencil className="size-4" />} onClick={() => setEditOpen(true)} data-testid="action-edit">
+              {t('leadView.edit')}
+            </Button>
+
+            {/*
+              Accept is the rep saying "this one is real and worth working":
+              it qualifies the lead, which makes it a priority and tells the ad
+              platform this campaign brought a real buyer. Reject asks why, the
+              same way a loss does, so the campaign report learns from it.
+            */}
+            {!['qualified', 'appointment', 'negotiation', 'won', 'lost'].includes(lead.status) && (
+              <Button
+                variant="outline"
+                icon={<ThumbsUp className="size-4" />}
+                className="text-[var(--color-status-won)]"
+                loading={statusMutation.isPending}
+                onClick={() => statusMutation.mutate('qualified')}
+                data-testid="action-accept"
+              >
+                {t('leadView.accept')}
+              </Button>
+            )}
+            {!['won', 'lost'].includes(lead.status) && (
+              <Button
+                variant="outline"
+                icon={<ThumbsDown className="size-4" />}
+                className="text-[var(--color-status-lost)]"
+                onClick={() => setLostOpen(true)}
+                data-testid="action-reject"
+              >
+                {t('leadView.reject')}
+              </Button>
+            )}
 
             <span className="mx-0.5 hidden h-6 w-px bg-[var(--color-chrome-fill)] sm:block" aria-hidden />
 
@@ -552,37 +590,19 @@ export function LeadDetailPage() {
         </div>
       </Card>
 
+      {/*
+        One screen for one customer. The wide column is the conversation and
+        everything that happened — the thread a rep continues, the calls, the
+        files, the visits, the notes. The narrow column is orientation: what to
+        do next and why this lead, who is holding it (the journey or a person),
+        how engaged they are, and what they told us.
+      */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/*
-          Ordered by what a rep does: see what to do, talk, send, qualify, then
-          history. The side column is orientation — how the lead has moved,
-          who has rung, what is booked, where it came from — read at a glance
-          and acted on rarely.
-        */}
         <div className="space-y-4 lg:col-span-2">
-          <NextActionBanner action={data.next_action} onAct={actOnNext} />
-
           <div ref={messagingRef}>
             <LeadMessaging lead={lead} channel={channel} onChannel={setChannel} />
           </div>
 
-          {/*
-            Under the conversation, because sending a brochure is the same kind
-            of act as sending a message, and the answer to "did they open it"
-            belongs next to "did they reply".
-          */}
-          <div id="lead-files">
-            <LeadFiles lead={lead} />
-          </div>
-
-          <QualificationCard lead={lead} />
-          <ProjectAnswers lead={lead} />
-
-          {/*
-            What a rep did and what a rule did are different kinds of fact, so
-            they are two views of one card rather than one interleaved list —
-            interleaving makes the automation look like somebody's work.
-          */}
           <Card>
             <div className="px-4 pt-4">
               <Tabs
@@ -601,67 +621,81 @@ export function LeadDetailPage() {
               <AutomationTrace leadId={lead.id} />
             )}
           </Card>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <CallsPanel calls={data.calls} />
+            <AppointmentsPanel appointments={data.appointments} />
+          </div>
+
+          <div id="lead-files">
+            <LeadFiles lead={lead} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader
+                title={t('leads.notes')}
+                action={
+                  <Button size="sm" variant="ghost" icon={<StickyNote className="size-4" />} onClick={() => setNoteOpen(true)}>
+                    {t('leads.addNote')}
+                  </Button>
+                }
+              />
+              {notes.length === 0 ? (
+                <p className="px-5 py-6 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+                  {t('leads.noNotes')}
+                </p>
+              ) : (
+                <CardBody>
+                  <ul className="space-y-2.5" data-testid="notes-list">
+                    {notes.map((entry) => (
+                      <li key={entry.id} className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3">
+                        <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
+                        <p className="mt-1.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
+                          {entry.user?.name} · {formatRelative(entry.created_at, i18n.language)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </CardBody>
+              )}
+            </Card>
+
+            <DetailCard title={t('followUps.title')}>
+              <Row
+                label={t('leads.nextFollowUp')}
+                value={lead.next_follow_up_at ? formatDateTime(lead.next_follow_up_at, i18n.language) : null}
+                danger={lead.is_overdue}
+              />
+              {followUps.filter((f) => f.status === 'pending').length > 0 && (
+                <ul className="mt-2 space-y-1.5 border-t border-[var(--color-border)] pt-2">
+                  {followUps
+                    .filter((f) => f.status === 'pending')
+                    .map((followUp) => (
+                      <li key={followUp.id} className="text-[0.8125rem]">
+                        <span className={followUp.is_overdue ? 'text-[var(--color-status-lost)]' : undefined}>
+                          {formatDateTime(followUp.due_at, i18n.language)}
+                        </span>
+                        {followUp.note && (
+                          <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{followUp.note}</p>
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </DetailCard>
+
+          </div>
         </div>
 
         <div className="space-y-4">
+          <NextActionBanner action={data.next_action} onAct={actOnNext} />
+          <WhyThisLead lead={lead} />
+          <AutomationStatus lead={lead} onShowSteps={() => { setHistory('automation'); document.querySelector('[data-testid="history-tabs"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
+          <Engagement lead={lead} />
+          <QualificationCard lead={lead} />
+          <ProjectAnswers lead={lead} />
           <JourneyCard lead={lead} />
-
-          <CallsPanel calls={data.calls} />
-          <AppointmentsPanel appointments={data.appointments} />
-
-          <DetailCard title={t('followUps.title')}>
-            <Row
-              label={t('leads.nextFollowUp')}
-              value={lead.next_follow_up_at ? formatDateTime(lead.next_follow_up_at, i18n.language) : null}
-              danger={lead.is_overdue}
-            />
-            {followUps.filter((f) => f.status === 'pending').length > 0 && (
-              <ul className="mt-2 space-y-1.5 border-t border-[var(--color-border)] pt-2">
-                {followUps
-                  .filter((f) => f.status === 'pending')
-                  .map((followUp) => (
-                    <li key={followUp.id} className="text-[0.8125rem]">
-                      <span className={followUp.is_overdue ? 'text-[var(--color-status-lost)]' : undefined}>
-                        {formatDateTime(followUp.due_at, i18n.language)}
-                      </span>
-                      {followUp.note && (
-                        <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{followUp.note}</p>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </DetailCard>
-
-          <Card>
-            <CardHeader
-              title={t('leads.notes')}
-              action={
-                <Button size="sm" variant="ghost" icon={<StickyNote className="size-4" />} onClick={() => setNoteOpen(true)}>
-                  {t('leads.addNote')}
-                </Button>
-              }
-            />
-            {notes.length === 0 ? (
-              <p className="px-5 py-6 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
-                {t('leads.noNotes')}
-              </p>
-            ) : (
-              <CardBody>
-                <ul className="space-y-2.5" data-testid="notes-list">
-                  {notes.map((entry) => (
-                    <li key={entry.id} className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3">
-                      <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
-                      <p className="mt-1.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
-                        {entry.user?.name} · {formatRelative(entry.created_at, i18n.language)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </CardBody>
-            )}
-          </Card>
-
           <SourceChain lead={lead} />
 
           <DetailCard title={t('leads.contactInfo')}>
@@ -678,6 +712,8 @@ export function LeadDetailPage() {
           )}
         </div>
       </div>
+
+      <LeadFormDrawer key={lead.id + String(editOpen)} open={editOpen} onClose={() => setEditOpen(false)} lead={lead} />
 
       <AppointmentDialog
         leadId={lead.id}

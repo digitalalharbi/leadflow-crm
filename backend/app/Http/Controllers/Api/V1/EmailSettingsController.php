@@ -38,6 +38,9 @@ class EmailSettingsController extends Controller
         return ApiResponse::success([
             'can_send' => true,
             'mode' => $this->manager->provider(),
+            // Whether a customer's reply comes back into the thread, or only
+            // to the workspace's own mailbox.
+            'replies_tracked' => filled(config('services.email_inbound.domain')) && filled(config('services.email_inbound.secret')),
         ]);
     }
 

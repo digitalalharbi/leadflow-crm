@@ -103,6 +103,10 @@ class EmailSender
             throw new RuntimeException('This lead asked not to receive email.');
         }
 
+        if ($lead->email_bounced_at !== null) {
+            throw new RuntimeException('Email to this address bounced. Correct the address before writing again.');
+        }
+
         if (trim($subject) === '' || trim($body) === '') {
             throw new RuntimeException('The email needs a subject and a body.');
         }

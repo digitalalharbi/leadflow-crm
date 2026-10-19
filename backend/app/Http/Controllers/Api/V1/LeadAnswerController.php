@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\StageAnnouncer;
 use App\Domain\Qualification\ProjectQualification;
 use App\Enums\ActivityType;
 use App\Http\Controllers\Controller;
@@ -72,6 +73,8 @@ class LeadAnswerController extends Controller
 
         $before = ['score' => (int) $lead->score, 'priority' => (bool) $lead->is_priority];
 
+        $qualificationBefore = $lead->qualification_status?->value;
+
         DB::transaction(function () use ($lead, $clean, $request, $before) {
             foreach ($clean as $questionId => $value) {
                 if ($value === null) {
@@ -105,6 +108,8 @@ class LeadAnswerController extends Controller
                 ]);
             }
         });
+
+        app(StageAnnouncer::class)->qualifiedByAnswers($lead, $qualificationBefore, $request->user());
 
         return ApiResponse::success($this->payload($lead->refresh()));
     }

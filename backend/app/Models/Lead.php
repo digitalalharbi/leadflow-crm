@@ -234,6 +234,7 @@ class Lead extends Model
     protected function casts(): array
     {
         return [
+            'email_bounced_at' => 'datetime',
             'handed_off_at' => 'datetime',
             'status' => LeadStatus::class,
             'temperature' => LeadTemperature::class,
@@ -318,7 +319,9 @@ class Lead extends Model
      */
     public function acceptsEmail(): bool
     {
-        return filled($this->email) && $this->email_opt_out_at === null;
+        // A bounced address is not an address: writing to it again only teaches
+        // the provider that this workspace sends to dead mailboxes.
+        return filled($this->email) && $this->email_opt_out_at === null && $this->email_bounced_at === null;
     }
 
     public function activities(): HasMany

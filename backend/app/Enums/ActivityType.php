@@ -31,6 +31,8 @@ enum ActivityType: string
     case Updated = 'updated';
     /** Automation handed the lead to a person, and the note says why. */
     case HandedOff = 'handed_off';
+    case EmailReceived = 'email_received';
+    case EmailBounced = 'email_bounced';
 
     public static function values(): array
     {

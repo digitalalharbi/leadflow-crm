@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
+use App\Http\Controllers\EmailInboundController;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -112,6 +113,14 @@ Route::prefix('v1')->group(function () {
      */
     Route::post('integrations/sheets/{uuid}/ping/{token}', [SheetSourceController::class, 'ping'])
         ->whereUuid('uuid')
+        ->middleware('throttle:webhook');
+
+    /*
+     * Email replies and bounces from the mail provider's inbound webhook. The
+     * secret is the platform's, set where the provider is configured; replies
+     * are matched to the exact email they answer, never by sender alone.
+     */
+    Route::post('integrations/email/inbound/{secret}', [EmailInboundController::class, 'receive'])
         ->middleware('throttle:webhook');
 
     Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:whatsapp-webhook')->group(function () {

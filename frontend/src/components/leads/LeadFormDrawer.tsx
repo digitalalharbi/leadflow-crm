@@ -2,21 +2,22 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/lib/api'
-import { createLead, fetchAssignableUsers, fetchProjects } from '@/features/leads'
+import { createLead, fetchAssignableUsers, fetchProjects, updateLead } from '@/features/leads'
+import type { Lead } from '@/types/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { Button, Drawer, Input, Select } from '@/components/ui'
 
 /**
- * The new-lead form.
+ * The new-lead form, and the same form for correcting one.
  *
  * A drawer rather than a centred dialog: it is eight fields, not a question, and
  * it opens over the list somebody was already reading. The list keeps its scroll
  * position and its filters underneath, which matters because the usual reason to
  * add a lead by hand is that you just looked for them and they were not there.
  */
-export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LeadFormDrawer({ open, onClose, lead }: { open: boolean; onClose: () => void; lead?: Lead }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
@@ -24,14 +25,14 @@ export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () =
   const translateError = useApiError()
 
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
-    email: '',
-    city: '',
-    project_id: '',
+    full_name: lead?.full_name ?? '',
+    phone: lead?.phone ?? '',
+    email: lead?.email ?? '',
+    city: lead?.city ?? '',
+    project_id: lead?.project?.id ?? '',
     assigned_to: '',
-    budget_max: '',
-    preferred_property_type: '',
+    budget_max: lead?.budget_max != null ? String(lead.budget_max) : '',
+    preferred_property_type: lead?.preferred_property_type ?? '',
   })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
@@ -44,7 +45,17 @@ export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () =
 
   const mutation = useMutation({
     mutationFn: () =>
-      createLead({
+      lead
+        ? updateLead(lead.id, {
+            full_name: form.full_name,
+            phone: form.phone || null,
+            email: form.email || null,
+            city: form.city || null,
+            project_id: form.project_id || null,
+            budget_max: form.budget_max ? Number(form.budget_max) : null,
+            preferred_property_type: form.preferred_property_type || null,
+          }).then((updated) => ({ lead: updated.lead, restored: false, duplicate: false }))
+        : createLead({
         full_name: form.full_name,
         phone: form.phone || undefined,
         email: form.email || undefined,
@@ -56,6 +67,14 @@ export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () =
       }),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['leads'] })
+
+      if (lead) {
+        void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] })
+        toast(t('common.saved'), 'success')
+        onClose()
+
+        return
+      }
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 
       /*
@@ -109,11 +128,11 @@ export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () =
         reset()
         onClose()
       }}
-      title={t('leads.addLead')}
+      title={lead ? t('leadView.edit') : t('leads.addLead')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" form="lead-form" loading={mutation.isPending}>{t('common.create')}</Button>
+          <Button type="submit" form="lead-form" loading={mutation.isPending} data-testid="save-lead">{lead ? t('common.save') : t('common.create')}</Button>
         </>
       }
     >
@@ -185,7 +204,7 @@ export function LeadFormDrawer({ open, onClose }: { open: boolean; onClose: () =
           />
         </div>
 
-        {can.assignLeads(user) && (
+        {!lead && can.assignLeads(user) && (
           <Select
             label={t('leads.assignedTo')}
             hint={t('common.optional')}

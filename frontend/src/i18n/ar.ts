@@ -1413,6 +1413,25 @@ export default {
     invalid: 'غير صالح',
     no_response: 'بلا استجابة',
   },
+  workspace: {
+    why: { title: 'لماذا هذا العميل', campaign: 'الحملة' },
+    automation: {
+      nurturing: 'الأتمتة تتولاه',
+      nurturingHint: 'رسائل الرحلة تعمل — لا حاجة لتدخلك إلا إن ردّ أو صار أولوية.',
+      handed_off: 'دورك الآن',
+      none: 'لم تصله الأتمتة',
+      steps: 'عرض خطوات الأتمتة',
+    },
+    handoff: {
+      replied: 'ردّ العميل — أكمل نفس المحادثة',
+      qualified: 'اجتاز التأهيل — اتصل واحجز موعدًا',
+      no_reply: 'لم يرد على الرسائل الآلية — جرّب الاتصال',
+      unreached: 'لم تصله أي رسالة آلية — تواصل بنفسك',
+      asked_for_human: 'طلب التحدث مع شخص',
+      needs_human: 'يحتاج تدخلًا بشريًا',
+    },
+    engagement: { title: 'التفاعل', replyRate: 'نسبة الرد', sent: 'مُرسلة', received: 'ردود', opened: 'مقروءة', whatsapp: 'واتساب' },
+  },
   activity: {
     handed_off: 'سُلِّم للمندوب',
     whatsapp_sent: 'أرسلنا رسالة واتساب',
@@ -1526,6 +1545,9 @@ export default {
   },
 
   leadView: {
+    edit: 'تعديل',
+    reject: 'رفض',
+    accept: 'قبول',
     email: 'بريد',
     file: 'ملف',
     appointment: 'موعد',
@@ -2023,6 +2045,8 @@ export default {
     empty: 'لا توجد بيانات كافية لعرض هذا التقرير.',
   },
   email: {
+    bounced: 'البريد إلى هذا العنوان ارتدّ. صحّح العنوان قبل المراسلة مجددًا.',
+    repliesUntracked: 'ردود العميل تصل إلى بريد المؤسسة، ولا تظهر هنا حتى يُفعَّل عنوان الردود على المنصة.',
     channel: 'البريد',
     queued: 'أُضيف البريد إلى قائمة الإرسال.',
     noAddress: 'لا يوجد بريد',
@@ -2042,6 +2066,8 @@ export default {
     send: 'إرسال بالبريد',
     attachFile: 'أدرج رابط «{{name}}»',
     status: {
+      reply: 'ردّ العميل',
+      bounced: 'ارتدّ — العنوان غير صحيح',
       pending: 'قيد الإرسال',
       sent: 'أُرسل',
       delivered: 'أُرسل',

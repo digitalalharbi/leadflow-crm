@@ -71,6 +71,18 @@ return [
      * Models by role, as the build plan sets them: the strongest for the
      * agents that decide, a fast one for the agents that repeat.
      */
+    /*
+     * Replies and bounces coming back. With a domain whose mail is routed to
+     * the inbound endpoint (Postmark, SendGrid or Mailgun inbound parse), each
+     * email carries its own reply address — reply+<token>@domain — so the
+     * customer's answer lands in the same thread on the lead. Without one,
+     * replies go to the workspace's own mailbox and only the rep sees them.
+     */
+    'email_inbound' => [
+        'domain' => env('EMAIL_INBOUND_DOMAIN'),
+        'secret' => env('EMAIL_INBOUND_SECRET'),
+    ],
+
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),

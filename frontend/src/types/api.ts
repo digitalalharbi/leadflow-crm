@@ -99,6 +99,10 @@ export interface LeadListItem {
   status: LeadStatus
   /** Hot, and the one to call first. */
   is_priority?: boolean
+  /** null: never reached by automation · nurturing: the journey is talking to them · handed_off: a person's turn. */
+  automation_state?: 'nurturing' | 'handed_off' | null
+  /** Why it became a person's turn: replied, qualified, no_reply, unreached… */
+  needs_human_reason?: string | null
   classification?: Classification
   wrong_fit?: boolean
   /** What to do with it and how soon. Only on the leads list. */
@@ -159,6 +163,8 @@ export interface Lead extends LeadListItem {
   /** The project's own questions say this is not a buyer for it. */
   wrong_fit?: boolean
   whatsapp_opt_out_at: string | null
+  /** The provider said this address does not exist. */
+  email_bounced_at?: string | null
   email_opt_out_at: string | null
 }
 

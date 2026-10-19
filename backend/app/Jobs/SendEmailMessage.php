@@ -85,9 +85,10 @@ class SendEmailMessage implements ShouldQueue
                     plainBody: $message->body."\n\n".$unsubscribe,
                     senderAddress: $from['address'],
                     senderName: $from['name'],
-                    replyAddress: $integration?->config['from_address'] ?? null,
+                    replyAddress: $this->replyAddress($token) ?? ($integration?->config['from_address'] ?? null),
                     messageId: $messageId,
                     unsubscribeUrl: $unsubscribe,
+                    inReplyTo: $this->threadFor($message),
                 ));
             } catch (Throwable $e) {
                 $this->failed_($message, $e);
@@ -149,5 +150,30 @@ class SendEmailMessage implements ShouldQueue
     {
         return preg_match('/\b5\d\d[ -]/', $e->getMessage()) === 1
             || $e instanceof ExceptionInterface;
+    }
+
+    /**
+     * Where the customer's reply goes: to this message's own address on the
+     * inbound domain, so it is matched to this lead without guessing.
+     */
+    private function replyAddress(string $token): ?string
+    {
+        $domain = config('services.email_inbound.domain');
+
+        return filled($domain) && $token !== '' ? "reply+{$token}@{$domain}" : null;
+    }
+
+    /** The last email in this lead's conversation, to thread this one under. */
+    private function threadFor(LeadMessage $message): ?string
+    {
+        $previous = LeadMessage::withoutGlobalScopes()
+            ->where('lead_id', $message->lead_id)
+            ->where('channel', 'email')
+            ->where('id', '!=', $message->id)
+            ->whereNotNull('provider_message_id')
+            ->latest('id')
+            ->value('provider_message_id');
+
+        return $previous ? trim((string) $previous, '<> ') : null;
     }
 }

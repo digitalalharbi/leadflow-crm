@@ -117,7 +117,7 @@ export function EmailPanel({ lead }: { lead: Lead }) {
     }
   }
 
-  const blocked = optedOut || noAddress
+  const blocked = optedOut || noAddress || Boolean(lead.email_bounced_at)
   // A template that has been chosen and not edited is sent by id, so the server
   // renders it; the moment the rep types, what they typed is what goes.
   const ready = !blocked && subject.trim() !== '' && body.trim() !== ''
@@ -149,6 +149,12 @@ export function EmailPanel({ lead }: { lead: Lead }) {
       {capability?.mode === 'mock' && (
         <p className="notice" data-testid="email-mock-notice">{t('email.mockHint')}</p>
       )}
+      {/* Replies come back into this thread only when the platform's inbound
+          address is set up; until then they reach the workspace's own mailbox. */}
+      {capability && capability.mode !== 'mock' && capability.replies_tracked === false && (
+        <p className="notice" data-testid="email-replies-untracked">{t('email.repliesUntracked')}</p>
+      )}
+      {lead.email_bounced_at && <p className="notice notice-danger" data-testid="email-bounced">{t('email.bounced')}</p>}
       {optedOut && <p className="notice notice-danger">{t('email.optedOut')}</p>}
       {noAddress && <p className="notice">{t('email.noAddressHint')}</p>}
 
@@ -230,6 +236,8 @@ export function EmailPanel({ lead }: { lead: Lead }) {
 function EmailRow({ message }: { message: LeadMessage }) {
   const { t } = useTranslation()
   const opened = Boolean(message.read_at)
+  const inbound = message.direction === 'inbound'
+  const bounced = message.status === 'failed' && message.failure_code === 'bounced'
 
   const mark = {
     pending: { icon: Clock, tone: 'text-[var(--color-ink-subtle)]' },
@@ -244,9 +252,12 @@ function EmailRow({ message }: { message: LeadMessage }) {
   return (
     <li
       className={cn(
-        'rounded-[var(--radius-panel)] bg-[var(--brand-soft)] px-3 py-2 text-sm',
+        'rounded-[var(--radius-panel)] px-3 py-2 text-sm',
+        // The customer's side of the thread sits apart from ours, as in any inbox.
+        inbound ? 'me-8 bg-[var(--color-surface-muted)]' : 'ms-8 bg-[var(--brand-soft)]',
         message.status === 'failed' && 'ring-1 ring-[var(--color-status-lost)]',
       )}
+      data-direction={message.direction}
       data-testid="email-row"
     >
       <div className="flex items-start justify-between gap-2">
@@ -256,7 +267,7 @@ function EmailRow({ message }: { message: LeadMessage }) {
           data-testid={`email-status-${message.status}`}
         >
           <Icon className="size-3.5" aria-hidden />
-          {opened ? t('email.status.read') : t(`email.status.${message.status}`)}
+          {inbound ? t('email.status.reply') : bounced ? t('email.status.bounced') : opened ? t('email.status.read') : t(`email.status.${message.status}`)}
         </span>
       </div>
       <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-[0.8125rem] text-[var(--color-ink-muted)]">

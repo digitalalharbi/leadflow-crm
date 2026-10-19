@@ -1217,6 +1217,25 @@ export default {
     appointment: 'Appointment', negotiation: 'Negotiating', won: 'Won', lost: 'Lost',
     invalid: 'Invalid', no_response: 'No response',
   },
+  workspace: {
+    why: { title: 'Why this lead', campaign: 'Campaign' },
+    automation: {
+      nurturing: 'Automation has it',
+      nurturingHint: 'The journey is messaging them — step in only if they reply or turn priority.',
+      handed_off: 'Your turn',
+      none: 'Not reached by automation',
+      steps: 'See automation steps',
+    },
+    handoff: {
+      replied: 'They replied — continue the same conversation',
+      qualified: 'Qualified — call and book a visit',
+      no_reply: 'No reply to the automated messages — try calling',
+      unreached: 'No automated message reached them — reach out yourself',
+      asked_for_human: 'Asked to talk to a person',
+      needs_human: 'Needs a person',
+    },
+    engagement: { title: 'Engagement', replyRate: 'Reply rate', sent: 'Sent', received: 'Replies', opened: 'Read', whatsapp: 'WhatsApp' },
+  },
   activity: {
     handed_off: 'Handed to a rep',
     whatsapp_sent: 'WhatsApp message sent',
@@ -1305,6 +1324,9 @@ export default {
   },
 
   leadView: {
+    edit: 'Edit',
+    accept: 'Accept',
+    reject: 'Reject',
     email: 'Email',
     file: 'File',
     appointment: 'Visit',
@@ -1781,6 +1803,8 @@ export default {
     empty: 'Not enough data to show this report yet.',
   },
   email: {
+    bounced: 'Email to this address bounced. Fix the address before writing again.',
+    repliesUntracked: 'Replies go to the workspace mailbox and will not appear here until the platform reply address is set up.',
     channel: 'Email',
     queued: 'Email queued.',
     noAddress: 'No email address',
@@ -1800,6 +1824,8 @@ export default {
     send: 'Send by email',
     attachFile: 'Add link to “{{name}}”',
     status: {
+      reply: 'Their reply',
+      bounced: 'Bounced — bad address',
       pending: 'Sending',
       sent: 'Sent',
       delivered: 'Sent',

@@ -24,6 +24,7 @@ class LeadEmail extends Mailable
         public ?string $replyAddress,
         public string $messageId,
         public string $unsubscribeUrl,
+        public ?string $inReplyTo = null,
     ) {}
 
     public function build(): static
@@ -41,6 +42,13 @@ class LeadEmail extends Mailable
 
             $headers = $message->getHeaders();
             $headers->addIdHeader('Message-ID', $this->messageId);
+
+            // The thread: the customer's client shows this under the email it
+            // answers, so the conversation reads as one conversation.
+            if (filled($this->inReplyTo)) {
+                $headers->addIdHeader('In-Reply-To', $this->inReplyTo);
+                $headers->addIdHeader('References', $this->inReplyTo);
+            }
             $headers->addTextHeader('List-Unsubscribe', '<'.$this->unsubscribeUrl.'>');
             $headers->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         });

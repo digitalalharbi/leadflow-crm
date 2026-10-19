@@ -7,6 +7,7 @@ use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
+use App\Domain\Leads\StageAnnouncer;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -431,6 +432,10 @@ class LeadController extends Controller
                 $this->activities->log($lead, ActivityType::AppointmentCreated, $request->user());
             }
         });
+
+        // After the commit: a listener must read the finished lead, and must not
+        // be able to undo the change a person just made.
+        app(StageAnnouncer::class)->announce($lead, $previous, $request->user(), ['via' => 'stage']);
 
         return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project', 'lostReason']))]);
     }

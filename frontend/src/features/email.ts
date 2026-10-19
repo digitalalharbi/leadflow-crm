@@ -3,7 +3,7 @@ import type { EmailSettings, LeadMessage } from '@/types/api'
 
 /** Anyone who works a lead may ask whether email goes out, and by which door. */
 export function fetchEmailCapability() {
-  return apiGet<{ can_send: boolean; mode: EmailSettings['mode'] }>('/email/capability')
+  return apiGet<{ can_send: boolean; mode: EmailSettings['mode']; replies_tracked?: boolean }>('/email/capability')
 }
 
 export function sendLeadEmail(

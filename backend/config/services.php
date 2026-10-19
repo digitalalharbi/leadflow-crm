@@ -63,4 +63,29 @@ return [
         'timeout' => (int) env('GITHUB_TIMEOUT', 15),
     ],
 
+    /*
+     * Claude, for the agents. A workspace may bring its own key (stored
+     * encrypted on its settings); the platform key here is the fallback and may
+     * be absent, in which case the agents answer from their rules and say so.
+     *
+     * Models by role, as the build plan sets them: the strongest for the
+     * agents that decide, a fast one for the agents that repeat.
+     */
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
+        'version' => '2023-06-01',
+        'timeout' => (int) env('ANTHROPIC_TIMEOUT', 60),
+        'max_tool_rounds' => 6,
+        'max_tokens' => 2048,
+        'models' => [
+            'orchestrator' => env('AGENT_MODEL_ORCHESTRATOR', 'claude-opus-5-5'),
+            'campaign' => env('AGENT_MODEL_CAMPAIGN', 'claude-opus-5-5'),
+            'analyst' => env('AGENT_MODEL_ANALYST', 'claude-sonnet-5-5'),
+            'creative' => env('AGENT_MODEL_CREATIVE', 'claude-sonnet-5-5'),
+            'leads' => env('AGENT_MODEL_LEADS', 'claude-haiku-5-5'),
+            'reports' => env('AGENT_MODEL_REPORTS', 'claude-haiku-5-5'),
+        ],
+    ],
+
 ];

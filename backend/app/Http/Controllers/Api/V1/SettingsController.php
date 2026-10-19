@@ -40,6 +40,12 @@ class SettingsController extends Controller
                 'work_days' => $tenant->settings?->work_days,
                 'work_starts_at' => $tenant->settings?->work_starts_at,
                 'work_ends_at' => $tenant->settings?->work_ends_at,
+                // What automation may and may not do to a person. See Guardrails.
+                'quiet_hours_enabled' => (bool) $tenant->settings?->quiet_hours_enabled,
+                'quiet_hours_start' => $tenant->settings?->quiet_hours_start ?? '21:00',
+                'quiet_hours_end' => $tenant->settings?->quiet_hours_end ?? '08:00',
+                'max_contacts_per_day' => $tenant->settings?->max_contacts_per_day ?? 6,
+                'contact_cooldown_minutes' => $tenant->settings?->contact_cooldown_minutes ?? 0,
             ],
             'subscription' => [
                 'plan' => $tenant->plan,
@@ -113,6 +119,14 @@ class SettingsController extends Controller
             'work_days.*' => ['integer', 'min:1', 'max:7'],
             'work_starts_at' => ['sometimes', 'nullable', 'date_format:H:i'],
             'work_ends_at' => ['sometimes', 'nullable', 'date_format:H:i', 'after:work_starts_at'],
+
+            // Automation guardrails. The quiet window may cross midnight, so
+            // there is no "end after start" rule here.
+            'quiet_hours_enabled' => ['sometimes', 'boolean'],
+            'quiet_hours_start' => ['sometimes', 'date_format:H:i'],
+            'quiet_hours_end' => ['sometimes', 'date_format:H:i'],
+            'max_contacts_per_day' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'contact_cooldown_minutes' => ['sometimes', 'integer', 'min:0', 'max:1440'],
         ]);
 
         $tenant->settings->update($data);

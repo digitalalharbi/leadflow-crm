@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, CalendarClock, Gauge, Rocket, Sparkles, Users2 } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, Gauge, Rocket, Snowflake, Sparkles, Users2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ChartCard, LeadFlowChart, type FlowSeries, FLOW_SERIES } from '@/components/charts'
@@ -12,6 +12,7 @@ import type { DashboardData } from '@/types/api'
 
 const ICON: Record<AttentionKey, LucideIcon> = {
   priority: Sparkles,
+  stalled: Snowflake,
   wrong_fit: Gauge,
   sla_breached: Gauge,
   overdue_follow_ups: CalendarClock,
@@ -165,7 +166,8 @@ function HeroCard({ command }: { command: CommandCenterData }) {
       {command.attention.length > 0 && (
         <ul className="space-y-1 sm:max-h-28 sm:overflow-y-auto sm:pe-1" data-testid="attention-list">
           {command.attention.map((row) => {
-            const Icon = ICON[row.key]
+            // A key the server adds before this screen learns it must not blank the dashboard.
+            const Icon = ICON[row.key] ?? Gauge
             return (
               <li key={row.key}>
                 <Link

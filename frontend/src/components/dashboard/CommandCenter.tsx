@@ -1,6 +1,7 @@
 import {
   AlertTriangle, BellRing, CalendarClock, Flame, MessageSquareWarning, PhoneCall,
   Rocket, ShieldQuestion, Sparkles, Star, UserX, Workflow,
+  Snowflake,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -17,6 +18,7 @@ import { cn } from '@/lib/cn'
 
 const ICON: Record<AttentionKey, LucideIcon> = {
   priority: Star,
+  stalled: Snowflake,
   wrong_fit: ShieldQuestion,
   sla_breached: AlertTriangle,
   overdue_follow_ups: BellRing,
@@ -239,7 +241,8 @@ export function CommandSide() {
 
 function AttentionTile({ row }: { row: AttentionRow }) {
   const { t } = useTranslation()
-  const Icon = ICON[row.key]
+  // A key the server adds before this screen learns it must not blank the page.
+  const Icon = ICON[row.key] ?? AlertTriangle
   const critical = row.severity === 'critical'
 
   return (

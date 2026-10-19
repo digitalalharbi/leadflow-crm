@@ -156,6 +156,7 @@ Route::prefix('v1')->group(function () {
 
             Route::get('/dashboard', [DashboardController::class, 'index']);
             Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
+            Route::get('/dashboard/manager', [CommandCenterController::class, 'manager']);
             Route::get('/dashboard/journey', [JourneyController::class, 'show']);
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);

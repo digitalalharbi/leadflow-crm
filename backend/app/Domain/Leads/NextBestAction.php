@@ -166,8 +166,54 @@ class NextBestAction
                 'مؤهل وبلا خطوة تالية. احجز موعدًا قبل أن يبرد.');
         }
 
-        return $this->result('schedule_follow_up', 'medium',
+        return $this->fromIntelligence($lead) ?? $this->result('schedule_follow_up', 'medium',
             'لا توجد خطوة تالية محددة لهذا العميل.');
+    }
+
+    /**
+     * When nothing is scheduled and nothing is overdue, what the customer has
+     * been doing decides: engaged and silent gets a message on the channel
+     * they can be reached on, a brochure nobody has sent gets sent, a lead that
+     * has gone quiet gets nurtured — and one that has ignored every attempt for
+     * weeks is suggested for closing. Needs the `intelligence` relation.
+     */
+    private function fromIntelligence(Lead $lead): ?array
+    {
+        $intel = $lead->relationLoaded('intelligence') ? $lead->getRelation('intelligence') : null;
+
+        if (! is_array($intel)) {
+            return null;
+        }
+
+        $why = $intel['reason'];
+        $channels = $intel['contactability']['channels'];
+        $days = $intel['staleness']['days'];
+        $counts = $intel['counts'];
+        $engaged = $counts['file_opened'] + $counts['email_opened'] + $counts['link_clicked'] > 0;
+        $silent = $counts['replies'] === 0 && $lead->first_response_at === null;
+
+        // High intent and not yet in the sales stages: the call is worth more than a message.
+        if ($intel['intent']['value'] >= 65 && $channels['call']) {
+            return $this->result('call_now', 'high', ($why ?? 'نية شراء عالية').' — اتصل الآن.');
+        }
+
+        if ($engaged && $silent && ($channels['whatsapp'] || $channels['email'])) {
+            return $this->result($channels['whatsapp'] ? 'send_whatsapp' : 'send_email', 'medium', ($why ?? 'تفاعل مع ما أُرسل').' — راسله.');
+        }
+
+        if ($intel['brochure']['available'] && ! $intel['brochure']['shared'] && ($channels['whatsapp'] || $channels['email'])) {
+            return $this->result('send_brochure', 'medium', 'لم يصله بروشور المشروع بعد.');
+        }
+
+        if ($silent && $counts['outbound_30d'] >= 3 && $days >= 21) {
+            return $this->result('close_lost', 'low', "بلا رد منذ {$days} يومًا بعد {$counts['outbound_30d']} محاولات.");
+        }
+
+        if ($days >= 7 && ($channels['whatsapp'] || $channels['email'])) {
+            return $this->result('nurture', 'low', "ساكن منذ {$days} أيام — رسالة رعاية.");
+        }
+
+        return null;
     }
 
     private function result(string $action, string $urgency, string $reason, ?int $dueIn = null): array

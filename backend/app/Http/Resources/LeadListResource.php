@@ -61,6 +61,10 @@ class LeadListResource extends JsonResource
                 && $this->next_follow_up_at->isPast()
                 && ! $this->status?->isClosed(),
             'created_at' => $this->created_at?->toIso8601String(),
+            // Health and the reason behind it, when the page was computed with them.
+            'health' => $this->relationLoaded('intelligence')
+                ? ['value' => $this->getRelation('intelligence')['health']['value'], 'level' => $this->getRelation('intelligence')['health']['level']]
+                : null,
         ];
     }
 

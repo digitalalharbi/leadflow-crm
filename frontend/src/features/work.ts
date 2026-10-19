@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from '@/lib/api'
+import type { LeadIntelligence } from '@/features/leads'
 import type { LeadListItem } from '@/types/api'
 
 /**
@@ -13,6 +14,11 @@ export type NextActionKind =
   | 'reply_now'
   | 'follow_up'
   | 'book_meeting'
+  | 'send_whatsapp'
+  | 'send_email'
+  | 'send_brochure'
+  | 'nurture'
+  | 'close_lost'
   | 'schedule_follow_up'
   | 'assign'
   | 'wait'
@@ -36,6 +42,8 @@ export interface QueuedLead {
   temperature: string | null
   action: string | null
   urgency: NextAction['urgency'] | null
+  /** Why it is where it is in the queue, in a few words. */
+  rank_reason?: string | null
   waiting_since: string | null
 }
 
@@ -60,6 +68,9 @@ export interface NextInQueue {
   timeline: QueueTimelineEntry[]
   /** What the customer did that makes this lead the one now. */
   signals?: string[]
+  /** Why this lead is first: the three things that ranked it, in words. */
+  rank?: { score: number; reason: string }
+  intelligence?: LeadIntelligence
 }
 
 /** `skip` carries the leads passed over in this sitting, so "skip" actually

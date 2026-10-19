@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Enums\LeadStatus;
 use App\Enums\MessageStatus;
@@ -108,6 +109,8 @@ class CommandCenterController extends Controller
             ->orderByDesc('score')
             ->limit(40)
             ->get()
+            // The same facts the work queue ranks on, so both screens agree.
+            ->pipe(fn ($leads) => app(LeadIntelligence::class)->attach($leads))
             ->map(fn (Lead $lead) => ['lead' => $lead, 'action' => $this->nextBest->for($lead, $target)])
             ->reject(fn (array $row) => in_array($row['action']['action'], ['wait', 'none'], true))
             ->sortBy(fn (array $row) => $this->nextBest->weight($row['action']))

@@ -37,8 +37,32 @@ export function fetchLeads(filters: LeadFilters) {
   }>
 }
 
+/** One of the seven numbers: 0–100, and where it sits. */
+export interface IntelMetric {
+  value: number
+  level: 'high' | 'medium' | 'low'
+}
+
+/**
+ * How a lead is doing, in seven numbers. Computed on the server from facts the
+ * product already holds; `reason` is the few words that explain it.
+ */
+export interface LeadIntelligence {
+  health: IntelMetric
+  intent: IntelMetric
+  engagement: IntelMetric
+  response: IntelMetric
+  staleness: IntelMetric & { days: number }
+  contactability: IntelMetric & { channels: { whatsapp: boolean; email: boolean; call: boolean } }
+  completeness: IntelMetric & { missing: string[] }
+  reason: string | null
+  /** Interactions per day for the last two weeks, oldest first. Absent in lists. */
+  trend: number[] | null
+}
+
 export interface LeadDetailResponse {
   lead: Lead
+  intelligence?: LeadIntelligence
   activities: LeadActivity[]
   notes: LeadNote[]
   follow_ups: FollowUp[]

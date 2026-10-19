@@ -20,6 +20,7 @@ import {
   Input, Modal, Select, Skeleton, StatusBadge, Tabs, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
+import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { LeadFiles } from '@/components/leads/LeadFiles'
 import { LeadTimeline } from '@/components/leads/LeadTimeline'
 import { AutomationTrace } from '@/components/leads/AutomationTrace'
@@ -252,6 +253,19 @@ export function LeadDetailPage() {
         break
       case 'book_meeting':
         setAppointmentOpen(true)
+        break
+      case 'send_whatsapp':
+      case 'nurture':
+        openChannel('whatsapp')
+        break
+      case 'send_email':
+        openChannel('email')
+        break
+      case 'send_brochure':
+        document.querySelector<HTMLElement>('[data-testid="lead-files"], [data-testid="lead-files-empty"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        break
+      case 'close_lost':
+        setLostOpen(true)
         break
       case 'schedule_follow_up':
         setFollowUpOpen(true)
@@ -597,6 +611,8 @@ export function LeadDetailPage() {
         do next and why this lead, who is holding it (the journey or a person),
         how engaged they are, and what they told us.
       */}
+      <IntelligenceStrip intelligence={data.intelligence} />
+
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div ref={messagingRef}>

@@ -107,6 +107,8 @@ export interface LeadListItem {
   wrong_fit?: boolean
   /** What to do with it and how soon. Only on the leads list. */
   next_action?: { action: string; urgency: 'critical' | 'high' | 'medium' | 'low'; reason: string }
+  /** Health 0–100 when the list was computed with it. */
+  health?: { value: number; level: 'high' | 'medium' | 'low' } | null
   temperature: LeadTemperature
   score: number
   platform: string | null

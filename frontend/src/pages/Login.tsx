@@ -100,13 +100,13 @@ export function LoginPage() {
             ) : (
               <BrandMark size={30} animated />
             )}
-            <span className="text-[0.9375rem] font-semibold">{systemName}</span>
+            <span className="text-[1.0625rem] font-semibold">{systemName}</span>
           </div>
 
           <button
             type="button"
             onClick={() => applyLocale(i18n.language.startsWith('ar') ? 'en' : 'ar')}
-            className="pressable flex items-center gap-1.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+            className="pressable flex items-center gap-1.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.9375rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
           >
             <Globe className="size-4" aria-hidden />
             {i18n.language.startsWith('ar') ? 'English' : 'العربية'}
@@ -158,7 +158,7 @@ export function LoginPage() {
               {error && (
                 <p
                   role="alert"
-                  className="rounded-[var(--radius-control)] border border-[color-mix(in_srgb,var(--color-status-lost)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-3 py-2.5 text-[0.8125rem] text-[var(--color-status-lost)]"
+                  className="rounded-[var(--radius-control)] border border-[color-mix(in_srgb,var(--color-status-lost)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-3 py-2.5 text-[0.9375rem] text-[var(--color-status-lost)]"
                 >
                   {error}
                 </p>
@@ -170,7 +170,7 @@ export function LoginPage() {
             </form>
 
             {branding?.support_email && (
-              <p className="mt-6 text-center text-[0.75rem] text-[var(--color-ink-subtle)]">
+              <p className="mt-6 text-center text-[0.875rem] text-[var(--color-ink-subtle)]">
                 {branding.support_email}
               </p>
             )}
@@ -245,7 +245,7 @@ export function LoginPage() {
           {!branding?.company_name && (
             <p
               className={cn(
-                'mt-3 max-w-sm text-[0.9375rem] leading-relaxed',
+                'mt-3 max-w-sm text-[1.0625rem] leading-relaxed',
                 // Muted, not subtle: `--color-ink-subtle` is 2.58:1 on a pale
                 // panel, which is a caption colour being asked to carry a
                 // sentence. The size and weight already place it below the
@@ -259,7 +259,7 @@ export function LoginPage() {
           {!ownBackground && (
             <ul className="mt-6 space-y-2.5" data-testid="login-pillars">
               {PILLARS.map(({ key, icon: Icon }) => (
-                <li key={key} className="flex items-center gap-3 text-[0.875rem] font-medium">
+                <li key={key} className="flex items-center gap-3 text-[1rem] font-medium">
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--color-surface)]/80 text-[var(--brand)] shadow-[var(--shadow-card)]" aria-hidden>
                     <Icon className="size-4" />
                   </span>
@@ -310,7 +310,7 @@ function JourneyRibbon() {
           >
             <Icon className="size-[1.125rem]" />
           </span>
-          <span className="text-[0.75rem] font-medium">{t(`brand.journey.${key}`)}</span>
+          <span className="text-[0.875rem] font-medium">{t(`brand.journey.${key}`)}</span>
         </li>
       ))}
     </ol>

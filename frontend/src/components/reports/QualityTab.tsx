@@ -87,7 +87,7 @@ export function QualityTab({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: s
 
           <Card>
             <div className="max-h-[28rem] overflow-auto" data-testid="quality-table">
-              <table className="w-full text-[0.75rem]">
+              <table className="w-full text-[0.875rem]">
                 <thead className="sticky top-0 bg-[var(--color-surface)]">
                   <tr className="text-[var(--color-ink-subtle)]">
                     <th className="px-3 py-2 text-start font-medium">{t(`qualityReport.level.${level}`)}</th>

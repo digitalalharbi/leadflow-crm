@@ -45,7 +45,7 @@ export function RulesTable({
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]" data-testid="rules-list">
-      <div className="hidden grid-cols-[6.5rem_minmax(0,1.3fr)_minmax(0,2.6fr)_minmax(0,0.8fr)_5.5rem_minmax(0,1fr)_7rem] gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-muted)] px-4 py-2.5 text-[0.75rem] font-semibold text-[var(--color-ink-muted)] lg:grid">
+      <div className="hidden grid-cols-[6.5rem_minmax(0,1.3fr)_minmax(0,2.6fr)_minmax(0,0.8fr)_5.5rem_minmax(0,1fr)_7rem] gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-muted)] px-4 py-2.5 text-[0.875rem] font-semibold text-[var(--color-ink-muted)] lg:grid">
         <span>{t('automation.table.onOff')}</span>
         <span>{t('automation.table.rule')}</span>
         <span>{t('automation.table.flow')}</span>
@@ -78,13 +78,13 @@ export function RulesTable({
                 <span className={cn('absolute top-0.5 size-5 rounded-full bg-white shadow transition-all', rule.is_enabled ? 'start-[1.375rem]' : 'start-0.5')} />
                 <span className="sr-only">{t(rule.is_enabled ? 'automation.turnOff' : 'automation.turnOn')}</span>
               </button>
-              <span className={cn('text-[0.75rem] font-medium', rule.is_enabled ? 'text-[var(--brand)]' : 'text-[var(--color-ink-muted)]')}>
+              <span className={cn('text-[0.875rem] font-medium', rule.is_enabled ? 'text-[var(--brand)]' : 'text-[var(--color-ink-muted)]')}>
                 {t(rule.is_enabled ? 'automation.on' : 'automation.off')}
               </span>
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-[0.875rem] font-semibold" title={rule.name}>{rule.name}</p>
+              <p className="truncate text-[1rem] font-semibold" title={rule.name}>{rule.name}</p>
               <p className="t-caption truncate">
                 {[t('automation.conditionCount', { count: rule.conditions.length }), t('automation.actionCount', { count: rule.actions.length })].join(' · ')}
               </p>
@@ -94,13 +94,13 @@ export function RulesTable({
               <RuleFlow testId={`rule-flow-${rule.id}`} trigger={rule.trigger} conditions={rule.conditions} actions={rule.actions} />
             </div>
 
-            <span className="truncate text-[0.8125rem]">{rule.project ?? t('automation.table.allProjects')}</span>
+            <span className="truncate text-[0.9375rem]">{rule.project ?? t('automation.table.allProjects')}</span>
 
-            <span className={cn('w-fit rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold', MODE_STYLE[rule.mode ?? 'auto'])} data-testid={`rule-mode-${rule.id}`}>
+            <span className={cn('w-fit rounded-full px-2 py-0.5 text-[0.8125rem] font-semibold', MODE_STYLE[rule.mode ?? 'auto'])} data-testid={`rule-mode-${rule.id}`}>
               {t(`automation.mode.${rule.mode ?? 'auto'}`)}
             </span>
 
-            <div className="text-[0.75rem]">
+            <div className="text-[0.875rem]">
               {rule.last_run ? (
                 <>
                   <span className={cn('font-semibold', RESULT_STYLE[rule.last_run.outcome])}>{t(`automation.outcome.${rule.last_run.outcome}`)}</span>

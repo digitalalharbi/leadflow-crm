@@ -255,7 +255,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                   onChange={(event) => setConditionMatch(event.target.value)}
                   data-testid="condition-match"
                   aria-label={t('automation.matchLabel')}
-                  className="rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[0.8125rem]"
+                  className="rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[0.9375rem]"
                 >
                   <option value="all">{t('automation.matchAll')}</option>
                   <option value="any">{t('automation.matchAny')}</option>
@@ -476,8 +476,8 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                     : 'rounded-xl border border-[var(--color-line)] p-3 text-start hover:bg-[var(--color-surface-muted)]'
                 }
               >
-                <span className="block text-[0.875rem] font-semibold">{t(`automation.mode.${key}`)}</span>
-                <span className="block text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`automation.modeHint.${key}`)}</span>
+                <span className="block text-[1rem] font-semibold">{t(`automation.mode.${key}`)}</span>
+                <span className="block text-[0.8125rem] text-[var(--color-ink-muted)]">{t(`automation.modeHint.${key}`)}</span>
               </button>
             ))}
           </div>
@@ -491,11 +491,11 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
 function Step({ n, icon: Icon, title, hint }: { n: number; icon: LucideIcon; title: string; hint?: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[0.75rem] font-bold text-[var(--brand-contrast)]" aria-hidden>
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[0.875rem] font-bold text-[var(--brand-contrast)]" aria-hidden>
         {n}
       </span>
       <Icon className="size-4 text-[var(--color-ink-muted)]" aria-hidden />
-      <h3 className="text-[0.9375rem] font-semibold">{title}</h3>
+      <h3 className="text-[1.0625rem] font-semibold">{title}</h3>
       {hint && <span className="t-caption">{hint}</span>}
     </div>
   )

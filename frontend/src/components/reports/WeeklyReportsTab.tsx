@@ -60,20 +60,20 @@ export function WeeklyReportsTab() {
       {!list.data ? (
         <Skeleton className="h-40" />
       ) : list.data.reports.length === 0 ? (
-        <Card><CardBody><p className="py-8 text-center text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('weekly.none')}</p></CardBody></Card>
+        <Card><CardBody><p className="py-8 text-center text-[0.9375rem] text-[var(--color-ink-subtle)]">{t('weekly.none')}</p></CardBody></Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {list.data.reports.map((r) => (
             <button key={r.id} type="button" onClick={() => setOpen(r.id)} className="text-start" data-testid="weekly-report-card">
               <Card className="h-full transition-shadow hover:shadow-[var(--shadow-raised)]">
                 <CardBody className="space-y-3">
-                  <p className="flex items-center gap-2 text-[0.8125rem] font-semibold"><FileText className="size-4 text-[var(--brand)]" aria-hidden />{period(r)}</p>
+                  <p className="flex items-center gap-2 text-[0.9375rem] font-semibold"><FileText className="size-4 text-[var(--brand)]" aria-hidden />{period(r)}</p>
                   {r.totals && (
                     <dl className="grid grid-cols-3 text-center">
                       {[['leads', r.totals.leads], ['qualified', r.totals.qualified], ['won', r.totals.won]].map(([k, v]) => (
                         <div key={k as string}>
                           <dd className="text-[1.125rem] font-bold tabular-nums">{formatNumber(v as number, i18n.language)}</dd>
-                          <dt className="text-[0.625rem] text-[var(--color-ink-subtle)]">{t(`campaigns.figure.${k}`)}</dt>
+                          <dt className="text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`campaigns.figure.${k}`)}</dt>
                         </div>
                       ))}
                     </dl>
@@ -101,7 +101,7 @@ export function WeeklyReportsTab() {
                 <h3 className="t-card-title mb-2">{t('weekly.platforms')}</h3>
                 <ul className="space-y-1.5">
                   {d.by_platform.map((p) => (
-                    <li key={p.platform} className="flex items-center gap-2 text-[0.8125rem]">
+                    <li key={p.platform} className="flex items-center gap-2 text-[0.9375rem]">
                       <span className="size-2.5 rounded-full" style={{ background: platformColor(p.platform) }} aria-hidden />
                       <span className="flex-1">{t(`platforms.${p.platform}`, { defaultValue: p.platform })}</span>
                       <span className="tabular-nums text-[var(--color-ink-muted)]" dir="ltr">{p.qualified}/{p.leads} · {money(p.spend)}</span>
@@ -115,7 +115,7 @@ export function WeeklyReportsTab() {
                   <h3 className="t-card-title mb-2">{t(`weekly.${k}`)}</h3>
                   <ul className="space-y-1.5">
                     {d[k].map((c) => (
-                      <li key={c.id} className="flex items-center gap-2 text-[0.8125rem]">
+                      <li key={c.id} className="flex items-center gap-2 text-[0.9375rem]">
                         <span className="size-2 rounded-full" style={{ background: platformColor(c.platform) }} aria-hidden />
                         <span className="min-w-0 flex-1 truncate" dir="auto">{c.name}</span>
                         <span className="tabular-nums text-[var(--color-ink-muted)]" dir="ltr">{k === 'best' ? `${c.qualified} · ${c.qualified_rate ?? 0}%` : money(c.cpql)}</span>
@@ -126,8 +126,8 @@ export function WeeklyReportsTab() {
               ))}
 
               <section className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3" data-testid="report-notes">
-                <h3 className="mb-1.5 flex items-center gap-1.5 text-[0.75rem] font-semibold"><Info className="size-3.5" aria-hidden />{t('weekly.notes')}</h3>
-                <ul className="list-disc space-y-1 ps-4 text-[0.75rem] text-[var(--color-ink-muted)]">
+                <h3 className="mb-1.5 flex items-center gap-1.5 text-[0.875rem] font-semibold"><Info className="size-3.5" aria-hidden />{t('weekly.notes')}</h3>
+                <ul className="list-disc space-y-1 ps-4 text-[0.875rem] text-[var(--color-ink-muted)]">
                   {d.notes.map((n) => <li key={n}>{n}</li>)}
                 </ul>
               </section>

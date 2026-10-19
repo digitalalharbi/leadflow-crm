@@ -83,7 +83,7 @@ export function Sidebar() {
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex items-center gap-2.5 px-3 py-2 text-[0.8125rem] font-medium',
+                    'relative flex items-center gap-2.5 px-3 py-2 text-[0.9375rem] font-medium',
                     'rounded-[var(--radius-pill)] transition-colors duration-[var(--duration-fast)]',
                     /*
                      * The active item is a white pill, which is the same
@@ -106,7 +106,7 @@ export function Sidebar() {
                 <Icon className="size-[1.125rem] shrink-0" aria-hidden />
                 <span className="flex-1 truncate">{t(labelKey)}</span>
                 {badge !== undefined && badge > 0 && (
-                  <span className="tabular rounded-full bg-[var(--color-status-lost)] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white">
+                  <span className="tabular rounded-full bg-[var(--color-status-lost)] px-1.5 py-0.5 text-[0.8125rem] font-semibold text-white">
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}
@@ -115,7 +115,7 @@ export function Sidebar() {
         </nav>
 
         {branding?.support_email && (
-          <div className="border-t border-[var(--color-line)] p-3 text-[0.75rem] text-[var(--color-ink-subtle)]">
+          <div className="border-t border-[var(--color-line)] p-3 text-[0.875rem] text-[var(--color-ink-subtle)]">
             <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--color-ink)]">
               {branding.support_email}
             </a>

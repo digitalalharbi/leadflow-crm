@@ -110,7 +110,7 @@ export function SpendModal({
               value={campaign}
               onChange={(event) => setCampaign(event.target.value)}
               data-testid="spend-campaign"
-              className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[0.875rem]"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
             >
               <option value="">—</option>
               {campaigns.map((row) => (
@@ -128,7 +128,7 @@ export function SpendModal({
               value={date}
               onChange={(event) => setDate(event.target.value)}
               data-testid="spend-date"
-              className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[0.875rem]"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
             />
           </label>
 
@@ -144,7 +144,7 @@ export function SpendModal({
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
               data-testid="spend-amount"
-              className="tabular w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[0.875rem]"
+              className="tabular w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
             />
           </label>
         </div>
@@ -163,7 +163,7 @@ export function SpendModal({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="tabular text-[0.875rem]" dir="ltr">
+                  <span className="tabular text-[1rem]" dir="ltr">
                     {formatCurrency(row.amount, row.currency, i18n.language)}
                   </span>
                   <Button

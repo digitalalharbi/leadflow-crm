@@ -40,8 +40,8 @@ export function CampaignCard({ campaign, currency }: { campaign: CampaignRow; cu
       <div className="flex items-start gap-2.5">
         <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ background: platformColor(campaign.platform) }} aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.875rem] font-semibold" dir="auto">{campaign.name}</p>
-          <p className="truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          <p className="truncate text-[1rem] font-semibold" dir="auto">{campaign.name}</p>
+          <p className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">
             {t(`platforms.${campaign.platform}`, { defaultValue: campaign.platform })}
             {campaign.project && ` · ${campaign.project.name}`}
           </p>
@@ -49,7 +49,7 @@ export function CampaignCard({ campaign, currency }: { campaign: CampaignRow; cu
         {campaign.quality_score !== null && (
           <span title={t('campaigns.qualityScore')} data-testid="quality-score">
             <RingProgress size={34} thickness={4} value={campaign.quality_score} tone={healthTone(campaign.quality_score)}>
-              <span className="text-[0.6875rem] font-bold tabular-nums">{campaign.quality_score}</span>
+              <span className="text-[0.8125rem] font-bold tabular-nums">{campaign.quality_score}</span>
             </RingProgress>
           </span>
         )}
@@ -59,7 +59,7 @@ export function CampaignCard({ campaign, currency }: { campaign: CampaignRow; cu
       <div className="flex items-end justify-between gap-2">
         <div>
           <p className="text-[1.375rem] font-bold leading-none tabular-nums" dir="ltr">{formatNumber(campaign.leads, i18n.language)}</p>
-          <p className="mt-1 text-[0.6875rem] text-[var(--color-ink-muted)]">{t('campaigns.leads')}</p>
+          <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-muted)]">{t('campaigns.leads')}</p>
         </div>
         {campaign.daily.length > 1 && <MiniTrend values={campaign.daily.map((d) => d.spend)} />}
       </div>
@@ -79,8 +79,8 @@ export function CampaignCard({ campaign, currency }: { campaign: CampaignRow; cu
           ['won', formatNumber(campaign.won, i18n.language)],
         ].map(([key, value]) => (
           <div key={key} className="min-w-0">
-            <dd className="truncate text-[0.8125rem] font-semibold tabular-nums" dir="ltr">{value}</dd>
-            <dt className="truncate text-[0.625rem] text-[var(--color-ink-subtle)]">{t(`campaigns.${key}`)}</dt>
+            <dd className="truncate text-[0.9375rem] font-semibold tabular-nums" dir="ltr">{value}</dd>
+            <dt className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`campaigns.${key}`)}</dt>
           </div>
         ))}
       </dl>

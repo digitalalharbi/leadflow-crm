@@ -49,7 +49,7 @@ export function ConversionHealthPanel() {
 
             return (
               <div key={p.platform} className="grid items-center gap-2 sm:grid-cols-12" data-testid={`conversion-${p.platform}`} data-state={p.state}>
-                <span className="flex items-center gap-2 text-[0.8125rem] font-medium sm:col-span-3">
+                <span className="flex items-center gap-2 text-[0.9375rem] font-medium sm:col-span-3">
                   <span className="size-2.5 rounded-full" style={{ background: platformColor(p.platform) }} aria-hidden />
                   {t(`platforms.${p.platform}`)}
                 </span>
@@ -61,7 +61,7 @@ export function ConversionHealthPanel() {
                   <span style={{ width: `${(waiting / all) * 100}%`, background: 'var(--color-warning)', opacity: 0.6 }} />
                   <span style={{ width: `${(lost / all) * 100}%`, background: 'var(--color-danger)', opacity: 0.5 }} />
                 </span>
-                <span className="truncate text-[0.6875rem] text-[var(--color-ink-muted)] sm:col-span-3">
+                <span className="truncate text-[0.8125rem] text-[var(--color-ink-muted)] sm:col-span-3">
                   {!p.configured
                     ? t('conversionHealth.missing', { keys: p.missing.join('، ') })
                     : p.last_sent_at

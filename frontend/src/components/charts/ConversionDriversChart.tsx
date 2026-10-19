@@ -59,7 +59,7 @@ export function ConversionDriversChart({
         <div key={row.key} className="space-y-1">
           <div className="flex items-baseline justify-between gap-3">
             <span className="t-small min-w-0 truncate">{label(row.key)}</span>
-            <span className="tabular shrink-0 text-[0.8125rem] font-medium" dir="ltr">
+            <span className="tabular shrink-0 text-[0.9375rem] font-medium" dir="ltr">
               {row.win_rate === null ? '—' : `${row.win_rate}%`}
             </span>
           </div>

@@ -145,7 +145,7 @@ export function ChartCard({
 function ChartDataTable({ table, height }: { table: ChartTable; height: number }) {
   return (
     <div className="overflow-auto px-3" style={{ maxHeight: height }}>
-      <table className="w-full text-[0.8125rem]">
+      <table className="w-full text-[0.9375rem]">
         <thead className="sticky top-0 bg-[var(--color-surface)]">
           <tr className="text-start text-[var(--color-ink-muted)]">
             {table.head.map((cell) => (

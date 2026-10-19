@@ -221,7 +221,7 @@ export function UsersPage() {
                       {/* The email keeps Latin order but not Latin
                           alignment — `dir` on the block itself would pull it to
                           the far side and leave a ragged gap under the name. */}
-                      <span className="t-caption block truncate text-[0.75rem]">
+                      <span className="t-caption block truncate text-[0.875rem]">
                         <bdi dir="ltr">{user.email}</bdi>
                       </span>
                     </Td>
@@ -408,7 +408,7 @@ export function UsersPage() {
                         )
                       }
                       className={cn(
-                        'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                        'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
                         chosen
                           ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
                           : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',

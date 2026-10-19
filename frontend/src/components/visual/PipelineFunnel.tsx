@@ -53,7 +53,7 @@ export function PipelineFunnel({ steps, testId }: { steps: FunnelStep[]; testId?
 
         const bar = (
           <div className="flex items-center gap-3">
-            <span className="w-24 shrink-0 truncate text-[0.8125rem] font-medium text-[var(--color-ink-muted)]">{row.label}</span>
+            <span className="w-24 shrink-0 truncate text-[0.9375rem] font-medium text-[var(--color-ink-muted)]">{row.label}</span>
             <div className="relative h-8 flex-1 overflow-hidden rounded-xl bg-[var(--color-chrome-fill)]" dir="ltr">
               {row.width > 0 && (
                 <span
@@ -66,16 +66,16 @@ export function PipelineFunnel({ steps, testId }: { steps: FunnelStep[]; testId?
                     transition: 'width var(--duration-slow) var(--ease-out-soft)',
                   }}
                 >
-                  {inside && <span className="text-[0.8125rem] font-semibold tabular-nums text-white">{formatNumber(row.count)}</span>}
+                  {inside && <span className="text-[0.9375rem] font-semibold tabular-nums text-white">{formatNumber(row.count)}</span>}
                 </span>
               )}
               {!inside && (
-                <span className="absolute inset-y-0 flex items-center text-[0.8125rem] font-semibold tabular-nums" style={{ left: `calc(${row.width}% + 0.5rem)` }}>
+                <span className="absolute inset-y-0 flex items-center text-[0.9375rem] font-semibold tabular-nums" style={{ left: `calc(${row.width}% + 0.5rem)` }}>
                   {formatNumber(row.count)}
                 </span>
               )}
             </div>
-            <span className="w-20 shrink-0 text-end text-[0.6875rem] tabular-nums text-[var(--color-ink-subtle)]" dir="ltr">
+            <span className="w-20 shrink-0 text-end text-[0.8125rem] tabular-nums text-[var(--color-ink-subtle)]" dir="ltr">
               {row.keep !== null && <span data-testid={`funnel-keep-${row.key}`}>{row.keep}%</span>}
               {row.costPer && <span className="block">{row.costPer}</span>}
             </span>

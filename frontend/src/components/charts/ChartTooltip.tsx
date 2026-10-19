@@ -30,7 +30,7 @@ export function ChartTooltip({
         className,
       )}
     >
-      {title && <p className="mb-1.5 text-[0.75rem] font-semibold text-[var(--color-ink-muted)]">{title}</p>}
+      {title && <p className="mb-1.5 text-[0.875rem] font-semibold text-[var(--color-ink-muted)]">{title}</p>}
 
       <dl className="space-y-1">
         {rows.map((row) => (
@@ -47,7 +47,7 @@ export function ChartTooltip({
             </dt>
             <dd
               className={cn(
-                'tabular text-[0.8125rem] whitespace-nowrap',
+                'tabular text-[0.9375rem] whitespace-nowrap',
                 row.emphasis ? 'font-semibold text-[var(--color-ink)]' : 'text-[var(--color-ink)]',
               )}
               dir="ltr"

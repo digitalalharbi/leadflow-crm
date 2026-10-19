@@ -48,7 +48,7 @@ const tempTone: Record<LeadTemperature, string> = {
  */
 const base = [
   'inline-flex items-center gap-1.5 whitespace-nowrap',
-  'rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[0.75rem] font-medium',
+  'rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[0.875rem] font-medium',
   'ring-1 ring-inset',
 ].join(' ')
 

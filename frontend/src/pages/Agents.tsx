@@ -96,14 +96,14 @@ export function AgentsPage() {
           {/* Whether the agents can think — stated, with the way to fix it. */}
           <Card data-testid="ai-status" data-state={ai.data?.status.state ?? 'loading'}>
             <CardBody className="space-y-2">
-              <p className="flex items-center gap-2 text-[0.8125rem] font-semibold">
+              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                 {ready ? <Sparkles className="size-4 text-[var(--brand)]" aria-hidden /> : <ShieldOff className="size-4 text-[var(--color-warning)]" aria-hidden />}
                 {ready ? t('agentChat.aiOn') : t('agentChat.aiOff')}
               </p>
-              <p className="text-[0.75rem] text-[var(--color-ink-muted)]">
+              <p className="text-[0.875rem] text-[var(--color-ink-muted)]">
                 {ready ? t(`agentChat.source.${ai.data?.source ?? 'platform'}`) : t('agentChat.aiOffHint')}
               </p>
-              {ai.data?.last_error && <p className="text-[0.6875rem] text-[var(--color-danger)]">{ai.data.last_error}</p>}
+              {ai.data?.last_error && <p className="text-[0.8125rem] text-[var(--color-danger)]">{ai.data.last_error}</p>}
               {can.manageIntegrations(user) && (
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" icon={<KeyRound className="size-4" />} onClick={() => setKeyOpen(true)} data-testid="ai-key-open">
@@ -119,7 +119,7 @@ export function AgentsPage() {
 
           <Card>
             <CardBody className="space-y-1.5">
-              <p className="mb-1 text-[0.6875rem] font-medium text-[var(--color-ink-subtle)]">{t('agentChat.askWho')}</p>
+              <p className="mb-1 text-[0.8125rem] font-medium text-[var(--color-ink-subtle)]">{t('agentChat.askWho')}</p>
               {AGENT_KEYS.map((key) => (
                 <button
                   key={key}
@@ -128,7 +128,7 @@ export function AgentsPage() {
                   aria-pressed={agent === key}
                   data-testid={`pick-${key}`}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-[var(--radius-control)] px-2 py-1.5 text-start text-[0.8125rem]',
+                    'flex w-full items-center gap-2 rounded-[var(--radius-control)] px-2 py-1.5 text-start text-[0.9375rem]',
                     agent === key ? 'bg-[var(--brand-soft)] font-semibold text-[var(--brand)]' : 'hover:bg-[var(--color-surface-muted)]',
                   )}
                 >
@@ -149,7 +149,7 @@ export function AgentsPage() {
                   key={th.id}
                   type="button"
                   onClick={() => setThreadId(th.id)}
-                  className={cn('block w-full truncate rounded-[var(--radius-control)] px-2 py-1.5 text-start text-[0.75rem]', th.id === threadId ? 'bg-[var(--color-surface-muted)] font-medium' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-muted)]')}
+                  className={cn('block w-full truncate rounded-[var(--radius-control)] px-2 py-1.5 text-start text-[0.875rem]', th.id === threadId ? 'bg-[var(--color-surface-muted)] font-medium' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-muted)]')}
                   dir="auto"
                 >
                   {th.title}
@@ -165,10 +165,10 @@ export function AgentsPage() {
               <Card>
                 <CardBody className="space-y-3 py-8 text-center">
                   <Bot className="mx-auto size-8 text-[var(--brand)]" aria-hidden />
-                  <p className="text-[0.9375rem] font-semibold">{t('agentChat.emptyTitle')}</p>
+                  <p className="text-[1.0625rem] font-semibold">{t('agentChat.emptyTitle')}</p>
                   <div className="flex flex-wrap justify-center gap-2">
                     {SUGGESTIONS.map((s) => (
-                      <button key={s} type="button" onClick={() => send.mutate(t(`agentChat.suggest.${s}`))} className="rounded-full bg-[var(--color-surface-muted)] px-3 py-1.5 text-[0.75rem] hover:bg-[var(--brand-soft)]" data-testid={`suggest-${s}`}>
+                      <button key={s} type="button" onClick={() => send.mutate(t(`agentChat.suggest.${s}`))} className="rounded-full bg-[var(--color-surface-muted)] px-3 py-1.5 text-[0.875rem] hover:bg-[var(--brand-soft)]" data-testid={`suggest-${s}`}>
                         {t(`agentChat.suggest.${s}`)}
                       </button>
                     ))}
@@ -180,7 +180,7 @@ export function AgentsPage() {
             {messages.map((m, i) => <Bubble key={i} message={m} tools={m.role === 'agent' ? toolsUsed(i) : []} />)}
 
             {send.isPending && (
-              <p className="flex items-center gap-2 text-[0.8125rem] text-[var(--color-ink-muted)]" data-testid="agent-thinking">
+              <p className="flex items-center gap-2 text-[0.9375rem] text-[var(--color-ink-muted)]" data-testid="agent-thinking">
                 <Bot className="size-4 animate-pulse" aria-hidden />
                 {t('agentChat.thinking', { agent: t(`agents.name.${agent}`) })}
               </p>
@@ -206,7 +206,7 @@ export function AgentsPage() {
               }}
               rows={1}
               placeholder={t('agentChat.placeholder', { agent: t(`agents.name.${agent}`) })}
-              className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-[0.875rem] outline-none"
+              className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-[1rem] outline-none"
               data-testid="chat-input"
               dir="auto"
             />
@@ -246,7 +246,7 @@ function Bubble({ message, tools }: { message: ChatMessage; tools: string[] }) {
       </span>
       <div className={cn('min-w-0 max-w-full flex-1 space-y-2', mine && 'flex flex-col items-end')}>
         {!mine && (
-          <p className="flex flex-wrap items-center gap-1.5 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          <p className="flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-subtle)]">
             <span className="font-semibold text-[var(--color-ink)]">{t(`agents.name.${message.agent ?? 'orchestrator'}`)}</span>
             {message.data?.mode === 'rules' && <span className="rounded-full bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] px-1.5 text-[var(--color-warning)]" data-testid="rules-mode">{t('agentChat.rulesMode')}</span>}
             {tools.length > 0 && (
@@ -257,7 +257,7 @@ function Bubble({ message, tools }: { message: ChatMessage; tools: string[] }) {
             )}
           </p>
         )}
-        <div className={cn('inline-block max-w-[48rem] whitespace-pre-wrap rounded-[var(--radius-card)] px-3.5 py-2.5 text-[0.875rem] leading-relaxed', mine ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-surface)] shadow-[var(--shadow-card)]')} dir="auto">
+        <div className={cn('inline-block max-w-[48rem] whitespace-pre-wrap rounded-[var(--radius-card)] px-3.5 py-2.5 text-[1rem] leading-relaxed', mine ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-surface)] shadow-[var(--shadow-card)]')} dir="auto">
           {message.content}
         </div>
         {blocks.length > 0 && <div className="w-full"><MessageBlocks blocks={blocks} /></div>}

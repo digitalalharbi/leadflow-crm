@@ -50,7 +50,7 @@ export function MessageBlocks({ blocks, currency = 'SAR' }: { blocks: Block[]; c
                 {block.items.map((k) => (
                   <div key={k.key} className="rounded-[var(--radius-control)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-card)]">
                     <p className="text-[1.0625rem] font-bold tabular-nums" dir="ltr">{format(k.value, k.format)}</p>
-                    <p className="text-[0.625rem] text-[var(--color-ink-muted)]">{t(`campaigns.figure.${k.key}`, { defaultValue: k.key })}</p>
+                    <p className="text-[0.8125rem] text-[var(--color-ink-muted)]">{t(`campaigns.figure.${k.key}`, { defaultValue: k.key })}</p>
                   </div>
                 ))}
               </div>
@@ -59,7 +59,7 @@ export function MessageBlocks({ blocks, currency = 'SAR' }: { blocks: Block[]; c
             return (
               <Card key={i}>
                 <div className="overflow-x-auto" data-testid="block-table">
-                  <table className="w-full text-[0.75rem]">
+                  <table className="w-full text-[0.875rem]">
                     <thead>
                       <tr className="text-[var(--color-ink-subtle)]">
                         {block.columns.map((c) => <th key={c} className="px-3 py-2 text-start font-medium">{t(`agentChat.col.${c}`, { defaultValue: c })}</th>)}
@@ -95,7 +95,7 @@ export function MessageBlocks({ blocks, currency = 'SAR' }: { blocks: Block[]; c
             )
           case 'findings':
             return block.items.length === 0 ? (
-              <p key={i} className="text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('agentsPanel.allClear')}</p>
+              <p key={i} className="text-[0.9375rem] text-[var(--color-ink-subtle)]">{t('agentsPanel.allClear')}</p>
             ) : (
               <div key={i} className="grid gap-2 sm:grid-cols-2" data-testid="block-findings">
                 {block.items.slice(0, 8).map((f, n) => {
@@ -107,8 +107,8 @@ export function MessageBlocks({ blocks, currency = 'SAR' }: { blocks: Block[]; c
                         <Icon className="size-4" />
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-[0.75rem] font-semibold">{t(`agentsPanel.finding.${f.key}`, { defaultValue: f.key })}</span>
-                        <span className="block truncate text-[0.6875rem] text-[var(--color-ink-muted)]" dir="auto">{f.campaign.name}</span>
+                        <span className="block truncate text-[0.875rem] font-semibold">{t(`agentsPanel.finding.${f.key}`, { defaultValue: f.key })}</span>
+                        <span className="block truncate text-[0.8125rem] text-[var(--color-ink-muted)]" dir="auto">{f.campaign.name}</span>
                       </span>
                     </Link>
                   )
@@ -123,15 +123,15 @@ export function MessageBlocks({ blocks, currency = 'SAR' }: { blocks: Block[]; c
                 {block.items.map((d) => (
                   <Card key={d.id}>
                     <CardBody className="space-y-2">
-                      <p className="flex items-center gap-1.5 text-[0.75rem] font-semibold">
+                      <p className="flex items-center gap-1.5 text-[0.875rem] font-semibold">
                         <Sparkles className="size-3.5 text-[var(--brand)]" aria-hidden />
                         {t(`creatives.kind.${d.kind}`)} · <span dir="auto">{d.ad?.name}</span>
                       </p>
-                      <ol className="list-decimal space-y-1 ps-5 text-[0.8125rem]" dir="auto">
+                      <ol className="list-decimal space-y-1 ps-5 text-[0.9375rem]" dir="auto">
                         {d.items.map((line, n) => <li key={n}>{line}</li>)}
                       </ol>
                       {d.flags.length > 0 && (
-                        <p className="flex items-center gap-1 text-[0.6875rem] text-[var(--color-danger)]"><ShieldAlert className="size-3" aria-hidden />{t('creatives.flagged', { words: d.flags.join('، ') })}</p>
+                        <p className="flex items-center gap-1 text-[0.8125rem] text-[var(--color-danger)]"><ShieldAlert className="size-3" aria-hidden />{t('creatives.flagged', { words: d.flags.join('، ') })}</p>
                       )}
                     </CardBody>
                   </Card>
@@ -140,7 +140,7 @@ export function MessageBlocks({ blocks, currency = 'SAR' }: { blocks: Block[]; c
             )
           case 'report':
             return (
-              <Link key={i} to="/reports" className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-[0.75rem] font-medium text-[var(--brand)]" data-testid="block-report">
+              <Link key={i} to="/reports" className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-[0.875rem] font-medium text-[var(--brand)]" data-testid="block-report">
                 <FileText className="size-3.5" aria-hidden />
                 {t('agentChat.openReport')}
               </Link>

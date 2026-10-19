@@ -99,8 +99,8 @@
   --color-line: color-mix(in srgb, var(--color-neutral-900) 6%, transparent);
 
   --color-ink: var(--color-neutral-900);
-  --color-ink-muted: var(--color-neutral-500);
-  --color-ink-subtle: var(--color-neutral-400);
+  --color-ink-muted: var(--color-neutral-600);
+  --color-ink-subtle: var(--color-neutral-500);
   --color-ink-inverted: var(--color-neutral-0);
 
   /*
@@ -269,8 +269,8 @@
   --color-line: color-mix(in srgb, #ffffff 10%, transparent);
 
   --color-ink: #eceff4;
-  --color-ink-muted: #98a2b3;
-  --color-ink-subtle: #6b7688;
+  --color-ink-muted: #b4bccb;
+  --color-ink-subtle: #98a2b3;
   --color-ink-inverted: #0b1220;
 
   /*
@@ -348,7 +348,7 @@
     color: var(--color-ink);
     font-family: var(--font-body);
     font-size: 1rem;
-    font-weight: 400;
+    font-weight: 500;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -593,7 +593,7 @@
     border-radius: 0.5rem;
     background: var(--color-ink);
     padding: 0.25rem 0.625rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--color-ink-inverted);
     opacity: 0;
     transition: opacity var(--duration-fast) var(--ease-out-soft);
@@ -609,7 +609,7 @@
     flex: 1;
     border-radius: 999px;
     padding: 0.25rem 0.625rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--color-ink-muted);
     background: var(--color-chrome-fill);
   }
@@ -649,8 +649,8 @@
     --color-border: color-mix(in srgb, #ffffff 14%, transparent);
     --color-line: color-mix(in srgb, #ffffff 9%, transparent);
     --color-ink: #eceff4;
-    --color-ink-muted: #9aa5b8;
-    --color-ink-subtle: #6b7688;
+    --color-ink-muted: #b8c1d0;
+    --color-ink-subtle: #9aa5b8;
     --color-ink-inverted: #060b14;
     --brand-soft: color-mix(in srgb, var(--brand) 22%, #060b14);
     color: var(--color-ink);
@@ -910,14 +910,14 @@
    * announces that nobody typeset its Arabic.
    */
   .label-caps {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.055em;
   }
 
   [dir='rtl'] .label-caps {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     text-transform: none;
     letter-spacing: 0;
   }

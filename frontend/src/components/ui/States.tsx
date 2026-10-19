@@ -61,9 +61,9 @@ export function EmptyState({
       <div className="mb-4 grid size-12 place-items-center rounded-full bg-[var(--color-surface-sunken)] text-[var(--color-ink-subtle)]">
         {icon ?? <Inbox className="size-6" aria-hidden />}
       </div>
-      <h3 className="text-[0.9375rem] font-semibold">{title}</h3>
+      <h3 className="text-[1.0625rem] font-semibold">{title}</h3>
       {body && (
-        <p className="mt-1.5 max-w-sm text-[0.8125rem] leading-relaxed text-[var(--color-ink-muted)]">
+        <p className="mt-1.5 max-w-sm text-[0.9375rem] leading-relaxed text-[var(--color-ink-muted)]">
           {body}
         </p>
       )}
@@ -89,8 +89,8 @@ export function ErrorState({
       <div className="mb-4 grid size-12 place-items-center rounded-full bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] text-[var(--color-status-lost)]">
         <AlertCircle className="size-6" aria-hidden />
       </div>
-      <h3 className="text-[0.9375rem] font-semibold">{t('errors.title')}</h3>
-      <p className="mt-1.5 max-w-sm text-[0.8125rem] text-[var(--color-ink-muted)]">
+      <h3 className="text-[1.0625rem] font-semibold">{t('errors.title')}</h3>
+      <p className="mt-1.5 max-w-sm text-[0.9375rem] text-[var(--color-ink-muted)]">
         {message ?? t('errors.unknown')}
       </p>
       {onRetry && (

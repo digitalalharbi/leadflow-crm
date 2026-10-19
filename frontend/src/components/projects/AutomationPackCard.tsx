@@ -57,7 +57,7 @@ export function AutomationPackCard({ projectId }: { projectId: string }) {
           <RingProgress value={percent} size={108} thickness={10} tone={percent === 100 ? 'good' : 'warn'} label={t('pack.title')}>
             <span className="text-[1.375rem] font-extrabold tabular-nums" dir="ltr">{pack.done}/{pack.total}</span>
           </RingProgress>
-          <span className={cn('rounded-full px-2.5 py-0.5 text-[0.6875rem] font-semibold', pack.journey_on ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
+          <span className={cn('rounded-full px-2.5 py-0.5 text-[0.8125rem] font-semibold', pack.journey_on ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
             {t(pack.journey_on ? 'pack.journeyOn' : 'pack.journeyOff')}
           </span>
         </div>
@@ -76,8 +76,8 @@ export function AutomationPackCard({ projectId }: { projectId: string }) {
                   <span className={cn('grid size-5 shrink-0 place-items-center rounded-full', step.done ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'border border-[var(--color-border-strong)] text-[var(--color-ink-subtle)]')} aria-hidden>
                     {step.done ? <Check className="size-3" /> : <Circle className="size-2" />}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium">{t(`pack.step.${step.key}`)}</span>
-                  {step.detail && <span className="truncate text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`pack.detail.${step.detail}`, { defaultValue: step.detail })}</span>}
+                  <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{t(`pack.step.${step.key}`)}</span>
+                  {step.detail && <span className="truncate text-[0.8125rem] text-[var(--color-ink-muted)]">{t(`pack.detail.${step.detail}`, { defaultValue: step.detail })}</span>}
                 </>
               )
 

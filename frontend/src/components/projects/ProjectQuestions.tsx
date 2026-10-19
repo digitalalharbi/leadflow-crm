@@ -138,7 +138,7 @@ export function ProjectQuestions({ projectId }: { projectId: string }) {
             {questions.map((question) => (
               <li key={question.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-[0.875rem] font-medium">{question.label}</p>
+                  <p className="truncate text-[1rem] font-medium">{question.label}</p>
                   <p className="t-caption">
                     {t(`pq.type.${question.type}`)} · {t('pq.rulesCount', { count: question.rules.length })}
                   </p>
@@ -228,7 +228,7 @@ export function ProjectQuestions({ projectId }: { projectId: string }) {
             </fieldset>
           )}
 
-          <label className="flex items-center gap-2 text-[0.8125rem]">
+          <label className="flex items-center gap-2 text-[0.9375rem]">
             <input type="checkbox" checked={form.is_required} onChange={(e) => setForm((f) => ({ ...f, is_required: e.target.checked }))} />
             {t('pq.requiredHint')}
           </label>

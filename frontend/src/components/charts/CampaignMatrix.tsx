@@ -96,8 +96,8 @@ export function CampaignMatrix({ rows }: { rows: CampaignQualityRow[] }) {
 
       {/* Axis labels, outside the plot so they never collide with a bubble. */}
       <div className="flex items-center justify-between px-1 pt-1">
-        <span className="t-caption text-[0.6875rem]">{t('campaignQuality.axisVolume')}</span>
-        <span className="t-caption text-[0.6875rem]">{t('campaignQuality.axisQuality')}</span>
+        <span className="t-caption text-[0.8125rem]">{t('campaignQuality.axisVolume')}</span>
+        <span className="t-caption text-[0.8125rem]">{t('campaignQuality.axisQuality')}</span>
       </div>
 
       {hovered && (

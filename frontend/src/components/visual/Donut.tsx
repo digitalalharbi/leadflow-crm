@@ -172,7 +172,7 @@ export function Donut({
         <div className="pointer-events-none absolute inset-0 grid place-content-center text-center" dir="ltr">
           <span className="text-[1.75rem] font-extrabold leading-none tabular-nums">{shownValue}</span>
           {shownLabel && (
-            <span className="mt-1 max-w-[7rem] truncate text-[0.6875rem] text-[var(--color-ink-muted)]">{shownLabel}</span>
+            <span className="mt-1 max-w-[7rem] truncate text-[0.8125rem] text-[var(--color-ink-muted)]">{shownLabel}</span>
           )}
         </div>
       </div>
@@ -183,10 +183,10 @@ export function Donut({
             const content = (
               <>
                 <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: segment.color }} />
-                <span className="min-w-0 flex-1 truncate text-[0.8125rem]">{segment.label}</span>
-                <span className="text-[0.8125rem] font-semibold tabular-nums">{formatNumber(segment.value)}</span>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{segment.label}</span>
+                <span className="text-[0.9375rem] font-semibold tabular-nums">{formatNumber(segment.value)}</span>
                 {total > 0 && (
-                  <span className="w-9 text-end text-[0.6875rem] tabular-nums text-[var(--color-ink-subtle)]" dir="ltr">
+                  <span className="w-9 text-end text-[0.8125rem] tabular-nums text-[var(--color-ink-subtle)]" dir="ltr">
                     {Math.round((Math.max(0, segment.value) / total) * 100)}%
                   </span>
                 )}

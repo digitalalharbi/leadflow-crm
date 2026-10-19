@@ -65,7 +65,7 @@ export function FileTargeting({ value, onChange }: { value: Targeting; onChange:
                   })
                 }
                 className={cn(
-                  'pressable rounded-full border px-2.5 py-0.5 text-[0.75rem]',
+                  'pressable rounded-full border px-2.5 py-0.5 text-[0.875rem]',
                   chosen
                     ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
                     : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',

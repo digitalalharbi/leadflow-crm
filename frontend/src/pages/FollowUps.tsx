@@ -133,7 +133,7 @@ export function FollowUpsPage() {
                 type="button"
                 onClick={() => selectBucket(key)}
                 className={cn(
-                  'flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
+                  'flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-1.5 text-[0.9375rem] font-medium whitespace-nowrap transition-colors',
                   bucket === key
                     ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
                     : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
@@ -143,7 +143,7 @@ export function FollowUpsPage() {
                 {count !== undefined && count > 0 && (
                   <span
                     className={cn(
-                      'tabular rounded-full px-1.5 py-0.5 text-[0.6875rem] font-semibold',
+                      'tabular rounded-full px-1.5 py-0.5 text-[0.8125rem] font-semibold',
                       key === 'overdue'
                         ? 'bg-[var(--color-danger)] text-white'
                         : 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]',
@@ -192,7 +192,7 @@ export function FollowUpsPage() {
                     {/* The relative label already says which day; repeating the
                         full date here only made it wrap. */}
                     <span
-                      className="tabular text-[0.6875rem] opacity-75"
+                      className="tabular text-[0.8125rem] opacity-75"
                       dir="ltr"
                       title={formatDateTime(followUp.due_at, i18n.language)}
                     >
@@ -297,7 +297,7 @@ export function FollowUpsPage() {
         }
       >
         <div className="space-y-3">
-          <p className="text-[0.875rem] font-medium">{completing?.lead?.full_name}</p>
+          <p className="text-[1rem] font-medium">{completing?.lead?.full_name}</p>
 
           {/*
             What happened is a choice, not a sentence: a free-text box cannot be

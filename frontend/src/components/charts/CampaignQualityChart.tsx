@@ -61,7 +61,7 @@ export function CampaignQualityChart({
                 <span className="flex items-baseline gap-2">
                   <span
                     className={cn(
-                      'tabular text-[0.75rem] font-semibold',
+                      'tabular text-[0.875rem] font-semibold',
                       row.qualification_rate >= 30
                         ? 'text-[var(--color-success)]'
                         : row.qualification_rate < 10
@@ -72,7 +72,7 @@ export function CampaignQualityChart({
                   >
                     {row.qualification_rate}%
                   </span>
-                  <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
+                  <span className="tabular text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
                     {formatNumber(row.leads, i18n.language)}
                   </span>
                 </span>

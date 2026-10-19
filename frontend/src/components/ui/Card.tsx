@@ -54,9 +54,9 @@ export function CardHeader({
       )}
     >
       <div className="min-w-0">
-        <h3 className="truncate text-[0.9375rem] font-semibold leading-tight">{title}</h3>
+        <h3 className="truncate text-[1.0625rem] font-semibold leading-tight">{title}</h3>
         {description && (
-          <p className="mt-0.5 text-[0.75rem] leading-snug text-[var(--color-ink-muted)]">{description}</p>
+          <p className="mt-0.5 text-[0.875rem] leading-snug text-[var(--color-ink-muted)]">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}

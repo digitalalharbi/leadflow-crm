@@ -451,7 +451,7 @@ function MappingReview({
   return (
     <div className="space-y-3" data-testid="mapping-review">
       <div>
-        <div className="mb-1 flex items-center justify-between text-[0.75rem] text-[var(--color-ink-muted)]">
+        <div className="mb-1 flex items-center justify-between text-[0.875rem] text-[var(--color-ink-muted)]">
           <span>{t('sheets.mapping.known', { count: mapped.length })}</span>
           <span>{t('sheets.mapping.customCount', { count: custom.length })}</span>
         </div>
@@ -463,7 +463,7 @@ function MappingReview({
 
       {ambiguous.length > 0 && onChoose && (
         <div className="space-y-2 rounded-xl bg-[color-mix(in_srgb,var(--color-warning)_10%,transparent)] p-3" data-testid="mapping-ambiguous">
-          <p className="text-[0.8125rem] font-semibold">{t('sheets.mapping.chooseTitle')}</p>
+          <p className="text-[0.9375rem] font-semibold">{t('sheets.mapping.chooseTitle')}</p>
           {ambiguous.map((choice) => (
             <Select
               key={choice.field}
@@ -484,10 +484,10 @@ function MappingReview({
 
           return (
             <li key={field} className="flex min-w-0 items-center gap-2 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-1.5" data-testid={`mapped-${field}`}>
-              <span className="w-20 shrink-0 truncate text-[0.75rem] font-semibold">{t(`sheets.field.${field}`, { defaultValue: field })}</span>
+              <span className="w-20 shrink-0 truncate text-[0.875rem] font-semibold">{t(`sheets.field.${field}`, { defaultValue: field })}</span>
               <ArrowRight className="size-3 shrink-0 text-[var(--color-ink-subtle)] rtl:-scale-x-100" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">{header}</span>
-              <span className={cn('shrink-0 rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium', LEVEL_STYLE[level])}>
+              <span className="min-w-0 flex-1 truncate text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">{header}</span>
+              <span className={cn('shrink-0 rounded-full px-1.5 py-0.5 text-[0.8125rem] font-medium', LEVEL_STYLE[level])}>
                 {t(`sheets.mapping.level.${level}`)}
               </span>
             </li>
@@ -497,10 +497,10 @@ function MappingReview({
 
       {custom.length > 0 && (
         <div data-testid="mapping-custom">
-          <p className="mb-1 text-[0.75rem] font-semibold">{t('sheets.mapping.customTitle')}</p>
+          <p className="mb-1 text-[0.875rem] font-semibold">{t('sheets.mapping.customTitle')}</p>
           <ul className="flex flex-wrap gap-1">
             {custom.map((header) => (
-              <li key={header} className="rounded-full bg-[var(--color-chrome-fill)] px-2 py-0.5 text-[0.6875rem]" dir="auto">{header}</li>
+              <li key={header} className="rounded-full bg-[var(--color-chrome-fill)] px-2 py-0.5 text-[0.8125rem]" dir="auto">{header}</li>
             ))}
           </ul>
         </div>
@@ -516,7 +516,7 @@ function MappingSummary({ source, onReview, onInstant }: { source: SheetSource; 
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid={`sheet-${source.sheet_name}-mapping`}>
-      <button type="button" onClick={onReview} className="inline-flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] px-2.5 py-1 text-[0.6875rem] hover:text-[var(--color-ink)]">
+      <button type="button" onClick={onReview} className="inline-flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] px-2.5 py-1 text-[0.8125rem] hover:text-[var(--color-ink)]">
         <Columns3 className="size-3" aria-hidden />
         {t('sheets.mapping.summary', { mapped, custom: source.custom_columns.length })}
       </button>
@@ -524,13 +524,13 @@ function MappingSummary({ source, onReview, onInstant }: { source: SheetSource; 
         <button
           type="button"
           onClick={onReview}
-          className="rounded-full bg-[color-mix(in_srgb,var(--color-warning)_15%,transparent)] px-2.5 py-1 text-[0.6875rem] font-medium"
+          className="rounded-full bg-[color-mix(in_srgb,var(--color-warning)_15%,transparent)] px-2.5 py-1 text-[0.8125rem] font-medium"
           data-testid="mapping-needs-choice"
         >
           {t('sheets.mapping.needsChoice', { field: t(`sheets.field.${source.ambiguous[0].field}`) })}
         </button>
       )}
-      <button type="button" onClick={onInstant} className="inline-flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] px-2.5 py-1 text-[0.6875rem] hover:text-[var(--color-ink)]" data-testid="sheet-instant">
+      <button type="button" onClick={onInstant} className="inline-flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] px-2.5 py-1 text-[0.8125rem] hover:text-[var(--color-ink)]" data-testid="sheet-instant">
         <Zap className={cn('size-3', source.last_push_at && 'text-[var(--brand)]')} aria-hidden />
         {source.last_push_at
           ? t('sheets.instant.on', { when: formatLastSeen(source.last_push_at, i18n.language) })
@@ -591,10 +591,10 @@ function InstantSync({ source, onClose }: { source: SheetSource; onClose: () => 
 
   return (
     <Modal open onClose={onClose} title={t('sheets.instant.title')} description={t('sheets.instant.hint')} size="lg">
-      <ol className="mb-3 space-y-1.5 text-[0.8125rem]">
+      <ol className="mb-3 space-y-1.5 text-[0.9375rem]">
         {(['open', 'paste', 'trigger'] as const).map((step, index) => (
           <li key={step} className="flex items-start gap-2">
-            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[0.6875rem] font-bold text-[var(--brand-contrast)]">{index + 1}</span>
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[0.8125rem] font-bold text-[var(--brand-contrast)]">{index + 1}</span>
             {t(`sheets.instant.step.${step}`)}
           </li>
         ))}
@@ -609,7 +609,7 @@ function InstantSync({ source, onClose }: { source: SheetSource; onClose: () => 
           {t('sheets.instant.copy')}
         </Button>
       </div>
-      <pre className="overflow-x-auto rounded-xl bg-[var(--color-surface-muted)] p-3 font-mono text-[0.6875rem] leading-relaxed" dir="ltr" data-testid="apps-script">{script}</pre>
+      <pre className="overflow-x-auto rounded-xl bg-[var(--color-surface-muted)] p-3 font-mono text-[0.8125rem] leading-relaxed" dir="ltr" data-testid="apps-script">{script}</pre>
     </Modal>
   )
 }

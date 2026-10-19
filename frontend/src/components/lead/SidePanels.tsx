@@ -12,7 +12,7 @@ function PanelTitle({ children, count }: { children: string; count?: number }) {
   return (
     <h2 className="t-card-title mb-3 flex items-center justify-between">
       {children}
-      {count !== undefined && count > 0 && <span className="text-[0.75rem] font-medium tabular-nums text-[var(--color-ink-subtle)]">{count}</span>}
+      {count !== undefined && count > 0 && <span className="text-[0.875rem] font-medium tabular-nums text-[var(--color-ink-subtle)]">{count}</span>}
     </h2>
   )
 }
@@ -26,7 +26,7 @@ export function CallsPanel({ calls }: { calls: LeadCall[] }) {
       <CardBody>
         <PanelTitle count={calls.length}>{t('leadView.calls')}</PanelTitle>
         {calls.length === 0 ? (
-          <p className="flex items-center gap-2 text-[0.8125rem] text-[var(--color-ink-subtle)]">
+          <p className="flex items-center gap-2 text-[0.9375rem] text-[var(--color-ink-subtle)]">
             <Phone className="size-4" aria-hidden />
             {t('leadView.noCalls')}
           </p>
@@ -50,13 +50,13 @@ export function CallsPanel({ calls }: { calls: LeadCall[] }) {
                     <Icon className="size-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.8125rem] font-medium">{t(`leadView.callStatus.${call.status}`)}</span>
-                    <span className="block truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">
+                    <span className="block truncate text-[0.9375rem] font-medium">{t(`leadView.callStatus.${call.status}`)}</span>
+                    <span className="block truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">
                       {call.by} · {call.at ? formatRelative(call.at, i18n.language) : ''}
                     </span>
                   </span>
                   {call.duration_seconds ? (
-                    <span className="text-[0.75rem] tabular-nums text-[var(--color-ink-muted)]">{humaniseDuration(call.duration_seconds, t)}</span>
+                    <span className="text-[0.875rem] tabular-nums text-[var(--color-ink-muted)]">{humaniseDuration(call.duration_seconds, t)}</span>
                   ) : null}
                 </li>
               )
@@ -83,7 +83,7 @@ export function AppointmentsPanel({ appointments }: { appointments: LeadAppointm
       <CardBody>
         <PanelTitle count={appointments.length}>{t('leadView.appointments')}</PanelTitle>
         {appointments.length === 0 ? (
-          <p className="flex items-center gap-2 text-[0.8125rem] text-[var(--color-ink-subtle)]">
+          <p className="flex items-center gap-2 text-[0.9375rem] text-[var(--color-ink-subtle)]">
             <CalendarX className="size-4" aria-hidden />
             {t('leadView.noAppointments')}
           </p>
@@ -95,10 +95,10 @@ export function AppointmentsPanel({ appointments }: { appointments: LeadAppointm
                   <CalendarCheck className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.8125rem] font-medium" dir="auto">
+                  <span className="block truncate text-[0.9375rem] font-medium" dir="auto">
                     {formatDateTime(appointment.scheduled_at, i18n.language)}
                   </span>
-                  {appointment.location && <span className="block truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{appointment.location}</span>}
+                  {appointment.location && <span className="block truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{appointment.location}</span>}
                 </span>
                 <StatusPill status={appointment.is_past && appointment.status === 'scheduled' ? 'overdue' : APPOINTMENT_STATUS[appointment.status]} />
               </li>
@@ -133,7 +133,7 @@ export function SourceChain({ lead }: { lead: Lead }) {
       <CardBody>
         <PanelTitle>{t('leadView.source')}</PanelTitle>
         {steps.length === 0 ? (
-          <p className="text-[0.8125rem] text-[var(--color-ink-subtle)]">—</p>
+          <p className="text-[0.9375rem] text-[var(--color-ink-subtle)]">—</p>
         ) : (
           <ol className="relative space-y-3 ps-5 before:absolute before:inset-y-1 before:start-[0.3125rem] before:w-px before:bg-[var(--color-chrome-fill)]">
             {steps.map((step) => (
@@ -143,8 +143,8 @@ export function SourceChain({ lead }: { lead: Lead }) {
                   style={{ background: step.dot ?? 'var(--brand)' }}
                   aria-hidden
                 />
-                <span className="block text-[0.625rem] uppercase tracking-wide text-[var(--color-ink-subtle)]">{t(`leadView.chain.${step.key}`)}</span>
-                <span className="block truncate text-[0.8125rem] font-medium" dir="auto">{step.value}</span>
+                <span className="block text-[0.8125rem] uppercase tracking-wide text-[var(--color-ink-subtle)]">{t(`leadView.chain.${step.key}`)}</span>
+                <span className="block truncate text-[0.9375rem] font-medium" dir="auto">{step.value}</span>
               </li>
             ))}
           </ol>

@@ -166,7 +166,7 @@ export function CentreSummary({
           <CardBody>
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="t-card-title">{t('automation.chart.humanVsAuto')}</h2>
-              <span className="flex items-center gap-3 text-[0.6875rem] text-[var(--color-ink-muted)]">
+              <span className="flex items-center gap-3 text-[0.8125rem] text-[var(--color-ink-muted)]">
                 <span className="flex items-center gap-1">
                   <span className="h-0.5 w-3 rounded bg-[var(--brand)]" />
                   {t('automation.chart.automated')}
@@ -250,7 +250,7 @@ export function CentreSummary({
                   <span
                     dir="ltr"
                     className={cn(
-                      'rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums',
+                      'rounded-full px-2 py-0.5 text-[0.8125rem] font-semibold tabular-nums',
                       bad
                         ? 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]'
                         : 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]',
@@ -261,14 +261,14 @@ export function CentreSummary({
                   </span>
                 )}
               </div>
-              <p className="mt-2 truncate text-[0.75rem] text-[var(--color-ink-muted)]">
+              <p className="mt-2 truncate text-[0.875rem] text-[var(--color-ink-muted)]">
                 {t(`automation.card.${key}`)}
               </p>
               <p className="text-[1.625rem] font-extrabold leading-tight tabular-nums">
                 {formatNumber(card.value, i18n.language)}
               </p>
               {card.previous !== null && (
-                <p className="truncate text-[0.6875rem] text-[var(--color-ink-subtle)] tabular-nums">
+                <p className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)] tabular-nums">
                   {t('automation.card.previous', { count: card.previous })}
                 </p>
               )}

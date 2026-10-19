@@ -67,7 +67,7 @@ export function NextActionBanner({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[1rem] font-semibold leading-tight">{t(`work.action.${action.action}`)}</span>
-        <span className="mt-0.5 block truncate text-[0.75rem] text-[var(--color-ink-muted)]">{action.reason}</span>
+        <span className="mt-0.5 block truncate text-[0.875rem] text-[var(--color-ink-muted)]">{action.reason}</span>
       </span>
     </button>
   )

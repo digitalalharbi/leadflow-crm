@@ -77,7 +77,7 @@ export function CampaignDetailPage() {
 
   return (
     <div className="space-y-3" data-testid="campaign-detail">
-      <Link to="/campaigns" className="inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+      <Link to="/campaigns" className="inline-flex items-center gap-1.5 text-[0.9375rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
         <Back className="size-4" aria-hidden />
         {t('campaigns.title')}
       </Link>
@@ -104,7 +104,7 @@ export function CampaignDetailPage() {
           {figures.map(([key, value]) => (
             <div key={key} className="px-4 py-3" data-testid={`cf-${key}`}>
               <dd className="text-[1.25rem] font-bold leading-tight tabular-nums" dir="ltr">{value}</dd>
-              <dt className="text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`campaigns.figure.${key}`)}</dt>
+              <dt className="text-[0.8125rem] text-[var(--color-ink-muted)]">{t(`campaigns.figure.${key}`)}</dt>
             </div>
           ))}
         </dl>
@@ -116,10 +116,10 @@ export function CampaignDetailPage() {
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="t-card-title">{t('campaigns.quality')}</h2>
               {c.quality_score !== null && (
-                <span className="flex items-center gap-2 text-[0.75rem] text-[var(--color-ink-muted)]" data-testid="detail-quality-score">
+                <span className="flex items-center gap-2 text-[0.875rem] text-[var(--color-ink-muted)]" data-testid="detail-quality-score">
                   {t('campaigns.qualityScore')}
                   <RingProgress size={40} thickness={5} value={c.quality_score} tone={healthTone(c.quality_score)}>
-                    <span className="text-[0.75rem] font-bold tabular-nums">{c.quality_score}</span>
+                    <span className="text-[0.875rem] font-bold tabular-nums">{c.quality_score}</span>
                   </RingProgress>
                 </span>
               )}
@@ -156,7 +156,7 @@ export function CampaignDetailPage() {
       <section>
         <h2 className="t-card-title mb-2 px-1">{t('campaigns.ads')}</h2>
         {data.ads.length === 0 ? (
-          <Card><CardBody><p className="py-6 text-center text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('campaigns.noAds')}</p></CardBody></Card>
+          <Card><CardBody><p className="py-6 text-center text-[0.9375rem] text-[var(--color-ink-subtle)]">{t('campaigns.noAds')}</p></CardBody></Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="ad-grid">
             {data.ads.map((ad) => <AdCard key={ad.id} ad={ad} money={money} platform={c.platform} />)}
@@ -194,8 +194,8 @@ function FeedbackLoop({ feedback }: { feedback: CampaignDetailData['feedback'] }
 
             return (
               <div key={e} data-testid={`feedback-${e}`}>
-                <p className="text-[1.25rem] font-bold tabular-nums" dir="ltr">{sent}<span className="text-[0.75rem] font-normal text-[var(--color-ink-muted)]">/{sent + waiting + lost}</span></p>
-                <p className="mb-1.5 text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`campaigns.feedback.${e}`)}</p>
+                <p className="text-[1.25rem] font-bold tabular-nums" dir="ltr">{sent}<span className="text-[0.875rem] font-normal text-[var(--color-ink-muted)]">/{sent + waiting + lost}</span></p>
+                <p className="mb-1.5 text-[0.8125rem] text-[var(--color-ink-muted)]">{t(`campaigns.feedback.${e}`)}</p>
                 <div className="flex h-1.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" aria-hidden>
                   <span style={{ width: `${(sent / all) * 100}%`, background: 'var(--color-status-won)' }} />
                   <span style={{ width: `${(waiting / all) * 100}%`, background: 'var(--color-warning)', opacity: 0.6 }} />
@@ -231,7 +231,7 @@ function AdCard({ ad, money, platform }: { ad: CampaignAd; money: (v: number | n
         {status && <span className="absolute end-2 top-2"><StatusPill status={status} iconOnly /></span>}
         {ad.fatigue !== null && ad.fatigue >= 30 && (
           <span
-            className="absolute bottom-2 start-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--color-warning)] shadow-[var(--shadow-card)]"
+            className="absolute bottom-2 start-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.8125rem] font-semibold text-[var(--color-warning)] shadow-[var(--shadow-card)]"
             title={t('agentsPanel.finding.fatigue')}
             data-testid="ad-fatigue"
           >
@@ -241,8 +241,8 @@ function AdCard({ ad, money, platform }: { ad: CampaignAd; money: (v: number | n
         )}
       </div>
       <div className="space-y-2 p-3">
-        <p className="truncate text-[0.8125rem] font-semibold" dir="auto">{ad.name}</p>
-        {ad.creative?.headline && <p className="truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">{ad.creative.headline}</p>}
+        <p className="truncate text-[0.9375rem] font-semibold" dir="auto">{ad.name}</p>
+        {ad.creative?.headline && <p className="truncate text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">{ad.creative.headline}</p>}
         <div className="flex h-1.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" aria-hidden>
           <span style={{ width: `${(ad.qualified / total) * 100}%`, background: 'var(--color-status-qualified)' }} />
           <span style={{ width: `${(ad.cold / total) * 100}%`, background: 'var(--color-status-invalid)', opacity: 0.45, marginInlineStart: 'auto' }} />
@@ -255,8 +255,8 @@ function AdCard({ ad, money, platform }: { ad: CampaignAd; money: (v: number | n
             ['cpql', money(ad.cpql)],
           ].map(([key, value]) => (
             <div key={key} className="min-w-0">
-              <dd className="truncate text-[0.8125rem] font-semibold tabular-nums" dir="ltr">{value}</dd>
-              <dt className="truncate text-[0.625rem] text-[var(--color-ink-subtle)]">{t(`campaigns.${key}`)}</dt>
+              <dd className="truncate text-[0.9375rem] font-semibold tabular-nums" dir="ltr">{value}</dd>
+              <dt className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`campaigns.${key}`)}</dt>
             </div>
           ))}
         </dl>

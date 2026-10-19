@@ -125,7 +125,7 @@ export function EmailPanel({ lead }: { lead: Lead }) {
   return (
     <div className="space-y-4" data-testid="email-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[0.8125rem] text-[var(--color-ink-muted)]">
+        <div className="flex items-center gap-2 text-[0.9375rem] text-[var(--color-ink-muted)]">
           <Mail className="size-4" aria-hidden />
           <span dir="ltr" className="tabular">{lead.email ?? t('email.noAddress')}</span>
           {optedOut && <Badge tone="danger" testId="email-opted-out-badge">{t('email.optedOutShort')}</Badge>}
@@ -263,21 +263,21 @@ function EmailRow({ message }: { message: LeadMessage }) {
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate font-medium">{message.subject}</p>
         <span
-          className={cn('flex shrink-0 items-center gap-1 text-[0.6875rem]', mark.tone)}
+          className={cn('flex shrink-0 items-center gap-1 text-[0.8125rem]', mark.tone)}
           data-testid={`email-status-${message.status}`}
         >
           <Icon className="size-3.5" aria-hidden />
           {inbound ? t('email.status.reply') : bounced ? t('email.status.bounced') : opened ? t('email.status.read') : t(`email.status.${message.status}`)}
         </span>
       </div>
-      <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-[0.8125rem] text-[var(--color-ink-muted)]">
+      <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-[0.9375rem] text-[var(--color-ink-muted)]">
         {message.body}
       </p>
-      <p className="mt-1 text-[0.6875rem] text-[var(--color-ink-subtle)] tabular">
+      <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-subtle)] tabular">
         {formatDateTime(message.created_at)}
       </p>
       {message.status === 'failed' && message.failure_reason && (
-        <p className="mt-1 text-[0.6875rem] text-[var(--color-status-lost)]">{message.failure_reason}</p>
+        <p className="mt-1 text-[0.8125rem] text-[var(--color-status-lost)]">{message.failure_reason}</p>
       )}
     </li>
   )

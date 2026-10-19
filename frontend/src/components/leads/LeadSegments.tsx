@@ -99,7 +99,7 @@ export function LeadSegments({
             data-testid={`segment-${key}`}
             onClick={() => onChange({ ...CLEARED, ...apply })}
             className={cn(
-              'pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium',
+              'pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.9375rem] font-medium',
               active
                 ? 'bg-[var(--brand)] text-[var(--brand-ink)] shadow-[var(--shadow-card)]'
                 : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
@@ -109,7 +109,7 @@ export function LeadSegments({
             {t(`leads.segments.${key}`)}
             <span
               className={cn(
-                'tabular-nums rounded-full px-1.5 text-[0.6875rem]',
+                'tabular-nums rounded-full px-1.5 text-[0.8125rem]',
                 active
                   ? 'bg-white/20'
                   : urgent

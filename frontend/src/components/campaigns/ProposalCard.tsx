@@ -84,7 +84,7 @@ export function ProposalCard({ proposal: initial, currency }: { proposal: Propos
             <Icon className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-1.5 text-[0.875rem] font-semibold">
+            <p className="flex flex-wrap items-center gap-1.5 text-[1rem] font-semibold">
               {t(`proposals.action.${p.action}`, { defaultValue: p.action })}
               {p.action === 'update_budget' && (
                 <span className="tabular-nums text-[var(--color-ink-muted)]" dir="ltr">
@@ -92,20 +92,20 @@ export function ProposalCard({ proposal: initial, currency }: { proposal: Propos
                 </span>
               )}
             </p>
-            <p className="truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">
+            <p className="truncate text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">
               {[p.campaign?.name, p.ad_set, p.ad].filter(Boolean).join(' › ')}
             </p>
           </div>
           <StatusPill status={STATUS[p.status]} />
         </div>
 
-        <p className="text-[0.8125rem] leading-relaxed" dir="auto">{p.reason}</p>
-        {p.expected_impact && <p className="text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">↗ {p.expected_impact}</p>}
+        <p className="text-[0.9375rem] leading-relaxed" dir="auto">{p.reason}</p>
+        {p.expected_impact && <p className="text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">↗ {p.expected_impact}</p>}
 
         {p.policy.blocks.length > 0 && (
           <ul className="space-y-1" data-testid="proposal-blocks">
             {p.policy.blocks.map((b) => (
-              <li key={b} className="flex items-center gap-1.5 text-[0.75rem] text-[var(--color-danger)]">
+              <li key={b} className="flex items-center gap-1.5 text-[0.875rem] text-[var(--color-danger)]">
                 <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
                 {t(`proposals.block.${b}`, {
                   ...p.policy.limits,
@@ -118,10 +118,10 @@ export function ProposalCard({ proposal: initial, currency }: { proposal: Propos
             ))}
           </ul>
         )}
-        {p.error && <p className="text-[0.75rem] text-[var(--color-danger)]">{p.error}</p>}
+        {p.error && <p className="text-[0.875rem] text-[var(--color-danger)]">{p.error}</p>}
 
         <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          <span className="flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-subtle)]">
             {p.proposed_by === 'agent' && <Bot className="size-3.5" aria-hidden />}
             {p.agent ? t(`agents.name.${p.agent}`, { defaultValue: p.agent }) : p.proposer}
             {p.created_at && ` · ${formatRelative(p.created_at, i18n.language)}`}

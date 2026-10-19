@@ -154,7 +154,7 @@ export function LeadFlowChart({
               x={geometry.padding.left - 8}
               y={geometry.y(value) + 3.5}
               textAnchor="end"
-              className="fill-[var(--color-ink-muted)] text-[10px] tabular-nums"
+              className="fill-[var(--color-ink-muted)] text-[0.8125rem] tabular-nums"
             >
               {value}
             </text>
@@ -199,7 +199,7 @@ export function LeadFlowChart({
                   {peakChange !== null && (
                     <g transform={`translate(${geometry.x(index)} ${geometry.y(0) - barHeight - 18})`}>
                       <rect x={-27} y={-12} width={54} height={22} rx={11} fill="var(--brand)" />
-                      <text textAnchor="middle" y={3} className="fill-white text-[11px] font-medium tabular-nums">
+                      <text textAnchor="middle" y={3} className="fill-white text-[0.8125rem] font-medium tabular-nums">
                         {peakChange > 0 ? '+' : ''}
                         {peakChange}%
                       </text>
@@ -235,7 +235,7 @@ export function LeadFlowChart({
       </svg>
 
       {/* What the bars are, with a swatch that is a real background so it survives being printed. */}
-      <p className="mt-1 flex items-center justify-center gap-1.5 text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">
+      <p className="mt-1 flex items-center justify-center gap-1.5 text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">
         <span
           data-chart-mark
           className="size-2.5 rounded-full bg-[var(--brand-deep)] [print-color-adjust:exact]"

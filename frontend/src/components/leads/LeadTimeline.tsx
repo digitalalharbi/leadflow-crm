@@ -114,7 +114,7 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
             </span>
 
             <div className="min-w-0 flex-1 pt-1">
-              <p className="text-[0.875rem]">
+              <p className="text-[1rem]">
                 <span className="font-medium">
                   {/*
                     A re-engagement that brought a deleted record back is a
@@ -156,10 +156,10 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
               </p>
 
               {activity.description && (
-                <p className="mt-0.5 text-[0.8125rem] text-[var(--color-ink-muted)]">{activity.description}</p>
+                <p className="mt-0.5 text-[0.9375rem] text-[var(--color-ink-muted)]">{activity.description}</p>
               )}
 
-              <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
+              <p className="mt-0.5 text-[0.875rem] text-[var(--color-ink-subtle)]">
                 {actorOf(activity, t)}
                 {formatRelative(activity.created_at, i18n.language)}
               </p>

@@ -70,7 +70,7 @@ export function DropdownItem({
       onClick={onClick}
       data-testid={testId}
       className={cn(
-        'flex w-full items-center gap-2.5 px-3 py-2 text-start text-[0.8125rem]',
+        'flex w-full items-center gap-2.5 px-3 py-2 text-start text-[0.9375rem]',
         'hover:bg-[var(--color-surface-sunken)]',
         danger ? 'text-[var(--color-status-lost)]' : 'text-[var(--color-ink)]',
       )}

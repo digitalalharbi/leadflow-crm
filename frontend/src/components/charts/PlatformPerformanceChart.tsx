@@ -124,7 +124,7 @@ export function PlatformPerformanceChart({ rows }: { rows: CampaignQualityRow[] 
                         }}
                       />
                     </span>
-                    <span className="tabular w-10 shrink-0 text-end text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
+                    <span className="tabular w-10 shrink-0 text-end text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
                       {formatNumber(row[measure], i18n.language)}
                     </span>
                   </span>

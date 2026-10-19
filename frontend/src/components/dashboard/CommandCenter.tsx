@@ -74,7 +74,7 @@ export function CommandCenter() {
               <h2 className="text-[1.0625rem] font-semibold leading-tight">
                 {critical > 0 ? t('commandCenter.needsYou') : t('commandCenter.title')}
               </h2>
-              <p className="mt-0.5 text-[0.8125rem] text-[var(--color-ink-muted)]">
+              <p className="mt-0.5 text-[0.9375rem] text-[var(--color-ink-muted)]">
                 {data.attention.length === 0
                   ? t('commandCenter.allClear')
                   : t('commandCenter.subtitle', { count: data.attention.length })}
@@ -102,14 +102,14 @@ export function CommandCenter() {
       <Card className="lg:col-span-5">
         <div className="p-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
+            <h2 className="flex items-center gap-1.5 text-[1.0625rem] font-semibold">
               <Sparkles className="size-4 text-[var(--brand)]" aria-hidden />
               {t('commandCenter.recommended')}
             </h2>
           </div>
 
           {data.recommended.length === 0 ? (
-            <p className="mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]" data-testid="no-recommendations">
+            <p className="mt-3 text-[0.9375rem] text-[var(--color-ink-muted)]" data-testid="no-recommendations">
               {t('commandCenter.nothingToDo')}
             </p>
           ) : (
@@ -126,15 +126,15 @@ export function CommandCenter() {
                       aria-label={t(`work.urgency.${item.urgency}`)}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5 text-[0.8125rem] font-medium">
+                      <span className="flex items-center gap-1.5 text-[0.9375rem] font-medium">
                         <span className="truncate">{item.name}</span>
                         {item.project && (
-                          <span className="truncate text-[0.6875rem] font-normal text-[var(--color-ink-subtle)]">
+                          <span className="truncate text-[0.8125rem] font-normal text-[var(--color-ink-subtle)]">
                             {item.project}
                           </span>
                         )}
                       </span>
-                      <span className="block truncate text-[0.75rem] text-[var(--color-ink-muted)]">
+                      <span className="block truncate text-[0.875rem] text-[var(--color-ink-muted)]">
                         {item.reason}
                       </span>
                     </span>
@@ -173,13 +173,13 @@ export function CommandSide() {
     {data.appointments_today.length > 0 && (
       <Card>
         <div className="p-4" data-testid="appointments-today">
-          <h2 className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
+          <h2 className="flex items-center gap-1.5 text-[1.0625rem] font-semibold">
             <CalendarClock className="size-4 text-[var(--brand)]" aria-hidden />
             {t('commandCenter.appointmentsToday')}
           </h2>
           <ul className="mt-2 divide-y divide-[var(--color-line)]">
             {data.appointments_today.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 py-1.5 text-[0.8125rem]">
+              <li key={a.id} className="flex items-center gap-3 py-1.5 text-[0.9375rem]">
                 <span className="w-14 shrink-0 tabular-nums text-[var(--color-ink-muted)]">
                   {formatClock(a.at)}
                 </span>
@@ -191,7 +191,7 @@ export function CommandSide() {
                   <span className="min-w-0 flex-1 truncate">{a.lead}</span>
                 )}
                 {a.location && (
-                  <span className="truncate text-[0.75rem] text-[var(--color-ink-subtle)]">{a.location}</span>
+                  <span className="truncate text-[0.875rem] text-[var(--color-ink-subtle)]">{a.location}</span>
                 )}
               </li>
             ))}
@@ -203,12 +203,12 @@ export function CommandSide() {
     {data.workload.length > 0 && (
       <Card>
         <div className="p-4" data-testid="team-workload">
-          <h2 className="text-[0.9375rem] font-semibold">{t('commandCenter.workload')}</h2>
+          <h2 className="text-[1.0625rem] font-semibold">{t('commandCenter.workload')}</h2>
           <ul className="mt-2 space-y-2">
             {data.workload.slice(0, 6).map((member) => {
               const widest = Math.max(...data.workload.map((m) => m.open), 1)
               return (
-                <li key={member.id} className="text-[0.8125rem]">
+                <li key={member.id} className="text-[0.9375rem]">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium">{member.name}</span>
                     <span className="tabular-nums text-[var(--color-ink-muted)]">
@@ -266,7 +266,7 @@ function AttentionTile({ row }: { row: AttentionRow }) {
           <span className="block text-[1.25rem] font-semibold leading-none tabular-nums">
             {formatNumber(row.count)}
           </span>
-          <span className="mt-0.5 line-clamp-2 block text-[0.6875rem] leading-tight text-[var(--color-ink-muted)]">
+          <span className="mt-0.5 line-clamp-2 block text-[0.8125rem] leading-tight text-[var(--color-ink-muted)]">
             {t(`commandCenter.attention.${row.key}`, { minutes: row.minutes })}
           </span>
         </span>

@@ -57,7 +57,7 @@ export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
                 <ChevronDown className="size-3 text-[var(--color-ink-subtle)]" />
                 <span
                   className={cn(
-                    'tabular text-[0.6875rem]',
+                    'tabular text-[0.8125rem]',
                     stage.from_previous >= 50
                       ? 'text-[var(--color-success)]'
                       : stage.from_previous >= 20
@@ -97,7 +97,7 @@ export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
                 <span className="t-small font-medium">{t(`funnel.${stage.key}`)}</span>
 
                 <span className="flex items-baseline gap-2.5">
-                  <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
+                  <span className="tabular text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
                     {stage.of_total}%
                   </span>
                   <span className="t-metric-sm">{formatNumber(stage.count, i18n.language)}</span>

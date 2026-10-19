@@ -186,7 +186,7 @@ export function AutomationPage() {
                   type="button"
                   onClick={() => setDays(d)}
                   aria-pressed={days === d}
-                  className={days === d ? 'rounded-full bg-[var(--color-surface)] px-3 py-1 text-[0.75rem] font-semibold shadow-[var(--shadow-card)]' : 'rounded-full px-3 py-1 text-[0.75rem] text-[var(--color-ink-muted)]'}
+                  className={days === d ? 'rounded-full bg-[var(--color-surface)] px-3 py-1 text-[0.875rem] font-semibold shadow-[var(--shadow-card)]' : 'rounded-full px-3 py-1 text-[0.875rem] text-[var(--color-ink-muted)]'}
                 >
                   {t(`automation.period_${d}`)}
                 </button>
@@ -233,7 +233,7 @@ export function AutomationPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('automation.searchRules')}
-                className="h-9 w-64 max-w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-[0.8125rem]"
+                className="h-9 w-64 max-w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-[0.9375rem]"
                 data-testid="rules-search"
               />
             </div>
@@ -271,7 +271,7 @@ export function AutomationPage() {
                   <Card key={template.key}>
                     <CardBody className="flex h-full flex-col gap-2.5">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-[0.9375rem] font-semibold">{template.name}</h3>
+                        <h3 className="text-[1.0625rem] font-semibold">{template.name}</h3>
                         <Badge tone="neutral">{t(`automation.trigger.${template.trigger}`)}</Badge>
                       </div>
                       <RuleFlow trigger={template.trigger} conditions={template.conditions} actions={template.actions} />

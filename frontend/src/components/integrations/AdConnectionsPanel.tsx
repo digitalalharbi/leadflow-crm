@@ -72,8 +72,8 @@ function PlatformCard({ platform, onOpen }: { platform: AdPlatformKey; onOpen: (
             <Link2 className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[0.9375rem] font-semibold">{t(`platforms.${platform}`)}</p>
-            <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t(`integrationState.${data.state}`)}{data.mode === 'sandbox' ? ` · ${t('adConnections.sandbox')}` : ''}</p>
+            <p className="text-[1.0625rem] font-semibold">{t(`platforms.${platform}`)}</p>
+            <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t(`integrationState.${data.state}`)}{data.mode === 'sandbox' ? ` · ${t('adConnections.sandbox')}` : ''}</p>
           </div>
           <Button size="sm" variant={data.filled.length > 0 ? 'outline' : 'primary'} onClick={onOpen} data-testid={`connect-${platform}`}>
             {data.filled.length > 0 ? t('adConnections.manage') : t('adConnections.connect')}
@@ -89,7 +89,7 @@ function PlatformCard({ platform, onOpen }: { platform: AdPlatformKey; onOpen: (
               <span
                 key={a}
                 title={ok ? undefined : t(`adConnections.reason.${data.capabilities[a]?.reason ?? 'not_built'}`, { defaultValue: '' })}
-                className={cn('inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[0.625rem]', ok ? 'bg-[var(--brand-soft)] text-[var(--brand)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-subtle)] line-through decoration-1')}
+                className={cn('inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[0.8125rem]', ok ? 'bg-[var(--brand-soft)] text-[var(--brand)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-subtle)] line-through decoration-1')}
                 data-supported={ok ? 'yes' : 'no'}
               >
                 {ok ? <Check className="size-2.5" aria-hidden /> : <CircleSlash className="size-2.5" aria-hidden />}
@@ -99,11 +99,11 @@ function PlatformCard({ platform, onOpen }: { platform: AdPlatformKey; onOpen: (
           })}
         </div>
 
-        <p className="flex items-center justify-between text-[0.6875rem] text-[var(--color-ink-subtle)]">
+        <p className="flex items-center justify-between text-[0.8125rem] text-[var(--color-ink-subtle)]">
           <span>{t('adConnections.supported', { count: supported, total: ACTIONS.length })}</span>
           {data.last_sync_ok_at && <span>{t('adConnections.synced', { when: formatRelative(data.last_sync_ok_at, i18n.language) })}</span>}
         </p>
-        {data.last_error && <p className="truncate text-[0.6875rem] text-[var(--color-danger)]" title={data.last_error}>{data.last_error}</p>}
+        {data.last_error && <p className="truncate text-[0.8125rem] text-[var(--color-danger)]" title={data.last_error}>{data.last_error}</p>}
       </CardBody>
     </Card>
   )
@@ -198,7 +198,7 @@ function ConnectDrawer({ platform, onClose }: { platform: AdPlatformKey; onClose
                 role="radio"
                 aria-checked={(mode ?? data.mode) === m}
                 onClick={() => setMode(m)}
-                className={cn('flex-1 rounded-[var(--radius-control)] border px-3 py-2 text-[0.8125rem]', (mode ?? data.mode) === m ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]' : 'border-[var(--color-line)]')}
+                className={cn('flex-1 rounded-[var(--radius-control)] border px-3 py-2 text-[0.9375rem]', (mode ?? data.mode) === m ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]' : 'border-[var(--color-line)]')}
               >
                 {t(`adConnections.${m}`)}
               </button>

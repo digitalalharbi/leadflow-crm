@@ -67,7 +67,7 @@ test.describe('Pipeline', () => {
 
     // The funnel only narrows: each count is no larger than the one before.
     const counts = await hero.getByTestId('pipeline-funnel').locator('li').evaluateAll((items) =>
-      items.map((li) => Number(li.textContent?.match(/(\d[\d,]*)\s*$/)?.[1].replace(/,/g, '') ?? Number.NaN)),
+      items.map((li) => Number(li.getAttribute('data-count'))),
     )
     expect(counts.length).toBe(7)
     for (let i = 1; i < counts.length; i++) expect(counts[i]).toBeLessThanOrEqual(counts[i - 1])

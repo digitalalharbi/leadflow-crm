@@ -1,3 +1,4 @@
+import { useId } from 'react'
 /**
  * A line with no axes: the shape of the last two weeks, and nothing else.
  *
@@ -16,6 +17,7 @@ export function MiniTrend({
   /** Read out instead of the shape, for anybody who cannot see it. */
   label?: string
 }) {
+  const gradient = useId().replace(/:/g, '')
   const width = 96
   const height = 28
   const pad = 2
@@ -42,8 +44,14 @@ export function MiniTrend({
       className={flat ? 'opacity-40' : undefined}
       data-testid="mini-trend"
     >
-      <path d={area} fill={color} opacity={0.12} />
-      <path d={line} fill="none" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradient})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

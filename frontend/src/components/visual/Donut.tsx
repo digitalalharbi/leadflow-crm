@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -44,6 +45,27 @@ export function arcs(segments: Pick<DonutSegment, 'key' | 'value'>[]): Arc[] {
   })
 }
 
+/** Below this share of the whole, a slice is a sliver nobody can aim at. */
+export const SLIVER = 0.04
+
+/**
+ * Folds slivers into one "others" arc when there are enough of them to clutter
+ * the ring. Only the ring is folded: the legend still lists every segment by
+ * name, so nothing is hidden — it just stops being drawn as five hairlines.
+ */
+export function foldSlivers<T extends Pick<DonutSegment, 'key' | 'value'>>(segments: T[], others: T): T[] {
+  const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
+  if (total <= 0 || segments.length <= 5) return segments
+
+  const small = segments.filter((segment) => segment.value > 0 && segment.value / total < SLIVER)
+  if (small.length < 2) return segments
+
+  return [
+    ...segments.filter((segment) => !small.includes(segment)),
+    { ...others, value: small.reduce((sum, segment) => sum + segment.value, 0) },
+  ]
+}
+
 /**
  * A ring for a distribution: statuses, sources, workload, health.
  *
@@ -63,6 +85,7 @@ export function Donut({
   centerValue,
   centerLabel,
   legend = 'side',
+  othersLabel,
   className,
   testId,
 }: {
@@ -73,16 +96,22 @@ export function Donut({
   centerValue?: string
   centerLabel?: string
   legend?: 'side' | 'below' | 'none'
+  /** Name of the folded arc of slivers, when there is one. */
+  othersLabel?: string
   className?: string
   testId?: string
 }) {
+  const { t } = useTranslation()
   const [active, setActive] = useState<string | null>(null)
 
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
-  const computed = arcs(segments)
+  const ring = foldSlivers(segments, { key: '__others', label: othersLabel ?? t('common.others'), value: 0, color: 'var(--color-ink-subtle)' })
+  const computed = arcs(ring)
   const focused = segments.find((segment) => segment.key === active)
+  // A sliver folded into "others" lights that arc when its legend row is hovered.
+  const lit = active && !computed.some((arc) => arc.key === active) && computed.some((arc) => arc.key === '__others') ? '__others' : active
 
   // A hairline between neighbours, so two shades of one hue do not blur into one.
   const gap = computed.length > 1 ? Math.min(3, circumference * 0.006) : 0
@@ -117,9 +146,9 @@ export function Donut({
           <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-chrome-fill)" strokeWidth={thickness} />
 
           {computed.map((arc) => {
-            const segment = segments.find((s) => s.key === arc.key)!
+            const segment = ring.find((s) => s.key === arc.key)!
             const length = Math.max(0, arc.fraction * circumference - gap)
-            const dimmed = active !== null && active !== arc.key
+            const dimmed = lit !== null && lit !== arc.key
 
             return (
               <circle
@@ -129,7 +158,7 @@ export function Donut({
                 r={radius}
                 fill="none"
                 stroke={segment.color}
-                strokeWidth={active === arc.key ? thickness + 3 : thickness}
+                strokeWidth={lit === arc.key ? thickness + 3 : thickness}
                 strokeDasharray={`${length} ${circumference - length}`}
                 strokeDashoffset={-arc.start * circumference}
                 opacity={dimmed ? 0.35 : 1}
@@ -141,7 +170,7 @@ export function Donut({
         </svg>
 
         <div className="pointer-events-none absolute inset-0 grid place-content-center text-center" dir="ltr">
-          <span className="text-[1.75rem] font-bold leading-none tabular-nums">{shownValue}</span>
+          <span className="text-[1.75rem] font-extrabold leading-none tabular-nums">{shownValue}</span>
           {shownLabel && (
             <span className="mt-1 max-w-[7rem] truncate text-[0.6875rem] text-[var(--color-ink-muted)]">{shownLabel}</span>
           )}
@@ -156,6 +185,11 @@ export function Donut({
                 <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: segment.color }} />
                 <span className="min-w-0 flex-1 truncate text-[0.8125rem]">{segment.label}</span>
                 <span className="text-[0.8125rem] font-semibold tabular-nums">{formatNumber(segment.value)}</span>
+                {total > 0 && (
+                  <span className="w-9 text-end text-[0.6875rem] tabular-nums text-[var(--color-ink-subtle)]" dir="ltr">
+                    {Math.round((Math.max(0, segment.value) / total) * 100)}%
+                  </span>
+                )}
               </>
             )
             const row = cn(

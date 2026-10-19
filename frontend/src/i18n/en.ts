@@ -1,5 +1,6 @@
 export default {
   common: {
+    others: 'Others',
     appName: 'مهتم',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
     delete: 'Delete', edit: 'Edit', add: 'Add', create: 'Create', search: 'Search',

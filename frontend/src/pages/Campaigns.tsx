@@ -188,6 +188,8 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
                 key,
                 label: t(`campaigns.stage.${key}`),
                 count: totals[key],
+                // What one of this step cost: the number a buyer compares across platforms.
+                costPer: totals.spend !== null && totals[key] > 0 ? money(Math.round(totals.spend / totals[key])) : null,
               }))}
             />
           </CardBody>
@@ -200,7 +202,9 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
             {hasSpend ? (
               <AreaTrend
                 testId="spend-trend"
-                height={120}
+                height={140}
+                axes
+                valueLabel={t('campaigns.spendTrend')}
                 formatValue={(v) => money(v)}
                 points={trend.map((p) => ({
                   label: new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { day: 'numeric', month: 'short' }).format(new Date(p.date)),

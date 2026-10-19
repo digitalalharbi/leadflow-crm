@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, CalendarClock, Gauge, Rocket, Sparkles, Users2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -303,12 +303,11 @@ function TotalCard({ value, previous, trend }: { value: number; previous?: numbe
 }
 
 /**
- * The shape of the last fortnight, filled with a flat tint.
- *
- * Flat rather than the reference's fade: the brief for this pass says no
- * gradients, and a single translucent fill reads the same at this size.
+ * The shape of the last fortnight: a soft ridge over a fill that fades to
+ * nothing at the floor, the same area language as every other trend.
  */
 function AreaTrend({ values }: { values: number[] }) {
+  const fill = useId()
   const width = 300
   const height = 96
 
@@ -329,8 +328,14 @@ function AreaTrend({ values }: { values: number[] }) {
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-24 w-full" role="img" aria-label="trend">
-      <path d={`${line} L${width},${height} L0,${height} Z`} fill="var(--brand-tint)" opacity="0.4" />
-      <path d={line} fill="none" stroke="var(--brand-deep)" strokeWidth="1.75" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <defs>
+        <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${line} L${width},${height} L0,${height} Z`} fill={`url(#${fill})`} />
+      <path d={line} fill="none" stroke="var(--brand-deep)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

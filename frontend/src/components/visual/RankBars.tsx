@@ -60,11 +60,11 @@ export function RankBars({
                   <span dir="ltr">{formatNumber(row.value)}</span>
                 </span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]">
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" dir="ltr">
                 <span
                   className="block h-full rounded-full"
                   data-chart-mark
-                  style={{ width: `${row.width}%`, background: color, opacity: index === 0 ? 1 : 0.55 }}
+                  style={{ width: `${row.width}%`, background: color, opacity: index === 0 ? 1 : 0.55, transition: 'width var(--duration-slow) var(--ease-out-soft)' }}
                 />
               </div>
             </div>

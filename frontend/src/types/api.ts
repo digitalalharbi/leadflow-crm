@@ -563,7 +563,7 @@ export interface TenantSummary {
 export interface AppNotification {
   id: string
   type: string
-  data: Record<string, unknown> & { title?: string; body?: string; lead_id?: string }
+  data: Record<string, unknown> & { title?: string; body?: string; lead_id?: string; link?: string; kind?: string; severity?: 'critical' | 'warning' }
   read_at: string | null
   created_at: string
 }

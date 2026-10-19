@@ -2088,9 +2088,12 @@ export default {
   },
 
   qualityReport: {
-    level: { platform: 'المنصة', campaign: 'الحملة', ad_set: 'المجموعة', ad: 'الإعلان', creative: 'الإبداع' },
+    level: { source: 'المصدر', platform: 'المنصة', campaign: 'الحملة', ad_set: 'المجموعة', ad: 'الإعلان', creative: 'الإبداع' },
     realCustomers: 'عملاء حقيقيون',
-    col: { spend: 'الصرف', leads: 'عملاء', valid: 'صالحون', engaged: 'تفاعلوا', qualified: 'مؤهلون', appointments: 'مواعيد', won: 'صفقات', revenue: 'الإيراد', cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', cac: 'تكلفة الصفقة', roas: 'العائد' },
+    ranking: 'ترتيب جودة المصادر',
+    perLead: 'إيراد/عميل',
+    rate: { valid_rate: 'صالح', contactable_rate: 'يمكن التواصل', engaged_rate: 'تفاعل', qualified_rate: 'مؤهل', appointment_rate: 'موعد', won_rate: 'صفقة' },
+    col: { spend: 'الصرف', leads: 'عملاء', valid: 'صالحون', contactable: 'قابلون للتواصل', engaged: 'تفاعلوا', qualified: 'مؤهلون', appointments: 'مواعيد', won: 'صفقات', revenue: 'الإيراد', revenue_per_lead: 'إيراد/عميل', cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', cac: 'تكلفة الصفقة', roas: 'العائد' },
   },
   conversionHealth: {
     title: 'إرجاع النتائج للمنصات',

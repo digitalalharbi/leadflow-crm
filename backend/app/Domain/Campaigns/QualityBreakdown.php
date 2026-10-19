@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class QualityBreakdown
 {
-    public const LEVELS = ['platform', 'campaign', 'ad_set', 'ad', 'creative'];
+    /** `source` ranks where leads come from, whether or not a campaign is known (sheets, manual, webhooks). */
+    public const LEVELS = ['source', 'platform', 'campaign', 'ad_set', 'ad', 'creative'];
 
     public function __construct(private ?User $user, private CarbonInterface $from, private CarbonInterface $to) {}
 
@@ -27,6 +28,7 @@ final class QualityBreakdown
     public function rows(string $level): array
     {
         [$leadKey, $leadLabel, $spendKey] = match ($level) {
+            'source' => ["coalesce(nullif(leads.platform, ''), 'other')", "coalesce(nullif(leads.platform, ''), 'other')", 'campaigns.platform'],
             'platform' => ['campaigns.platform', 'campaigns.platform', 'metric_snapshots.platform'],
             'campaign' => ['campaigns.uuid', 'campaigns.name', 'campaigns.uuid'],
             'ad_set' => ['ad_sets.uuid', 'ad_sets.name', 'ad_sets.uuid'],
@@ -37,7 +39,10 @@ final class QualityBreakdown
         $leads = Lead::query()
             ->when($this->user, fn ($q) => $q->visibleTo($this->user))
             ->reorder()
-            ->join('campaigns', 'campaigns.id', '=', 'leads.campaign_ref_id')
+            // A source is wherever the lead says it came from; every deeper level needs the campaign.
+            ->when($level === 'source',
+                fn ($q) => $q->leftJoin('campaigns', 'campaigns.id', '=', 'leads.campaign_ref_id'),
+                fn ($q) => $q->join('campaigns', 'campaigns.id', '=', 'leads.campaign_ref_id'))
             ->leftJoin('ad_sets', 'ad_sets.id', '=', 'leads.ad_set_ref_id')
             ->leftJoin('ads', 'ads.id', '=', 'leads.ad_ref_id')
             ->leftJoin('creatives', 'creatives.id', '=', 'ads.creative_id')
@@ -46,6 +51,7 @@ final class QualityBreakdown
             ->selectRaw("{$leadKey} as k, min({$leadLabel}) as label, min(campaigns.platform) as platform,
                 count(*) as leads,
                 count(*) filter (where leads.status <> 'invalid') as valid,
+                count(*) filter (where leads.status <> 'invalid' and ((leads.phone_normalized is not null and leads.whatsapp_opt_out_at is null) or (leads.email is not null and leads.email_opt_out_at is null and leads.email_bounced_at is null))) as contactable,
                 count(*) filter (where leads.first_response_at is not null or leads.status in ('replied', 'qualified', 'appointment', 'negotiation', 'won')) as engaged,
                 count(*) filter (where leads.qualification_status = 'qualified' or leads.status in ('qualified', 'appointment', 'negotiation', 'won')) as qualified,
                 count(*) filter (where leads.status in ('appointment', 'negotiation', 'won')) as appointments,
@@ -82,6 +88,7 @@ final class QualityBreakdown
                 'spend' => $spendMinor !== null ? round($spendMinor / 100, 2) : null,
                 'leads' => $n('leads'),
                 'valid' => $n('valid'),
+                'contactable' => $n('contactable'),
                 'engaged' => $n('engaged'),
                 'qualified' => $n('qualified'),
                 'appointments' => $n('appointments'),
@@ -92,9 +99,40 @@ final class QualityBreakdown
                 // What one customer cost: spend over sales.
                 'cac' => $per($n('won')),
                 'roas' => $spendMinor && ($n('won') === 0 || $revenueMinor > 0) ? round($revenueMinor / $spendMinor, 2) : null,
+                // Every stage as a share of the leads that arrived: the shape of the funnel, per source.
+                'valid_rate' => $this->rate($n('valid'), $n('leads')),
+                'contactable_rate' => $this->rate($n('contactable'), $n('leads')),
+                'engaged_rate' => $this->rate($n('engaged'), $n('leads')),
+                'appointment_rate' => $this->rate($n('appointments'), $n('leads')),
+                'revenue_per_lead' => $n('leads') > 0 ? round($revenueMinor / $n('leads') / 100, 2) : null,
+                'index' => $this->index($n('leads'), $n('valid'), $n('contactable'), $n('engaged'), $n('qualified'), $n('appointments'), $n('won')),
                 'qualified_rate' => $n('leads') > 0 ? round($n('qualified') / $n('leads') * 100, 1) : null,
                 'won_rate' => $n('leads') > 0 ? round($n('won') / $n('leads') * 100, 1) : null,
             ];
         })->sortByDesc(fn ($r) => [$r['qualified'], $r['leads']])->values()->all();
+    }
+
+    private function rate(int $part, int $whole): ?float
+    {
+        return $whole > 0 ? round($part / $whole * 100, 1) : null;
+    }
+
+    /**
+     * One number to rank by: how far the leads of this source get, weighted
+     * toward what matters most (qualified, engaged) and least toward what any
+     * source clears (valid). Null when there is nothing to judge.
+     */
+    private function index(int $leads, int $valid, int $contactable, int $engaged, int $qualified, int $appointments, int $won): ?int
+    {
+        if ($leads === 0) {
+            return null;
+        }
+
+        $share = fn (int $n) => $n / $leads * 100;
+
+        return (int) round(
+            $share($valid) * 0.10 + $share($contactable) * 0.15 + $share($engaged) * 0.20
+            + $share($qualified) * 0.25 + $share($appointments) * 0.15 + $share($won) * 0.15,
+        );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Notifications\ImportantAlerts;
 use App\Models\AutomationActionLog;
 use App\Models\AutomationRule;
 use App\Models\Lead;
@@ -15,6 +16,11 @@ class ActionLog
 {
     public function record(Lead $lead, ?AutomationRule $rule, ?string $trigger, array $action, string $result, array $extra = [], string $mode = 'auto'): ?AutomationActionLog
     {
+        if ($result === AutomationActionLog::FAILED) {
+            // Told once per rule per day, to the managers — not once per lead.
+            ImportantAlerts::automationFailed($rule?->id, $rule?->name ?? ($action['rule_name'] ?? null), $extra['description'] ?? null);
+        }
+
         try {
             return AutomationActionLog::create([
                 'lead_id' => $lead->id,

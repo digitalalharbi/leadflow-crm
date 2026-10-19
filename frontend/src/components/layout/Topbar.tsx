@@ -157,12 +157,17 @@ export function Topbar() {
                       onClick={() => {
                         setNotificationsOpen(false)
                         if (notification.data.lead_id) navigate(`/leads/${notification.data.lead_id}`)
+                        else if (notification.data.link) navigate(notification.data.link)
                       }}
                       className={cn(
                         'block w-full border-b border-[var(--color-border)] px-4 py-3 text-start last:border-0',
                         'hover:bg-[var(--color-surface-muted)]',
                         !notification.read_at && 'bg-[var(--brand-soft)]',
+                        // The few that matter are marked, not louder in volume.
+                        notification.data.severity === 'critical' && 'border-s-4 border-s-[var(--color-danger)]',
+                        notification.data.severity === 'warning' && 'border-s-4 border-s-[var(--color-warning)]',
                       )}
+                      data-kind={notification.data.kind}
                     >
                       <p className="text-[0.9375rem] font-medium">
                         {notification.data.title ?? t(`notifications.${notification.type}`, { defaultValue: '' })}

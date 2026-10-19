@@ -1865,9 +1865,12 @@ export default {
   },
 
   qualityReport: {
-    level: { platform: 'Platform', campaign: 'Campaign', ad_set: 'Ad set', ad: 'Ad', creative: 'Creative' },
+    level: { source: 'Source', platform: 'Platform', campaign: 'Campaign', ad_set: 'Ad set', ad: 'Ad', creative: 'Creative' },
     realCustomers: 'Real customers',
-    col: { spend: 'Spend', leads: 'Leads', valid: 'Valid', engaged: 'Engaged', qualified: 'Qualified', appointments: 'Appointments', won: 'Won', revenue: 'Revenue', cpl: 'CPL', cpql: 'CPQL', cac: 'CAC', roas: 'ROAS' },
+    ranking: 'Source quality ranking',
+    perLead: 'Revenue/lead',
+    rate: { valid_rate: 'Valid', contactable_rate: 'Reachable', engaged_rate: 'Engaged', qualified_rate: 'Qualified', appointment_rate: 'Booked', won_rate: 'Won' },
+    col: { spend: 'Spend', leads: 'Leads', valid: 'Valid', contactable: 'Reachable', engaged: 'Engaged', qualified: 'Qualified', appointments: 'Appointments', won: 'Won', revenue: 'Revenue', revenue_per_lead: 'Revenue/lead', cpl: 'CPL', cpql: 'CPQL', cac: 'CAC', roas: 'ROAS' },
   },
   conversionHealth: {
     title: 'Results sent back to the platforms',

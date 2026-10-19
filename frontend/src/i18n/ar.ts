@@ -100,6 +100,15 @@ export default {
     notifications: 'الإشعارات',
     profile: 'الملف الشخصي',
   },
+  leadJourney: {
+    filter: 'تصفية بنوع الحدث',
+    empty: 'لا أحداث بعد.',
+    kind: {
+      source: 'المصدر', automation: 'الأتمتة', whatsapp: 'واتساب', email: 'بريد', file: 'ملف', call: 'اتصال',
+      appointment: 'موعد', followup: 'متابعة', stage: 'المرحلة', score: 'التقييم', revenue: 'الإيراد', note: 'ملاحظة',
+    },
+    actor: { customer: 'العميل', automation: 'الأتمتة', person: 'مندوب', system: 'النظام' },
+  },
   intel: {
     health: 'الصحة',
     healthHint: 'مزيج من التفاعل والنية والحداثة وقابلية التواصل واكتمال البيانات',

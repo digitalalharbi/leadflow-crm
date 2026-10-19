@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
+use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
@@ -216,6 +217,20 @@ class LeadController extends Controller
             'classification' => $overview->classification(),
             'sources' => $overview->sources(),
             'trend' => $overview->trend(30),
+        ]);
+    }
+
+    /** Everything that has happened to this lead, as one list. */
+    public function journey(Request $request, string $uuid)
+    {
+        $lead = $this->findLead($uuid);
+        $this->authorize('view', $lead);
+
+        $entries = app(JourneyFeed::class)->for($lead);
+
+        return ApiResponse::success([
+            'entries' => $entries,
+            'counts' => collect($entries)->countBy('kind'),
         ]);
     }
 

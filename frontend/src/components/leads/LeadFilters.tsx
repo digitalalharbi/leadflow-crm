@@ -167,7 +167,7 @@ export function LeadFiltersBar({
           <Filter className="size-4" />
           {t('common.filter')}
           {chips.length > 0 && (
-            <span className="tabular ms-0.5 rounded-full bg-[var(--brand)] px-1.5 text-[0.6875rem] text-[var(--brand-contrast)]">
+            <span className="tabular ms-0.5 rounded-full bg-[var(--brand)] px-1.5 text-[0.8125rem] text-[var(--brand-contrast)]">
               {chips.length}
             </span>
           )}
@@ -190,7 +190,7 @@ export function LeadFiltersBar({
                 onClick={chip.clear}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full py-1 ps-2.5 pe-1.5',
-                  'bg-[var(--brand-soft)] text-[0.75rem] font-medium text-[var(--brand)]',
+                  'bg-[var(--brand-soft)] text-[0.875rem] font-medium text-[var(--brand)]',
                   'transition-colors hover:bg-[color-mix(in_srgb,var(--brand)_18%,transparent)]',
                 )}
                 data-testid={`chip-${chip.key}`}

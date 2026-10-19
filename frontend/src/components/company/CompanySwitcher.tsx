@@ -53,7 +53,7 @@ export function CompanySwitcher() {
   if (companies.length === 1 && data?.restricted) {
     return (
       <span
-        className="hidden items-center gap-1.5 px-2 text-[0.8125rem] font-medium text-[var(--color-ink-muted)] sm:inline-flex"
+        className="hidden items-center gap-1.5 px-2 text-[0.9375rem] font-medium text-[var(--color-ink-muted)] sm:inline-flex"
         data-testid="company-label"
       >
         <Network className="size-4" aria-hidden />
@@ -70,7 +70,7 @@ export function CompanySwitcher() {
           onClick={toggle}
           data-testid="company-switcher"
           aria-label={t('company.switch')}
-          className="pressable flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--color-surface)] px-3 text-[0.8125rem] font-medium shadow-[var(--shadow-card)]"
+          className="pressable flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--color-surface)] px-3 text-[0.9375rem] font-medium shadow-[var(--shadow-card)]"
         >
           <span
             aria-hidden

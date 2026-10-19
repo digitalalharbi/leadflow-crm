@@ -29,23 +29,23 @@ export function WhyThisLead({ lead, signals = [] }: { lead: Lead; signals?: stri
           </RingProgress>
           <div className="min-w-0 space-y-1">
             {lead.classification && (
-              <p className="flex items-center gap-1.5 text-[0.875rem] font-semibold">
+              <p className="flex items-center gap-1.5 text-[1rem] font-semibold">
                 <span className="size-2.5 rounded-full" style={{ background: CLASSIFICATION_COLOR[lead.classification.key] }} aria-hidden />
                 {t(`classification.${lead.classification.key}`)}
               </p>
             )}
             {lead.classification && (
-              <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t(`classification.reason.${lead.classification.reason}`)}</p>
+              <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t(`classification.reason.${lead.classification.reason}`)}</p>
             )}
           </div>
         </div>
         {/* Why now: what the customer did, as chips — the facts behind the next action. */}
         <div data-testid="why-now">
-          <p className="mb-1 text-[0.75rem] font-semibold text-[var(--color-ink-muted)]">{t('workspace.why.now')}</p>
+          <p className="mb-1 text-[0.875rem] font-semibold text-[var(--color-ink-muted)]">{t('workspace.why.now')}</p>
           {signals.length > 0 ? (
             <ul className="flex flex-wrap gap-1">
               {signals.map((signal) => (
-                <li key={signal} className="rounded-full bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2 py-0.5 text-[0.75rem] font-medium text-[var(--brand)]">
+                <li key={signal} className="rounded-full bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2 py-0.5 text-[0.875rem] font-medium text-[var(--brand)]">
                   {t(`work.signal.${signal}`)}
                 </li>
               ))}
@@ -54,7 +54,7 @@ export function WhyThisLead({ lead, signals = [] }: { lead: Lead; signals?: stri
             <p className="t-caption">{t('workspace.why.noSignals')}</p>
           )}
         </div>
-        <dl className="grid grid-cols-2 gap-2 text-[0.75rem]">
+        <dl className="grid grid-cols-2 gap-2 text-[0.875rem]">
           <Fact label={t('leads.project')} value={lead.project?.name} />
           <Fact label={t('leads.platform')} value={lead.platform ? t(`platforms.${lead.platform}`, { defaultValue: lead.platform }) : null} />
           <Fact label={t('workspace.why.campaign')} value={lead.campaign_name} wide />
@@ -67,7 +67,7 @@ export function WhyThisLead({ lead, signals = [] }: { lead: Lead; signals?: stri
 function Fact({ label, value, wide = false }: { label: string; value: string | null | undefined; wide?: boolean }) {
   return (
     <div className={cn('min-w-0 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-1.5', wide && 'col-span-2')}>
-      <dt className="text-[0.6875rem] text-[var(--color-ink-subtle)]">{label}</dt>
+      <dt className="text-[0.8125rem] text-[var(--color-ink-subtle)]">{label}</dt>
       <dd className="truncate font-semibold">{value || '—'}</dd>
     </div>
   )
@@ -99,12 +99,12 @@ export function AutomationStatus({ lead, onShowSteps }: { lead: Lead; onShowStep
           <div className="min-w-0">
             <p className="t-card-title" data-testid="automation-state">{t(`workspace.automation.${state}`)}</p>
             {state === 'handed_off' && lead.needs_human_reason && (
-              <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t(`workspace.handoff.${lead.needs_human_reason}`, { defaultValue: lead.needs_human_reason })}</p>
+              <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t(`workspace.handoff.${lead.needs_human_reason}`, { defaultValue: lead.needs_human_reason })}</p>
             )}
-            {state === 'nurturing' && <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t('workspace.automation.nurturingHint')}</p>}
+            {state === 'nurturing' && <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t('workspace.automation.nurturingHint')}</p>}
           </div>
         </div>
-        <button type="button" onClick={onShowSteps} className="text-[0.75rem] font-medium text-[var(--brand)] hover:underline">
+        <button type="button" onClick={onShowSteps} className="text-[0.875rem] font-medium text-[var(--brand)] hover:underline">
           {t('workspace.automation.steps')}
         </button>
       </CardBody>
@@ -143,14 +143,14 @@ export function Engagement({ lead }: { lead: Lead }) {
         <h2 className="t-card-title">{t('workspace.engagement.title')}</h2>
         <div className="flex items-center gap-3">
           <RingProgress value={replyRate} size={64} thickness={7} tone={replyRate > 0 ? 'good' : 'neutral'} label={t('workspace.engagement.replyRate')}>
-            <span className="text-[0.9375rem] font-extrabold tabular-nums" dir="ltr">{replyRate}%</span>
+            <span className="text-[1.0625rem] font-extrabold tabular-nums" dir="ltr">{replyRate}%</span>
           </RingProgress>
           <ul className="grid flex-1 grid-cols-2 gap-1.5">
             {tiles.map(({ key, icon: Icon, value }) => (
               <li key={key} className="flex items-center gap-1.5 rounded-xl bg-[var(--color-surface-muted)] px-2 py-1.5" data-testid={`engagement-${key}`}>
                 <Icon className="size-3.5 text-[var(--color-ink-muted)]" aria-hidden />
                 <span className="text-[1rem] font-bold tabular-nums">{formatNumber(value, i18n.language)}</span>
-                <span className="truncate text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`workspace.engagement.${key}`)}</span>
+                <span className="truncate text-[0.8125rem] text-[var(--color-ink-muted)]">{t(`workspace.engagement.${key}`)}</span>
               </li>
             ))}
           </ul>

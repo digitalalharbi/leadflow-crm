@@ -201,8 +201,8 @@ export function WhatsappSettingsCard() {
           </div>
 
           <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] p-3">
-            <p className="text-[0.8125rem] font-medium">{t('whatsapp.webhookTitle')}</p>
-            <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-muted)]">{t('whatsapp.webhookHint')}</p>
+            <p className="text-[0.9375rem] font-medium">{t('whatsapp.webhookTitle')}</p>
+            <p className="mt-1 text-[0.9375rem] text-[var(--color-ink-muted)]">{t('whatsapp.webhookHint')}</p>
 
             <div className="mt-2 flex items-center gap-2">
               <code dir="ltr" className="flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-2 py-1.5 text-xs">

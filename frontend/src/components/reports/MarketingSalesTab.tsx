@@ -77,9 +77,9 @@ export function MarketingSalesTab({ dateFrom, dateTo }: { dateFrom?: string; dat
                 <CardBody className="space-y-3">
                   <div className="flex items-center gap-2">
                     {group === 'platform' && <span className="size-2.5 rounded-full" style={{ background: platformColor(row.key) }} aria-hidden />}
-                    <p className="min-w-0 flex-1 truncate text-[0.875rem] font-semibold" dir="auto">{label(row)}</p>
+                    <p className="min-w-0 flex-1 truncate text-[1rem] font-semibold" dir="auto">{label(row)}</p>
                     <RingProgress size={36} thickness={4} tone="good" value={row.qualified_rate ?? 0}>
-                      <span className="text-[0.625rem] font-bold tabular-nums">{row.qualified_rate === null ? '—' : `${Math.round(row.qualified_rate)}%`}</span>
+                      <span className="text-[0.8125rem] font-bold tabular-nums">{row.qualified_rate === null ? '—' : `${Math.round(row.qualified_rate)}%`}</span>
                     </RingProgress>
                   </div>
                   <dl className="grid grid-cols-3 gap-y-2 text-center">
@@ -92,8 +92,8 @@ export function MarketingSalesTab({ dateFrom, dateTo }: { dateFrom?: string; dat
                       ['roas', row.roas === null ? '—' : `${row.roas}x`],
                     ].map(([key, value]) => (
                       <div key={key} className="min-w-0">
-                        <dd className="truncate text-[0.875rem] font-semibold tabular-nums" dir="ltr">{value}</dd>
-                        <dt className="truncate text-[0.625rem] text-[var(--color-ink-subtle)]">{t(`campaigns.figure.${key}`)}</dt>
+                        <dd className="truncate text-[1rem] font-semibold tabular-nums" dir="ltr">{value}</dd>
+                        <dt className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`campaigns.figure.${key}`)}</dt>
                       </div>
                     ))}
                   </dl>

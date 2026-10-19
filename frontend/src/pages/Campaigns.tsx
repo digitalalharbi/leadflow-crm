@@ -100,14 +100,14 @@ export function CampaignsPage() {
             data-testid={`platform-${p.key}`}
             data-state={p.connected ? 'connected' : p.built ? 'available' : 'coming'}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[0.75rem] font-medium',
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[0.875rem] font-medium',
               p.connected ? 'bg-[var(--color-surface)] shadow-[var(--shadow-card)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]',
             )}
             title={p.last_error ?? undefined}
           >
             <span className={cn('size-2 rounded-full', !p.connected && 'opacity-40')} style={{ background: platformColor(p.key) }} aria-hidden />
             {t(`platforms.${p.key}`, { defaultValue: p.key })}
-            <span className="text-[0.6875rem] text-[var(--color-ink-subtle)]">
+            <span className="text-[0.8125rem] text-[var(--color-ink-subtle)]">
               {p.connected ? t('campaigns.platformState.connected', { count: p.accounts }) : p.built ? t('campaigns.platformState.available') : t('campaigns.platformState.coming')}
               {p.connected && ` · ${t(`integrationState.${p.state}`)}`}
             </span>
@@ -212,7 +212,7 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
                 }))}
               />
             ) : (
-              <p className="py-8 text-center text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('campaigns.noSpend')}</p>
+              <p className="py-8 text-center text-[0.9375rem] text-[var(--color-ink-subtle)]">{t('campaigns.noSpend')}</p>
             )}
           </CardBody>
         </Card>
@@ -280,8 +280,8 @@ function InsightCard({ insight }: { insight: Insight }) {
         <Icon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.8125rem] font-semibold">{t(`campaigns.insight.${insight.key}`)}</span>
-        <span className="block truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">
+        <span className="block truncate text-[0.9375rem] font-semibold">{t(`campaigns.insight.${insight.key}`)}</span>
+        <span className="block truncate text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">
           {c.name} · {t('campaigns.insightFigures', { leads: c.leads, rate: c.qualified_rate ?? 0 })}
         </span>
       </span>

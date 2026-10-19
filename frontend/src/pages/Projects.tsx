@@ -292,7 +292,7 @@ export function ProjectsPage() {
                         )
                       }
                       className={cn(
-                        'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                        'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
                         chosen
                           ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
                           : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
@@ -414,7 +414,7 @@ function ProjectCard({
 
         {project.starting_price != null && (
           <span className="text-end">
-            <span className="tabular block text-[0.9375rem] font-semibold" dir="ltr">
+            <span className="tabular block text-[1.0625rem] font-semibold" dir="ltr">
               {formatCurrency(project.starting_price, currency, i18n.language)}
             </span>
             <span className="t-caption">{t('projects.startingPrice')}</span>
@@ -488,7 +488,7 @@ function ProjectCard({
           <span className="t-caption">{t('projects.attention.none')}</span>
         )}
 
-        <span className="ms-auto flex items-center gap-3 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+        <span className="ms-auto flex items-center gap-3 text-[0.8125rem] text-[var(--color-ink-subtle)]">
           <Link to={`/projects/${project.id}`} className="hover:text-[var(--brand)]" data-testid="project-files-count">
             {t('projects.filesCount', { count: metrics?.files ?? 0 })}
           </Link>
@@ -522,11 +522,11 @@ function ProjectMetric({
       data-testid={testId}
       className="rounded-[var(--radius-control)] px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-sunken)]"
     >
-      <dt className="t-caption truncate text-[0.6875rem]">{label}</dt>
+      <dt className="t-caption truncate text-[0.8125rem]">{label}</dt>
       <dd className="mt-0.5 flex items-baseline gap-1.5">
         <span className="t-metric-sm">{formatNumber(value, i18n.language)}</span>
         {hint && (
-          <span className="tabular text-[0.6875rem] text-[var(--color-ink-subtle)]" dir="ltr">
+          <span className="tabular text-[0.8125rem] text-[var(--color-ink-subtle)]" dir="ltr">
             {hint}
           </span>
         )}
@@ -547,7 +547,7 @@ function AttentionChip({
     <Link
       to={to}
       className={cn(
-        'pressable inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.75rem] font-medium',
+        'pressable inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.875rem] font-medium',
         tone === 'danger'
           ? 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]'
           : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]',

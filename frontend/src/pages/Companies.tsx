@@ -242,7 +242,7 @@ export function CompaniesPage() {
             </div>
           </fieldset>
 
-          <label className="flex items-center gap-2 text-[0.8125rem]">
+          <label className="flex items-center gap-2 text-[0.9375rem]">
             <input
               type="checkbox"
               checked={form.is_active}
@@ -271,7 +271,7 @@ export function CompaniesPage() {
                       )
                     }
                     className={cn(
-                      'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                      'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
                       chosen
                         ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
                         : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
@@ -339,7 +339,7 @@ function CompanyCard({
         {/* Conversion as a bar, because it is the one number here whose size
             is the point — and a bar is read before a figure is. */}
         <div>
-          <div className="mb-1 flex items-center justify-between text-[0.6875rem] text-[var(--color-ink-muted)]">
+          <div className="mb-1 flex items-center justify-between text-[0.8125rem] text-[var(--color-ink-muted)]">
             <span>{t('company.conversion')}</span>
             <span className="tabular-nums">{formatNumber(metrics?.conversion_rate ?? 0)}%</span>
           </div>
@@ -374,7 +374,7 @@ function Figure({
 }) {
   return (
     <div className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] px-2 py-1.5">
-      <dt className="flex items-center justify-center gap-1 text-[0.6875rem] text-[var(--color-ink-muted)]">
+      <dt className="flex items-center justify-center gap-1 text-[0.8125rem] text-[var(--color-ink-muted)]">
         {icon}
         {label}
       </dt>

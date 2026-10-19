@@ -119,11 +119,11 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
     .at(-1)
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {/* The sync centre: the two facts about the whole workspace, and the one
           action that applies to all of it. */}
       <Card>
-        <CardBody className="space-y-2 py-2.5">
+        <CardBody className="space-y-1.5 py-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
             {/* "Set up", not "connected": a row with credentials typed into it is
@@ -146,7 +146,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             {INTEGRATION_STATES.map((state) => {
               const count = rows.filter((row) => row.state === state).length
               return count === 0 ? null : (
-                <li key={state} className="flex items-center gap-1.5 text-[0.75rem] text-[var(--color-ink-muted)]">
+                <li key={state} className="flex items-center gap-1.5 text-[0.875rem] text-[var(--color-ink-muted)]">
                   <span aria-hidden className="size-2 rounded-full" style={{ background: RUNG_COLOR[state] }} />
                   {t(`integrationState.${state}`)}
                   <span className="font-semibold tabular-nums text-[var(--color-ink)]">{count}</span>
@@ -209,7 +209,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             onClick={() => onConfigure?.(row.key)}
             data-testid={`integration-tile-${row.key}`}
             className={cn(
-              'pressable relative overflow-hidden rounded-[var(--radius-card)] border bg-[var(--color-surface)] p-2.5 ps-3 text-start',
+              'pressable relative overflow-hidden rounded-[var(--radius-card)] border bg-[var(--color-surface)] p-2 ps-3 text-start',
               row.last_error
                 ? 'border-[var(--color-danger)]/40'
                 : isProven(row.state)
@@ -251,23 +251,23 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             </Badge>
 
             {!isProven(row.state) && row.blocker && (
-              <p className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] mt-1" data-testid={`blocker-${row.key}`}>
+              <p className="text-[0.875rem] leading-snug text-[var(--color-ink-muted)] mt-1" data-testid={`blocker-${row.key}`}>
                 {t(`health.blocker.${row.blocker}`)}
               </p>
             )}
 
-            <dl className="mt-1.5 space-y-0.5">
+            <dl className="mt-1 space-y-0">
               <Line label={t('health.lastEvent')} value={row.last_event_at} />
               <Line label={t('health.lastSync')} value={row.last_sync_at} />
             </dl>
 
-            <p className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] mt-1 truncate">
+            <p className="text-[0.875rem] leading-snug text-[var(--color-ink-muted)] mt-1 truncate">
               {t(`health.flow.${row.flow}`)}
               {row.events > 0 && ` · ${row.events}`}
             </p>
 
             {row.last_error && (
-              <p className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] mt-0.5 truncate text-[var(--color-danger)]">{row.last_error}</p>
+              <p className="text-[0.875rem] leading-snug text-[var(--color-ink-muted)] mt-0.5 truncate text-[var(--color-danger)]">{row.last_error}</p>
             )}
           </button>
         ))}
@@ -278,8 +278,8 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
   function Line({ label, value }: { label: string; value: string | null }) {
     return (
       <div className="flex items-baseline justify-between gap-1.5">
-        <dt className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] truncate">{label}</dt>
-        <dd className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] shrink-0">
+        <dt className="text-[0.875rem] leading-snug text-[var(--color-ink-muted)] truncate">{label}</dt>
+        <dd className="text-[0.875rem] leading-snug text-[var(--color-ink-muted)] shrink-0">
           {value ? formatLastSeen(value, i18n.language) : '—'}
         </dd>
       </div>
@@ -290,8 +290,8 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)]">{label}</span>
-      <span className="text-[0.9375rem] font-semibold tabular-nums">{value}</span>
+      <span className="text-[0.875rem] leading-snug text-[var(--color-ink-muted)]">{label}</span>
+      <span className="text-[1.0625rem] font-semibold tabular-nums">{value}</span>
     </div>
   )
 }

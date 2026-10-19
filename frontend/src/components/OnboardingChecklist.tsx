@@ -51,8 +51,8 @@ export function OnboardingChecklist() {
     <Card className="mb-5 overflow-hidden" data-print="hide" data-testid="onboarding-checklist">
       <div className="flex items-start justify-between gap-3 px-5 pt-4">
         <div>
-          <h2 className="text-[0.9375rem] font-semibold">{t('onboarding.title')}</h2>
-          <p className="mt-0.5 text-[0.8125rem] text-[var(--color-ink-muted)]">
+          <h2 className="text-[1.0625rem] font-semibold">{t('onboarding.title')}</h2>
+          <p className="mt-0.5 text-[0.9375rem] text-[var(--color-ink-muted)]">
             {t('onboarding.subtitle')} · {data.done}/{data.total}
           </p>
         </div>
@@ -73,7 +73,7 @@ export function OnboardingChecklist() {
             to={step.where}
             data-testid={`onboarding-step-${step.key}`}
             className={cn(
-              'flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 text-[0.8125rem] transition-colors',
+              'flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 text-[0.9375rem] transition-colors',
               step.done
                 ? 'border-[color-mix(in_srgb,var(--color-status-won)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]'
                 : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-ink)]',

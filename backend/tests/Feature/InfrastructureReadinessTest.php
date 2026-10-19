@@ -375,12 +375,26 @@ class InfrastructureReadinessTest extends TestCase
 
     // ------------------------------------------------------ error tracking
 
-    public function test_without_a_tracker_installed_there_is_nothing_to_verify(): void
+    public function test_an_installed_tracker_with_no_destination_is_not_configured(): void
     {
+        config(['sentry.dsn' => null]);
+        putenv('SENTRY_LARAVEL_DSN');
+
         $row = $this->row('error_tracking');
 
         $this->assertSame('not_configured', $row['state']);
-        $this->assertSame('install_error_tracker', $row['required_action']);
+        $this->assertSame('set_error_dsn', $row['required_action']);
+        $this->assertTrue($row['facts']['installed']);
+    }
+
+    public function test_a_destination_is_ready_and_never_live_until_an_event_is_seen(): void
+    {
+        config(['sentry.dsn' => 'https://key@o0.ingest.sentry.io/1']);
+
+        $row = $this->row('error_tracking');
+
+        $this->assertSame('ready', $row['state']);
+        $this->assertSame('confirm_test_event', $row['required_action']);
     }
 
     // ------------------------------------------------------------- secrets

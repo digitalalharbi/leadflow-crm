@@ -37,7 +37,7 @@ export function LeadAvatar({
       aria-hidden
       className={cn(
         'relative grid shrink-0 place-items-center rounded-full bg-[var(--color-surface)] font-semibold text-[var(--color-ink-muted)]',
-        size === 'sm' ? 'size-8 text-[0.6875rem]' : 'size-10 text-[0.8125rem]',
+        size === 'sm' ? 'size-8 text-[0.8125rem]' : 'size-10 text-[0.9375rem]',
       )}
       style={{ boxShadow: `0 0 0 2px ${color}` }}
     >

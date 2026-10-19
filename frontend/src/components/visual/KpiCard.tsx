@@ -18,7 +18,7 @@ export function Delta({ value, previous, invert = false }: { value: number; prev
       dir="ltr"
       data-testid="delta"
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[0.8125rem] font-semibold tabular-nums',
         good ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]' : 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]',
       )}
     >
@@ -72,7 +72,7 @@ export function KpiCard({
         {delta}
       </div>
 
-      <p className="mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]">{label}</p>
+      <p className="mt-3 text-[0.9375rem] text-[var(--color-ink-muted)]">{label}</p>
       <div className="flex items-end justify-between gap-2">
         <div className="t-metric" data-testid={valueTestId}>
           {value}

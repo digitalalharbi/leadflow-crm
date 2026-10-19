@@ -224,7 +224,7 @@ export function PipelinePage() {
         }
       >
         <div className="space-y-4">
-          <p className="text-[0.875rem] font-medium">{lostTarget?.full_name}</p>
+          <p className="text-[1rem] font-medium">{lostTarget?.full_name}</p>
           <Select
             label={t('leads.lostReason')}
             value={lostReasonId}
@@ -284,7 +284,7 @@ function PipelineColumn({ column, overview }: { column: Column; overview: Pipeli
 
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="t-small truncate font-semibold">{t(`status.${column.status}`)}</h2>
-          <span data-testid="column-total" className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+          <span data-testid="column-total" className="tabular text-[1.0625rem] font-semibold" dir="ltr">
             {column.total}
           </span>
         </div>
@@ -294,7 +294,7 @@ function PipelineColumn({ column, overview }: { column: Column; overview: Pipeli
             the icon-free layout reads the same in either direction. */}
         {stage && (
           <dl
-            className="mt-1 flex items-center gap-2 text-[0.6875rem] tabular-nums text-[var(--color-ink-muted)]"
+            className="mt-1 flex items-center gap-2 text-[0.8125rem] tabular-nums text-[var(--color-ink-muted)]"
             dir="ltr"
             data-testid={`stage-stats-${column.status}`}
           >
@@ -316,7 +316,7 @@ function PipelineColumn({ column, overview }: { column: Column; overview: Pipeli
         style={{ maxHeight: '32rem' }}
       >
         {column.leads.length === 0 ? (
-          <p className="px-2 py-8 text-center text-[0.75rem] text-[var(--color-ink-subtle)]">
+          <p className="px-2 py-8 text-center text-[0.875rem] text-[var(--color-ink-subtle)]">
             {t('pipeline.empty')}
           </p>
         ) : (
@@ -324,7 +324,7 @@ function PipelineColumn({ column, overview }: { column: Column; overview: Pipeli
         )}
 
         {column.total > column.leads.length && (
-          <p className="px-2 py-2 text-center text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          <p className="px-2 py-2 text-center text-[0.8125rem] text-[var(--color-ink-subtle)]">
             {t('pipeline.showing', { shown: column.leads.length, total: column.total })}
           </p>
         )}
@@ -371,7 +371,7 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
         <Link
           to={`/leads/${lead.id}`}
           onPointerDown={(e) => e.stopPropagation()}
-          className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium hover:text-[var(--brand)]"
+          className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium hover:text-[var(--brand)]"
         >
           {lead.full_name}
         </Link>
@@ -387,7 +387,7 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
       </div>
 
       {lead.project?.name && (
-        <p className="mt-0.5 truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">
+        <p className="mt-0.5 truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">
           {lead.project.name}
         </p>
       )}
@@ -396,7 +396,7 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
         {lead.next_follow_up_at ? (
           <span
             className={cn(
-              'truncate text-[0.6875rem]',
+              'truncate text-[0.8125rem]',
               lead.is_overdue
                 ? 'font-medium text-[var(--color-status-lost)]'
                 : 'text-[var(--color-ink-muted)]',
@@ -405,14 +405,14 @@ function LeadCard({ lead, overlay }: { lead: LeadListItem; overlay?: boolean }) 
             {formatDue(lead.next_follow_up_at, i18n.language, lead.is_overdue)}
           </span>
         ) : (
-          <span className="text-[0.6875rem] text-[var(--color-ink-subtle)]">
+          <span className="text-[0.8125rem] text-[var(--color-ink-subtle)]">
             {t('pipeline.noFollowUp')}
           </span>
         )}
 
         {lead.assignee && (
           <span
-            className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--color-surface-sunken)] text-[0.5625rem] font-semibold text-[var(--color-ink-muted)]"
+            className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--color-surface-sunken)] text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]"
             title={lead.assignee.name}
           >
             {initials(lead.assignee.name)}

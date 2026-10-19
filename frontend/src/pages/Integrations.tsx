@@ -210,13 +210,13 @@ export function IntegrationsPage() {
       <>
       {/* Leads that arrive in a spreadsheet, on the same page as every other
           source — because that is what it is. */}
-      <div className="mb-3">
+      <div className="mb-2">
         <SheetSources onImportFile={() => setImportOpen(true)} />
       </div>
 
       {/* Every source on one screen, above everything else: the question
           anybody opens this page with is whether anything is still arriving. */}
-      <div className="mb-3">
+      <div className="mb-2">
         <IntegrationGrid />
       </div>
 
@@ -341,14 +341,14 @@ export function IntegrationsPage() {
                 {card.integration && (
                   <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
                     <div>
-                      <dt className="t-caption text-[0.6875rem]">{t('integrations.leadsReceived')}</dt>
-                      <dd className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+                      <dt className="t-caption text-[0.8125rem]">{t('integrations.leadsReceived')}</dt>
+                      <dd className="tabular text-[1.0625rem] font-semibold" dir="ltr">
                         {formatNumber(card.integration.leads_received, i18n.language)}
                       </dd>
                     </div>
                     {card.integration.last_synced_at && (
                       <div>
-                        <dt className="t-caption text-[0.6875rem]">{t('integrations.lastSync')}</dt>
+                        <dt className="t-caption text-[0.8125rem]">{t('integrations.lastSync')}</dt>
                         <dd className="t-small">
                           {formatLastSeen(card.integration.last_synced_at, i18n.language)}
                         </dd>
@@ -378,7 +378,7 @@ export function IntegrationsPage() {
                       right-to-left.
                     */
                     dir="auto"
-                    className="notice notice-danger mt-3 text-start text-[0.75rem]"
+                    className="notice notice-danger mt-3 text-start text-[0.875rem]"
                     data-testid={`integration-error-${card.provider}`}
                   >
                     {card.integration.last_error}
@@ -386,18 +386,18 @@ export function IntegrationsPage() {
                 )}
 
                 {card.required_credentials.length > 0 && card.status !== 'connected' && (
-                  <p className="mt-2 text-[0.75rem] text-[var(--color-ink-subtle)]">
+                  <p className="mt-2 text-[0.875rem] text-[var(--color-ink-subtle)]">
                     {t('integrations.credentialsNeeded')}: {card.required_credentials.join(', ')}
                   </p>
                 )}
 
                 {card.integration?.webhook_endpoints?.map((endpoint) => (
                   <div key={endpoint.id} className="mt-3 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-2.5">
-                    <p className="text-[0.6875rem] font-medium text-[var(--color-ink-muted)]">
+                    <p className="text-[0.8125rem] font-medium text-[var(--color-ink-muted)]">
                       {t('integrations.webhookUrl')}
                     </p>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <code className="min-w-0 flex-1 truncate text-[0.6875rem]" dir="ltr">{endpoint.url}</code>
+                      <code className="min-w-0 flex-1 truncate text-[0.8125rem]" dir="ltr">{endpoint.url}</code>
                       <CopyButton value={endpoint.url} />
                     </div>
                   </div>
@@ -494,7 +494,7 @@ export function IntegrationsPage() {
                         {log.status}
                       </Badge>
                       {log.error && (
-                        <p className="mt-0.5 max-w-60 truncate text-[0.75rem] text-[var(--color-ink-muted)]">
+                        <p className="mt-0.5 max-w-60 truncate text-[0.875rem] text-[var(--color-ink-muted)]">
                           {log.error}
                         </p>
                       )}
@@ -550,7 +550,7 @@ export function IntegrationsPage() {
                 {(['fetched', 'created', 'duplicates', 'skipped', 'rejected', 'failed'] as const).map((key) => (
                   <div key={key}>
                     <dt className="t-caption">{t(`integrations.sync_${key}`)}</dt>
-                    <dd className="tabular text-[0.9375rem] font-semibold" dir="ltr">
+                    <dd className="tabular text-[1.0625rem] font-semibold" dir="ltr">
                       {formatNumber(syncResult.result[key], i18n.language)}
                     </dd>
                   </div>
@@ -573,7 +573,7 @@ export function IntegrationsPage() {
           <Field label={t('integrations.webhookSecret')} value={secret?.secret ?? ''} />
           <pre
             dir="ltr"
-            className="overflow-x-auto rounded-[var(--radius-control)] bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-[var(--color-ink-inverted)]"
+            className="overflow-x-auto rounded-[var(--radius-control)] bg-[var(--color-ink)] p-3 text-[0.8125rem] leading-relaxed text-[var(--color-ink-inverted)]"
           >
 {`curl -X POST '${secret?.url ?? ''}' \\
   -H 'Content-Type: application/json' \\
@@ -741,7 +741,7 @@ function CredentialsModal({
                 placeholder={stored ? t('integrations.credentialStored') : ''}
                 value={values[key] ?? ''}
                 onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
-                className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[0.875rem]"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
               />
             </label>
           )
@@ -754,11 +754,11 @@ function CredentialsModal({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="mb-1.5 text-[0.8125rem] font-medium">{label}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-medium">{label}</p>
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.875rem]"
         >
           {value}
         </code>
@@ -904,17 +904,17 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           >
             {t('imports.upload')}
           </Button>
-          <p className="mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]">{t('imports.uploadHint')}</p>
+          <p className="mt-3 text-[0.9375rem] text-[var(--color-ink-muted)]">{t('imports.uploadHint')}</p>
         </div>
       )}
 
       {step === 'map' && (
         <div className="space-y-3">
-          <p className="text-[0.8125rem] text-[var(--color-ink-muted)]">{t('imports.mappingHint')}</p>
+          <p className="text-[0.9375rem] text-[var(--color-ink-muted)]">{t('imports.mappingHint')}</p>
 
           {headers.map((header) => (
             <div key={header} className="flex items-center gap-3">
-              <code className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]">
+              <code className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.9375rem]">
                 {header}
               </code>
               <Select
@@ -945,8 +945,8 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]">
             <Check className="size-6" aria-hidden />
           </div>
-          <h3 className="text-[0.9375rem] font-semibold">{t('imports.done')}</h3>
-          <div className="mt-4 flex justify-center gap-6 text-[0.8125rem]">
+          <h3 className="text-[1.0625rem] font-semibold">{t('imports.done')}</h3>
+          <div className="mt-4 flex justify-center gap-6 text-[0.9375rem]">
             <div>
               <p className="tabular text-xl font-semibold text-[var(--color-status-won)]">{result.imported}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.imported')}</p>

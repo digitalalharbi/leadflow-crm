@@ -66,7 +66,7 @@ export function ResponseTimeChart({ data }: { data: ResponseTime }) {
               />
             </span>
 
-            <span className="tabular w-16 shrink-0 text-[0.8125rem]" dir="ltr">
+            <span className="tabular w-16 shrink-0 text-[0.9375rem]" dir="ltr">
               {formatNumber(bucket.count, i18n.language)}
               <span className="ms-1 text-[var(--color-ink-muted)]">{bucket.share}%</span>
             </span>

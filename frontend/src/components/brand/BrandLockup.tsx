@@ -47,7 +47,7 @@ export function BrandLockup({
         <span
           className={cn(
             'truncate font-semibold text-[var(--color-ink)]',
-            size === 'sm' ? 'text-[0.9375rem]' : size === 'lg' ? 'text-[1.5rem]' : 'text-[1.125rem]',
+            size === 'sm' ? 'text-[1.0625rem]' : size === 'lg' ? 'text-[1.5rem]' : 'text-[1.125rem]',
           )}
         >
           {name}

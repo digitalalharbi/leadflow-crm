@@ -87,7 +87,7 @@ export function SettingsPage() {
             onClick={() => setTab(key)}
             className={cn(
               'rounded-[calc(var(--radius-control)-0.125rem)] px-3 py-1.5',
-              'text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
+              'text-[0.9375rem] font-medium whitespace-nowrap transition-colors',
               tab === key
                 ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-card)]'
                 : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]',
@@ -181,7 +181,7 @@ export function SettingsPage() {
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 text-[0.875rem]">
+    <div className="flex items-center justify-between gap-3 text-[1rem]">
       <span className="text-[var(--color-ink-muted)]">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
@@ -312,7 +312,7 @@ function ColorInput({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-[0.8125rem] font-medium">{label}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-medium">{label}</p>
       <div className="flex items-center gap-2">
         <input
           type="color"
@@ -517,7 +517,7 @@ function GeneralForm({
                           }))
                         }
                         className={cn(
-                          'pressable rounded-full border px-3 py-1 text-[0.8125rem]',
+                          'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
                           on
                             ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
                             : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
@@ -598,7 +598,7 @@ function LostReasonsPanel({ reasons }: { reasons: LostReason[] }) {
         <ul className="divide-y divide-[var(--color-border)]">
           {reasons.map((reason) => (
             <li key={reason.id} className="flex items-center justify-between gap-3 py-2.5">
-              <span className={cn('text-[0.875rem]', !reason.is_active && 'text-[var(--color-ink-subtle)] line-through')}>
+              <span className={cn('text-[1rem]', !reason.is_active && 'text-[var(--color-ink-subtle)] line-through')}>
                 {reason.label}
               </span>
               <Button variant="ghost" size="sm" onClick={() => toggle.mutate(reason)}>
@@ -672,7 +672,7 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
         />
         <CardBody>
           {fields.length === 0 ? (
-            <p className="py-6 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+            <p className="py-6 text-center text-[0.9375rem] text-[var(--color-ink-muted)]">
               {t('common.noResults')}
             </p>
           ) : (
@@ -680,8 +680,8 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
               {fields.map((field) => (
                 <li key={field.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="truncate text-[0.875rem] font-medium">{field.label}</p>
-                    <p className="text-[0.75rem] text-[var(--color-ink-subtle)]"><bdi dir="ltr">{field.key}</bdi></p>
+                    <p className="truncate text-[1rem] font-medium">{field.label}</p>
+                    <p className="text-[0.875rem] text-[var(--color-ink-subtle)]"><bdi dir="ltr">{field.key}</bdi></p>
                   </div>
                   <Badge>{t(`settings.type${field.type[0].toUpperCase()}${field.type.slice(1)}`, { defaultValue: field.type })}</Badge>
                 </li>

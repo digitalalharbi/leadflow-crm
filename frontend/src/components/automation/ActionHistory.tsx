@@ -50,7 +50,7 @@ export function ActionHistory({ initialResult = '' }: { initialResult?: HistoryR
             aria-selected={result === key}
             onClick={() => { setResult(key); setPage(1) }}
             className={cn(
-              'rounded-full px-3 py-1.5 text-[0.8125rem] font-medium',
+              'rounded-full px-3 py-1.5 text-[0.9375rem] font-medium',
               result === key ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-surface)] text-[var(--color-ink-muted)] shadow-[var(--shadow-card)] hover:text-[var(--color-ink)]',
             )}
             data-testid={`history-filter-${key || 'all'}`}
@@ -61,7 +61,7 @@ export function ActionHistory({ initialResult = '' }: { initialResult?: HistoryR
       </div>
 
       <div className="overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
-        <div className="hidden grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)_2.5rem_minmax(0,0.9fr)_7rem] gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-muted)] px-4 py-2.5 text-[0.75rem] font-semibold text-[var(--color-ink-muted)] lg:grid">
+        <div className="hidden grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)_2.5rem_minmax(0,0.9fr)_7rem] gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-muted)] px-4 py-2.5 text-[0.875rem] font-semibold text-[var(--color-ink-muted)] lg:grid">
           <span>{t('automation.history.time')}</span>
           <span>{t('automation.history.lead')}</span>
           <span>{t('automation.history.rule')}</span>
@@ -81,7 +81,7 @@ export function ActionHistory({ initialResult = '' }: { initialResult?: HistoryR
               const Icon = entry.channel ? CHANNEL_ICON[entry.channel] : null
 
               return (
-                <li key={entry.id} className="grid gap-1 px-4 py-2.5 text-[0.8125rem] lg:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)_2.5rem_minmax(0,0.9fr)_7rem] lg:items-center lg:gap-3" data-testid="history-row">
+                <li key={entry.id} className="grid gap-1 px-4 py-2.5 text-[0.9375rem] lg:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)_2.5rem_minmax(0,0.9fr)_7rem] lg:items-center lg:gap-3" data-testid="history-row">
                   <span className="tabular-nums text-[var(--color-ink-muted)]">{time(entry.at)}</span>
                   <span className="min-w-0 truncate font-semibold">
                     {entry.lead ? <Link to={`/leads/${entry.lead.id}`} className="hover:underline">{entry.lead.name}</Link> : '—'}
@@ -98,7 +98,7 @@ export function ActionHistory({ initialResult = '' }: { initialResult?: HistoryR
                       </span>
                     ) : '—'}
                   </span>
-                  <span className={cn('w-fit rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold', RESULT_STYLE[entry.result])} data-testid={`result-${entry.result}`}>
+                  <span className={cn('w-fit rounded-full px-2 py-0.5 text-[0.8125rem] font-semibold', RESULT_STYLE[entry.result])} data-testid={`result-${entry.result}`}>
                     {t(`automation.result.${entry.result}`)}
                   </span>
                 </li>

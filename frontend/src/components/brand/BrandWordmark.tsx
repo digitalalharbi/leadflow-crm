@@ -22,7 +22,7 @@ export function BrandWordmark({
   size?: 'sm' | 'md' | 'lg'
 }) {
   const sizes = {
-    sm: 'text-[0.9375rem]',
+    sm: 'text-[1.0625rem]',
     md: 'text-[1.125rem]',
     lg: 'text-[1.5rem]',
   }

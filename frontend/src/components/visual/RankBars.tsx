@@ -47,16 +47,16 @@ export function RankBars({
         const body = (
           <div className="flex items-center gap-3">
             {row.leading ?? (
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--color-chrome-fill)] text-[0.6875rem] font-semibold tabular-nums text-[var(--color-ink-muted)]">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--color-chrome-fill)] text-[0.8125rem] font-semibold tabular-nums text-[var(--color-ink-muted)]">
                 {index + 1}
               </span>
             )}
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-baseline justify-between gap-2">
-                <span className="truncate text-[0.8125rem] font-medium">{row.label}</span>
+                <span className="truncate text-[0.9375rem] font-medium">{row.label}</span>
                 {/* Number and note as two pieces, so bidi cannot glue "2" and "100%" into "2100%". */}
-                <span className="flex shrink-0 items-baseline gap-1.5 text-[0.8125rem] font-semibold tabular-nums">
-                  {row.note && <span className="text-[0.6875rem] font-normal text-[var(--color-ink-muted)]" dir="ltr">{row.note}</span>}
+                <span className="flex shrink-0 items-baseline gap-1.5 text-[0.9375rem] font-semibold tabular-nums">
+                  {row.note && <span className="text-[0.8125rem] font-normal text-[var(--color-ink-muted)]" dir="ltr">{row.note}</span>}
                   <span dir="ltr">{formatNumber(row.value)}</span>
                 </span>
               </div>

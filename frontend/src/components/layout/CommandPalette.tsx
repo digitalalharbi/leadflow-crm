@@ -133,7 +133,7 @@ export function CommandPalette() {
             onKeyDown={onInputKey}
             placeholder={t('search.placeholder')}
             data-testid="command-palette-input"
-            className="h-11 w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 text-[0.9375rem] outline-none focus:border-[var(--brand)]"
+            className="h-11 w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 text-[1.0625rem] outline-none focus:border-[var(--brand)]"
           />
 
           {debounced.trim().length >= 2 && rows.length === 0 && (
@@ -156,7 +156,7 @@ export function CommandPalette() {
                     )}
                   >
                     <span className="text-[var(--color-ink-subtle)]">{row.icon}</span>
-                    <span className="min-w-0 flex-1 truncate text-[0.875rem]">{row.label}</span>
+                    <span className="min-w-0 flex-1 truncate text-[1rem]">{row.label}</span>
                     {row.hint && (
                       <span className="t-caption shrink-0 tabular-nums">
                         <bdi dir="ltr">{row.hint}</bdi>

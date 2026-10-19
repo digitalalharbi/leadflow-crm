@@ -63,7 +63,7 @@ export function DistributionBar({
               </span>
               <span className="mt-1 flex items-baseline gap-1.5">
                 <span className="t-metric-sm">{formatNumber(segment.count, i18n.language)}</span>
-                <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
+                <span className="tabular text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
                   {segment.share}%
                 </span>
               </span>

@@ -77,7 +77,7 @@ export function Topbar() {
         a projector, a screenshot pasted into a ticket.
       */}
       {isSuperAdmin && (
-        <span className="hidden rounded-full bg-[var(--brand-soft)] px-3 py-1 text-[0.75rem] font-medium text-[var(--brand)] sm:inline" data-testid="console-badge">
+        <span className="hidden rounded-full bg-[var(--brand-soft)] px-3 py-1 text-[0.875rem] font-medium text-[var(--brand)] sm:inline" data-testid="console-badge">
           {t('nav.platformConsole')}
         </span>
       )}
@@ -132,12 +132,12 @@ export function Topbar() {
             />
             <div className="absolute end-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)]">
               <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
-                <h3 className="text-[0.8125rem] font-semibold">{t('notifications.title')}</h3>
+                <h3 className="text-[0.9375rem] font-semibold">{t('notifications.title')}</h3>
                 {unread > 0 && (
                   <button
                     type="button"
                     onClick={() => markAllRead.mutate()}
-                    className="text-[0.75rem] text-[var(--brand)] hover:underline"
+                    className="text-[0.875rem] text-[var(--brand)] hover:underline"
                   >
                     {t('notifications.markAllRead')}
                   </button>
@@ -146,7 +146,7 @@ export function Topbar() {
 
               <div className="max-h-[22rem] overflow-y-auto">
                 {(data?.notifications ?? []).length === 0 ? (
-                  <p className="px-4 py-8 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+                  <p className="px-4 py-8 text-center text-[0.9375rem] text-[var(--color-ink-muted)]">
                     {t('notifications.empty')}
                   </p>
                 ) : (
@@ -164,15 +164,15 @@ export function Topbar() {
                         !notification.read_at && 'bg-[var(--brand-soft)]',
                       )}
                     >
-                      <p className="text-[0.8125rem] font-medium">
+                      <p className="text-[0.9375rem] font-medium">
                         {notification.data.title ?? t(`notifications.${notification.type}`, { defaultValue: '' })}
                       </p>
                       {notification.data.body && (
-                        <p className="mt-0.5 truncate text-[0.75rem] text-[var(--color-ink-muted)]">
+                        <p className="mt-0.5 truncate text-[0.875rem] text-[var(--color-ink-muted)]">
                           {notification.data.body}
                         </p>
                       )}
-                      <p className="mt-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+                      <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">
                         {formatRelative(notification.created_at, i18n.language)}
                       </p>
                     </button>
@@ -198,7 +198,7 @@ export function Topbar() {
             className="flex items-center gap-1 rounded-full p-0.5 hover:bg-[var(--color-chrome-fill)]"
           >
             <span
-              className="grid size-10 place-items-center rounded-full text-[0.8125rem] font-semibold text-white"
+              className="grid size-10 place-items-center rounded-full text-[0.9375rem] font-semibold text-white"
               style={{ background: 'var(--brand)' }}
               aria-hidden
             >
@@ -211,9 +211,9 @@ export function Topbar() {
         {({ close }) => (
           <>
             <div className="border-b border-[var(--color-border)] px-3 py-2">
-              <p className="truncate text-[0.8125rem] font-medium">{user?.name}</p>
-              <p className="truncate text-[0.75rem] text-[var(--color-ink-muted)]">{user?.email}</p>
-              <p className="mt-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+              <p className="truncate text-[0.9375rem] font-medium">{user?.name}</p>
+              <p className="truncate text-[0.875rem] text-[var(--color-ink-muted)]">{user?.email}</p>
+              <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">
                 {t(`roles.${user?.role ?? 'sales'}`)}
               </p>
             </div>
@@ -227,7 +227,7 @@ export function Topbar() {
               {t('nav.profile')}
             </DropdownItem>
             <div className="border-t border-[var(--color-line)] px-3 py-2" role="group" aria-label={t('settings.language')}>
-              <p className="mb-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">{t('settings.language')}</p>
+              <p className="mb-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('settings.language')}</p>
               <div className="flex gap-1">
                 {(['ar', 'en'] as const).map((locale) => (
                   <button
@@ -247,7 +247,7 @@ export function Topbar() {
               </div>
             </div>
             <div className="border-t border-[var(--color-line)] px-3 py-2" role="group" aria-label={t('appearance.label')} data-testid="appearance-menu">
-              <p className="mb-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">{t('appearance.label')}</p>
+              <p className="mb-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('appearance.label')}</p>
               <div className="flex gap-1">
                 {(['system', 'light', 'dark'] as const).map((option) => (
                   <button

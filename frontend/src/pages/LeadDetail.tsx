@@ -269,7 +269,7 @@ export function LeadDetailPage() {
     <>
       <Link
         to="/leads"
-        className="mb-4 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+        className="mb-4 inline-flex items-center gap-1.5 text-[0.9375rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
       >
         <Back className="size-4" aria-hidden />
         {t('leads.title')}
@@ -304,7 +304,7 @@ export function LeadDetailPage() {
 
               {/* Why the system calls this lead what it does, in a few words. */}
               {lead.classification && (
-                <p className="mt-1 flex items-center gap-1.5 text-[0.75rem] text-[var(--color-ink-muted)]" data-testid="lead-classification">
+                <p className="mt-1 flex items-center gap-1.5 text-[0.875rem] text-[var(--color-ink-muted)]" data-testid="lead-classification">
                   <span className="size-2 rounded-full" style={{ background: CLASSIFICATION_COLOR[lead.classification.key] }} aria-hidden />
                   <span className="font-medium text-[var(--color-ink)]">{t(`classification.${lead.classification.key}`)}</span>
                   <span>· {t(`classification.reason.${lead.classification.reason}`)}</span>
@@ -320,7 +320,7 @@ export function LeadDetailPage() {
                 {lead.phone && (
                   <div className="flex items-center gap-1.5">
                     <dt className="sr-only">{t('leads.phone')}</dt>
-                    <dd className="tabular text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
+                    <dd className="tabular text-[1rem] text-[var(--color-ink-muted)]" dir="ltr">
                       {lead.phone}
                     </dd>
                   </div>
@@ -642,7 +642,7 @@ export function LeadDetailPage() {
                 }
               />
               {notes.length === 0 ? (
-                <p className="px-5 py-6 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+                <p className="px-5 py-6 text-center text-[0.9375rem] text-[var(--color-ink-muted)]">
                   {t('leads.noNotes')}
                 </p>
               ) : (
@@ -650,8 +650,8 @@ export function LeadDetailPage() {
                   <ul className="space-y-2.5" data-testid="notes-list">
                     {notes.map((entry) => (
                       <li key={entry.id} className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3">
-                        <p className="text-[0.875rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
-                        <p className="mt-1.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
+                        <p className="text-[1rem] leading-relaxed whitespace-pre-wrap">{entry.body}</p>
+                        <p className="mt-1.5 text-[0.875rem] text-[var(--color-ink-subtle)]">
                           {entry.user?.name} · {formatRelative(entry.created_at, i18n.language)}
                         </p>
                       </li>
@@ -672,12 +672,12 @@ export function LeadDetailPage() {
                   {followUps
                     .filter((f) => f.status === 'pending')
                     .map((followUp) => (
-                      <li key={followUp.id} className="text-[0.8125rem]">
+                      <li key={followUp.id} className="text-[0.9375rem]">
                         <span className={followUp.is_overdue ? 'text-[var(--color-status-lost)]' : undefined}>
                           {formatDateTime(followUp.due_at, i18n.language)}
                         </span>
                         {followUp.note && (
-                          <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{followUp.note}</p>
+                          <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{followUp.note}</p>
                         )}
                       </li>
                     ))}
@@ -886,7 +886,7 @@ export function LeadDetailPage() {
           </>
         }
       >
-        <p className="text-[0.875rem]">{lead.full_name}</p>
+        <p className="text-[1rem]">{lead.full_name}</p>
       </Modal>
     </>
   )
@@ -944,7 +944,7 @@ function Row({
   danger?: boolean
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 text-[0.8125rem]">
+    <div className="flex items-baseline justify-between gap-3 text-[0.9375rem]">
       <span className="shrink-0 text-[var(--color-ink-muted)]">{label}</span>
       <span
         dir={ltr ? 'ltr' : undefined}
@@ -967,7 +967,7 @@ function Fact({ label, value, dot }: { label: string; value: string; dot?: strin
     <div className="flex min-w-0 items-center gap-1.5">
       {dot && <span className="size-2 shrink-0 rounded-full" style={{ background: dot }} aria-hidden />}
       <dt className="sr-only">{label}</dt>
-      <dd className="t-caption truncate text-[0.8125rem]">{value}</dd>
+      <dd className="t-caption truncate text-[0.9375rem]">{value}</dd>
     </div>
   )
 }

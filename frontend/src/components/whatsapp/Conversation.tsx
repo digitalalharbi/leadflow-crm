@@ -140,7 +140,7 @@ export function Conversation({ lead }: { lead: Lead }) {
         ) : messages.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-sm text-[var(--color-ink-muted)]">{t('whatsapp.noMessages')}</p>
-            <p className="mt-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('whatsapp.noMessagesHint')}</p>
+            <p className="mt-1 text-[0.9375rem] text-[var(--color-ink-subtle)]">{t('whatsapp.noMessagesHint')}</p>
           </div>
         ) : (
           <div className="space-y-2" data-testid="message-list">
@@ -212,7 +212,7 @@ export function Conversation({ lead }: { lead: Lead }) {
             )}
 
             {!canSend && !optedOut && (
-              <span className="text-[0.8125rem] text-[var(--color-ink-muted)]">
+              <span className="text-[0.9375rem] text-[var(--color-ink-muted)]">
                 {t('whatsapp.notConnectedHint')}
               </span>
             )}
@@ -238,7 +238,7 @@ function MessageBubble({ message }: { message: LeadMessage }) {
         )}
       >
         {message.template_name && (
-          <p className="mb-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">{message.template_name}</p>
+          <p className="mb-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">{message.template_name}</p>
         )}
 
         <p className="whitespace-pre-wrap break-words">{message.body}</p>
@@ -246,13 +246,13 @@ function MessageBubble({ message }: { message: LeadMessage }) {
         {/* The delivery state lives on the message, not in the timeline: a
             separate activity row for every "delivered" would bury the things a
             rep actually needs to read. */}
-        <div className="mt-1 flex items-center gap-1.5 text-[0.6875rem] text-[var(--color-ink-subtle)]">
+        <div className="mt-1 flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-subtle)]">
           <span className="tabular">{formatDateTime(message.created_at)}</span>
           {outbound && <StatusMark message={message} />}
         </div>
 
         {message.status === 'failed' && message.failure_reason && (
-          <p className="mt-1 text-[0.6875rem] text-[var(--color-status-lost)]">{message.failure_reason}</p>
+          <p className="mt-1 text-[0.8125rem] text-[var(--color-status-lost)]">{message.failure_reason}</p>
         )}
       </div>
     </div>

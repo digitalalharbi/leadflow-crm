@@ -76,7 +76,7 @@ function RailLink({ item }: { item: NavItem }) {
     >
       <Icon className="size-[1.125rem]" aria-hidden />
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -end-0.5 -top-0.5 min-w-4 rounded-full bg-[var(--color-status-lost)] px-1 text-center text-[0.625rem] font-semibold leading-4 text-white tabular-nums">
+        <span className="absolute -end-0.5 -top-0.5 min-w-4 rounded-full bg-[var(--color-status-lost)] px-1 text-center text-[0.8125rem] font-semibold leading-4 text-white tabular-nums">
           {badge > 99 ? '99+' : badge}
         </span>
       )}

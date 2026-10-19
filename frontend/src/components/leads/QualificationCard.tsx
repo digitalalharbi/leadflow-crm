@@ -102,7 +102,7 @@ export function QualificationCard({ lead }: { lead: Lead }) {
           {breakdown && breakdown.reasons.length > 0 && (
             <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] p-3" data-testid="score-reasons">
               <div className="mb-2 flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-[0.8125rem] font-medium">
+                <p className="flex items-center gap-1.5 text-[0.9375rem] font-medium">
                   <Sparkles className="size-3.5 text-[var(--color-ink-muted)]" />
                   {t('qualification.scoreTitle')}
                 </p>
@@ -114,7 +114,7 @@ export function QualificationCard({ lead }: { lead: Lead }) {
 
               <ul className="space-y-1">
                 {breakdown.reasons.map((reason) => (
-                  <li key={reason.key} className="flex items-center justify-between gap-3 text-[0.8125rem]">
+                  <li key={reason.key} className="flex items-center justify-between gap-3 text-[0.9375rem]">
                     <span className="text-[var(--color-ink-muted)]">{reason.label}</span>
                     {/*
                       Forced LTR: a signed number in an RTL paragraph is

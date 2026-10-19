@@ -197,7 +197,7 @@ export function DashboardPage() {
             className={cn(
               'pressable flex w-full items-center justify-between gap-2',
               'rounded-[var(--radius-card)] border border-[var(--color-line)]',
-              'bg-[var(--color-surface)] px-3 py-2 text-[0.8125rem] font-medium',
+              'bg-[var(--color-surface)] px-3 py-2 text-[0.9375rem] font-medium',
             )}
           >
             {t('dashboard.analytics')}

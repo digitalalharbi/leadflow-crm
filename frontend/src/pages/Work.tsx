@@ -326,7 +326,7 @@ export function WorkPage() {
                     {(data?.signals?.length ?? 0) > 0 && (
                       <ul className="mt-1 flex flex-wrap gap-1" data-testid="work-signals">
                         {data!.signals!.map((signal) => (
-                          <li key={signal} className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.6875rem] font-medium">
+                          <li key={signal} className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.8125rem] font-medium">
                             {t(`work.signal.${signal}`)}
                           </li>
                         ))}
@@ -346,7 +346,7 @@ export function WorkPage() {
                     label={t('leads.score')}
                     testId="work-score"
                   >
-                    <span className="text-[0.9375rem] font-extrabold tabular-nums">{lead.score ?? 0}</span>
+                    <span className="text-[1.0625rem] font-extrabold tabular-nums">{lead.score ?? 0}</span>
                   </RingProgress>
                   <div className="min-w-0 space-y-1">
                     <Link
@@ -573,7 +573,7 @@ export function WorkPage() {
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
     <kbd
-      className="ms-1 rounded border border-current/25 px-1 font-mono text-[0.6875rem] leading-4 opacity-60"
+      className="ms-1 rounded border border-current/25 px-1 font-mono text-[0.8125rem] leading-4 opacity-60"
       aria-hidden
     >
       {children}
@@ -615,10 +615,10 @@ function WorkPulse({ summary }: { summary: WorkSummary }) {
     <div className="grid gap-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-card)] sm:grid-cols-[auto_1fr]" data-testid="work-pulse">
       <div className="flex items-center gap-2.5 px-1.5">
         <RingProgress value={percent} size={44} thickness={5} tone={percent >= 80 ? 'good' : 'warn'} label={t('work.pulse.reached')}>
-          <span className="text-[0.6875rem] font-bold tabular-nums" dir="ltr">{percent}%</span>
+          <span className="text-[0.8125rem] font-bold tabular-nums" dir="ltr">{percent}%</span>
         </RingProgress>
         <div className="leading-tight">
-          <p className="text-[0.8125rem] font-semibold">{t('work.pulse.reached')}</p>
+          <p className="text-[0.9375rem] font-semibold">{t('work.pulse.reached')}</p>
           <p className="t-caption tabular-nums">{t('work.pulse.ofOpen', { reached, open: summary.open })}</p>
         </div>
       </div>
@@ -663,7 +663,7 @@ function QueueMix({ queue }: { queue: QueuedLead[] }) {
           <span key={g.urgency} className="h-full" data-chart-mark style={{ width: `${(g.count / queue.length) * 100}%`, background: URGENCY_DOT[g.urgency] }} />
         ))}
       </div>
-      <ul className="mt-1 flex flex-wrap gap-x-2.5 text-[0.6875rem] text-[var(--color-ink-muted)]">
+      <ul className="mt-1 flex flex-wrap gap-x-2.5 text-[0.8125rem] text-[var(--color-ink-muted)]">
         {groups.map((g) => (
           <li key={g.urgency} className="flex items-center gap-1">
             <span aria-hidden className="size-1.5 rounded-full" style={{ background: URGENCY_DOT[g.urgency] }} />

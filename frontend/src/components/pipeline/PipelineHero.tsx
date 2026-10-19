@@ -171,7 +171,7 @@ function WatchCard({ title, leads, stalled = false, testId }: { title: string; l
       <CardBody>
         <h2 className="t-card-title mb-3">{title}</h2>
         {leads.length === 0 ? (
-          <p className="py-4 text-center text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('pipelineBoard.noneHot')}</p>
+          <p className="py-4 text-center text-[0.9375rem] text-[var(--color-ink-subtle)]">{t('pipelineBoard.noneHot')}</p>
         ) : (
           <ul className="space-y-1" data-testid={testId}>
             {leads.map((lead) => (
@@ -186,16 +186,16 @@ function WatchCard({ title, leads, stalled = false, testId }: { title: string; l
                     aria-hidden
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.8125rem] font-medium">{lead.name}</span>
-                    {lead.project && <span className="block truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{lead.project}</span>}
+                    <span className="block truncate text-[0.9375rem] font-medium">{lead.name}</span>
+                    {lead.project && <span className="block truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{lead.project}</span>}
                   </span>
                   {stalled ? (
                     <StatusPill status="overdue" iconOnly />
                   ) : (
-                    <span className="text-[0.75rem] font-semibold tabular-nums text-[var(--color-ink-muted)]">{lead.score}</span>
+                    <span className="text-[0.875rem] font-semibold tabular-nums text-[var(--color-ink-muted)]">{lead.score}</span>
                   )}
                   {stalled && (
-                    <span className="text-[0.6875rem] tabular-nums text-[var(--color-ink-muted)]">{t('pipelineBoard.idleDays', { count: lead.idle_days })}</span>
+                    <span className="text-[0.8125rem] tabular-nums text-[var(--color-ink-muted)]">{t('pipelineBoard.idleDays', { count: lead.idle_days })}</span>
                   )}
                 </Link>
               </li>

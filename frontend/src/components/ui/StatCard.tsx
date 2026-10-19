@@ -52,7 +52,7 @@ export function StatCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[0.75rem] leading-snug font-medium text-balance text-[var(--color-ink-muted)]">
+        <p className="text-[0.875rem] leading-snug font-medium text-balance text-[var(--color-ink-muted)]">
           {label}
         </p>
         {icon && <span className="mt-0.5 shrink-0 text-[var(--color-ink-subtle)]">{icon}</span>}
@@ -60,7 +60,7 @@ export function StatCard({
       {/* Tight tracking on a large numeral: the default spacing makes a
           four-digit figure look like a phone number. */}
       <p className={cn('t-metric-sm tabular mt-2', tones[tone])}>{value}</p>
-      {hint && <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[0.875rem] text-[var(--color-ink-subtle)]">{hint}</p>}
     </>
   )
 

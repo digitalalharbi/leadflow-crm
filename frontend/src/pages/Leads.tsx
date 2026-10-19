@@ -247,12 +247,12 @@ export function LeadsPage() {
 
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                           {lead.phone && (
-                            <span className="tabular text-[0.75rem] text-[var(--color-ink-muted)]" dir="ltr">
+                            <span className="tabular text-[0.875rem] text-[var(--color-ink-muted)]" dir="ltr">
                               {lead.phone}
                             </span>
                           )}
                           {lead.project?.name && (
-                            <span className="t-caption max-w-40 truncate text-[0.75rem] xl:hidden">
+                            <span className="t-caption max-w-40 truncate text-[0.875rem] xl:hidden">
                               {lead.project.name}
                             </span>
                           )}
@@ -271,14 +271,14 @@ export function LeadsPage() {
                       <Td className="hidden sm:table-cell">
                         {/* The score as a number with its bar: how far into its bucket. */}
                         <span className="flex items-center gap-2" data-testid="lead-score">
-                          <span className="w-7 text-[0.9375rem] font-bold tabular-nums">{lead.score ?? 0}</span>
+                          <span className="w-7 text-[1.0625rem] font-bold tabular-nums">{lead.score ?? 0}</span>
                           <span className="block h-1.5 w-14 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]" aria-hidden>
                             <span className="block h-full rounded-full" style={{ width: `${Math.min(100, lead.score ?? 0)}%`, background: `var(--color-temp-${lead.temperature})` }} />
                           </span>
                         </span>
                       </Td>
                       <Td className="hidden md:table-cell"><StatusBadge status={lead.status} /></Td>
-                      <Td className="hidden max-w-36 truncate xl:table-cell text-[0.8125rem]">
+                      <Td className="hidden max-w-36 truncate xl:table-cell text-[0.9375rem]">
                         {lead.project?.name ?? <span className="text-[var(--color-ink-subtle)]">—</span>}
                       </Td>
                       <Td className="hidden lg:table-cell">
@@ -290,11 +290,11 @@ export function LeadsPage() {
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block truncate text-[0.8125rem]">
+                              <span className="block truncate text-[0.9375rem]">
                                 {t(`platforms.${lead.platform}`, { defaultValue: lead.platform })}
                               </span>
                               {lead.campaign_name && (
-                                <span className="t-caption block max-w-40 truncate text-[0.6875rem]">
+                                <span className="t-caption block max-w-40 truncate text-[0.8125rem]">
                                   {lead.campaign_name}
                                 </span>
                               )}
@@ -304,7 +304,7 @@ export function LeadsPage() {
                           <span className="text-[var(--color-ink-subtle)]">—</span>
                         )}
                       </Td>
-                      <Td className="hidden whitespace-nowrap xl:table-cell text-[0.8125rem] text-[var(--color-ink-muted)]">
+                      <Td className="hidden whitespace-nowrap xl:table-cell text-[0.9375rem] text-[var(--color-ink-muted)]">
                         {lead.last_contact_at ? formatRelative(lead.last_contact_at, i18n.language) : <span className="text-[var(--color-ink-subtle)]">{t('leads.neverContacted')}</span>}
                       </Td>
                       <Td className="hidden lg:table-cell">
@@ -313,7 +313,7 @@ export function LeadsPage() {
                         {lead.next_follow_up_at && (
                           <span
                             className={cn(
-                              'mt-0.5 block whitespace-nowrap text-[0.75rem]',
+                              'mt-0.5 block whitespace-nowrap text-[0.875rem]',
                               lead.is_overdue ? 'font-medium text-[var(--color-status-lost)]' : 'text-[var(--color-ink-muted)]',
                             )}
                           >

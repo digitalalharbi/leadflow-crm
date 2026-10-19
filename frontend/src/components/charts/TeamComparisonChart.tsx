@@ -80,7 +80,7 @@ export function TeamComparisonChart({ rows }: { rows: TeamRow[] }) {
             aria-pressed={key === measure}
             data-testid={`team-measure-${key}`}
             className={cn(
-              'pressable rounded-[var(--radius-control)] px-2.5 py-1 text-[0.8125rem]',
+              'pressable rounded-[var(--radius-control)] px-2.5 py-1 text-[0.9375rem]',
               key === measure
                 ? 'bg-[var(--brand)] text-[var(--brand-contrast)]'
                 : 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]',

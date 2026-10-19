@@ -71,7 +71,7 @@ export function JourneyStrip({ days }: { days: number }) {
                 <span className="t-metric !text-[1.5rem] leading-none" data-testid={`journey-count-${step.key}`}>
                   {formatCompact(step.count, i18n.language)}
                 </span>
-                <span className="text-[0.75rem] text-[var(--color-ink-muted)]">{t(`journey.${step.key}`)}</span>
+                <span className="text-[0.875rem] text-[var(--color-ink-muted)]">{t(`journey.${step.key}`)}</span>
                 {share !== null ? <ProgressBar value={share} className="w-full max-w-24" /> : <span className="h-1.5" />}
               </Link>
               {index < data.steps.length - 1 && (

@@ -106,7 +106,7 @@ export function MetricCard({
             <p className="mt-1.5 flex items-center gap-1" dir="ltr">
               <span
                 className={cn(
-                  'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular',
+                  'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[0.8125rem] font-semibold tabular',
                   good
                     ? 'bg-[color-mix(in_srgb,var(--color-success)_12%,transparent)] text-[var(--color-success)]'
                     : 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]',
@@ -125,7 +125,7 @@ export function MetricCard({
       </div>
 
       {change !== null && (
-        <p className="t-caption mt-1 text-[0.6875rem]">{t('dashboard.vsPrevious')}</p>
+        <p className="t-caption mt-1 text-[0.8125rem]">{t('dashboard.vsPrevious')}</p>
       )}
     </>
   )

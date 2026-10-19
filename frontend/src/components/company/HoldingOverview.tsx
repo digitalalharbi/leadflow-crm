@@ -46,7 +46,7 @@ export function HoldingOverview() {
 
   return (
     <section className="space-y-2" data-testid="holding-overview">
-      <h2 className="text-[0.9375rem] font-semibold">{t('company.companiesOverview')}</h2>
+      <h2 className="text-[1.0625rem] font-semibold">{t('company.companiesOverview')}</h2>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {companies.map((company) => {
           const m = metrics.get(company.id)
@@ -59,7 +59,7 @@ export function HoldingOverview() {
               className="pressable relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-surface)] p-3 text-start shadow-[var(--shadow-card)]"
             >
               <span aria-hidden className="absolute inset-y-0 start-0 w-1" style={{ background: company.color ?? 'var(--brand)' }} />
-              <span className="block truncate text-[0.875rem] font-semibold">{company.name}</span>
+              <span className="block truncate text-[1rem] font-semibold">{company.name}</span>
               <Tiles m={m} />
             </button>
           )
@@ -75,13 +75,13 @@ function Tiles({ m }: { m?: CompanyMetrics }) {
     <span className="mt-2 flex items-end justify-between gap-2">
       <span>
         <span className="block text-[1.375rem] font-semibold leading-none tabular-nums">{formatNumber(m?.open ?? 0)}</span>
-        <span className="text-[0.6875rem] text-[var(--color-ink-muted)]">{t('company.open')}</span>
+        <span className="text-[0.8125rem] text-[var(--color-ink-muted)]">{t('company.open')}</span>
       </span>
-      <span className={cn('flex items-center gap-1 text-[0.8125rem] tabular-nums', (m?.hot ?? 0) > 0 && 'text-[var(--color-warning)]')}>
+      <span className={cn('flex items-center gap-1 text-[0.9375rem] tabular-nums', (m?.hot ?? 0) > 0 && 'text-[var(--color-warning)]')}>
         <Flame className="size-3.5" aria-hidden />
         {formatNumber(m?.hot ?? 0)}
       </span>
-      <span className="text-[0.8125rem] tabular-nums text-[var(--color-ink-muted)]">
+      <span className="text-[0.9375rem] tabular-nums text-[var(--color-ink-muted)]">
         {formatNumber(m?.conversion_rate ?? 0)}%
       </span>
     </span>
@@ -107,7 +107,7 @@ function CompanyLevel({
     <section data-testid="company-level">
       <Card>
         <div className="p-4">
-          <nav aria-label="breadcrumb" className="flex items-center gap-1.5 text-[0.8125rem]">
+          <nav aria-label="breadcrumb" className="flex items-center gap-1.5 text-[0.9375rem]">
             {canGoBack ? (
               <button type="button" onClick={onBack} className="text-[var(--color-ink-muted)] hover:underline" data-testid="back-to-holding">
                 {t('company.holding')}
@@ -135,8 +135,8 @@ function CompanyLevel({
                     data-testid={`company-project-${project.id}`}
                     className="pressable block rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] px-3 py-2"
                   >
-                    <span className="block truncate text-[0.8125rem] font-semibold">{project.name}</span>
-                    <span className="mt-1 flex items-center justify-between gap-2 text-[0.75rem] tabular-nums text-[var(--color-ink-muted)]">
+                    <span className="block truncate text-[0.9375rem] font-semibold">{project.name}</span>
+                    <span className="mt-1 flex items-center justify-between gap-2 text-[0.875rem] tabular-nums text-[var(--color-ink-muted)]">
                       <span>{formatNumber(project.open)} {t('company.open')}</span>
                       <span className={cn(project.hot > 0 && 'text-[var(--color-warning)]')}>
                         <Flame className="me-0.5 inline size-3" aria-hidden />

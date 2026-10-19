@@ -66,7 +66,7 @@ export function RingProgress({
       </svg>
 
       <div className="absolute inset-0 grid place-items-center text-center" dir="ltr">
-        {children ?? <span className="text-[0.9375rem] font-bold tabular-nums">{Math.round(percent)}%</span>}
+        {children ?? <span className="text-[1.0625rem] font-bold tabular-nums">{Math.round(percent)}%</span>}
       </div>
     </div>
   )

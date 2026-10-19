@@ -78,7 +78,7 @@ export function Tabs<T extends string>({
             onClick={() => onChange(item.key)}
             className={cn(
               'pressable inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap',
-              'rounded-[var(--radius-pill)] px-3.5 py-1.5 text-[0.8125rem] font-medium transition-colors',
+              'rounded-[var(--radius-pill)] px-3.5 py-1.5 text-[0.9375rem] font-medium transition-colors',
               active
                 ? // The active tab is a raised white chip, which is the same
                   // relationship the cards have to the canvas.
@@ -90,7 +90,7 @@ export function Tabs<T extends string>({
             {item.count !== undefined && (
               <span
                 className={cn(
-                  'tabular-nums rounded-[var(--radius-pill)] px-1.5 text-[0.6875rem]',
+                  'tabular-nums rounded-[var(--radius-pill)] px-1.5 text-[0.8125rem]',
                   active
                     ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
                     : 'bg-[var(--color-surface)] text-[var(--color-ink-muted)]',

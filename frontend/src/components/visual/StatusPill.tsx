@@ -56,7 +56,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap rounded-full text-[0.75rem] font-medium',
+        'inline-flex items-center gap-1 whitespace-nowrap rounded-full text-[0.875rem] font-medium',
         iconOnly ? 'size-6 justify-center' : 'px-2.5 py-0.5',
         className,
       )}

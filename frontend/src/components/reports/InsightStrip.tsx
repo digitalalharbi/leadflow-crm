@@ -84,7 +84,7 @@ export function InsightStrip() {
               )}
               aria-hidden
             />
-            <p className="text-[0.8125rem] leading-snug">{t(`reports.insights.${insight.key}`, values)}</p>
+            <p className="text-[0.9375rem] leading-snug">{t(`reports.insights.${insight.key}`, values)}</p>
           </article>
         )
       })}

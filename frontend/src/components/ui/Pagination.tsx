@@ -27,7 +27,7 @@ export function Pagination({
       className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] px-5 py-3"
       data-testid="pagination"
     >
-      <p className="tabular text-[0.8125rem] text-[var(--color-ink-muted)]">
+      <p className="tabular text-[0.9375rem] text-[var(--color-ink-muted)]">
         {meta.from ?? 0}–{meta.to ?? 0} {t('common.of')} {meta.total} {t('common.results')}
       </p>
 
@@ -42,7 +42,7 @@ export function Pagination({
           {t('common.previous')}
         </Button>
 
-        <span className="tabular px-2 text-[0.8125rem] text-[var(--color-ink-muted)]">
+        <span className="tabular px-2 text-[0.9375rem] text-[var(--color-ink-muted)]">
           {meta.current_page} / {meta.last_page}
         </span>
 

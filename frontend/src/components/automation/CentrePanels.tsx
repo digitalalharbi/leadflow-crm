@@ -57,13 +57,13 @@ export function RoutinesPanel() {
                       {kind === 'agent' ? <Bot className="size-4" /> : <Timer className="size-4" />}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[0.875rem] font-semibold">{t(`automation.routine.${row.key}`, { defaultValue: row.key })}</p>
+                      <p className="truncate text-[1rem] font-semibold">{t(`automation.routine.${row.key}`, { defaultValue: row.key })}</p>
                       <p className="t-caption truncate">
                         {cadenceWords(row.cadence, t)}
                         {row.agent ? ` · ${t(`agents.name.${row.agent}`, { defaultValue: row.agent })}` : ''}
                       </p>
                     </div>
-                    <span className={cn('flex shrink-0 items-center gap-1 text-[0.75rem]', row.status === 'ok' ? 'text-[var(--brand)]' : row.status === 'failed' ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink-subtle)]')}>
+                    <span className={cn('flex shrink-0 items-center gap-1 text-[0.875rem]', row.status === 'ok' ? 'text-[var(--brand)]' : row.status === 'failed' ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink-subtle)]')}>
                       <Icon className="size-3.5" aria-hidden />
                       {row.last_run_at ? formatRelative(row.last_run_at, i18n.language) : t('automation.routines.notRun')}
                     </span>
@@ -98,9 +98,9 @@ export function AgentsPanel() {
                 <Bot className="size-5" />
               </span>
               <div className="min-w-0">
-                <p className="text-[0.9375rem] font-semibold">{agent.name}</p>
+                <p className="text-[1.0625rem] font-semibold">{agent.name}</p>
                 <p className="t-caption line-clamp-2">{agent.role}</p>
-                <p className={cn('mt-1 text-[0.6875rem] font-medium', agent.is_active ? 'text-[var(--brand)]' : 'text-[var(--color-ink-subtle)]')}>
+                <p className={cn('mt-1 text-[0.8125rem] font-medium', agent.is_active ? 'text-[var(--brand)]' : 'text-[var(--color-ink-subtle)]')}>
                   {t(agent.is_active ? 'automation.agents.active' : 'automation.agents.paused')}
                 </p>
               </div>
@@ -108,7 +108,7 @@ export function AgentsPanel() {
           </Card>
         ))}
       </div>
-      <Link to="/agents" className="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-[var(--brand)] hover:underline" data-testid="ask-agent">
+      <Link to="/agents" className="inline-flex items-center gap-1.5 text-[0.9375rem] font-medium text-[var(--brand)] hover:underline" data-testid="ask-agent">
         <MessageSquareText className="size-4" aria-hidden />
         {t('automation.agents.ask')}
       </Link>

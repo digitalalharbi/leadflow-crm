@@ -77,8 +77,8 @@ export function AgentsPanel() {
                     {agent.key === 'analyst' ? <Sparkles className="size-4" /> : <Bot className="size-4" />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.8125rem] font-semibold">{agent.name}</span>
-                    <span className="block truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">
+                    <span className="block truncate text-[0.9375rem] font-semibold">{agent.name}</span>
+                    <span className="block truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">
                       {last ? formatRelative(last, i18n.language) : t('agentsPanel.notYet')}
                     </span>
                   </span>
@@ -87,7 +87,7 @@ export function AgentsPanel() {
               )
             })}
             {routine('daily_analysis')?.last_summary && (
-              <p className="border-t border-[var(--color-line)] pt-2 text-[0.6875rem] text-[var(--color-ink-muted)]">{routine('daily_analysis')?.last_summary}</p>
+              <p className="border-t border-[var(--color-line)] pt-2 text-[0.8125rem] text-[var(--color-ink-muted)]">{routine('daily_analysis')?.last_summary}</p>
             )}
           </CardBody>
         </Card>
@@ -96,7 +96,7 @@ export function AgentsPanel() {
           {data.findings.length === 0 ? (
             <Card>
               <CardBody>
-                <p className="py-6 text-center text-[0.8125rem] text-[var(--color-ink-subtle)]">
+                <p className="py-6 text-center text-[0.9375rem] text-[var(--color-ink-subtle)]">
                   {data.analysed_at ? t('agentsPanel.allClear') : t('agentsPanel.neverRan')}
                 </p>
               </CardBody>
@@ -118,8 +118,8 @@ export function AgentsPanel() {
                       <Icon className="size-5" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.8125rem] font-semibold">{t(`agentsPanel.finding.${f.key}`, { defaultValue: f.key })}</span>
-                      <span className="block truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">{f.campaign.name}</span>
+                      <span className="block truncate text-[0.9375rem] font-semibold">{t(`agentsPanel.finding.${f.key}`, { defaultValue: f.key })}</span>
+                      <span className="block truncate text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">{f.campaign.name}</span>
                     </span>
                   </Link>
                 )

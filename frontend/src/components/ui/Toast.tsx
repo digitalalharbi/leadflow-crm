@@ -28,7 +28,7 @@ export function Toaster() {
             key={id}
             className={cn(
               'pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-[var(--radius-card)] border px-3.5 py-3',
-              'text-[0.8125rem] shadow-[var(--shadow-pop)]',
+              'text-[0.9375rem] shadow-[var(--shadow-pop)]',
               cls,
             )}
           >

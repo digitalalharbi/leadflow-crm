@@ -115,7 +115,7 @@ export function IngestionSources({
           <li key={slice.key} className="space-y-1">
             <div className="flex items-baseline justify-between gap-3">
               <span className="t-small min-w-0 truncate font-medium">{slice.label}</span>
-              <span className="tabular shrink-0 text-[0.8125rem]" dir="ltr">
+              <span className="tabular shrink-0 text-[0.9375rem]" dir="ltr">
                 {formatNumber(slice.value, i18n.language)}
               </span>
             </div>

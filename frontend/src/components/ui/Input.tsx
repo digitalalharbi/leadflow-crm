@@ -21,16 +21,16 @@ function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.R
   return (
     // `flex-wrap`: a long hint beside a long label squeezed the label onto two
     // lines on a phone and left the pair looking collided. It drops below instead.
-    <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-2 text-[0.8125rem] font-medium text-[var(--color-ink)]">
+    <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-2 text-[0.9375rem] font-medium text-[var(--color-ink)]">
       <span>{children}</span>
-      {hint && <span className="text-[0.75rem] font-normal text-[var(--color-ink-subtle)]">{hint}</span>}
+      {hint && <span className="text-[0.875rem] font-normal text-[var(--color-ink-subtle)]">{hint}</span>}
     </label>
   )
 }
 
 function ErrorText({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <p id={id} role="alert" className="mt-1.5 text-[0.75rem] text-[var(--color-status-lost)]">
+    <p id={id} role="alert" className="mt-1.5 text-[0.875rem] text-[var(--color-status-lost)]">
       {children}
     </p>
   )

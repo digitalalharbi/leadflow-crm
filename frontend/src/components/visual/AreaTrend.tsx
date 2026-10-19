@@ -98,14 +98,14 @@ export function AreaTrend({
       {axes && (
         <>
           {ticks.map(({ f, v }) => (
-            <span key={f} className="pointer-events-none absolute start-0 -translate-y-1/2 whitespace-nowrap text-[0.625rem] text-[var(--color-ink-subtle)] tabular-nums" style={{ top: `${(y(max * f) / height) * 100}%` }}>
+            <span key={f} className="pointer-events-none absolute start-0 -translate-y-1/2 whitespace-nowrap text-[0.8125rem] text-[var(--color-ink-subtle)] tabular-nums" style={{ top: `${(y(max * f) / height) * 100}%` }}>
               {formatCompact(v)}
             </span>
           ))}
           {dateIdx.map((i, n) => (
             <span
               key={`${i}-${n}`}
-              className="pointer-events-none absolute bottom-0 whitespace-nowrap text-[0.625rem] text-[var(--color-ink-subtle)]"
+              className="pointer-events-none absolute bottom-0 whitespace-nowrap text-[0.8125rem] text-[var(--color-ink-subtle)]"
               style={{ left: `${(coords[i][0] / width) * 100}%`, transform: n === 0 ? 'none' : n === 2 ? 'translateX(-100%)' : 'translateX(-50%)' }}
               dir="auto"
             >

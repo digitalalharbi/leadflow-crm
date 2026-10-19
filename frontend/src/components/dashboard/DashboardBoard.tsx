@@ -142,7 +142,7 @@ function HeroCard({ command }: { command: CommandCenterData }) {
           <h2 className="t-card-title">
             {command.attention.some((row) => row.severity === 'critical') ? t('commandCenter.needsYou') : t('commandCenter.title')}
           </h2>
-          <p className="mt-0.5 text-[0.75rem] opacity-70">
+          <p className="mt-0.5 text-[0.875rem] opacity-70">
             {command.attention.length === 0
               ? t('commandCenter.allClear')
               : t('commandCenter.subtitle', { count: command.attention.length })}
@@ -163,7 +163,7 @@ function HeroCard({ command }: { command: CommandCenterData }) {
       <p className="text-[2.5rem] font-bold leading-none tabular-nums">{formatNumber(total)}</p>
 
       {command.attention.length > 0 && (
-        <ul className="space-y-1 sm:max-h-24 sm:overflow-y-auto sm:pe-1" data-testid="attention-list">
+        <ul className="space-y-1 sm:max-h-28 sm:overflow-y-auto sm:pe-1" data-testid="attention-list">
           {command.attention.map((row) => {
             const Icon = ICON[row.key]
             return (
@@ -171,7 +171,7 @@ function HeroCard({ command }: { command: CommandCenterData }) {
                 <Link
                   to={row.href}
                   data-testid={`attention-${row.key}`}
-                  className="flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-1 text-[0.75rem] hover:bg-white/20"
+                  className="flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-1 text-[0.875rem] hover:bg-white/20"
                 >
                   <Icon className="size-3.5 shrink-0 opacity-80" aria-hidden />
                   <span className="min-w-0 flex-1 truncate">
@@ -200,7 +200,7 @@ function DeltaPill({ value, previous, invert = false }: { value: number; previou
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-medium tabular-nums text-white',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.875rem] font-medium tabular-nums text-white',
         good ? 'bg-[var(--brand-bright)]' : 'bg-[var(--color-danger)]',
       )}
       data-testid="delta-pill"
@@ -226,7 +226,7 @@ function MiniStat({
   return (
     <div className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-5 py-4 shadow-[var(--shadow-card)]">
       <Link to={to} data-testid={testId} className="min-w-0">
-        <span className="block text-[0.75rem] text-[var(--color-ink-muted)]">{label}</span>
+        <span className="block text-[0.875rem] text-[var(--color-ink-muted)]">{label}</span>
         <span className="mt-0.5 block text-[1.75rem] font-bold leading-tight tabular-nums" data-testid={`${testId}-value`}>{formatNumber(value)}</span>
       </Link>
       <DeltaPill value={value} previous={previous} />
@@ -248,7 +248,7 @@ function SeriesToggle({ value, onChange }: { value: FlowSeries; onChange: (next:
           onClick={() => onChange(key)}
           data-testid={`series-${key}`}
           className={cn(
-            'rounded-full px-3 py-1.5 text-[0.75rem] transition-colors',
+            'rounded-full px-3 py-1.5 text-[0.875rem] transition-colors',
             value === key ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]',
           )}
         >
@@ -269,7 +269,7 @@ function TotalCard({ value, previous, trend }: { value: number; previous?: numbe
       <div className="flex items-start justify-between gap-2 px-5 pt-4">
         <div>
           <h2 className="t-card-title">{t('dashboard.totalLeads')}</h2>
-          <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t('dashboard.totalHint')}</p>
+          <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t('dashboard.totalHint')}</p>
         </div>
         <Link to="/leads" className="chrome-circle !size-9" aria-label={t('dashboard.openLeadList')}>
           <ArrowUpRight className="size-4 rtl:-scale-x-100" aria-hidden />
@@ -278,7 +278,7 @@ function TotalCard({ value, previous, trend }: { value: number; previous?: numbe
 
       <div className="px-5 pt-3 text-center">
         <Link to="/leads" data-testid="kpi-total" className="inline-block">
-          <span className="block text-[0.75rem] text-[var(--color-ink-muted)]">{t('dashboard.totalLeads')}</span>
+          <span className="block text-[0.875rem] text-[var(--color-ink-muted)]">{t('dashboard.totalLeads')}</span>
           <span className="block text-[2.25rem] font-bold leading-tight tabular-nums" data-testid="kpi-total-value">{formatNumber(value)}</span>
         </Link>
         <div className="mt-0.5">
@@ -291,10 +291,10 @@ function TotalCard({ value, previous, trend }: { value: number; previous?: numbe
       </div>
 
       <div className="mx-auto mb-4 flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] p-1">
-        <Link to="/work" className="rounded-full bg-[var(--brand)] px-5 py-1.5 text-[0.8125rem] text-[var(--brand-contrast)]">
+        <Link to="/work" className="rounded-full bg-[var(--brand)] px-5 py-1.5 text-[0.9375rem] text-[var(--brand-contrast)]">
           {t('nav.work')}
         </Link>
-        <Link to="/leads" className="rounded-full px-5 py-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+        <Link to="/leads" className="rounded-full px-5 py-1.5 text-[0.9375rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
           {t('dashboard.allLeads')}
         </Link>
       </div>
@@ -362,7 +362,7 @@ function PipelineCard({ data, command }: { data: DashboardData; command?: Comman
         </span>
         <div>
           <h2 className="t-card-title">{t('dashboard.conversionTitle')}</h2>
-          <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t('dashboard.conversionHint')}</p>
+          <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t('dashboard.conversionHint')}</p>
         </div>
       </div>
 
@@ -384,7 +384,7 @@ function PipelineCard({ data, command }: { data: DashboardData; command?: Comman
             data-testid={stage.testId}
             className="rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] px-2.5 py-2 text-center hover:bg-[var(--color-chrome-fill)]"
           >
-            <span className="block text-[0.6875rem] text-[var(--color-ink-muted)]">{stage.label}</span>
+            <span className="block text-[0.8125rem] text-[var(--color-ink-muted)]">{stage.label}</span>
             <span className="block text-[1.25rem] font-semibold tabular-nums" data-testid={`${stage.testId}-value`}>{formatNumber(stage.value)}</span>
           </Link>
         ))}
@@ -394,19 +394,19 @@ function PipelineCard({ data, command }: { data: DashboardData; command?: Comman
         <div className="mt-auto space-y-3 rounded-[var(--radius-panel)] bg-[var(--color-surface-muted)] p-3.5">
           {command.workload.length > 0 && (
             <div data-testid="team-workload">
-              <h3 className="text-[0.8125rem] font-medium">{t('commandCenter.workload')}</h3>
+              <h3 className="text-[0.9375rem] font-medium">{t('commandCenter.workload')}</h3>
               <div className="mt-2 flex items-center">
                 {command.workload.slice(0, 4).map((member) => (
                   <span
                     key={member.id}
                     title={`${member.name} · ${member.open}`}
-                    className="-me-2 grid size-9 place-items-center rounded-full border-2 border-[var(--color-surface-muted)] bg-[var(--brand-soft)] text-[0.6875rem] font-semibold text-[var(--brand)]"
+                    className="-me-2 grid size-9 place-items-center rounded-full border-2 border-[var(--color-surface-muted)] bg-[var(--brand-soft)] text-[0.8125rem] font-semibold text-[var(--brand)]"
                   >
                     {initials(member.name)}
                   </span>
                 ))}
                 {command.workload.length > 4 && (
-                  <span className="ms-3 grid size-9 place-items-center rounded-full bg-[var(--brand)] text-[0.75rem] font-medium text-[var(--brand-contrast)]">
+                  <span className="ms-3 grid size-9 place-items-center rounded-full bg-[var(--brand)] text-[0.875rem] font-medium text-[var(--brand-contrast)]">
                     +{command.workload.length - 4}
                   </span>
                 )}
@@ -416,10 +416,10 @@ function PipelineCard({ data, command }: { data: DashboardData; command?: Comman
 
           {command.appointments_today.length > 0 && (
             <div data-testid="appointments-today">
-              <h3 className="text-[0.8125rem] font-medium">{t('commandCenter.appointmentsToday')}</h3>
+              <h3 className="text-[0.9375rem] font-medium">{t('commandCenter.appointmentsToday')}</h3>
               <ul className="mt-1.5 space-y-1">
                 {command.appointments_today.slice(0, 3).map((a) => (
-                  <li key={a.id} className="flex items-center gap-2 text-[0.75rem]">
+                  <li key={a.id} className="flex items-center gap-2 text-[0.875rem]">
                     <span className="w-11 shrink-0 tabular-nums text-[var(--color-ink-muted)]">{formatClock(a.at)}</span>
                     {a.lead_id ? (
                       <Link to={`/leads/${a.lead_id}`} className="min-w-0 flex-1 truncate hover:underline">{a.lead}</Link>
@@ -453,7 +453,7 @@ function RecommendedTable({ command, loading }: { command?: CommandCenterData; l
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="t-card-title">{t('commandCenter.recommended')}</h2>
-          <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t('commandCenter.recommendedHint')}</p>
+          <p className="text-[0.875rem] text-[var(--color-ink-muted)]">{t('commandCenter.recommendedHint')}</p>
         </div>
         <Link to="/work" className="chrome-circle !size-9" aria-label={t('dashboard.openQueue')}>
           <ArrowUpRight className="size-4 rtl:-scale-x-100" aria-hidden />
@@ -463,12 +463,12 @@ function RecommendedTable({ command, loading }: { command?: CommandCenterData; l
       {loading || !command ? (
         <Skeleton className="mt-3 h-32" />
       ) : command.recommended.length === 0 ? (
-        <p className="mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]" data-testid="no-recommendations">
+        <p className="mt-3 text-[0.9375rem] text-[var(--color-ink-muted)]" data-testid="no-recommendations">
           {t('commandCenter.nothingToDo')}
         </p>
       ) : (
         <>
-          <div className="mt-2 hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.6fr)_7rem_8rem] gap-3 px-2 text-[0.75rem] text-[var(--color-ink-muted)] sm:grid">
+          <div className="mt-2 hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.6fr)_7rem_8rem] gap-3 px-2 text-[0.875rem] text-[var(--color-ink-muted)] sm:grid">
             <span>{t('commandCenter.colName')}</span>
             <span>{t('commandCenter.colReason')}</span>
             <span>{t('commandCenter.colStatus')}</span>
@@ -480,15 +480,15 @@ function RecommendedTable({ command, loading }: { command?: CommandCenterData; l
                 <Link
                   to={`/leads/${item.id}`}
                   data-testid="recommended-item"
-                  className="grid items-center gap-x-3 gap-y-0.5 rounded-[var(--radius-control)] px-2 py-2 text-[0.8125rem] hover:bg-[var(--color-surface-muted)] sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.6fr)_7rem_8rem]"
+                  className="grid items-center gap-x-3 gap-y-0.5 rounded-[var(--radius-control)] px-2 py-2 text-[0.9375rem] hover:bg-[var(--color-surface-muted)] sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.6fr)_7rem_8rem]"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-[0.6875rem] font-semibold text-[var(--brand)]" aria-hidden>
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-[0.8125rem] font-semibold text-[var(--brand)]" aria-hidden>
                       {initials(item.name)}
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{item.name}</span>
-                      {item.project && <span className="block truncate text-[0.6875rem] text-[var(--color-ink-subtle)]">{item.project}</span>}
+                      {item.project && <span className="block truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{item.project}</span>}
                     </span>
                   </span>
                   <span className="truncate text-[var(--color-ink-muted)]">{item.reason}</span>
@@ -496,7 +496,7 @@ function RecommendedTable({ command, loading }: { command?: CommandCenterData; l
                     <span aria-hidden className="size-2 rounded-full" style={{ background: URGENCY_DOT[item.urgency] }} />
                     {t(`work.urgency.${item.urgency}`)}
                   </span>
-                  <span className="justify-self-start rounded-full bg-[var(--color-chrome-fill)] px-3 py-1 text-[0.75rem]">
+                  <span className="justify-self-start rounded-full bg-[var(--color-chrome-fill)] px-3 py-1 text-[0.875rem]">
                     {t(`work.action.${item.action}`)}
                   </span>
                 </Link>

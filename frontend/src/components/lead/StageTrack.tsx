@@ -57,7 +57,7 @@ export function StageTrack({
               <span
                 aria-hidden
                 className={cn(
-                  'grid size-[1.875rem] place-items-center rounded-full border-2 text-[0.6875rem] font-semibold transition-colors',
+                  'grid size-[1.875rem] place-items-center rounded-full border-2 text-[0.8125rem] font-semibold transition-colors',
                   isCurrent && outcome === 'won' && 'border-[var(--color-status-won)] bg-[var(--color-status-won)] text-white',
                   isCurrent && outcome === 'lost' && 'border-[var(--color-status-lost)] bg-[var(--color-status-lost)] text-white',
                   isCurrent && !outcome && 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-contrast)] shadow-[0_0_0_4px_var(--brand-soft)]',
@@ -69,7 +69,7 @@ export function StageTrack({
               </span>
               <span
                 className={cn(
-                  'max-w-full truncate text-[0.6875rem] leading-4',
+                  'max-w-full truncate text-[0.8125rem] leading-4',
                   isCurrent ? 'font-semibold text-[var(--color-ink)]' : 'text-[var(--color-ink-muted)]',
                 )}
               >

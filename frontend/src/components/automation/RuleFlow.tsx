@@ -127,7 +127,7 @@ export function RuleFlow({
           <span
             title={node.title ?? node.label}
             className={cn(
-              'inline-flex max-w-[11rem] items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.75rem] font-medium',
+              'inline-flex max-w-[11rem] items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.875rem] font-medium',
               KIND[node.kind],
             )}
           >

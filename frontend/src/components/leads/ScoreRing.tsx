@@ -67,7 +67,7 @@ export function ScoreRing({
       </svg>
 
       <span className="absolute inset-0 grid place-items-center">
-        <span className="tabular text-[0.9375rem] leading-none font-semibold" dir="ltr">
+        <span className="tabular text-[1.0625rem] leading-none font-semibold" dir="ltr">
           {score}
         </span>
       </span>

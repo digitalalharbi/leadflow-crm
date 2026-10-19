@@ -60,7 +60,7 @@ export function ProfilePage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader title={t('users.name')} />
-          <CardBody className="space-y-2.5 text-[0.875rem]">
+          <CardBody className="space-y-2.5 text-[1rem]">
             <div className="flex justify-between gap-3">
               <span className="text-[var(--color-ink-muted)]">{t('users.name')}</span>
               <span className="font-medium">{user?.name}</span>

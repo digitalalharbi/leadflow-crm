@@ -156,7 +156,7 @@ export function ReportsPage() {
               data-testid={`tab-${key}`}
               aria-current={tab === key}
               className={cn(
-                'rounded-[var(--radius-control)] px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap',
+                'rounded-[var(--radius-control)] px-3 py-1.5 text-[0.9375rem] font-medium whitespace-nowrap',
                 'transition-colors',
                 tab === key
                   ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
@@ -480,9 +480,9 @@ function OverviewTab({
             ] as const).map(([key, label]) => (
               <div key={key} className="flex items-center gap-3">
                 <RingProgress value={rates[key] ?? 0} size={64} thickness={7} tone={(rates[key] ?? 0) >= 50 ? 'good' : (rates[key] ?? 0) >= 20 ? 'warn' : 'bad'} label={t(label)}>
-                  <span className="text-[0.875rem] font-extrabold tabular-nums" dir="ltr">{rates[key]}%</span>
+                  <span className="text-[1rem] font-extrabold tabular-nums" dir="ltr">{rates[key]}%</span>
                 </RingProgress>
-                <p className="text-[0.875rem] font-medium">{t(label)}</p>
+                <p className="text-[1rem] font-medium">{t(label)}</p>
               </div>
             ))}
           </div>
@@ -605,7 +605,7 @@ function TeamTab({
                   <Td className="tabular hidden md:table-cell">{formatNumber(Number(row.replied), i18n.language)}</Td>
                   <Td className="tabular">
                     {formatNumber(Number(row.qualified), i18n.language)}
-                    <span className="t-caption ms-1.5 text-[0.6875rem]" dir="ltr">
+                    <span className="t-caption ms-1.5 text-[0.8125rem]" dir="ltr">
                       {row.qualification_rate}%
                     </span>
                   </Td>

@@ -343,7 +343,7 @@ export function PlatformPage() {
                       </Td>
 
                       <Td className="hidden lg:table-cell">
-                        <span className="tabular block whitespace-nowrap text-[0.8125rem]">
+                        <span className="tabular block whitespace-nowrap text-[0.9375rem]">
                           {t('superAdmin.usersCount', { count: tenant.users_count ?? 0 })}
                         </span>
                         <span className="t-caption tabular mt-1 block whitespace-nowrap">
@@ -528,7 +528,7 @@ function TenantIdentity({ tenant }: { tenant: TenantSummary }) {
   return (
     <div className="flex items-center gap-2.5">
       <span
-        className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] text-[0.6875rem] font-semibold text-white"
+        className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] text-[0.8125rem] font-semibold text-white"
         style={{ background: tenant.primary_color ?? 'var(--brand)' }}
         aria-hidden
       >
@@ -567,7 +567,7 @@ function UsageBar({ value, peak }: { value: number; peak: number }) {
       <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
         <span className="block h-full rounded-full bg-[var(--brand)]" style={{ width: `${width}%` }} />
       </span>
-      <span className="tabular text-[0.8125rem] font-medium">{formatNumber(value, i18n.language)}</span>
+      <span className="tabular text-[0.9375rem] font-medium">{formatNumber(value, i18n.language)}</span>
     </span>
   )
 }
@@ -634,7 +634,7 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
             )}
           >
             <div className="min-w-0">
-              <p className="text-[0.8125rem] font-medium">
+              <p className="text-[0.9375rem] font-medium">
                 {current.is_active ? t('superAdmin.suspendTitle') : t('superAdmin.activateTitle')}
               </p>
               <p className="t-caption mt-0.5">
@@ -664,7 +664,7 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
                 {(data?.users ?? []).map((user) => (
                   <li key={user.id} className="flex items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[0.8125rem] font-medium">{user.name}</p>
+                      <p className="truncate text-[0.9375rem] font-medium">{user.name}</p>
                       <p className="t-caption truncate"><bdi dir="ltr">{user.email}</bdi></p>
                     </div>
                     <span className="t-caption shrink-0">{user.role ? t(`roles.${user.role}`) : '—'}</span>
@@ -742,11 +742,11 @@ function CopyField({ label, value }: { label: string; value: string }) {
 
   return (
     <div>
-      <p className="mb-1.5 text-[0.8125rem] font-medium">{label}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-medium">{label}</p>
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.875rem]"
         >
           {value}
         </code>

@@ -56,7 +56,7 @@ export function CreativesPage() {
           </div>
         }
       />
-      <Link to="/campaigns" className="mb-3 inline-flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+      <Link to="/campaigns" className="mb-3 inline-flex items-center gap-1.5 text-[0.9375rem] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
         <Back className="size-4" aria-hidden />
         {t('campaigns.title')}
       </Link>
@@ -107,9 +107,9 @@ function CreativeCard({ row, currency, onDrafts, onAsk }: { row: CreativeRow; cu
 
       <div className="space-y-3 p-3">
         <div>
-          <p className="truncate text-[0.875rem] font-semibold" dir="auto">{row.name}</p>
-          {row.creative?.headline && <p className="truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">{row.creative.headline}</p>}
-          <p className="truncate text-[0.6875rem] text-[var(--color-ink-subtle)]" dir="auto">{row.campaign?.name}</p>
+          <p className="truncate text-[1rem] font-semibold" dir="auto">{row.name}</p>
+          {row.creative?.headline && <p className="truncate text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">{row.creative.headline}</p>}
+          <p className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)]" dir="auto">{row.campaign?.name}</p>
         </div>
 
         <dl className="grid grid-cols-4 gap-1 text-center">
@@ -120,8 +120,8 @@ function CreativeCard({ row, currency, onDrafts, onAsk }: { row: CreativeRow; cu
             ['revenue', row.revenue ? money(row.revenue) : '—'],
           ].map(([k, v]) => (
             <div key={k} className="min-w-0">
-              <dd className="truncate text-[0.8125rem] font-semibold tabular-nums" dir="ltr">{v}</dd>
-              <dt className="truncate text-[0.625rem] text-[var(--color-ink-subtle)]">{t(`creatives.metric.${k}`)}</dt>
+              <dd className="truncate text-[0.9375rem] font-semibold tabular-nums" dir="ltr">{v}</dd>
+              <dt className="truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`creatives.metric.${k}`)}</dt>
             </div>
           ))}
         </dl>
@@ -153,7 +153,7 @@ function ActionIcon({ icon: Icon, label, onClick, disabled, testId, badge }: { i
       className={cn('relative grid size-8 place-items-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--brand-soft)] hover:text-[var(--brand)] disabled:opacity-35 disabled:hover:bg-transparent')}
     >
       <Icon className="size-4" aria-hidden />
-      {badge ? <span className="absolute -end-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-[var(--brand)] text-[0.5625rem] font-bold text-[var(--brand-contrast)]">{badge}</span> : null}
+      {badge ? <span className="absolute -end-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-[var(--brand)] text-[0.8125rem] font-bold text-[var(--brand-contrast)]">{badge}</span> : null}
     </button>
   )
 }
@@ -203,7 +203,7 @@ function DraftsDrawer({ ad, onClose }: { ad: CreativeRow; onClose: () => void })
       <div className="space-y-4">
         <div className="flex gap-1" role="radiogroup">
           {(['copy', 'hook', 'variation'] as const).map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn('flex-1 rounded-full px-3 py-1.5 text-[0.8125rem]', kind === k ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-chrome-fill)]')}>
+            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn('flex-1 rounded-full px-3 py-1.5 text-[0.9375rem]', kind === k ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-chrome-fill)]')}>
               {t(`creatives.kind.${k}`)}
             </button>
           ))}
@@ -223,9 +223,9 @@ function DraftsDrawer({ ad, onClose }: { ad: CreativeRow; onClose: () => void })
         <ul className="space-y-2" data-testid="drafts-list">
           {drafts.map((d) => (
             <li key={d.id} className={cn('rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-3', d.status !== 'draft' && 'opacity-60')}>
-              <p className="mb-1 text-[0.6875rem] text-[var(--color-ink-subtle)]">{t(`creatives.kind.${d.kind}`)} · {t(`creatives.source.${d.source ?? 'user'}`, { defaultValue: '' })}</p>
-              <ol className="list-decimal space-y-1 ps-5 text-[0.8125rem]" dir="auto">{d.items.map((line, i) => <li key={i}>{line}</li>)}</ol>
-              {d.flags.length > 0 && <p className="mt-1 text-[0.6875rem] text-[var(--color-danger)]">{t('creatives.flagged', { words: d.flags.join('، ') })}</p>}
+              <p className="mb-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`creatives.kind.${d.kind}`)} · {t(`creatives.source.${d.source ?? 'user'}`, { defaultValue: '' })}</p>
+              <ol className="list-decimal space-y-1 ps-5 text-[0.9375rem]" dir="auto">{d.items.map((line, i) => <li key={i}>{line}</li>)}</ol>
+              {d.flags.length > 0 && <p className="mt-1 text-[0.8125rem] text-[var(--color-danger)]">{t('creatives.flagged', { words: d.flags.join('، ') })}</p>}
               {d.status === 'draft' && (
                 <div className="mt-2 flex gap-1.5">
                   <Button size="sm" variant="ghost" onClick={() => mark.mutate({ id: d.id, status: 'used' })}>{t('creatives.markUsed')}</Button>
@@ -280,7 +280,7 @@ function ProposeModal({ ask, candidates, onClose }: { ask: NonNullable<Ask>; can
       }
     >
       <div className="space-y-4">
-        <p className="text-[0.8125rem] font-semibold" dir="auto">{ad.name}</p>
+        <p className="text-[0.9375rem] font-semibold" dir="auto">{ad.name}</p>
         {kind === 'replace' && (
           <Select label={t('creatives.replaceWith')} value={replacement} onChange={(e) => setReplacement(e.target.value)}>
             <option value="">—</option>

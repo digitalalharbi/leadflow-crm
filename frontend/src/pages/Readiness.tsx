@@ -109,7 +109,7 @@ function DeploymentBanner({ deployment }: { deployment: ReadinessReport['deploym
           </p>
           <p className="t-caption">{t(`readiness.deployment.hint.${deployment.kind}`)}</p>
         </div>
-        <ul className="flex flex-wrap gap-1.5 text-[0.75rem]" dir="ltr">
+        <ul className="flex flex-wrap gap-1.5 text-[0.875rem]" dir="ltr">
           {[
             [deployment.environment, deployment.environment === 'production'],
             ['HTTPS', deployment.https],
@@ -149,7 +149,7 @@ function ReadinessHero({ report }: { report: ReadinessReport }) {
             <span className="text-[1.5rem] font-extrabold tabular-nums" dir="ltr">{percent}%</span>
           </RingProgress>
           <div>
-            <p className="text-[0.9375rem] font-semibold">{t('readiness.hero.proven')}</p>
+            <p className="text-[1.0625rem] font-semibold">{t('readiness.hero.proven')}</p>
             <p className="t-caption tabular-nums">{t('readiness.hero.ofTotal', { proven, total })}</p>
           </div>
         </div>
@@ -163,7 +163,7 @@ function ReadinessHero({ report }: { report: ReadinessReport }) {
         </div>
 
         <div className="lg:col-span-5" data-testid="readiness-blocking">
-          <p className="mb-2 text-[0.8125rem] font-semibold">{t('readiness.hero.blocking')}</p>
+          <p className="mb-2 text-[0.9375rem] font-semibold">{t('readiness.hero.blocking')}</p>
           {blocking.length === 0 ? (
             <p className="t-caption">{t('readiness.hero.nothingBlocking')}</p>
           ) : (
@@ -173,14 +173,14 @@ function ReadinessHero({ report }: { report: ReadinessReport }) {
                   <a href={`#readiness-${item.key}`} className="flex items-center gap-2.5 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 hover:bg-[var(--color-chrome-fill)]">
                     <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: RUNG_COLOR[item.state] }} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.8125rem] font-medium">{t(`readiness.item.${item.key}`)}</span>
+                      <span className="block truncate text-[0.9375rem] font-medium">{t(`readiness.item.${item.key}`)}</span>
                       {item.blocker && (
-                        <span className="block truncate text-[0.6875rem] text-[var(--color-ink-muted)]">
+                        <span className="block truncate text-[0.8125rem] text-[var(--color-ink-muted)]">
                           {t(`readiness.blocker.${item.blocker}`, { defaultValue: item.blocker })}
                         </span>
                       )}
                     </span>
-                    <span className="shrink-0 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.6875rem] text-[var(--color-ink-muted)]">
+                    <span className="shrink-0 rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[0.8125rem] text-[var(--color-ink-muted)]">
                       {item.commissionable ? t('readiness.hero.yourMove') : t('readiness.hero.theirMove')}
                     </span>
                     <ArrowDown className="size-3.5 shrink-0 text-[var(--color-ink-subtle)]" aria-hidden />
@@ -201,7 +201,7 @@ function LadderBar({ title, steps, testId }: { title: string; steps: Array<{ key
 
   return (
     <div data-testid={testId}>
-      <p className="mb-1.5 text-[0.8125rem] font-semibold">{title}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-semibold">{title}</p>
       <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" dir="ltr">
         {sum > 0 &&
           steps.filter((step) => step.count > 0).map((step) => (
@@ -210,7 +210,7 @@ function LadderBar({ title, steps, testId }: { title: string; steps: Array<{ key
       </div>
       <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
         {steps.map((step) => (
-          <li key={step.key} className="flex items-center gap-1.5 text-[0.6875rem] text-[var(--color-ink-muted)]" data-testid={`${testId}-${step.key}`}>
+          <li key={step.key} className="flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-ink-muted)]" data-testid={`${testId}-${step.key}`}>
             <span aria-hidden className="size-2 rounded-full" style={{ background: step.color }} />
             {step.label}
             <span className="font-semibold tabular-nums text-[var(--color-ink)]">{step.count}</span>
@@ -254,7 +254,7 @@ function ItemCard({ item }: { item: ReadinessItem }) {
 
         {item.checks.length > 0 && (
           <details className="group">
-            <summary className="flex cursor-pointer list-none items-center gap-2 text-[0.75rem] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[0.875rem] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
               <span className="min-w-0 flex-1">
                 <ProgressBar
                   value={(item.checks.filter((check) => check.ok).length / item.checks.length) * 100}
@@ -359,7 +359,7 @@ function InfraRow({ item }: { item: InfraItem }) {
 
   return (
     <div className="grid gap-x-4 gap-y-1.5 px-4 py-3 md:grid-cols-12 md:items-center" data-testid={`infra-${item.key}`}>
-      <h3 className="flex items-center gap-2 text-[0.875rem] font-semibold md:col-span-3">
+      <h3 className="flex items-center gap-2 text-[1rem] font-semibold md:col-span-3">
         <Icon className="size-4 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
         {t(`readiness.infra.item.${item.key}`)}
         <Badge tone={STATE_TONE[item.ladder]} testId={`infra-${item.key}-state`}>
@@ -367,7 +367,7 @@ function InfraRow({ item }: { item: InfraItem }) {
         </Badge>
       </h3>
 
-      <dl className="flex min-w-0 gap-4 whitespace-nowrap text-[0.75rem] md:col-span-4">
+      <dl className="flex min-w-0 gap-4 whitespace-nowrap text-[0.875rem] md:col-span-4">
         <div className="flex shrink-0 gap-1.5">
           <dt className="text-[var(--color-ink-muted)]">{t('readiness.infra.lastCheck')}</dt>
           <dd className="tabular-nums" data-testid={`infra-${item.key}-checked`}>{formatRelative(item.last_check, i18n.language)}</dd>
@@ -375,7 +375,7 @@ function InfraRow({ item }: { item: InfraItem }) {
         <div className="flex min-w-0 gap-1.5">
           <dt className="shrink-0 text-[var(--color-ink-muted)]">{t('readiness.infra.lastError')}</dt>
           <dd
-            className={cn('min-w-0 truncate', item.last_error && 'font-mono text-[0.6875rem] text-[var(--color-danger)]')}
+            className={cn('min-w-0 truncate', item.last_error && 'font-mono text-[0.8125rem] text-[var(--color-danger)]')}
             title={item.last_error ?? undefined}
             data-testid={`infra-${item.key}-error`}
           >
@@ -386,7 +386,7 @@ function InfraRow({ item }: { item: InfraItem }) {
 
       <p
         className={cn(
-          'rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.75rem] md:col-span-5',
+          'rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.875rem] md:col-span-5',
           item.required_action
             ? 'bg-[color-mix(in_srgb,var(--color-warning)_10%,transparent)]'
             : 'text-[var(--color-ink-muted)]',
@@ -413,10 +413,10 @@ function EvidenceList({ evidence, testId }: { evidence: Evidence[]; testId: stri
 
   return (
     <div data-testid={testId}>
-      <p className="mb-1 text-[0.75rem] font-semibold text-[var(--color-ink-muted)]">{t('readiness.evidence.title')}</p>
+      <p className="mb-1 text-[0.875rem] font-semibold text-[var(--color-ink-muted)]">{t('readiness.evidence.title')}</p>
       <ul className="space-y-1">
         {evidence.map((fact) => (
-          <li key={fact.key} className="flex items-start gap-2 text-[0.8125rem]" data-evidence={fact.key} data-ok={fact.ok}>
+          <li key={fact.key} className="flex items-start gap-2 text-[0.9375rem]" data-evidence={fact.key} data-ok={fact.ok}>
             {fact.ok ? (
               <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--color-success)]" aria-hidden />
             ) : (
@@ -425,13 +425,13 @@ function EvidenceList({ evidence, testId }: { evidence: Evidence[]; testId: stri
             <span className={cn('min-w-0 flex-1', !fact.ok && 'text-[var(--color-ink-muted)]')}>
               {t(`readiness.evidence.${fact.key}`, { defaultValue: fact.key })}
               {fact.detail && fact.key === 'recorded_in_production' && (
-                <span className="ms-1.5 rounded-full bg-[var(--color-chrome-fill)] px-1.5 py-0.5 text-[0.6875rem]">{t(`readiness.deployment.${fact.detail}`, { defaultValue: fact.detail })}</span>
+                <span className="ms-1.5 rounded-full bg-[var(--color-chrome-fill)] px-1.5 py-0.5 text-[0.8125rem]">{t(`readiness.deployment.${fact.detail}`, { defaultValue: fact.detail })}</span>
               )}
               {fact.detail && fact.key === 'no_current_error' && !fact.ok && (
-                <span className="ms-1.5 font-mono text-[0.6875rem] text-[var(--color-danger)]" dir="ltr">{fact.detail}</span>
+                <span className="ms-1.5 font-mono text-[0.8125rem] text-[var(--color-danger)]" dir="ltr">{fact.detail}</span>
               )}
             </span>
-            {fact.at && <span className="shrink-0 text-[0.6875rem] tabular-nums text-[var(--color-ink-subtle)]">{formatRelative(fact.at, i18n.language)}</span>}
+            {fact.at && <span className="shrink-0 text-[0.8125rem] tabular-nums text-[var(--color-ink-subtle)]">{formatRelative(fact.at, i18n.language)}</span>}
           </li>
         ))}
       </ul>

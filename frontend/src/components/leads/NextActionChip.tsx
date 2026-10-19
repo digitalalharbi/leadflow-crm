@@ -47,7 +47,7 @@ export function NextActionChip({
       data-testid="next-action"
       data-urgency={action.urgency}
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.75rem] font-medium',
+        'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.875rem] font-medium',
         TONE[action.urgency] ?? TONE.low,
       )}
     >

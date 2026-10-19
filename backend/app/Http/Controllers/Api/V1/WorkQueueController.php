@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\OutcomeRecorder;
+use App\Domain\Leads\QueueRank;
 use App\Domain\Leads\WhyNow;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
@@ -60,14 +62,26 @@ class WorkQueueController extends Controller
             ->orderByRaw('first_contact_at is not null')  // never-contacted first
             ->orderBy('next_follow_up_at')
             ->orderByDesc('score')
+            ->with('campaignRef:id,quality_score')
             ->limit(50 + count($skipped))
             ->get();
 
+        // What each lead has been doing, for the whole window in a few queries.
+        app(LeadIntelligence::class)->attach($candidates);
+
+        // Urgency is the bucket and is never overridden; inside it the lead's
+        // own score, intent, engagement, recency, value and campaign decide,
+        // and the strongest three are named so the order can be explained.
         $ranked = $candidates
-            ->map(fn (Lead $lead) => ['lead' => $lead, 'action' => $this->nextBest->for($lead, $target)])
+            ->map(function (Lead $lead) use ($target) {
+                $action = $this->nextBest->for($lead, $target);
+
+                return ['lead' => $lead, 'action' => $action, 'rank' => app(QueueRank::class)->for($lead, $action)];
+            })
             ->reject(fn (array $row) => $row['action']['action'] === 'wait'
                 || $row['action']['action'] === 'none')
-            ->sortBy(fn (array $row) => $this->nextBest->weight($row['action']))
+            ->sort(fn (array $a, array $b) => [$this->nextBest->weight($a['action']), $b['rank']['within']]
+                <=> [$this->nextBest->weight($b['action']), $a['rank']['within']])
             ->values();
 
         $top = $ranked->first();
@@ -85,6 +99,8 @@ class WorkQueueController extends Controller
         return ApiResponse::success([
             'lead' => new LeadListResource($top['lead']),
             'action' => $top['action'],
+            'rank' => ['score' => $top['rank']['score'], 'reason' => $top['rank']['reason']],
+            'intelligence' => $top['lead']->getRelation('intelligence'),
             'remaining' => $ranked->count(),
             /*
              * The few behind this one, and the last few things that happened to
@@ -120,6 +136,7 @@ class WorkQueueController extends Controller
                 'temperature' => $row['lead']->temperature?->value,
                 'action' => $row['action']['action'] ?? null,
                 'urgency' => $row['action']['urgency'] ?? null,
+                'rank_reason' => $row['rank']['reason'] ?: null,
                 'waiting_since' => $row['lead']->created_at?->toIso8601String(),
             ])
             ->values()

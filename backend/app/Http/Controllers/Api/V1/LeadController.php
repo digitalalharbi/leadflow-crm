@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
+use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
 use App\Domain\Leads\StageAnnouncer;
@@ -129,6 +130,9 @@ class LeadController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        // One pass for the whole page: a handful of grouped queries, not one per row.
+        app(LeadIntelligence::class)->attach(collect($leads->items()));
+
         return ApiResponse::paginated($leads, LeadListResource::class);
     }
 
@@ -144,8 +148,12 @@ class LeadController extends Controller
             'customFieldValues.field',
         ]);
 
+        $intelligence = app(LeadIntelligence::class)->for($lead);
+        $lead->setRelation('intelligence', $intelligence);
+
         return ApiResponse::success([
             'lead' => new LeadResource($lead),
+            'intelligence' => $intelligence,
             'activities' => LeadActivityResource::collection(
                 $lead->activities()->with('user:id,uuid,name')->limit(100)->get()
             ),

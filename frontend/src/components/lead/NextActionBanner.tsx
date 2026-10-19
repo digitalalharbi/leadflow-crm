@@ -1,5 +1,5 @@
 import {
-  CalendarPlus, ClipboardCheck, Clock, MessageCircleReply, Phone, PhoneCall, UserPlus,
+  CalendarPlus, ClipboardCheck, Clock, FileText, Mail, MessageCircle, MessageCircleReply, Phone, PhoneCall, Sprout, UserPlus, XCircle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,11 @@ const ICON: Record<string, LucideIcon> = {
   reply_now: MessageCircleReply,
   follow_up: Phone,
   book_meeting: CalendarPlus,
+  send_whatsapp: MessageCircle,
+  send_email: Mail,
+  send_brochure: FileText,
+  nurture: Sprout,
+  close_lost: XCircle,
   schedule_follow_up: Clock,
   assign: UserPlus,
   review_fit: ClipboardCheck,

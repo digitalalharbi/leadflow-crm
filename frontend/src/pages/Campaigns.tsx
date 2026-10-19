@@ -106,6 +106,7 @@ export function CampaignsPage() {
             {t(`platforms.${p.key}`, { defaultValue: p.key })}
             <span className="text-[0.6875rem] text-[var(--color-ink-subtle)]">
               {p.connected ? t('campaigns.platformState.connected', { count: p.accounts }) : p.built ? t('campaigns.platformState.available') : t('campaigns.platformState.coming')}
+              {p.connected && ` · ${t(`integrationState.${p.state}`)}`}
             </span>
           </span>
         ))}

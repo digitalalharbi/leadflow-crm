@@ -1568,6 +1568,9 @@ export default {
       change_too_large: 'التغيير أكبر من {{max_change_pct}}% — المسموح بين {{min}} و{{max}}',
       must_start_paused: 'الحملة الجديدة تبدأ موقوفة',
       forbidden_words: 'يحتوي كلمات ممنوعة',
+      no_account: 'حدّد حساب الإعلانات',
+      targeting_missing: 'حدّد الاستهداف',
+      schedule_missing: 'حدّد البداية أو النهاية',
     },
   },
   rules: {
@@ -1627,6 +1630,42 @@ export default {
     best: 'الأفضل',
     worst: 'الأعلى تكلفة للمؤهل',
     notes: 'ملاحظات',
+  },
+
+  adConnections: {
+    title: 'حسابات الإعلانات',
+    connect: 'ربط',
+    manage: 'إدارة',
+    sandbox: 'تجريبي',
+    live: 'حقيقي',
+    mode: 'نوع الحساب',
+    actions: 'الإجراءات المتاحة',
+    supported: '{{count}} من {{total}} إجراء متاح',
+    synced: 'آخر مزامنة {{when}}',
+    drawerTitle: 'ربط {{platform}}',
+    drawerHint: 'تُحفظ البيانات مشفّرة ولا تُعرض مرة أخرى. نختبر الاتصال فور الحفظ.',
+    saveAndTest: 'حفظ واختبار',
+    disconnect: 'فصل',
+    testOk: 'نجح الاتصال — {{count}} حساب.',
+    testFailed: 'تعذّر الاتصال.',
+    accountsHint: 'اختياري: معرّفات الحسابات مفصولة بفواصل',
+    field: {
+      access_token: 'رمز الوصول (Access token)', app_id: 'معرّف التطبيق (App ID)', secret: 'سر التطبيق (App secret)',
+      developer_token: 'رمز المطوّر (Developer token)', client_id: 'معرّف العميل (Client ID)', client_secret: 'سر العميل (Client secret)',
+      refresh_token: 'رمز التحديث (Refresh token)', login_customer_id: 'حساب المدير (Manager account ID)',
+      consumer_key: 'مفتاح الواجهة (API key)', consumer_secret: 'سر الواجهة (API secret)', access_token_secret: 'سر رمز الوصول (Access token secret)',
+      account_ids: 'معرّفات الحسابات',
+    },
+    reason: {
+      not_built: 'غير مبني بعد',
+      platform_has_no_copy: 'المنصة لا توفر نسخ المجموعات',
+      needs_media_upload: 'يحتاج رفع وسائط من مدير الإعلانات',
+      needs_asset_editor: 'يحتاج محرر الأصول',
+      needs_post_composer: 'يحتاج إنشاء منشور',
+      posts_are_immutable: 'المنشور لا يُعدَّل',
+      criteria_not_built: 'معايير الاستهداف غير مبنية',
+      platform_not_built: 'المنصة غير مبنية',
+    },
   },
 
   visual: {
@@ -2032,6 +2071,7 @@ export default {
   },
 
   integrations: {
+    view: { sources: 'مصادر العملاء', ads: 'حسابات الإعلانات' },
     showDetail: 'عرض التفاصيل',
     hideDetail: 'إخفاء التفاصيل',
     lastSync: 'آخر مزامنة',

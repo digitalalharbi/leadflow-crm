@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
+import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel'
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
 import { SheetSources } from '@/components/integrations/SheetSources'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
@@ -15,7 +16,7 @@ import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, Drawer, EmptyState, ErrorState,
-  Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr,
+  Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr, Tabs,
 } from '@/components/ui'
 import type { IntegrationCard, SyncResult } from '@/types/api'
 import { cn } from '@/lib/cn'
@@ -43,6 +44,7 @@ export function IntegrationsPage() {
 
   const [secret, setSecret] = useState<{ url: string; secret: string } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [view, setView] = useState<'sources' | 'ads'>('sources')
   /** Detail starts closed: the grid above is the answer, this is the evidence. */
   const [detailOpen, setDetailOpen] = useState(false)
   const demoMode = useAuth((s) => s.demoMode)
@@ -162,6 +164,16 @@ export function IntegrationsPage() {
         subtitle={t('integrations.subtitle')}
         actions={
           <>
+            {/* The view switch lives in the header, so it costs the grid no height. */}
+            <Tabs
+              testId="integrations-tabs"
+              value={view}
+              onChange={setView}
+              items={[
+                { key: 'sources', label: t('integrations.view.sources') },
+                { key: 'ads', label: t('integrations.view.ads') },
+              ]}
+            />
             {demoMode && (
               <Button
                 variant="outline"
@@ -186,6 +198,16 @@ export function IntegrationsPage() {
         }
       />
 
+      {/*
+        Two kinds of connection, two views: where leads come from, and the ad
+        accounts campaigns are managed through. They need different keys and
+        answer different questions, and the first is the one opened daily.
+      */}
+
+      {view === 'ads' ? (
+        <AdConnectionsPanel />
+      ) : (
+      <>
       {/* Leads that arrive in a spreadsheet, on the same page as every other
           source — because that is what it is. */}
       <div className="mb-3">
@@ -197,6 +219,7 @@ export function IntegrationsPage() {
       <div className="mb-3">
         <IntegrationGrid />
       </div>
+
 
       {/*
         Everything below is detail, and detail is one press away rather than a
@@ -497,6 +520,9 @@ export function IntegrationsPage() {
           void queryClient.invalidateQueries({ queryKey: ['integrations'] })
         }}
       />
+
+      </>
+      )}
 
       <Modal
         open={Boolean(syncResult)}

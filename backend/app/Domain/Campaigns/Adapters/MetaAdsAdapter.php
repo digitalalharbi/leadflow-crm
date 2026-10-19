@@ -3,39 +3,34 @@
 namespace App\Domain\Campaigns\Adapters;
 
 use App\Domain\Campaigns\AdPlatform;
-use App\Domain\Campaigns\Contracts\AdPlatformAdapter;
 use App\Models\AdAccount;
-use App\Models\Integration;
+use App\Models\AdConnection;
 use Carbon\CarbonInterface;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * Meta's Marketing API, read side.
+ * Meta's Marketing API (Graph v21).
  *
- * Graph API calls are paged and bounded: a workspace with a very large account
- * is read in full up to a page cap, and the cap is a number rather than a loop
- * that runs until the platform stops answering.
+ * Reads are paged and bounded by a page cap. Writes are single POSTs to the
+ * object; anything Meta creates here is created PAUSED, so nothing starts
+ * spending because a proposal was approved — a person turns it on.
  */
-class MetaAdsAdapter implements AdPlatformAdapter
+class MetaAdsAdapter extends AbstractAdAdapter
 {
     private const BASE = 'https://graph.facebook.com/v21.0';
 
     private const MAX_PAGES = 20;
 
+    protected const SUPPORTED = [
+        'pause', 'resume', 'update_budget', 'duplicate_ad_set', 'create_campaign',
+        'create_ad', 'update_creative', 'update_targeting', 'schedule',
+    ];
+
     public function platform(): string
     {
         return AdPlatform::Meta->value;
-    }
-
-    public function isImplemented(): bool
-    {
-        return true;
-    }
-
-    public function isConfigured(?Integration $integration): bool
-    {
-        return $integration !== null && ! empty(data_get($integration->credentials, 'access_token'));
     }
 
     public function requiredCredentials(): array
@@ -43,32 +38,33 @@ class MetaAdsAdapter implements AdPlatformAdapter
         return ['access_token'];
     }
 
-    public function actions(): array
+    public function optionalSettings(): array
     {
-        return ['pause', 'resume', 'update_budget'];
+        return ['account_ids', 'page_ids'];
     }
 
-    public function accounts(Integration $integration): array
+    public function accounts(AdConnection $connection): array
     {
-        return collect($this->paged($integration, '/me/adaccounts', [
-            'fields' => 'account_id,name,currency,account_status',
-            'limit' => 100,
-        ]))->map(fn (array $row) => [
-            'external_id' => (string) ($row['account_id'] ?? ltrim((string) ($row['id'] ?? ''), 'act_')),
-            'name' => $row['name'] ?? null,
-            'currency' => $row['currency'] ?? null,
-            // 1 is ACTIVE in Meta's account_status enum; anything else is not spendable.
-            'status' => ((int) ($row['account_status'] ?? 1)) === 1 ? 'active' : 'paused',
-        ])->filter(fn (array $row) => $row['external_id'] !== '')->values()->all();
+        $only = (array) $connection->setting('account_ids', []);
+
+        return collect($this->paged($connection, '/me/adaccounts', ['fields' => 'account_id,name,currency,account_status', 'limit' => 100]))
+            ->map(fn (array $row) => [
+                'external_id' => (string) ($row['account_id'] ?? ltrim((string) ($row['id'] ?? ''), 'act_')),
+                'name' => $row['name'] ?? null,
+                'currency' => $row['currency'] ?? null,
+                // 1 is ACTIVE in Meta's account_status enum; anything else is not spendable.
+                'status' => ((int) ($row['account_status'] ?? 1)) === 1 ? 'active' : 'paused',
+            ])
+            ->filter(fn (array $row) => $row['external_id'] !== '' && ($only === [] || in_array($row['external_id'], $only, true)))
+            ->values()->all();
     }
 
-    public function structure(Integration $integration, AdAccount $account): array
+    public function structure(AdConnection $connection, AdAccount $account): array
     {
         $act = '/act_'.$account->external_id;
 
-        $campaigns = collect($this->paged($integration, $act.'/campaigns', [
-            'fields' => 'id,name,effective_status,objective,daily_budget,lifetime_budget,start_time,stop_time',
-            'limit' => 200,
+        $campaigns = collect($this->paged($connection, $act.'/campaigns', [
+            'fields' => 'id,name,effective_status,objective,daily_budget,lifetime_budget,start_time,stop_time', 'limit' => 200,
         ]))->map(fn (array $row) => [
             'external_id' => (string) $row['id'],
             'name' => (string) ($row['name'] ?? $row['id']),
@@ -80,18 +76,18 @@ class MetaAdsAdapter implements AdPlatformAdapter
             'ends_at' => $row['stop_time'] ?? null,
         ])->all();
 
-        $adSets = collect($this->paged($integration, $act.'/adsets', [
-            'fields' => 'id,name,campaign_id,effective_status,daily_budget',
-            'limit' => 200,
+        $adSets = collect($this->paged($connection, $act.'/adsets', [
+            'fields' => 'id,name,campaign_id,effective_status,daily_budget,targeting', 'limit' => 200,
         ]))->map(fn (array $row) => [
             'external_id' => (string) $row['id'],
             'campaign_external_id' => (string) ($row['campaign_id'] ?? ''),
             'name' => (string) ($row['name'] ?? $row['id']),
             'status' => $this->status($row['effective_status'] ?? null),
             'daily_budget_minor' => isset($row['daily_budget']) ? (int) $row['daily_budget'] : null,
+            'targeting' => $row['targeting'] ?? null,
         ])->all();
 
-        $ads = collect($this->paged($integration, $act.'/ads', [
+        $ads = collect($this->paged($connection, $act.'/ads', [
             'fields' => 'id,name,campaign_id,adset_id,effective_status,creative{id,name,title,body,call_to_action_type,thumbnail_url,image_url,object_type}',
             'limit' => 200,
         ]))->map(function (array $row) {
@@ -119,9 +115,9 @@ class MetaAdsAdapter implements AdPlatformAdapter
         return ['campaigns' => $campaigns, 'ad_sets' => $adSets, 'ads' => $ads];
     }
 
-    public function metrics(Integration $integration, AdAccount $account, CarbonInterface $from, CarbonInterface $to): array
+    public function metrics(AdConnection $connection, AdAccount $account, CarbonInterface $from, CarbonInterface $to): array
     {
-        $rows = $this->paged($integration, '/act_'.$account->external_id.'/insights', [
+        $rows = $this->paged($connection, '/act_'.$account->external_id.'/insights', [
             'level' => 'ad',
             'time_increment' => 1,
             'fields' => 'campaign_id,adset_id,ad_id,spend,impressions,clicks,actions,action_values,account_currency',
@@ -139,70 +135,148 @@ class MetaAdsAdapter implements AdPlatformAdapter
             'spend_minor' => (int) round(((float) ($row['spend'] ?? 0)) * 100),
             'impressions' => (int) ($row['impressions'] ?? 0),
             'clicks' => (int) ($row['clicks'] ?? 0),
-            'leads' => $this->action($row['actions'] ?? [], ['lead', 'onsite_conversion.lead_grouped']),
-            'purchases' => $this->action($row['actions'] ?? [], ['purchase', 'omni_purchase']),
-            'revenue_minor' => (int) round($this->actionValue($row['action_values'] ?? [], ['purchase', 'omni_purchase']) * 100),
+            'leads' => $this->sumActions($row['actions'] ?? [], ['lead', 'onsite_conversion.lead_grouped']),
+            'purchases' => $this->sumActions($row['actions'] ?? [], ['purchase', 'omni_purchase']),
+            'revenue_minor' => (int) round($this->sumActions($row['action_values'] ?? [], ['purchase', 'omni_purchase'], true) * 100),
             'currency' => $row['account_currency'] ?? $account->currency,
         ])->filter(fn (array $row) => $row['campaign_external_id'] !== '')->values()->all();
     }
 
-    /**
-     * Pause, resume and daily budget, on a campaign, ad set or ad. All three
-     * are one POST to the object itself in Meta's Graph API.
-     */
-    public function execute(Integration $integration, string $action, array $target, array $payload): array
+    /** Lead forms live on Facebook Pages; listed for the pages the connection names. */
+    public function leadForms(AdConnection $connection, AdAccount $account): ?array
     {
-        $fields = match ($action) {
-            'pause' => ['status' => 'PAUSED'],
-            'resume' => ['status' => 'ACTIVE'],
-            // Minor units, which is what Meta's budget fields are in.
-            'update_budget' => ['daily_budget' => (int) ($payload['daily_budget_minor'] ?? 0)],
-            default => null,
-        };
+        $forms = [];
 
-        if ($fields === null || ($action === 'update_budget' && $target['level'] === 'ad')) {
-            return ['ok' => false, 'request' => [], 'response' => null, 'error' => "Meta cannot {$action} at the {$target['level']} level here."];
+        foreach ((array) $connection->setting('page_ids', []) as $page) {
+            foreach ($this->paged($connection, '/'.$page.'/leadgen_forms', ['fields' => 'id,name,status', 'limit' => 100]) as $row) {
+                $forms[] = ['external_id' => (string) $row['id'], 'name' => (string) ($row['name'] ?? $row['id']), 'status' => $row['status'] ?? null];
+            }
         }
 
-        $request = ['object' => $target['external_id'], 'fields' => $fields];
-        $response = Http::withToken((string) data_get($integration->credentials, 'access_token'))
-            ->timeout(30)
-            ->asForm()
-            ->post(self::BASE.'/'.$target['external_id'], $fields);
-
-        return [
-            'ok' => $response->successful() && (bool) $response->json('success', true),
-            'request' => $request,
-            'response' => ['status' => $response->status(), 'body' => $response->json() ?? []],
-            'error' => $response->successful() ? null : (string) $response->json('error.message', 'Meta refused the change'),
-        ];
+        return $forms;
     }
 
-    /** @return list<array<string, mixed>> */
-    private function paged(Integration $integration, string $path, array $query): array
+    // ------------------------------------------------------------- actions
+
+    protected function pause(AdConnection $c, array $target, array $payload): array
     {
-        $token = data_get($integration->credentials, 'access_token');
+        return $this->post($c, '/'.$this->requireTarget($target, 'campaign', 'ad_set', 'ad'), ['status' => 'PAUSED']);
+    }
+
+    protected function resume(AdConnection $c, array $target, array $payload): array
+    {
+        return $this->post($c, '/'.$this->requireTarget($target, 'campaign', 'ad_set', 'ad'), ['status' => 'ACTIVE']);
+    }
+
+    protected function updateBudget(AdConnection $c, array $target, array $payload): array
+    {
+        // Minor units, which is what Meta's budget fields are in.
+        return $this->post($c, '/'.$this->requireTarget($target, 'campaign', 'ad_set'), ['daily_budget' => (int) ($payload['daily_budget_minor'] ?? 0)]);
+    }
+
+    protected function duplicateAdSet(AdConnection $c, array $target, array $payload): array
+    {
+        $id = $this->requireTarget($target, 'ad_set');
+
+        return $this->post($c, "/{$id}/copies", ['status_option' => 'PAUSED', 'deep_copy' => 'true'], 'copied_adset_id');
+    }
+
+    protected function createCampaign(AdConnection $c, array $target, array $payload): array
+    {
+        return $this->post($c, '/act_'.$this->requireAccount($target).'/campaigns', [
+            'name' => (string) ($payload['name'] ?? 'Campaign'),
+            'objective' => (string) ($payload['objective'] ?? 'OUTCOME_LEADS'),
+            'status' => 'PAUSED',
+            'special_ad_categories' => json_encode($payload['special_ad_categories'] ?? []),
+        ], 'id');
+    }
+
+    protected function createAd(AdConnection $c, array $target, array $payload): array
+    {
+        $adSet = $this->requireTarget($target, 'ad_set');
+
+        if (blank($payload['creative_id'] ?? null)) {
+            throw new RuntimeException('A new Meta ad needs an existing creative to use.');
+        }
+
+        return $this->post($c, '/act_'.$this->requireAccount($target).'/ads', [
+            'name' => (string) ($payload['name'] ?? 'Ad'),
+            'adset_id' => $adSet,
+            'creative' => json_encode(['creative_id' => (string) $payload['creative_id']]),
+            'status' => 'PAUSED',
+        ], 'id');
+    }
+
+    /** Meta creatives cannot be edited; an ad's creative is replaced with another existing one. */
+    protected function updateCreative(AdConnection $c, array $target, array $payload): array
+    {
+        $ad = $this->requireTarget($target, 'ad');
+
+        if (blank($payload['creative_id'] ?? null)) {
+            throw new RuntimeException('Replacing a Meta creative needs the creative to replace it with.');
+        }
+
+        return $this->post($c, "/{$ad}", ['creative' => json_encode(['creative_id' => (string) $payload['creative_id']])]);
+    }
+
+    protected function updateTargeting(AdConnection $c, array $target, array $payload): array
+    {
+        $adSet = $this->requireTarget($target, 'ad_set');
+
+        if (! is_array($payload['targeting'] ?? null)) {
+            throw new RuntimeException('Targeting must be given as Meta targeting fields.');
+        }
+
+        return $this->post($c, "/{$adSet}", ['targeting' => json_encode($payload['targeting'])]);
+    }
+
+    protected function schedule(AdConnection $c, array $target, array $payload): array
+    {
+        $adSet = $this->requireTarget($target, 'ad_set');
+
+        return $this->post($c, "/{$adSet}", array_filter([
+            'start_time' => $payload['starts_at'] ?? null,
+            'end_time' => $payload['ends_at'] ?? null,
+        ]));
+    }
+
+    // ------------------------------------------------------------- plumbing
+
+    private function client(AdConnection $c): PendingRequest
+    {
+        $token = $c->credential('access_token');
 
         if (! $token) {
             throw new RuntimeException('Meta access token is missing.');
         }
 
+        return Http::withToken((string) $token)->timeout(30);
+    }
+
+    private function post(AdConnection $c, string $path, array $fields, ?string $createdKey = null): array
+    {
+        $response = $this->client($c)->asForm()->post(self::BASE.$path, $fields);
+        $ok = $response->successful() && $response->json('success', true) !== false;
+
+        return $this->answer($response, ['path' => $path, 'fields' => $fields], $createdKey ? (string) $response->json($createdKey) : null, $ok ? null : $this->errorMessage($response));
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function paged(AdConnection $c, string $path, array $query): array
+    {
         $rows = [];
         $url = self::BASE.$path;
         $params = $query;
 
         for ($page = 0; $page < self::MAX_PAGES && $url; $page++) {
-            $response = Http::withToken($token)->timeout(30)->get($url, $params);
+            $response = $this->client($c)->get($url, $params);
 
             if ($response->failed()) {
-                // The platform's own message, so "token expired" reads as that
-                // and not as an anonymous 400. Never the token itself.
+                // The platform's own message, so "token expired" reads as that. Never the token.
                 throw new RuntimeException('Meta Graph API error '.$response->status().': '.$response->json('error.message', 'request failed'));
             }
 
             array_push($rows, ...($response->json('data') ?? []));
-
-            // `paging.next` is a complete URL that already carries the cursor.
             $url = $response->json('paging.next');
             $params = [];
         }
@@ -230,13 +304,10 @@ class MetaAdsAdapter implements AdPlatformAdapter
         };
     }
 
-    private function action(array $actions, array $types): int
+    private function sumActions(array $actions, array $types, bool $float = false): int|float
     {
-        return (int) collect($actions)->whereIn('action_type', $types)->sum(fn ($a) => (float) ($a['value'] ?? 0));
-    }
+        $sum = (float) collect($actions)->whereIn('action_type', $types)->sum(fn ($a) => (float) ($a['value'] ?? 0));
 
-    private function actionValue(array $actions, array $types): float
-    {
-        return (float) collect($actions)->whereIn('action_type', $types)->sum(fn ($a) => (float) ($a['value'] ?? 0));
+        return $float ? $sum : (int) $sum;
     }
 }

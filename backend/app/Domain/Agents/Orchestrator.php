@@ -5,9 +5,9 @@ namespace App\Domain\Agents;
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Enums\Role;
+use App\Models\AdConnection;
 use App\Models\AgentThread;
 use App\Models\Campaign;
-use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Routine;
 use App\Models\User;
@@ -90,7 +90,7 @@ class Orchestrator
     {
         $totals = ['accounts' => 0, 'campaigns' => 0, 'snapshots' => 0];
 
-        foreach (Integration::query()->where('is_active', true)->get() as $integration) {
+        foreach (AdConnection::active() as $integration) {
             $result = $this->syncer->sync($integration);
             foreach (array_keys($totals) as $k) {
                 $totals[$k] += $result[$k];

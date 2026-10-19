@@ -8,6 +8,7 @@ use App\Domain\Campaigns\CampaignSyncer;
 use App\Enums\IntegrationProvider;
 use App\Models\Ad;
 use App\Models\AdAccount;
+use App\Models\AdConnection;
 use App\Models\Campaign;
 use App\Models\CampaignSpend;
 use App\Models\Integration;
@@ -31,11 +32,10 @@ class CampaignManagementTest extends TestCase
         $this->t = $this->provisionTenant('Campaign Co');
     }
 
-    private function integration(string $provider = 'meta', array $credentials = ['access_token' => 'tok_test']): Integration
+    private function integration(string $platform = 'meta', array $credentials = ['access_token' => 'tok_test']): AdConnection
     {
-        return $this->asTenant($this->t['tenant'], fn () => Integration::create([
-            'provider' => $provider, 'name' => ucfirst($provider), 'status' => 'connected',
-            'credentials' => $credentials, 'is_active' => true,
+        return $this->asTenant($this->t['tenant'], fn () => AdConnection::create([
+            'platform' => $platform, 'credentials' => $credentials, 'is_active' => true,
         ]));
     }
 
@@ -147,19 +147,33 @@ class CampaignManagementTest extends TestCase
         $this->assertNull($this->asTenant($this->t['tenant'], fn () => AdAccount::first()?->last_synced_at));
     }
 
-    public function test_platforms_without_an_adapter_say_so_and_sync_nothing(): void
+    public function test_every_platform_is_built_and_says_honestly_how_far_it_is_proven(): void
     {
-        $this->integration('tiktok', ['access_token' => 'x']);
-
         $platforms = collect($this->actingAs($this->t['admin'])->getJson('/api/v1/campaigns/platforms')->assertOk()->json('data.platforms'))->keyBy('key');
 
-        $this->assertTrue($platforms['meta']['built']);
-        $this->assertFalse($platforms['tiktok']['built']);
-        $this->assertFalse($platforms['tiktok']['connected']);
-        $this->assertSame([], $platforms['tiktok']['actions']);
         $this->assertCount(6, $platforms);
+        foreach ($platforms as $platform) {
+            $this->assertTrue($platform['built'], "{$platform['key']} has no adapter.");
+            $this->assertFalse($platform['connected']);
+            $this->assertSame('not_configured', $platform['state']);
+        }
 
-        $this->actingAs($this->t['admin'])->postJson('/api/v1/campaigns/sync')->assertOk()->assertJsonPath('data.accounts', 0);
+        // An action a platform does not offer is shown as unsupported, with why.
+        $this->assertFalse($platforms['tiktok']['capabilities']['duplicate_ad_set']['supported']);
+        $this->assertSame('platform_has_no_copy', $platforms['tiktok']['capabilities']['duplicate_ad_set']['reason']);
+        $this->assertTrue($platforms['meta']['capabilities']['duplicate_ad_set']['supported']);
+    }
+
+    public function test_a_lead_source_meta_token_stands_in_until_a_campaign_connection_is_made(): void
+    {
+        $this->asTenant($this->t['tenant'], fn () => Integration::create([
+            'provider' => 'meta', 'name' => 'Meta', 'status' => 'connected', 'credentials' => ['access_token' => 'tok'], 'is_active' => true,
+        ]));
+
+        $meta = collect($this->actingAs($this->t['admin'])->getJson('/api/v1/campaigns/platforms')->json('data.platforms'))->firstWhere('key', 'meta');
+
+        $this->assertTrue($meta['connected']);
+        $this->assertSame('code_verified', $meta['state']);
     }
 
     public function test_leads_are_attributed_to_one_campaign_ad_set_and_ad(): void

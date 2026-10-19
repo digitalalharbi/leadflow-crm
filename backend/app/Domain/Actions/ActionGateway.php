@@ -6,8 +6,10 @@ use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Jobs\ExecuteActionProposal;
 use App\Models\ActionLogEntry;
 use App\Models\ActionProposal;
+use App\Models\AdConnection;
+use App\Models\AdSet;
+use App\Models\Campaign;
 use App\Models\ClientRule;
-use App\Models\Integration;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Support\Facades\DB;
@@ -148,7 +150,7 @@ class ActionGateway
         }
 
         $adapter = $this->registry->get($proposal->platform);
-        $integration = $this->integration($proposal->platform);
+        $connection = AdConnection::for($proposal->platform);
         $verdict = $this->verdict($proposal, executing: true);
 
         if (! $verdict['allowed']) {
@@ -158,14 +160,14 @@ class ActionGateway
         }
 
         $started = microtime(true);
-        $result = $adapter->execute($integration, $proposal->action, $this->policy->target($proposal), $proposal->payload ?? []);
+        $result = $adapter->execute($connection, $proposal->action, $this->policy->target($proposal), $proposal->payload ?? []);
 
         ActionLogEntry::create([
             'action_proposal_id' => $proposal->id,
             'platform' => $proposal->platform,
             'action' => $proposal->action,
             'request' => $result['request'],
-            'response' => $result['response'],
+            'response' => ($result['response'] ?? []) + ['created_external_id' => $result['created_external_id'] ?? null],
             'ok' => $result['ok'],
             'executed_by' => $userId,
             'duration_ms' => (int) round((microtime(true) - $started) * 1000),
@@ -178,18 +180,30 @@ class ActionGateway
         }
 
         $proposal->update(['status' => ActionProposal::EXECUTED, 'executed_at' => now(), 'error' => null]);
-        $this->applyLocally($proposal);
+        $this->applyLocally($proposal, $result['created_external_id'] ?? null);
     }
 
     /** The platform said yes, so our copy says the same thing without waiting for the next sync. */
-    private function applyLocally(ActionProposal $proposal): void
+    private function applyLocally(ActionProposal $proposal, ?string $created): void
     {
         $entity = $proposal->ad ?? $proposal->adSet ?? $proposal->campaign;
+        $payload = $proposal->payload ?? [];
 
         match ($proposal->action) {
             'pause' => $entity?->update(['status' => 'paused']),
             'resume' => $entity?->update(['status' => 'active']),
-            'update_budget' => $entity && ! $proposal->ad ? $entity->update(['daily_budget_minor' => (int) $proposal->payload['daily_budget_minor']]) : null,
+            'update_budget' => $entity && ! $proposal->ad ? $entity->update(['daily_budget_minor' => (int) $payload['daily_budget_minor']]) : null,
+            'update_targeting' => $proposal->adSet?->update(['targeting' => $payload['targeting'] ?? null]),
+            // What the platform created, on our side at once and paused — the
+            // next sync fills in the rest.
+            'create_campaign' => $created ? Campaign::query()->firstOrCreate(
+                ['platform' => $proposal->platform, 'external_id' => $created],
+                ['name' => (string) ($payload['name'] ?? $created), 'origin' => Campaign::ORIGIN_SYNC, 'status' => 'paused', 'project_id' => $proposal->project_id],
+            ) : null,
+            'duplicate_ad_set' => $created && $proposal->adSet ? AdSet::query()->firstOrCreate(
+                ['campaign_id' => $proposal->adSet->campaign_id, 'external_id' => $created],
+                ['name' => $proposal->adSet->name.' (copy)', 'status' => 'paused'],
+            ) : null,
             default => null,
         };
     }
@@ -202,14 +216,9 @@ class ActionGateway
             $proposal,
             ClientRule::for($projectId),
             $this->registry->get($proposal->platform),
-            $this->integration($proposal->platform),
+            AdConnection::for($proposal->platform),
             $executing,
         );
-    }
-
-    private function integration(string $platform): ?Integration
-    {
-        return Integration::query()->where('provider', $platform)->where('is_active', true)->first();
     }
 
     private function mustBe(ActionProposal $proposal, array $statuses): void

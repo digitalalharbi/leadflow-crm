@@ -75,6 +75,9 @@ export interface PlatformState {
   key: AdPlatformKey
   built: boolean
   connected: boolean
+  /** How far the platform has actually been proven — never further. */
+  state: import('@/features/adConnections').LadderState
+  capabilities: Record<string, { supported: boolean; reason?: string }>
   actions: string[]
   accounts: number
   last_synced_at: string | null

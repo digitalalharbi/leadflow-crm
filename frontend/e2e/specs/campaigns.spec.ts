@@ -36,12 +36,32 @@ test.describe('الحملات — the campaign command center', () => {
     expect(await page.getByTestId('campaign-card').count()).toBeGreaterThan(0)
   })
 
-  test('says which platforms are wired, and never calls an unbuilt one available', async ({ page }) => {
+  test('says which platforms are wired, and never calls an unconnected one connected', async ({ page }) => {
     await page.goto('/campaigns')
 
-    await expect(page.getByTestId('platform-meta')).toHaveAttribute('data-state', 'available')
-    for (const key of ['tiktok', 'google_ads', 'snapchat', 'x', 'linkedin']) {
-      await expect(page.getByTestId(`platform-${key}`)).toHaveAttribute('data-state', 'coming')
+    // Every platform has an adapter now; none is connected in this workspace.
+    for (const key of ['meta', 'tiktok', 'google_ads', 'snapchat', 'x', 'linkedin']) {
+      await expect(page.getByTestId(`platform-${key}`)).toHaveAttribute('data-state', 'available')
+    }
+  })
+
+  test('integrations show each ad platform with its proven state and what it can do', async ({ page }) => {
+    await page.goto('/integrations')
+    await page.getByTestId('integrations-tabs').getByRole('tab', { name: 'حسابات الإعلانات' }).click()
+    const panel = page.getByTestId('ad-connections')
+
+    for (const key of ['meta', 'tiktok', 'google_ads', 'snapchat', 'x', 'linkedin']) {
+      await expect(panel.getByTestId(`ad-connection-${key}`).getByTestId('ladder')).toHaveAttribute('data-state', 'not_configured')
+    }
+
+    // TikTok cannot copy an ad group; the card says so instead of offering it.
+    await expect(panel.getByTestId('ad-connection-tiktok').locator('[data-supported="no"]').first()).toBeVisible()
+
+    // The connect drawer asks for exactly what the platform needs. (Saving is
+    // not exercised here: it tests the connection against the real platform.)
+    await panel.getByTestId('connect-x').click()
+    for (const key of ['consumer_key', 'consumer_secret', 'access_token', 'access_token_secret']) {
+      await expect(page.getByTestId(`field-${key}`)).toBeVisible()
     }
   })
 

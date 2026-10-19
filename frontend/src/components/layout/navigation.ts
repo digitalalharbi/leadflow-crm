@@ -1,6 +1,6 @@
 import {
-  BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings, ShieldAlert,
-  ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, Megaphone,
+  BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings,
+  ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, Megaphone, Bot,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -71,6 +71,7 @@ export function useNavigation(): Navigation {
       { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3 },
       // Money and ad accounts: the people who may read reports.
       ...(reports ? [{ to: '/campaigns', labelKey: 'nav.campaigns', Icon: Megaphone }] : []),
+      ...(reports ? [{ to: '/agents', labelKey: 'nav.agents', Icon: Bot }] : []),
       {
         to: '/follow-ups',
         labelKey: 'nav.followUps',
@@ -85,7 +86,6 @@ export function useNavigation(): Navigation {
       // Rules act on everybody's leads, so the same authority as the API.
       ...(seesAll ? [{ to: '/automation', labelKey: 'nav.automation', Icon: Workflow }] : []),
       ...(reports ? [{ to: '/reports', labelKey: 'nav.reports', Icon: BarChart3 }] : []),
-      ...(reports ? [{ to: '/data-quality', labelKey: 'nav.dataQuality', Icon: ShieldAlert }] : []),
     ],
     [
       ...(integrations ? [{ to: '/integrations', labelKey: 'nav.integrations', Icon: Plug }] : []),

@@ -4,6 +4,7 @@ namespace App\Domain\Actions;
 
 use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Jobs\ExecuteActionProposal;
+use App\Jobs\NotifyProposalApprovers;
 use App\Models\ActionLogEntry;
 use App\Models\ActionProposal;
 use App\Models\AdConnection;
@@ -77,6 +78,12 @@ class ActionGateway
         $proposal->fill(['policy' => $verdict, 'status' => $verdict['allowed'] ? ActionProposal::PENDING : ActionProposal::BLOCKED])->save();
 
         $this->audit->log('action_proposal.created', $user, $proposal, ['action' => $proposal->action, 'agent' => $agent]);
+
+        // An agent's proposal also goes to the approvers' WhatsApp; a person's
+        // own proposal does not — they are already looking at it.
+        if ($agent !== null && $proposal->status === ActionProposal::PENDING) {
+            NotifyProposalApprovers::dispatch($proposal->id)->afterCommit();
+        }
 
         return $proposal;
     }

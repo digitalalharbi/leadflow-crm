@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Download } from 'lucide-react'
+import { BarChart3, Download, ShieldAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
@@ -121,7 +122,12 @@ export function ReportsPage() {
         title={t('reports.title')}
         subtitle={t('reports.subtitle')}
         actions={
-          tab === 'campaigns' ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Data quality moved here from the main menu: it is a report about the data. */}
+            <Link to="/data-quality" data-testid="open-data-quality">
+              <Button variant="ghost" icon={<ShieldAlert className="size-4" />}>{t('nav.dataQuality')}</Button>
+            </Link>
+          {tab === 'campaigns' ? (
             <Button
               variant="outline"
               icon={<Download className="size-4" />}
@@ -129,7 +135,8 @@ export function ReportsPage() {
             >
               {t('reports.exportCsv')}
             </Button>
-          ) : undefined
+          ) : null}
+          </div>
         }
       />
 

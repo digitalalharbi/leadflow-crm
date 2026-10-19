@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Agents\AgentConversation;
 use App\Domain\Agents\AgentDirectory;
+use App\Domain\Agents\Brain\BrainFactory;
 use App\Domain\Agents\Orchestrator;
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\AgentReport;
 use App\Models\AgentThread;
+use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Routine;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 /** The agents, their routines, and what they last said. */
@@ -83,12 +87,94 @@ class AgentController extends Controller
         ]]);
     }
 
+    // ------------------------------------------------------------- conversation
+
+    public function conversations(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        return ApiResponse::success(['threads' => AgentThread::query()
+            ->whereNull('routine')->where('started_by', $request->user()->id)
+            ->latest('id')->limit(30)->get()
+            ->map(fn (AgentThread $t) => ['id' => $t->uuid, 'agent' => $t->agent, 'title' => $t->title, 'created_at' => $t->created_at?->toIso8601String()])]);
+    }
+
+    public function start(Request $request, AgentConversation $conversation)
+    {
+        $this->authorize('export', Lead::class);
+        $data = $request->validate(['message' => ['required', 'string', 'max:4000'], 'agent' => ['nullable', 'in:'.implode(',', AgentConversation::AGENTS)]]);
+
+        $thread = AgentThread::create([
+            'agent' => $data['agent'] ?? 'orchestrator',
+            'started_by' => $request->user()->id,
+            'title' => mb_substr($data['message'], 0, 120),
+        ]);
+
+        $conversation->reply($thread, $request->user(), $data['message'], $data['agent'] ?? null);
+
+        return ApiResponse::created(['thread' => $this->present($thread->load('messages'))]);
+    }
+
+    public function say(Request $request, AgentConversation $conversation, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+        $data = $request->validate(['message' => ['required', 'string', 'max:4000'], 'agent' => ['nullable', 'in:'.implode(',', AgentConversation::AGENTS)]]);
+
+        $thread = AgentThread::query()->where('uuid', $uuid)->where('started_by', $request->user()->id)->firstOrFail();
+        $conversation->reply($thread, $request->user(), $data['message'], $data['agent'] ?? null);
+
+        return ApiResponse::success(['thread' => $this->present($thread->load('messages'))]);
+    }
+
+    /** Whether the agents can think, and why not — never a silent fallback. */
+    public function ai(BrainFactory $brains)
+    {
+        $this->authorize('export', Lead::class);
+        $settings = app(TenantContext::class)->get()?->settings;
+
+        return ApiResponse::success([
+            'status' => $brains->make()->status(),
+            'source' => filled($settings?->ai_api_key) ? 'workspace' : (filled(config('services.anthropic.key')) ? 'platform' : null),
+            'verified_at' => $settings?->ai_verified_at?->toIso8601String(),
+            'last_error' => $settings?->ai_last_error,
+            'models' => config('services.anthropic.models'),
+        ]);
+    }
+
+    public function setKey(Request $request, BrainFactory $brains)
+    {
+        $this->authorize('viewAny', Integration::class);
+        $data = $request->validate(['api_key' => ['required', 'string', 'min:20', 'max:300']]);
+        $settings = app(TenantContext::class)->get()->settings;
+        $settings->forceFill(['ai_api_key' => $data['api_key'], 'ai_verified_at' => null, 'ai_last_error' => null])->save();
+
+        // The cheapest call that proves the key: one short turn, no tools.
+        try {
+            $brains->make()->think('leads', [['type' => 'text', 'text' => 'Reply with OK.']], [['role' => 'user', 'content' => [['type' => 'text', 'text' => 'ping']]]], []);
+            $settings->forceFill(['ai_verified_at' => now()])->save();
+        } catch (\Throwable $e) {
+            $settings->forceFill(['ai_last_error' => mb_substr($e->getMessage(), 0, 300)])->save();
+        }
+
+        return $this->ai($brains);
+    }
+
+    public function forgetKey(BrainFactory $brains)
+    {
+        $this->authorize('viewAny', Integration::class);
+        app(TenantContext::class)->get()->settings->forceFill(['ai_api_key' => null, 'ai_verified_at' => null, 'ai_last_error' => null])->save();
+
+        return $this->ai($brains);
+    }
+
     private function present(AgentThread $t): array
     {
         return [
             'id' => $t->uuid,
             'routine' => $t->routine,
             'created_at' => $t->created_at?->toIso8601String(),
+            'agent' => $t->agent,
+            'title' => $t->title,
             'messages' => $t->messages->map(fn ($m) => ['role' => $m->role, 'agent' => $m->agent, 'content' => $m->content, 'data' => $m->data, 'at' => $m->created_at?->toIso8601String()])->all(),
         ];
     }

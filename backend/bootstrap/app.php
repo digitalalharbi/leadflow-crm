@@ -65,6 +65,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // never attached, and every authenticated endpoint is unthrottled.
         $middleware->throttleApi();
 
+        // The approval page posts with its own single-use token, from a phone with
+        // no session; that token is the credential, so there is no CSRF to check.
+        $middleware->validateCsrfTokens(except: ['approve/*']);
+
         $middleware->api(prepend: [
             ForceJsonResponse::class,
         ]);

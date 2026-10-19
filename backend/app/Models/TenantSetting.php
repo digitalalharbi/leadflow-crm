@@ -18,7 +18,11 @@ class TenantSetting extends Model
         'sla_remind_after_minutes', 'sla_escalate_after_minutes', 'sla_reassign_after_minutes',
         'whatsapp_template', 'onboarding',
         'work_days', 'work_starts_at', 'work_ends_at',
+        'ai_api_key', 'ai_verified_at', 'ai_last_error',
     ];
+
+    /** The AI key is a secret: encrypted at rest, never serialised. */
+    protected $hidden = ['ai_api_key'];
 
     protected function casts(): array
     {
@@ -27,6 +31,8 @@ class TenantSetting extends Model
             'round_robin_cursor' => 'integer',
             'score_warm_threshold' => 'integer',
             'score_hot_threshold' => 'integer',
+            'ai_api_key' => 'encrypted',
+            'ai_verified_at' => 'datetime',
         ];
     }
 }

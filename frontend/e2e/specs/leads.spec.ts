@@ -17,7 +17,8 @@ test.describe('Leads list', () => {
     // The redesign merged phone into the identity column — a name and a number
     // are one fact about one person, and two columns made the eye cross the
     // table to assemble it. The number is still there, under the name.
-    for (const header of ['الاسم', 'المصدر', 'المرحلة']) {
+    // The columns the brief names: who, how serious, what kind, where from, and what next.
+    for (const header of ['الاسم', 'التقييم', 'التصنيف', 'المصدر', 'الخطوة التالية']) {
       await expect(page.getByRole('columnheader', { name: header })).toBeVisible()
     }
 

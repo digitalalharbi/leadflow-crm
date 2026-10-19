@@ -61,6 +61,52 @@ class InfrastructureReadinessTest extends TestCase
         $this->assertStringNotContainsString('exception', $error);
     }
 
+    public function test_a_queued_jobs_failure_does_not_show_where_the_code_lives_even_escaped(): void
+    {
+        $file = storage_path('logs/laravel-readiness-test.log');
+        $escaped = str_replace('/', '\\/', base_path('vendor/laravel/framework/src/Builder.php'));
+        file_put_contents($file, '['.now()->format('Y-m-d H:i:s').'] testing.ERROR: Illuminate\\Database\\Eloquent\\ModelNotFoundException: No query results for model [App\\Models\\Lead]. in '.$escaped.':780'.PHP_EOL);
+        touch($file, time() + 60);
+
+        try {
+            $error = $this->row('logs')['last_error'];
+        } finally {
+            @unlink($file);
+        }
+
+        $this->assertStringContainsString('No query results', $error);
+        $this->assertStringNotContainsString('vendor', $error);
+        $this->assertStringNotContainsString(basename(dirname(base_path())), $error);
+    }
+
+    public function test_a_failed_job_shows_what_failed_not_where(): void
+    {
+        $line = 'Illuminate\\Database\\Eloquent\\ModelNotFoundException: No query results for model [App\\Models\\Lead]. in '.base_path('vendor/laravel/framework/src/Builder.php').':780';
+
+        $shown = InfrastructureReadiness::shown($line);
+
+        $this->assertStringContainsString('No query results', $shown);
+        $this->assertStringNotContainsString('vendor', $shown);
+    }
+
+    public function test_a_database_error_shows_its_kind_not_the_connection_or_the_sql(): void
+    {
+        $file = storage_path('logs/laravel-readiness-test.log');
+        file_put_contents($file, '['.now()->format('Y-m-d H:i:s').'] testing.ERROR: SQLSTATE[23505]: Unique violation: duplicate key (Connection: pgsql, Host: 10.0.0.5, Port: 5432, Database: crm_prod, SQL: insert into "leads" ("phone") values (+966551234567))'.PHP_EOL);
+        touch($file, time() + 60);
+
+        try {
+            $error = $this->row('logs')['last_error'];
+        } finally {
+            @unlink($file);
+        }
+
+        $this->assertStringContainsString('Unique violation', $error);
+        $this->assertStringNotContainsString('crm_prod', $error);
+        $this->assertStringNotContainsString('10.0.0.5', $error);
+        $this->assertStringNotContainsString('+966551234567', $error);
+    }
+
     // --------------------------------------------------------------- shape
 
     public function test_there_are_seven_rows_each_with_the_same_facts(): void

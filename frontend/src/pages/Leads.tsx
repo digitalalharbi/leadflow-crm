@@ -9,7 +9,8 @@ import { can, useAuth } from '@/stores/auth'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useApiError } from '@/hooks/useApiError'
 import { cn } from '@/lib/cn'
-import { formatDue, telLink, whatsappLink } from '@/lib/format'
+import { formatDue, formatRelative, telLink, whatsappLink } from '@/lib/format'
+import { CLASSIFICATION_COLOR } from '@/components/visual/classification'
 import { LeadFiltersBar } from '@/components/leads/LeadFilters'
 import { LeadAvatar } from '@/components/leads/LeadAvatar'
 import { LeadsOverview } from '@/components/leads/LeadsOverview'
@@ -212,12 +213,13 @@ export function LeadsPage() {
                     {/* The identity column carries name, phone and project
                         together — three columns of one-line facts made the eye
                         travel the full width of the table for one lead. */}
-                    <Th className="min-w-56">{t('leads.name')}</Th>
+                    <Th className="min-w-52">{t('leads.name')}</Th>
+                    <Th className="hidden sm:table-cell">{t('leads.score')}</Th>
+                    <Th className="hidden md:table-cell">{t('leads.classification')}</Th>
+                    <Th className="hidden xl:table-cell">{t('leads.project')}</Th>
                     <Th className="hidden lg:table-cell">{t('leads.source')}</Th>
-                    <Th className="hidden md:table-cell">{t('leads.status')}</Th>
-                    <Th className="hidden sm:table-cell">{t('leads.temperature')}</Th>
+                    <Th className="hidden xl:table-cell">{t('leads.lastContact')}</Th>
                     <Th className="hidden lg:table-cell">{t('leads.nextStep')}</Th>
-                    <Th className="hidden xl:table-cell">{t('leads.assignedTo')}</Th>
                     <Th className="text-end">{t('common.actions')}</Th>
                   </tr>
                 </thead>
@@ -242,7 +244,7 @@ export function LeadsPage() {
                             </span>
                           )}
                           {lead.project?.name && (
-                            <span className="t-caption max-w-40 truncate text-[0.75rem]">
+                            <span className="t-caption max-w-40 truncate text-[0.75rem] xl:hidden">
                               {lead.project.name}
                             </span>
                           )}
@@ -258,6 +260,28 @@ export function LeadsPage() {
                         </div>
                       </Td>
 
+                      <Td className="hidden sm:table-cell">
+                        {/* The score as a number with its bar: how far into its bucket. */}
+                        <span className="flex items-center gap-2" data-testid="lead-score">
+                          <span className="w-7 text-[0.9375rem] font-bold tabular-nums">{lead.score ?? 0}</span>
+                          <span className="block h-1.5 w-14 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]" aria-hidden>
+                            <span className="block h-full rounded-full" style={{ width: `${Math.min(100, lead.score ?? 0)}%`, background: `var(--color-temp-${lead.temperature})` }} />
+                          </span>
+                        </span>
+                      </Td>
+                      <Td className="hidden md:table-cell">
+                        {lead.classification ? (
+                          <span className="flex items-center gap-1.5 text-[0.8125rem] font-medium" title={t(`classification.reason.${lead.classification.reason}`)}>
+                            <span className="size-2 shrink-0 rounded-full" style={{ background: CLASSIFICATION_COLOR[lead.classification.key] }} aria-hidden />
+                            {t(`classification.${lead.classification.key}`)}
+                          </span>
+                        ) : (
+                          <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
+                        )}
+                      </Td>
+                      <Td className="hidden max-w-36 truncate xl:table-cell text-[0.8125rem]">
+                        {lead.project?.name ?? <span className="text-[var(--color-ink-subtle)]">—</span>}
+                      </Td>
                       <Td className="hidden lg:table-cell">
                         {lead.platform ? (
                           <span className="flex items-center gap-1.5">
@@ -281,24 +305,8 @@ export function LeadsPage() {
                           <span className="text-[var(--color-ink-subtle)]">—</span>
                         )}
                       </Td>
-                      <Td className="hidden md:table-cell"><StatusBadge status={lead.status} /></Td>
-                      <Td className="hidden sm:table-cell">
-                        <TemperatureBadge temperature={lead.temperature} priority={lead.is_priority} />
-                        {/* The score as a line under the word: the badge says which bucket,
-                            the line says how far into it. */}
-                        <span
-                          className="mt-1.5 block h-1 w-16 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]"
-                          title={String(lead.score ?? 0)}
-                          aria-hidden
-                        >
-                          <span
-                            className="block h-full rounded-full"
-                            style={{
-                              width: `${Math.min(100, lead.score ?? 0)}%`,
-                              background: `var(--color-temp-${lead.temperature})`,
-                            }}
-                          />
-                        </span>
+                      <Td className="hidden whitespace-nowrap xl:table-cell text-[0.8125rem] text-[var(--color-ink-muted)]">
+                        {lead.last_contact_at ? formatRelative(lead.last_contact_at, i18n.language) : <span className="text-[var(--color-ink-subtle)]">{t('leads.neverContacted')}</span>}
                       </Td>
                       <Td className="hidden lg:table-cell">
                         {/* What to do, and when it is due — the two things a rep scans a row for. */}
@@ -314,11 +322,6 @@ export function LeadsPage() {
                           </span>
                         )}
                         {!lead.next_follow_up_at && (!lead.next_action || ['wait', 'none'].includes(lead.next_action.action)) && '—'}
-                      </Td>
-                      <Td className="hidden max-w-36 truncate xl:table-cell">
-                        {lead.assignee?.name ?? (
-                          <span className="text-[var(--color-ink-subtle)]">{t('common.unassigned')}</span>
-                        )}
                       </Td>
                       <Td>
                         <div className="flex items-center justify-end gap-1">

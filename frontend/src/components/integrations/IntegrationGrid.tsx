@@ -251,7 +251,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
             </Badge>
 
             {!isProven(row.state) && row.blocker && (
-              <p className="t-caption mt-1" data-testid={`blocker-${row.key}`}>
+              <p className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] mt-1" data-testid={`blocker-${row.key}`}>
                 {t(`health.blocker.${row.blocker}`)}
               </p>
             )}
@@ -261,13 +261,13 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
               <Line label={t('health.lastSync')} value={row.last_sync_at} />
             </dl>
 
-            <p className="t-caption mt-1 truncate">
+            <p className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] mt-1 truncate">
               {t(`health.flow.${row.flow}`)}
               {row.events > 0 && ` · ${row.events}`}
             </p>
 
             {row.last_error && (
-              <p className="t-caption mt-0.5 truncate text-[var(--color-danger)]">{row.last_error}</p>
+              <p className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] mt-0.5 truncate text-[var(--color-danger)]">{row.last_error}</p>
             )}
           </button>
         ))}
@@ -278,8 +278,8 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
   function Line({ label, value }: { label: string; value: string | null }) {
     return (
       <div className="flex items-baseline justify-between gap-1.5">
-        <dt className="t-caption truncate">{label}</dt>
-        <dd className="t-caption shrink-0">
+        <dt className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] truncate">{label}</dt>
+        <dd className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)] shrink-0">
           {value ? formatLastSeen(value, i18n.language) : '—'}
         </dd>
       </div>
@@ -290,7 +290,7 @@ export function IntegrationGrid({ onConfigure }: { onConfigure?: (key: string) =
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className="t-caption">{label}</span>
+      <span className="text-[0.75rem] leading-snug text-[var(--color-ink-muted)]">{label}</span>
       <span className="text-[0.9375rem] font-semibold tabular-nums">{value}</span>
     </div>
   )

@@ -18,7 +18,10 @@ import '@/i18n'
  * not shipped. JetBrains Mono is only ever loaded for technical values.
  */
 import '@fontsource-variable/inter/index.css'
-import '@fontsource-variable/noto-sans-arabic/index.css'
+import '@fontsource/ibm-plex-sans-arabic/400.css'
+import '@fontsource/ibm-plex-sans-arabic/500.css'
+import '@fontsource/ibm-plex-sans-arabic/600.css'
+import '@fontsource/ibm-plex-sans-arabic/700.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import '@/index.css'

@@ -114,6 +114,8 @@ export interface LeadListItem {
   project: Ref | null
   assignee: Ref | null
   next_follow_up_at: string | null
+  /** When anybody — a rep or automation — last reached them. */
+  last_contact_at?: string | null
   is_overdue: boolean
   created_at: string
 }

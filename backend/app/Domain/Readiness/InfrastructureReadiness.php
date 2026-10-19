@@ -182,7 +182,7 @@ class InfrastructureReadiness
 
             return [
                 'count' => (int) $query->count(),
-                'last' => $last ? mb_substr(strtok((string) $last, "\n") ?: '', 0, 240) : null,
+                'last' => $last ? mb_substr(self::shown(strtok((string) $last, "\n") ?: ''), 0, 240) : null,
             ];
         } catch (Throwable) {
             return ['count' => 0, 'last' => null];
@@ -330,9 +330,27 @@ class InfrastructureReadiness
          * into a ticket has no business showing where the code lives on disk.
          */
         $message = preg_replace('/\s+\{".*$/s', '', $last[2]) ?? $last[2];
-        $message = str_replace([base_path().DIRECTORY_SEPARATOR, base_path()], '', $message);
 
-        return mb_substr($last[1].' — '.$message, 0, 240);
+        return mb_substr($last[1].' — '.self::shown($message), 0, 240);
+    }
+
+    /**
+     * An error as a person may see it: what went wrong, never where.
+     *
+     * A database error carries the connection — host, port, database name —
+     * and the SQL, which can hold a customer's phone number or email. A stack
+     * line carries where the code lives on disk, in plain or JSON-escaped
+     * slashes. The kind of error is the useful part; the rest stays in the log.
+     */
+    public static function shown(string $message): string
+    {
+        // The where first, while it is still a whole path: " in /…/File.php:780".
+        $message = preg_replace('#\s+in\s+\S+\.php(?::\d+)?.*$#s', '', $message) ?? $message;
+        $message = preg_replace('#\s+in\s+(?:\\\\)?/.*$#s', '', $message) ?? $message;
+        $message = str_replace([str_replace('/', '\/', base_path()), base_path().DIRECTORY_SEPARATOR, base_path()], '', $message);
+        $message = preg_replace('/\s*\(Connection:.*$/s', '', $message) ?? $message;
+
+        return trim($message);
     }
 
     // ------------------------------------------------------- error tracking

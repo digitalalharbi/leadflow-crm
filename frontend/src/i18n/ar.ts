@@ -1467,6 +1467,8 @@ export default {
   },
 
   leads: {
+    classification: 'التصنيف',
+    neverContacted: 'لم يُتواصل بعد',
     segments: {
       label: 'قوائم العمل',
       all: 'الكل',

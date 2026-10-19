@@ -13,18 +13,20 @@ const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf-8')
  * self-hosted, with technical values in mono and nothing else slipping in.
  */
 describe('typography system', () => {
-  it('sets one stack for body and headings: Inter for Latin and digits, Noto for Arabic, Plex only as fallback', () => {
-    const stack = /'Inter Variable',\s*'Noto Sans Arabic Variable',\s*'IBM Plex Sans Arabic',\s*system-ui,\s*sans-serif;/
+  it('sets one stack for body and headings: Inter for Latin and digits, IBM Plex Sans Arabic for Arabic', () => {
+    const stack = /'Inter Variable',\s*'IBM Plex Sans Arabic',\s*system-ui,\s*sans-serif;/
 
     expect(css).toMatch(new RegExp(`--font-body:\\s*${stack.source}`))
     expect(css).toMatch(new RegExp(`--font-heading:\\s*${stack.source}`))
   })
 
-  it('does not ship the fallback face', () => {
+  it('ships the Arabic face it names, self-hosted, in the weights the interface uses', () => {
     const main = readFileSync(resolve(process.cwd(), 'src/main.tsx'), 'utf-8')
 
-    expect(main).not.toMatch(/ibm-plex-sans-arabic/)
-    expect(main).toMatch(/noto-sans-arabic/)
+    for (const weight of [400, 500, 600, 700]) {
+      expect(main).toMatch(new RegExp(`@fontsource/ibm-plex-sans-arabic/${weight}\\.css`))
+    }
+    expect(main).not.toMatch(/noto-sans-arabic/)
   })
 
   it('keeps JetBrains Mono for technical values', () => {

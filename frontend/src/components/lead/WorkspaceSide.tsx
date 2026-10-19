@@ -15,7 +15,7 @@ import type { Lead } from '@/types/api'
  * (classification and its reason), and where it came from (platform and
  * campaign). The sentence a rep would otherwise reconstruct from four cards.
  */
-export function WhyThisLead({ lead }: { lead: Lead }) {
+export function WhyThisLead({ lead, signals = [] }: { lead: Lead; signals?: string[] }) {
   const { t } = useTranslation()
   const tone = lead.score >= 70 ? 'good' : lead.score >= 40 ? 'warn' : 'neutral'
 
@@ -38,6 +38,21 @@ export function WhyThisLead({ lead }: { lead: Lead }) {
               <p className="text-[0.75rem] text-[var(--color-ink-muted)]">{t(`classification.reason.${lead.classification.reason}`)}</p>
             )}
           </div>
+        </div>
+        {/* Why now: what the customer did, as chips — the facts behind the next action. */}
+        <div data-testid="why-now">
+          <p className="mb-1 text-[0.75rem] font-semibold text-[var(--color-ink-muted)]">{t('workspace.why.now')}</p>
+          {signals.length > 0 ? (
+            <ul className="flex flex-wrap gap-1">
+              {signals.map((signal) => (
+                <li key={signal} className="rounded-full bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] px-2 py-0.5 text-[0.75rem] font-medium text-[var(--brand)]">
+                  {t(`work.signal.${signal}`)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="t-caption">{t('workspace.why.noSignals')}</p>
+          )}
         </div>
         <dl className="grid grid-cols-2 gap-2 text-[0.75rem]">
           <Fact label={t('leads.project')} value={lead.project?.name} />

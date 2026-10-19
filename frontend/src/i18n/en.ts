@@ -201,6 +201,8 @@ export default {
       previous: 'Previous period: {{count}}',
     },
     chart: {
+      failed: 'Failed actions',
+      failedHint: 'of all actions — tap to see them',
       success: 'Automation success',
       successHint: 'of executed actions',
       qualification: 'Lead qualification',
@@ -1130,6 +1132,8 @@ export default {
       external_verification_required: 'External verification required',
     },
     item: {
+      email: 'Email',
+      claude: 'Claude for agents',
       vps: 'Server (VPS)',
       domain: 'Domain',
       google: 'Google OAuth',
@@ -1138,6 +1142,7 @@ export default {
       ads: 'Ad platforms',
     },
     blocker: {
+      replies_not_routed: 'Email reaches people, but replies do not come back to the thread yet.',
       not_production: 'The environment is not production yet.',
       debug_enabled: 'Debug mode is on \u2014 turn it off before launch.',
       no_app_key: 'The application key is not set.',
@@ -1155,6 +1160,11 @@ export default {
       configured_per_workspace: 'Configured by each workspace on its own.',
     },
     check: {
+      mail_server: 'A real mail server',
+      opened_by_a_customer: 'A customer opened one',
+      replies_routed: 'Replies come back to the thread',
+      api_key: 'Claude key',
+      model_answered: 'The model actually answered',
       production_environment: 'Production environment',
       debug_off: 'Debug mode off',
       app_key: 'Application key',
@@ -1370,7 +1380,7 @@ export default {
     detail: { project: 'Project-specific', general: 'General', everyone: 'Whole team', ar: 'Arabic', en: 'English' },
   },
   workspace: {
-    why: { title: 'Why this lead', campaign: 'Campaign' },
+    why: { title: 'Why this lead', campaign: 'Campaign', now: 'Why now', noSignals: 'No customer activity yet.' },
     automation: {
       nurturing: 'Automation has it',
       nurturingHint: 'The journey is messaging them — step in only if they reply or turn priority.',
@@ -1496,7 +1506,7 @@ export default {
     noAppointments: 'No appointments',
     source: 'Source',
     history: 'History',
-    timeline: 'Timeline',
+    timeline: 'Unified timeline',
     automation: 'Automation',
     callStatus: {
       initiated: 'Started',
@@ -1519,6 +1529,9 @@ export default {
   },
 
   leadsOverview: {
+    today: 'Today',
+    ofTotal: 'of {{count}} leads',
+    awaiting: 'Awaiting follow-up',
     total: 'Total leads',
     hot: 'Hot',
     qualified: 'Qualified',
@@ -1862,6 +1875,13 @@ export default {
   },
 
   projects: {
+    summary: {
+      leads: 'Leads',
+      qualified: 'Qualified',
+      appointments: 'Appointments',
+      won: 'Deals',
+      byProject: 'Leads by project',
+    },
     trend: '{{count}} new leads in 14 days',
     filesCount: '{{count}} files',
     questionsCount: '{{count}} questions',

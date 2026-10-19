@@ -18,7 +18,7 @@ test.describe('Leads list', () => {
     // are one fact about one person, and two columns made the eye cross the
     // table to assemble it. The number is still there, under the name.
     // The columns the brief names: who, how serious, what kind, where from, and what next.
-    for (const header of ['الاسم', 'التقييم', 'التصنيف', 'المصدر', 'الخطوة التالية']) {
+    for (const header of ['الاسم', 'التقييم', 'المرحلة', 'المصدر', 'الخطوة التالية']) {
       await expect(page.getByRole('columnheader', { name: header })).toBeVisible()
     }
 
@@ -168,7 +168,7 @@ test.describe('Leads list', () => {
     await expect(page.getByRole('heading', { name: LEADS.search })).toBeVisible()
     await expect(page.getByTestId('lead-quick-actions')).toBeVisible()
     await expect(page.getByText('بيانات التواصل')).toBeVisible()
-    await expect(page.getByText('سجل النشاط')).toBeVisible()
+    await expect(page.getByText('السجل الموحّد')).toBeVisible()
   })
 
   test('a sales rep only sees the leads assigned to them', async ({ page }) => {

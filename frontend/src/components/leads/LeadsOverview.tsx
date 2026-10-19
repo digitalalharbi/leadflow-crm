@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Clock3, Flame, Target, TrendingUp, Users } from 'lucide-react'
+import { BellRing, CalendarDays, Clock3, Flame, Target, TrendingUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { Card, CardBody, Skeleton } from '@/components/ui'
@@ -13,6 +13,8 @@ import type { ClassificationKey } from '@/types/api'
 interface LeadsOverviewData {
   health: {
     total: number
+    today?: number
+    awaiting_follow_up?: number
     hot: number
     qualified: number
     qualified_rate: number | null
@@ -46,8 +48,8 @@ export function LeadsOverview({ query }: { query: Record<string, unknown> }) {
   if (!data) {
     return (
       <div className="space-y-3" aria-busy="true">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
         </div>
         <Skeleton className="h-44" />
       </div>
@@ -74,10 +76,19 @@ export function LeadsOverview({ query }: { query: Record<string, unknown> }) {
 
   return (
     <div className="mb-3 space-y-3" data-testid="leads-overview">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiCard label={t('leadsOverview.total')} icon={Users} value={formatNumber(health.total, i18n.language)} valueTestId="lk-total" />
+      {/*
+        A rep's morning in six numbers: what arrived today, what is hot, how
+        many qualify, what waits on a promised follow-up, how many close, and
+        how fast anybody answers.
+      */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <KpiCard label={t('leadsOverview.today')} icon={CalendarDays} value={formatNumber(health.today ?? 0, i18n.language)} valueTestId="lk-today">
+          <p className="t-caption mt-0.5" data-testid="lk-total">{t('leadsOverview.ofTotal', { count: health.total })}</p>
+        </KpiCard>
         <KpiCard label={t('leadsOverview.hot')} icon={Flame} tone="bad" value={formatNumber(health.hot, i18n.language)} valueTestId="lk-hot" />
         <KpiCard label={t('leadsOverview.qualified')} icon={Target} tone="good" value={percent(health.qualified_rate)} valueTestId="lk-qualified" />
+        <KpiCard label={t('leadsOverview.awaiting')} icon={BellRing} tone="warn" value={formatNumber(health.awaiting_follow_up ?? 0, i18n.language)} valueTestId="lk-awaiting" />
+        <KpiCard label={t('leadsOverview.conversion')} icon={TrendingUp} tone="good" value={percent(health.win_rate)} valueTestId="lk-conversion" />
         <KpiCard
           label={t('leadsOverview.response')}
           icon={Clock3}
@@ -85,7 +96,6 @@ export function LeadsOverview({ query }: { query: Record<string, unknown> }) {
           value={health.avg_response_seconds === null ? '—' : humaniseDuration(health.avg_response_seconds, t)}
           valueTestId="lk-response"
         />
-        <KpiCard label={t('leadsOverview.conversion')} icon={TrendingUp} tone="good" value={percent(health.win_rate)} valueTestId="lk-conversion" />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-12">

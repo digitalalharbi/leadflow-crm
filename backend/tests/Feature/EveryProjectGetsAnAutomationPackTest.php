@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Lead;
 use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\ProjectQuestion;
@@ -60,5 +61,31 @@ class EveryProjectGetsAnAutomationPackTest extends TestCase
 
         $other = $this->provisionTenant('Other Co');
         $this->actingAs($other['admin'])->getJson("/api/v1/projects/{$project->uuid}/automation-pack")->assertNotFound();
+    }
+
+    public function test_a_project_created_through_the_screen_starts_with_its_pack(): void
+    {
+        $t = $this->provisionTenant('Pack Co');
+
+        $uuid = $this->actingAs($t['admin'])->postJson('/api/v1/projects', ['name' => 'اللؤلؤة'])->assertCreated()->json('data.project.id');
+        $project = $this->asTenant($t['tenant'], fn () => Project::where('uuid', $uuid)->firstOrFail());
+
+        $this->assertSame(1, $this->asTenant($t['tenant'], fn () => MessageTemplate::where('project_id', $project->id)->where('channel', 'whatsapp')->where('purpose', 'welcome')->count()));
+        $this->assertSame(3, $this->asTenant($t['tenant'], fn () => ProjectQuestion::where('project_id', $project->id)->count()));
+    }
+
+    public function test_the_leads_picture_counts_today_and_what_waits_on_a_follow_up(): void
+    {
+        $t = $this->provisionTenant('Count Co');
+        $this->asTenant($t['tenant'], function () {
+            Lead::create(['full_name' => 'اليوم', 'phone' => '+966550000101', 'phone_normalized' => '+966550000101']);
+            $old = Lead::create(['full_name' => 'قديم', 'phone' => '+966550000102', 'phone_normalized' => '+966550000102']);
+            $old->forceFill(['created_at' => now()->subDays(3), 'next_follow_up_at' => now()->addDay()])->saveQuietly();
+        });
+
+        $health = $this->actingAs($t['admin'])->getJson('/api/v1/leads/overview')->assertOk()->json('data.health');
+
+        $this->assertSame(1, $health['today']);
+        $this->assertSame(1, $health['awaiting_follow_up']);
     }
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, Bot, CalendarPlus, Flame, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
+import { BellRing, Bot, CalendarCheck, CalendarPlus, FileText, Flame, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -13,6 +13,7 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen, telLink, whatsappLink } from '@/lib/format'
 import { WorkContactPanel } from '@/components/work/WorkContactPanel'
+import { AppointmentDialog } from '@/components/lead/AppointmentDialog'
 import {
   Badge, Button, ButtonLink, buttonClasses, Card, CardBody, CardHeader, Drawer, EmptyState, ErrorState,
   PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
@@ -59,6 +60,7 @@ export function WorkPage() {
   const [note, setNote] = useState('')
   /** The side panel for writing to the lead — email, WhatsApp and files — without leaving the queue. */
   const [contactOpen, setContactOpen] = useState(false)
+  const [appointmentOpen, setAppointmentOpen] = useState(false)
   /** Leads the rep passed over in this sitting, so the queue moves on. */
   const [skipped, setSkipped] = useState<string[]>([])
 
@@ -335,12 +337,17 @@ export function WorkPage() {
 
                 <div className="flex flex-wrap items-start justify-between gap-3 pt-0.5">
                   <div className="flex min-w-0 items-start gap-3">
-                  <span
-                    aria-hidden
-                    className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--brand-tint)] text-[1rem] font-bold text-[var(--brand-deep)]"
+                  {/* The score where the face would be: how serious, at a glance. */}
+                  <RingProgress
+                    value={lead.score ?? 0}
+                    size={52}
+                    thickness={5}
+                    tone={(lead.score ?? 0) >= 70 ? 'good' : (lead.score ?? 0) >= 40 ? 'warn' : 'neutral'}
+                    label={t('leads.score')}
+                    testId="work-score"
                   >
-                    {initials(lead.full_name)}
-                  </span>
+                    <span className="text-[0.9375rem] font-extrabold tabular-nums">{lead.score ?? 0}</span>
+                  </RingProgress>
                   <div className="min-w-0 space-y-1">
                     <Link
                       to={`/leads/${lead.id}`}
@@ -434,6 +441,26 @@ export function WorkPage() {
                     <Kbd>S</Kbd>
                   </Button>
 
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<FileText className="size-3.5" aria-hidden />}
+                    onClick={() => setContactOpen(true)}
+                    data-testid="work-file"
+                  >
+                    {t('leadView.file')}
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<CalendarCheck className="size-3.5" aria-hidden />}
+                    onClick={() => setAppointmentOpen(true)}
+                    data-testid="work-appointment"
+                  >
+                    {t('leadView.appointment')}
+                  </Button>
+
                   <Link
                     to={`/leads/${lead.id}`}
                     className={buttonClasses('ghost', 'sm')}
@@ -515,6 +542,18 @@ export function WorkPage() {
         Keyed by the lead, so a card that changes underneath an open panel
         cannot leave a half-written email addressed to somebody else.
       */}
+      {lead && (
+        <AppointmentDialog
+          leadId={lead.id}
+          open={appointmentOpen}
+          onClose={() => setAppointmentOpen(false)}
+          onBooked={() => {
+            setAppointmentOpen(false)
+            void queryClient.invalidateQueries({ queryKey: ['work-summary'] })
+          }}
+        />
+      )}
+
       <Drawer
         open={contactOpen && Boolean(lead)}
         onClose={() => setContactOpen(false)}
@@ -549,12 +588,6 @@ const URGENCY_DOT: Record<NextAction['urgency'], string> = {
   medium: 'var(--brand)',
   low: 'var(--color-ink-subtle)',
   none: 'var(--color-border-strong)',
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-
-  return parts.slice(0, 2).map((part) => part[0]).join('') || '·'
 }
 
 /**

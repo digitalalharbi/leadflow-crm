@@ -277,6 +277,8 @@ export default {
       previous: 'الفترة السابقة: {{count}}',
     },
     chart: {
+      failed: 'إجراءات فشلت',
+      failedHint: 'من كل الإجراءات — اضغط لرؤيتها',
       success: 'نجاح الأتمتة',
       successHint: 'من الإجراءات المنفَّذة',
       qualification: 'تأهيل العملاء',
@@ -1284,6 +1286,8 @@ export default {
       external_verification_required: 'بانتظار التحقق الخارجي',
     },
     item: {
+      email: 'البريد الإلكتروني',
+      claude: 'Claude للوكلاء',
       vps: 'الخادم (VPS)',
       domain: 'النطاق (Domain)',
       google: 'ربط Google (OAuth)',
@@ -1292,6 +1296,7 @@ export default {
       ads: 'منصات الإعلانات',
     },
     blocker: {
+      replies_not_routed: 'يصل البريد، لكن الردود لا تعود إلى المحادثة بعد.',
       not_production: 'البيئة ليست production بعد.',
       debug_enabled: 'وضع التصحيح مفعّل — عطّله قبل النشر.',
       no_app_key: 'مفتاح التطبيق غير مضبوط.',
@@ -1309,6 +1314,11 @@ export default {
       configured_per_workspace: 'يُضبط لكل مؤسسة على حدة.',
     },
     check: {
+      mail_server: 'خادم بريد حقيقي',
+      opened_by_a_customer: 'فتح عميل رسالة فعلًا',
+      replies_routed: 'الردود تعود للمحادثة',
+      api_key: 'مفتاح Claude',
+      model_answered: 'أجاب النموذج فعلًا',
       production_environment: 'بيئة production',
       debug_off: 'وضع التصحيح معطّل',
       app_key: 'مفتاح التطبيق',
@@ -1566,7 +1576,7 @@ export default {
     detail: { project: 'خاصة بالمشروع', general: 'عامة', everyone: 'كل الفريق', ar: 'العربية', en: 'الإنجليزية' },
   },
   workspace: {
-    why: { title: 'لماذا هذا العميل', campaign: 'الحملة' },
+    why: { title: 'لماذا هذا العميل', campaign: 'الحملة', now: 'لماذا الآن', noSignals: 'لا تفاعل من العميل بعد.' },
     automation: {
       nurturing: 'الأتمتة تتولاه',
       nurturingHint: 'رسائل الرحلة تعمل — لا حاجة لتدخلك إلا إن ردّ أو صار أولوية.',
@@ -1717,7 +1727,7 @@ export default {
     noAppointments: 'لا مواعيد',
     source: 'المصدر',
     history: 'السجل',
-    timeline: 'سجل النشاط',
+    timeline: 'السجل الموحّد',
     automation: 'الأتمتة',
     callStatus: {
       initiated: 'بدأت',
@@ -1740,6 +1750,9 @@ export default {
   },
 
   leadsOverview: {
+    today: 'اليوم',
+    ofTotal: 'من {{count}} عميلًا',
+    awaiting: 'بانتظار متابعة',
     total: 'كل العملاء',
     hot: 'ساخن',
     qualified: 'مؤهلون',
@@ -2085,6 +2098,13 @@ export default {
   },
 
   projects: {
+    summary: {
+      leads: 'العملاء',
+      qualified: 'مؤهَّلون',
+      appointments: 'مواعيد',
+      won: 'صفقات',
+      byProject: 'العملاء حسب المشروع',
+    },
     trend: '{{count}} عميل جديد خلال ١٤ يومًا',
     filesCount: '{{count}} ملف',
     questionsCount: '{{count}} سؤال',

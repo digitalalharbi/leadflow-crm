@@ -8,6 +8,7 @@ use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
 use App\Domain\Leads\StageAnnouncer;
+use App\Domain\Leads\WhyNow;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -157,6 +158,7 @@ class LeadController extends Controller
             // What to do next, decided by the same rules the work queue uses, so
             // the lead screen and the queue cannot give two answers.
             'next_action' => $this->nextAction($request, $lead),
+            'signals' => WhyNow::signals($lead),
             // The rep's name comes from a join, not an eager load: an eager load is
             // skipped when there are no calls, which would make a quiet lead cost
             // fewer queries than a busy one and break the constant-cost guarantee.
@@ -191,8 +193,15 @@ class LeadController extends Controller
         $health = $overview->health();
         $qualified = collect($overview->funnel())->firstWhere('key', 'qualified')['count'] ?? 0;
 
+        // The two counts a rep's morning starts with: what arrived today, and
+        // what is waiting on a follow-up somebody promised.
+        $today = (clone $this->queries->build($request, $request->user()))->where('leads.created_at', '>=', now()->startOfDay())->count();
+        $awaiting = (clone $this->queries->build($request, $request->user()))->whereNotNull('next_follow_up_at')->whereNotIn('status', ['won', 'lost', 'invalid'])->count();
+
         return ApiResponse::success([
             'health' => $health + [
+                'today' => $today,
+                'awaiting_follow_up' => $awaiting,
                 'qualified' => $qualified,
                 'qualified_rate' => $health['total'] > 0 ? round($qualified / $health['total'] * 100, 1) : null,
             ],

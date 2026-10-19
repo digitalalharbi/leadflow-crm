@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Download, ShieldAlert } from 'lucide-react'
+import { BarChart3, CalendarCheck, Download, Flame, PhoneCall, ShieldAlert, Target, Trophy, Users } from 'lucide-react'
+import { KpiCard, RingProgress } from '@/components/visual'
 import { useTranslation } from 'react-i18next'
 import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
@@ -20,7 +21,7 @@ import {
 import {
   CampaignMatrix, CampaignQualityChart, ChartCard, ConversionDriversChart, ConversionFunnel,
   DistributionBar, TeamComparisonChart, type TeamRow,
-  LostReasonsChart, MetricCard, PlatformPerformanceChart, ResponseTimeChart,
+  LostReasonsChart, PlatformPerformanceChart, ResponseTimeChart,
   TEMPERATURE_COLOR, formatDuration,
 } from '@/components/charts'
 import type { CampaignQualityRow, DashboardData, Project, Ref, ReportRow } from '@/types/api'
@@ -427,7 +428,7 @@ function OverviewTab({
   performance: ReturnType<typeof useQuery>
   translateError: (error: unknown) => string
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const data = query.data
 
   if (query.isError) {
@@ -458,24 +459,18 @@ function OverviewTab({
           wearing one word. The dashboard's summary counts leads *sitting in* a
           stage, which is the right question there and the wrong one here.
         */}
-        <MetricCard label={t('dashboard.totalLeads')} value={data.summary.total_leads} to="/leads" />
-        <MetricCard
-          label={t('campaignQuality.contacted')}
-          value={stage('contacted')}
-          to="/leads?status[]=contacted"
-        />
-        <MetricCard label={t('dashboard.qualified')} value={stage('qualified')} to="/leads?status[]=qualified" />
-        <MetricCard label={t('dashboard.hotLeads')} value={data.summary.hot_leads} tone="warning" to="/leads?temperature[]=hot" />
-        <MetricCard label={t('dashboard.appointments')} value={stage('appointment')} to="/leads?status[]=appointment" />
-        <MetricCard label={t('dashboard.won')} value={stage('won')} tone="success" to="/leads?status[]=won" />
+        <KpiCard label={t('dashboard.totalLeads')} icon={Users} value={formatNumber(data.summary.total_leads, i18n.language)} to="/leads" />
+        <KpiCard label={t('campaignQuality.contacted')} icon={PhoneCall} value={formatNumber(stage('contacted'), i18n.language)} to="/leads?status[]=contacted" />
+        <KpiCard label={t('dashboard.qualified')} icon={Target} tone="good" value={formatNumber(stage('qualified'), i18n.language)} to="/leads?status[]=qualified" />
+        <KpiCard label={t('dashboard.hotLeads')} icon={Flame} tone="bad" value={formatNumber(data.summary.hot_leads, i18n.language)} to="/leads?temperature[]=hot" />
+        <KpiCard label={t('dashboard.appointments')} icon={CalendarCheck} tone="warn" value={formatNumber(stage('appointment'), i18n.language)} to="/leads?status[]=appointment" />
+        <KpiCard label={t('dashboard.won')} icon={Trophy} tone="good" value={formatNumber(stage('won'), i18n.language)} to="/leads?status[]=won" />
       </section>
 
+      {/* Each rate as a ring: how much of the stage before made it to this one. */}
       {rates && (
         <Card>
-          <div
-            data-testid="report-rates"
-            className="grid divide-y divide-[var(--color-line)] sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-5 [&>div:not(:last-child)]:sm:border-e [&>div]:sm:border-[var(--color-line)]"
-          >
+          <div data-testid="report-rates" className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">
             {([
               ['contact_rate', 'campaignQuality.contactRate'],
               ['reply_rate', 'campaignQuality.replyRate'],
@@ -483,9 +478,11 @@ function OverviewTab({
               ['appointment_rate', 'campaignQuality.appointmentRate'],
               ['win_rate', 'campaignQuality.winRate'],
             ] as const).map(([key, label]) => (
-              <div key={key} className="px-5 py-4">
-                <p className="t-metric-sm"><bdi dir="ltr">{rates[key]}%</bdi></p>
-                <p className="t-caption mt-0.5">{t(label)}</p>
+              <div key={key} className="flex items-center gap-3">
+                <RingProgress value={rates[key] ?? 0} size={64} thickness={7} tone={(rates[key] ?? 0) >= 50 ? 'good' : (rates[key] ?? 0) >= 20 ? 'warn' : 'bad'} label={t(label)}>
+                  <span className="text-[0.875rem] font-extrabold tabular-nums" dir="ltr">{rates[key]}%</span>
+                </RingProgress>
+                <p className="text-[0.875rem] font-medium">{t(label)}</p>
               </div>
             ))}
           </div>

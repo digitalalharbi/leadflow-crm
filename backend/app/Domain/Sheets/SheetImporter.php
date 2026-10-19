@@ -41,6 +41,7 @@ class SheetImporter
     public function __construct(
         private readonly SheetReader $reader,
         private readonly LeadIngestionService $ingestion,
+        private readonly ColumnMapper $mapper,
     ) {}
 
     public function sync(SheetSource $source, Tenant $tenant, string $trigger = 'scheduled'): SheetSyncRun
@@ -77,6 +78,15 @@ class SheetImporter
             // A tab with no header row cannot be mapped onto anything, and
             // importing it positionally would invent meanings for columns.
             return $this->finish($run, $source, 'no_headers');
+        }
+
+        $this->resolveMapping($source, $connection, $headers['headers']);
+
+        if (! $this->canMakeLeads($source)) {
+            // Neither a phone nor an email column — nothing here can become a
+            // lead, and importing names alone would fill the list with people
+            // nobody can reach.
+            return $this->finish($run, $source, 'no_contact_column');
         }
 
         $columns = array_flip($headers['headers']);
@@ -154,11 +164,61 @@ class SheetImporter
     }
 
     /**
+     * The mapping this sync uses, worked out again only when the header row
+     * changed.
+     *
+     * A sheet grows columns — a new question on the form, a column somebody
+     * added for notes — and the mapping has to follow without anybody opening
+     * a screen. What a person chose is passed in as an override and survives
+     * the re-guess untouched.
+     */
+    public function resolveMapping(SheetSource $source, $connection, array $headers): void
+    {
+        $signature = md5(json_encode($headers));
+        $meta = $source->mapping_meta ?? [];
+
+        if (($meta['signature'] ?? null) === $signature && filled($source->mapping)) {
+            return;
+        }
+
+        // A mapping somebody wrote by hand before there was a guess is a choice.
+        if ($source->mapping_overrides === null && $meta === [] && filled($source->mapping)) {
+            $source->mapping_overrides = $source->mapping;
+        }
+
+        $headerRow = (int) ($source->header_row ?? 1);
+        $sample = $this->reader->rows($connection, $source->spreadsheet_id, $source->sheet_name, $headerRow + 1, 10);
+        $result = $this->mapper->map($headers, $sample['rows'] ?? [], $source->mapping_overrides ?? []);
+
+        $source->forceFill([
+            'mapping_overrides' => $source->mapping_overrides,
+            'mapping' => $result['mapping'],
+            'mapping_meta' => [
+                'signature' => $signature,
+                'headers' => array_values($headers),
+                'confidence' => $result['confidence'],
+                'ambiguous' => $result['ambiguous'],
+                'custom' => $result['custom'],
+                'mapped_at' => now()->toIso8601String(),
+            ],
+        ])->save();
+    }
+
+    private function canMakeLeads(SheetSource $source): bool
+    {
+        return $source->canMakeLeads();
+    }
+
+    /**
      * One row, mapped and sent through the ordinary pipeline.
      *
      * The provider is recorded as Google Sheets so attribution says where the
      * lead came from, while the *platform* comes from the sheet when it says
      * one — a sheet of Meta leads somebody exported is still Meta's lead.
+     *
+     * Nothing in the row is dropped: known columns become fields, every other
+     * column becomes a custom field under its own header, and the whole row —
+     * header by header — is kept as the lead's raw payload.
      */
     private function importRow(SheetSource $source, Tenant $tenant, array $columns, array $row, int $rowNumber): IngestionResult
     {
@@ -180,43 +240,122 @@ class SheetImporter
             }
         }
 
+        $raw = [];
+
+        foreach ($columns as $header => $index) {
+            $raw[$header] = isset($row[$index]) ? (string) $row[$index] : null;
+        }
+
+        $custom = [];
+        $labels = [];
+
+        foreach (($source->mapping_meta['custom'] ?? []) as $header => $key) {
+            $value = $raw[$header] ?? null;
+
+            if (filled($value)) {
+                $custom[$key] = trim((string) $value);
+                $labels[$key] = $header;
+            }
+        }
+
+        // Meta writes "p:+9665…" in its phone column; the prefix is not a digit
+        // and not part of the number.
+        if (isset($mapped['phone'])) {
+            $mapped['phone'] = preg_replace('/^p:\s*/i', '', $mapped['phone']);
+        }
+
         $defaults = $source->defaults ?? [];
 
-        $mapped['platform'] = $mapped['platform'] ?? ($defaults['platform'] ?? null);
+        $mapped['platform'] = $this->platform($mapped['platform'] ?? null)
+            ?? ($defaults['platform'] ?? null)
+            ?? $this->platform($source->spreadsheet_name.' '.$source->sheet_name);
         $mapped['campaign_name'] = $mapped['campaign_name'] ?? ($defaults['campaign_name'] ?? null);
 
         /*
-         * The sheet and the row identify the lead for idempotency: re-importing
-         * a sheet after somebody widens the mapping must not create a second
-         * copy of row 41, and the duplicate matcher looks at this first.
+         * The platform's own lead id identifies the lead when the sheet carries
+         * one, so the same lead arriving through the API later is the same
+         * lead. Otherwise the sheet and the row do: re-importing after somebody
+         * widens the mapping must not create a second copy of row 41.
          */
+        $providerLeadId = filled($mapped['lead_id'] ?? null)
+            ? (string) $mapped['lead_id']
+            : $source->spreadsheet_id.':'.$source->sheet_name.':'.$rowNumber;
+
+        unset($mapped['lead_id'], $mapped['submitted_at'], $mapped['project']);
+
         $incoming = IncomingLead::fromArray(
             IntegrationProvider::GoogleSheets,
             array_filter($mapped, fn ($value) => $value !== null) + [
-                'provider_lead_id' => $source->spreadsheet_id.':'.$source->sheet_name.':'.$rowNumber,
-                'project_id' => $this->projectFor($source, $mapped),
+                'provider_lead_id' => $providerLeadId,
+                'project_id' => $this->projectFor($source, $raw, $mapped),
+                'custom' => $custom,
+                'custom_labels' => $labels,
             ],
+            ['sheet' => $source->spreadsheet_name ?? $source->spreadsheet_id, 'tab' => $source->sheet_name, 'row' => $rowNumber, 'values' => $raw],
         );
 
         return $this->ingestion->ingest($tenant, $incoming);
     }
 
+    /** A platform from whatever the sheet calls it: `fb`, `ig`, `TikTok Leads`. */
+    private function platform(?string $value): ?string
+    {
+        $value = mb_strtolower(trim((string) $value));
+
+        return match (true) {
+            $value === '' => null,
+            (bool) preg_match('/tik\s*tok|تيك\s*توك/u', $value) => 'tiktok',
+            (bool) preg_match('/snap|سناب/u', $value) => 'snapchat',
+            (bool) preg_match('/linkedin|لينكد/u', $value) => 'linkedin',
+            (bool) preg_match('/google|جوجل|قوقل/u', $value) => 'google_ads',
+            (bool) preg_match('/^(ig|instagram)$|انستقرام|انستغرام/u', $value) => 'instagram',
+            (bool) preg_match('/^(fb|facebook)$|فيسبوك|فيس بوك/u', $value) => 'facebook',
+            (bool) preg_match('/\b(meta|facebook|instagram)\b|ميتا/u', $value) => 'meta',
+            default => null,
+        };
+    }
+
     /**
      * The project this lead belongs to.
      *
-     * A name in the sheet wins over the source's default, because a sheet with
-     * a project column is a sheet covering several projects — and silently
-     * stamping them all with one would put every lead on the wrong team.
+     * In order: a project the row names; a project whose name appears in the
+     * campaign, ad set, ad or form the lead came through (a campaign called
+     * "Riyadh Gardens – Sept" is Riyadh Gardens' lead); the source's default.
+     * A sheet with a project column covers several projects, and stamping them
+     * all with one would put every lead on the wrong team.
      */
-    private function projectFor(SheetSource $source, array $mapped): ?int
+    private function projectFor(SheetSource $source, array $raw, array $mapped): ?int
     {
-        $named = $mapped['project'] ?? null;
+        $projects = Project::query()->get(['id', 'name']);
+
+        $named = ($source->mapping['project'] ?? null) ? ($raw[$source->mapping['project']] ?? null) : null;
 
         if (filled($named)) {
-            $project = Project::where('name', $named)->first();
+            $wanted = ColumnMapper::normalise((string) $named);
 
-            if ($project) {
-                return $project->id;
+            foreach ($projects as $project) {
+                if (ColumnMapper::normalise($project->name) === $wanted) {
+                    return $project->id;
+                }
+            }
+        }
+
+        $context = ColumnMapper::normalise(implode(' ', array_filter([
+            $mapped['campaign_name'] ?? null,
+            $mapped['adset_name'] ?? null,
+            $mapped['ad_name'] ?? null,
+            $mapped['form_name'] ?? null,
+            $named,
+        ])));
+
+        if ($context !== '') {
+            // Longest name first, so "Gardens Phase 2" wins over "Gardens".
+            foreach ($projects->sortByDesc(fn ($p) => mb_strlen($p->name)) as $project) {
+                $name = ColumnMapper::normalise($project->name);
+
+                if (mb_strlen($name) >= 3 && preg_match('/(^|_)'.preg_quote($name, '/').'(_|$)/u', $context)) {
+                    return $project->id;
+                }
             }
         }
 

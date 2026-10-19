@@ -28,6 +28,9 @@ use Illuminate\Support\Facades\Validator;
  */
 class LeadIngestionService
 {
+    /** Fields a workspace can gain from its sources without anybody creating them. */
+    private const MAX_AUTO_FIELDS = 150;
+
     public function __construct(
         private PhoneNormalizer $phones,
         private LeadScoringService $scoring,
@@ -268,13 +271,42 @@ class LeadIngestionService
             return;
         }
 
-        $fields = CustomField::where('is_active', true)
-            ->whereIn('key', array_keys($incoming->custom))
+        $fields = CustomField::whereIn('key', array_keys($incoming->custom))
             ->get()
             ->keyBy('key');
 
+        /*
+         * An answer to a question we have never seen — a new column in the
+         * sheet, a custom question on the form — becomes a field of its own,
+         * named the way its source named it. Dropping it would lose the one
+         * thing the customer told us that the form designer thought mattered.
+         * Capped, so a sheet with a column per day cannot mint fields forever.
+         */
+        $missing = array_diff(array_keys($incoming->custom), $fields->keys()->all());
+
+        if ($missing !== [] && $incoming->customLabels !== []) {
+            $room = max(0, self::MAX_AUTO_FIELDS - CustomField::count());
+            $order = (int) CustomField::max('sort_order');
+
+            foreach (array_slice(array_values($missing), 0, $room) as $key) {
+                if (! isset($incoming->customLabels[$key])) {
+                    continue;
+                }
+
+                $fields[$key] = CustomField::create([
+                    'key' => $key,
+                    'label' => mb_substr((string) $incoming->customLabels[$key], 0, 120),
+                    'type' => 'text',
+                    'is_active' => true,
+                    'is_required' => false,
+                    'sort_order' => ++$order,
+                ]);
+            }
+        }
+
         foreach ($incoming->custom as $key => $value) {
-            if (! $fields->has($key) || $value === null || $value === '') {
+            // A field somebody switched off stays off: its answers are not wanted.
+            if (! $fields->has($key) || ! $fields[$key]->is_active || $value === null || $value === '') {
                 continue;
             }
 

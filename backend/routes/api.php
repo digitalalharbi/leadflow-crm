@@ -104,6 +104,16 @@ Route::prefix('v1')->group(function () {
     Route::post('integrations/calls/twilio/{integrationUuid}/status', TwilioStatusController::class)
         ->middleware('throttle:webhook');
 
+    /*
+     * "A row was just added." Sent by a one-line Apps Script trigger on the
+     * sheet, so a lead reaches the queue in seconds rather than at the next
+     * scheduled sweep. The path names the sheet and carries its own secret;
+     * the ping only asks for a sync — nothing in its body is believed.
+     */
+    Route::post('integrations/sheets/{uuid}/ping/{token}', [SheetSourceController::class, 'ping'])
+        ->whereUuid('uuid')
+        ->middleware('throttle:webhook');
+
     Route::prefix('integrations/whatsapp/webhook')->middleware('throttle:whatsapp-webhook')->group(function () {
         Route::post('/', [WhatsappWebhookController::class, 'receive']);
         Route::get('/', [WhatsappWebhookController::class, 'verify']);
@@ -374,6 +384,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/integrations/sheets/{uuid}', [SheetSourceController::class, 'update']);
             Route::delete('/integrations/sheets/{uuid}', [SheetSourceController::class, 'destroy']);
             Route::post('/integrations/sheets/{uuid}/sync', [SheetSourceController::class, 'sync']);
+            Route::patch('/integrations/sheets/{uuid}/mapping', [SheetSourceController::class, 'remap']);
 
             Route::get('/integrations/whatsapp', [WhatsappSettingsController::class, 'show']);
             Route::patch('/integrations/whatsapp', [WhatsappSettingsController::class, 'update']);

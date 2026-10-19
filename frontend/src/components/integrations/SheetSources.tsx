@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, RefreshCw, Sheet, Trash2 } from 'lucide-react'
+import { ArrowRight, Columns3, Copy, RefreshCw, Sheet, Trash2, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -9,9 +9,10 @@ import {
   Badge, Button, Card, CardBody, CardHeader, Modal, Select, Skeleton,
 } from '@/components/ui'
 import {
-  connectSheet, disconnectGoogle, disconnectSheet, fetchPickerCredentials, fetchSheets,
-  fetchTabs, previewSheet, startGoogleAuthorization, syncSheet, type SheetSource,
+  appsScriptFor, confidenceLevel, connectSheet, disconnectGoogle, disconnectSheet, fetchPickerCredentials, fetchSheets,
+  fetchTabs, previewSheet, remapSheet, startGoogleAuthorization, syncSheet, type MappingChoice, type SheetSource,
 } from '@/features/sheets'
+import { cn } from '@/lib/cn'
 import { pickSpreadsheet } from '@/lib/googlePicker'
 
 /**
@@ -33,6 +34,8 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
   const [open, setOpen] = useState(false)
+  const [reviewing, setReviewing] = useState<SheetSource | null>(null)
+  const [instant, setInstant] = useState<SheetSource | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['sheets'], queryFn: fetchSheets })
 
@@ -185,6 +188,12 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
                 </div>
               </div>
 
+              <MappingSummary
+                source={source}
+                onReview={() => setReviewing(source)}
+                onInstant={() => setInstant(source)}
+              />
+
               {/* The rows the sheet refused, so somebody can fix the sheet. */}
               {(source.last_run?.failures?.length ?? 0) > 0 && (
                 <ul className="mt-1.5 space-y-0.5" data-testid="sheet-failures">
@@ -199,6 +208,16 @@ export function SheetSources({ onImportFile }: { onImportFile?: () => void }) {
           ))}
         </ul>
       </CardBody>
+
+      {reviewing && (
+        <ReviewMapping
+          source={reviewing}
+          onClose={() => setReviewing(null)}
+          onSaved={() => { setReviewing(null); refresh() }}
+        />
+      )}
+
+      {instant && <InstantSync source={instant} onClose={() => setInstant(null)} />}
 
       {open && (
         <ConnectSheet
@@ -308,7 +327,8 @@ function ConnectSheet({
         spreadsheet_id: spreadsheet!.id,
         spreadsheet_name: spreadsheet!.name,
         sheet_name: tab,
-        mapping,
+        // Only what the person chose; the server works out the rest.
+        mapping: Object.fromEntries(Object.entries(mapping).filter(([, value]) => value)),
       }),
     onSuccess: () => {
       toast(t('sheets.connected'), 'success')
@@ -318,7 +338,7 @@ function ConnectSheet({
   })
 
   // A sheet with no way to contact anybody is not a lead source.
-  const ready = Boolean(spreadsheet && tab && (mapping.phone || mapping.email))
+  const ready = Boolean(spreadsheet && tab && (preview?.guess.usable || mapping.phone || mapping.email))
 
   return (
     <Modal
@@ -365,20 +385,19 @@ function ConnectSheet({
 
         {preview && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {['full_name', 'phone', 'email', 'city', 'project', 'campaign_name'].map((field) => (
-                <Select
-                  key={field}
-                  label={t(`sheets.field.${field}`)}
-                  value={mapping[field] ?? ''}
-                  data-testid={`map-${field}`}
-                  onChange={(event) => setMapping((prev) => ({ ...prev, [field]: event.target.value }))}
-                >
-                  <option value="">—</option>
-                  {preview.headers.map((header) => <option key={header} value={header}>{header}</option>)}
-                </Select>
-              ))}
-            </div>
+            {/*
+              Worked out from the header and ten real rows. Only a column that
+              is genuinely ambiguous asks for a choice; everything else is
+              shown with how sure the guess is, and every unknown column is
+              kept as a custom field rather than dropped.
+            */}
+            <MappingReview
+              mapping={{ ...preview.guess.mapping, ...Object.fromEntries(Object.entries(mapping).filter(([, v]) => v)) }}
+              confidence={preview.guess.confidence}
+              ambiguous={preview.guess.ambiguous.filter((choice) => !mapping[choice.field])}
+              custom={Object.keys(preview.guess.custom)}
+              onChoose={(field, header) => setMapping((prev) => ({ ...prev, [field]: header ?? '' }))}
+            />
 
             {/*
               Ten real rows, mapped. The step that stops a mistake becoming four
@@ -397,6 +416,200 @@ function ConnectSheet({
           </>
         )}
       </div>
+    </Modal>
+  )
+}
+
+const LEVEL_STYLE: Record<string, string> = {
+  certain: 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]',
+  likely: 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]',
+  check: 'bg-[color-mix(in_srgb,var(--color-warning)_15%,transparent)] text-[color-mix(in_srgb,var(--color-warning)_80%,black)]',
+}
+
+/**
+ * The mapping as a picture: which column feeds which field and how sure we
+ * are, the one or two choices only a person can make, and the columns kept as
+ * custom fields. Nothing in a sheet is dropped, and this is where that shows.
+ */
+function MappingReview({
+  mapping,
+  confidence,
+  ambiguous,
+  custom,
+  onChoose,
+}: {
+  mapping: Record<string, string>
+  confidence: Record<string, number>
+  ambiguous: MappingChoice[]
+  custom: string[]
+  onChoose?: (field: string, header: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const mapped = Object.entries(mapping).filter(([, header]) => header)
+  const total = mapped.length + custom.length
+
+  return (
+    <div className="space-y-3" data-testid="mapping-review">
+      <div>
+        <div className="mb-1 flex items-center justify-between text-[0.75rem] text-[var(--color-ink-muted)]">
+          <span>{t('sheets.mapping.known', { count: mapped.length })}</span>
+          <span>{t('sheets.mapping.customCount', { count: custom.length })}</span>
+        </div>
+        <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-[var(--color-chrome-fill)]" dir="ltr">
+          {total > 0 && <span className="h-full bg-[var(--brand)]" data-chart-mark style={{ width: `${(mapped.length / total) * 100}%` }} />}
+          {custom.length > 0 && <span className="h-full flex-1 bg-[var(--color-ink-subtle)]" data-chart-mark />}
+        </div>
+      </div>
+
+      {ambiguous.length > 0 && onChoose && (
+        <div className="space-y-2 rounded-xl bg-[color-mix(in_srgb,var(--color-warning)_10%,transparent)] p-3" data-testid="mapping-ambiguous">
+          <p className="text-[0.8125rem] font-semibold">{t('sheets.mapping.chooseTitle')}</p>
+          {ambiguous.map((choice) => (
+            <Select
+              key={choice.field}
+              label={t(`sheets.field.${choice.field}`)}
+              value={mapping[choice.field] ?? ''}
+              data-testid={`choose-${choice.field}`}
+              onChange={(event) => onChoose(choice.field, event.target.value || null)}
+            >
+              {choice.candidates.map((header) => <option key={header} value={header}>{header}</option>)}
+            </Select>
+          ))}
+        </div>
+      )}
+
+      <ul className="grid gap-1.5 sm:grid-cols-2" data-testid="mapping-fields">
+        {mapped.map(([field, header]) => {
+          const level = confidenceLevel(confidence[field])
+
+          return (
+            <li key={field} className="flex min-w-0 items-center gap-2 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-1.5" data-testid={`mapped-${field}`}>
+              <span className="w-20 shrink-0 truncate text-[0.75rem] font-semibold">{t(`sheets.field.${field}`, { defaultValue: field })}</span>
+              <ArrowRight className="size-3 shrink-0 text-[var(--color-ink-subtle)] rtl:-scale-x-100" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-[0.75rem] text-[var(--color-ink-muted)]" dir="auto">{header}</span>
+              <span className={cn('shrink-0 rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium', LEVEL_STYLE[level])}>
+                {t(`sheets.mapping.level.${level}`)}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+
+      {custom.length > 0 && (
+        <div data-testid="mapping-custom">
+          <p className="mb-1 text-[0.75rem] font-semibold">{t('sheets.mapping.customTitle')}</p>
+          <ul className="flex flex-wrap gap-1">
+            {custom.map((header) => (
+              <li key={header} className="rounded-full bg-[var(--color-chrome-fill)] px-2 py-0.5 text-[0.6875rem]" dir="auto">{header}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** One line under a connected sheet: what is mapped, and what still wants a person. */
+function MappingSummary({ source, onReview, onInstant }: { source: SheetSource; onReview: () => void; onInstant: () => void }) {
+  const { t, i18n } = useTranslation()
+  const mapped = Object.values(source.mapping ?? {}).filter(Boolean).length
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid={`sheet-${source.sheet_name}-mapping`}>
+      <button type="button" onClick={onReview} className="inline-flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] px-2.5 py-1 text-[0.6875rem] hover:text-[var(--color-ink)]">
+        <Columns3 className="size-3" aria-hidden />
+        {t('sheets.mapping.summary', { mapped, custom: source.custom_columns.length })}
+      </button>
+      {source.ambiguous.length > 0 && (
+        <button
+          type="button"
+          onClick={onReview}
+          className="rounded-full bg-[color-mix(in_srgb,var(--color-warning)_15%,transparent)] px-2.5 py-1 text-[0.6875rem] font-medium"
+          data-testid="mapping-needs-choice"
+        >
+          {t('sheets.mapping.needsChoice', { field: t(`sheets.field.${source.ambiguous[0].field}`) })}
+        </button>
+      )}
+      <button type="button" onClick={onInstant} className="inline-flex items-center gap-1 rounded-full bg-[var(--color-chrome-fill)] px-2.5 py-1 text-[0.6875rem] hover:text-[var(--color-ink)]" data-testid="sheet-instant">
+        <Zap className={cn('size-3', source.last_push_at && 'text-[var(--brand)]')} aria-hidden />
+        {source.last_push_at
+          ? t('sheets.instant.on', { when: formatLastSeen(source.last_push_at, i18n.language) })
+          : t('sheets.instant.off')}
+      </button>
+    </div>
+  )
+}
+
+function ReviewMapping({ source, onClose, onSaved }: { source: SheetSource; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const [choices, setChoices] = useState<Record<string, string | null>>({})
+
+  const save = useMutation({
+    mutationFn: () => remapSheet(source.id, choices),
+    onSuccess: () => { toast(t('sheets.mapping.saved'), 'success'); onSaved() },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t('sheets.mapping.title')}
+      description={t('sheets.mapping.hint')}
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button disabled={Object.keys(choices).length === 0} loading={save.isPending} onClick={() => save.mutate()} data-testid="save-mapping">
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <MappingReview
+        mapping={{ ...source.mapping, ...Object.fromEntries(Object.entries(choices).filter(([, v]) => v)) as Record<string, string> }}
+        confidence={source.confidence}
+        ambiguous={source.ambiguous.length > 0 ? source.ambiguous : []}
+        custom={source.custom_columns}
+        onChoose={(field, header) => setChoices((prev) => ({ ...prev, [field]: header }))}
+      />
+    </Modal>
+  )
+}
+
+/**
+ * Seconds rather than a minute: the sheet tells us itself when a row is added.
+ * Three lines of Apps Script and one trigger, done once per sheet by whoever
+ * owns it — Google offers no push for sheets otherwise.
+ */
+function InstantSync({ source, onClose }: { source: SheetSource; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useUi((s) => s.toast)
+  const script = appsScriptFor(source.ping_url)
+
+  return (
+    <Modal open onClose={onClose} title={t('sheets.instant.title')} description={t('sheets.instant.hint')} size="lg">
+      <ol className="mb-3 space-y-1.5 text-[0.8125rem]">
+        {(['open', 'paste', 'trigger'] as const).map((step, index) => (
+          <li key={step} className="flex items-start gap-2">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[0.6875rem] font-bold text-[var(--brand-contrast)]">{index + 1}</span>
+            {t(`sheets.instant.step.${step}`)}
+          </li>
+        ))}
+      </ol>
+      <div className="mb-1.5 flex justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          icon={<Copy className="size-3.5" />}
+          onClick={() => void navigator.clipboard?.writeText(script).then(() => toast(t('sheets.instant.copied'), 'success'))}
+        >
+          {t('sheets.instant.copy')}
+        </Button>
+      </div>
+      <pre className="overflow-x-auto rounded-xl bg-[var(--color-surface-muted)] p-3 font-mono text-[0.6875rem] leading-relaxed" dir="ltr" data-testid="apps-script">{script}</pre>
     </Modal>
   )
 }

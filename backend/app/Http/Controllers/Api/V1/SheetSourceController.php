@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Sheets\ColumnMapper;
 use App\Domain\Sheets\GoogleOAuth;
 use App\Domain\Sheets\SheetReader;
 use App\Enums\IntegrationProvider;
@@ -28,6 +29,7 @@ class SheetSourceController extends Controller
     public function __construct(
         private readonly SheetReader $reader,
         private readonly AuditLogger $audit,
+        private readonly ColumnMapper $mapper,
     ) {}
 
     public function index(Request $request)
@@ -106,10 +108,13 @@ class SheetSourceController extends Controller
             return $out;
         }, $rows['rows']);
 
+        $guess = $this->mapper->map($headers['headers'], $rows['rows'], $data['mapping'] ?? []);
+
         return ApiResponse::success([
             'headers' => $headers['headers'],
             'rows' => $rows['rows'],
             'mapped' => $mapped,
+            'guess' => $guess,
         ]);
     }
 
@@ -120,6 +125,26 @@ class SheetSourceController extends Controller
         $data = $this->validateSource($request);
         $connection = $this->requireConnection();
 
+        /*
+         * No mapping sent is the ordinary case now: the columns are read and
+         * matched here, and only a sheet with no way to reach anybody is
+         * refused. A mapping that *is* sent is a person's choice and is kept as
+         * one.
+         */
+        $headerRow = (int) ($data['header_row'] ?? 1);
+        $headers = $this->reader->headers($connection, $data['spreadsheet_id'], $data['sheet_name'], $headerRow);
+
+        if ($headers['error'] !== null) {
+            return $this->failure($headers['error']);
+        }
+
+        $sample = $this->reader->rows($connection, $data['spreadsheet_id'], $data['sheet_name'], $headerRow + 1, 10);
+        $guess = $this->mapper->map($headers['headers'], $sample['rows'] ?? [], $data['mapping']);
+
+        if (! $guess['usable']) {
+            throw ValidationException::withMessages(['mapping' => ['sheets.needs_phone_or_email']]);
+        }
+
         $source = SheetSource::updateOrCreate(
             [
                 'spreadsheet_id' => $data['spreadsheet_id'],
@@ -128,8 +153,17 @@ class SheetSourceController extends Controller
             [
                 'integration_id' => $connection->id,
                 'spreadsheet_name' => $data['spreadsheet_name'] ?? null,
-                'header_row' => $data['header_row'] ?? 1,
-                'mapping' => $data['mapping'],
+                'header_row' => $headerRow,
+                'mapping' => $guess['mapping'],
+                'mapping_overrides' => $data['mapping'] ?: null,
+                'mapping_meta' => [
+                    'signature' => md5(json_encode($headers['headers'])),
+                    'headers' => $headers['headers'],
+                    'confidence' => $guess['confidence'],
+                    'ambiguous' => $guess['ambiguous'],
+                    'custom' => $guess['custom'],
+                    'mapped_at' => now()->toIso8601String(),
+                ],
                 'defaults' => $data['defaults'] ?? null,
                 'is_active' => true,
             ],
@@ -198,6 +232,61 @@ class SheetSourceController extends Controller
         return ApiResponse::success(['queued' => true], 'Sync queued.');
     }
 
+    /**
+     * The sheet saying it changed. Public and unauthenticated by design — the
+     * caller is Google's script runner — so the only thing it can do is queue
+     * a sync of the one sheet whose secret it holds.
+     */
+    public function ping(string $uuid, string $token)
+    {
+        $source = SheetSource::withoutGlobalScopes()->where('uuid', $uuid)->first();
+
+        if (! $source || blank($source->push_token) || ! hash_equals($source->push_token, $token)) {
+            return ApiResponse::error('not_found', null, 404);
+        }
+
+        if ($source->is_active) {
+            $source->forceFill(['last_push_at' => now()])->save();
+            SyncSheetSource::dispatch($source->id, 'push');
+        }
+
+        return ApiResponse::success(['queued' => $source->is_active]);
+    }
+
+    /** The mapping as a person sees it: each field, its column, how sure we are. */
+    public function remap(Request $request, string $uuid)
+    {
+        $source = SheetSource::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $source->connection ?? new Integration);
+
+        $data = $request->validate([
+            'overrides' => ['required', 'array'],
+            'overrides.*' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $overrides = array_intersect_key($data['overrides'], array_flip(SheetSource::MAPPABLE));
+        $source->mapping_overrides = array_merge($source->mapping_overrides ?? [], $overrides);
+
+        // Forget the signature so the next resolve applies the choice at once.
+        $meta = $source->mapping_meta ?? [];
+        $headers = $meta['headers'] ?? [];
+        $result = $this->mapper->map($headers, [], $source->mapping_overrides);
+
+        $source->forceFill([
+            'mapping_overrides' => $source->mapping_overrides,
+            'mapping' => $result['mapping'],
+            'mapping_meta' => array_merge($meta, [
+                'confidence' => $result['confidence'],
+                'ambiguous' => $result['ambiguous'],
+                'custom' => $result['custom'],
+            ]),
+        ])->save();
+
+        $this->audit->log('sheets.mapping_changed', $request->user(), null, ['sheet' => $source->sheet_name, 'fields' => array_keys($overrides)]);
+
+        return ApiResponse::success(['source' => $this->present($source->refresh())]);
+    }
+
     private function validateSource(Request $request): array
     {
         $data = $request->validate([
@@ -205,19 +294,19 @@ class SheetSourceController extends Controller
             'spreadsheet_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'sheet_name' => ['required', 'string', 'max:255'],
             'header_row' => ['sometimes', 'integer', 'min:1', 'max:20'],
-            'mapping' => ['required', 'array'],
+            'mapping' => ['sometimes', 'array'],
             'mapping.*' => ['nullable', 'string', 'max:255'],
             'defaults' => ['sometimes', 'nullable', 'array'],
         ]);
 
-        $data['mapping'] = array_intersect_key($data['mapping'], array_flip(SheetSource::MAPPABLE));
+        $data['mapping'] = array_intersect_key($data['mapping'] ?? [], array_flip(SheetSource::MAPPABLE));
 
         /*
          * A sheet with neither a phone nor an email column cannot produce a
          * lead anybody can contact, and importing four thousand names with no
          * way to reach them is worse than refusing.
          */
-        if (blank($data['mapping']['phone'] ?? null) && blank($data['mapping']['email'] ?? null)) {
+        if ($data['mapping'] !== [] && blank($data['mapping']['phone'] ?? null) && blank($data['mapping']['email'] ?? null)) {
             throw ValidationException::withMessages([
                 'mapping' => ['sheets.needs_phone_or_email'],
             ]);
@@ -296,6 +385,14 @@ class SheetSourceController extends Controller
             'sheet_name' => $source->sheet_name,
             'header_row' => $source->header_row,
             'mapping' => $source->mapping,
+            'overrides' => $source->mapping_overrides ?? [],
+            'confidence' => $source->mapping_meta['confidence'] ?? [],
+            'ambiguous' => $source->mapping_meta['ambiguous'] ?? [],
+            'custom_columns' => array_keys($source->mapping_meta['custom'] ?? []),
+            'headers' => $source->mapping_meta['headers'] ?? [],
+            // The address the sheet's own trigger calls when a row is added.
+            'ping_url' => url("/api/v1/integrations/sheets/{$source->uuid}/ping/{$source->push_token}"),
+            'last_push_at' => $source->last_push_at?->toIso8601String(),
             'defaults' => $source->defaults,
             'is_active' => $source->is_active,
             'health' => $source->health(),

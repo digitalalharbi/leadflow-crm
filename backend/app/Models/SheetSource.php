@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * A Google Sheet that leads arrive in.
@@ -22,26 +23,43 @@ class SheetSource extends Model
 
     /** The fields a sheet may be mapped onto. Anything else is ignored. */
     public const MAPPABLE = [
-        'full_name', 'phone', 'email', 'city', 'project',
-        'campaign_name', 'platform', 'source', 'notes',
+        'lead_id', 'submitted_at', 'full_name', 'first_name', 'last_name', 'phone', 'email', 'city', 'project',
+        'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name', 'form_id', 'form_name',
+        'platform', 'source', 'notes',
     ];
 
     protected $fillable = [
         'integration_id', 'spreadsheet_id', 'spreadsheet_name', 'sheet_name',
-        'header_row', 'mapping', 'defaults', 'cursor_row', 'is_active',
-        'last_synced_at', 'last_error',
+        'header_row', 'mapping', 'mapping_overrides', 'mapping_meta', 'defaults', 'cursor_row', 'is_active',
+        'last_synced_at', 'last_error', 'push_token', 'last_push_at',
     ];
+
+    protected $hidden = ['push_token'];
 
     protected function casts(): array
     {
         return [
             'mapping' => 'array',
+            'mapping_overrides' => 'array',
+            'mapping_meta' => 'array',
+            'last_push_at' => 'datetime',
             'defaults' => 'array',
             'header_row' => 'integer',
             'cursor_row' => 'integer',
             'is_active' => 'boolean',
             'last_synced_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Each sheet gets its own secret for the "a row was added" ping, so a sheet
+     * can ask for its own sync and nobody else's.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (SheetSource $source) {
+            $source->push_token ??= Str::random(48);
+        });
     }
 
     public function connection(): BelongsTo

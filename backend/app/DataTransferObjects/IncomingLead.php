@@ -53,6 +53,8 @@ class IncomingLead
         public readonly ?float $budgetMax = null,
         public readonly array $custom = [],
         public readonly array $rawPayload = [],
+        /** What each custom key was called where it came from — a header, a form question. */
+        public readonly array $customLabels = [],
     ) {}
 
     /**
@@ -122,6 +124,7 @@ class IncomingLead
             budgetMax: is_numeric(Arr::get($data, 'budget_max')) ? (float) Arr::get($data, 'budget_max') : null,
             custom: Arr::get($data, 'custom', []),
             rawPayload: $raw ?: $data,
+            customLabels: Arr::get($data, 'custom_labels', []),
         );
     }
 

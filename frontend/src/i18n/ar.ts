@@ -102,6 +102,7 @@ export default {
   },
   work: {
     pulse: {
+      automated: 'تتولاهم الأتمتة',
       reached: 'وصلهم تواصل',
       ofOpen: '{{reached}} من {{open}} مفتوح',
     },
@@ -1215,6 +1216,27 @@ export default {
   },
 
   templates: {
+    target: {
+      title: 'لمن هذه الرسالة',
+      purpose: 'الغرض',
+      project: 'المشروع',
+      language: 'اللغة',
+      stage: 'المرحلة',
+      audience: 'نوع العميل',
+      any: 'الكل',
+      none: 'بدون — رسالة يدوية',
+    },
+    purpose: {
+      welcome: 'ترحيب',
+      qualification: 'أسئلة التأهيل',
+      reminder: 'تذكير',
+      nurture: 'متابعة لطيفة',
+      appointment: 'موعد',
+      brochure: 'بروشور',
+      won: 'بعد البيع',
+      lost: 'بعد الخسارة',
+    },
+    audience: { investment: 'مستثمر', end_user: 'للسكن' },
     title: 'الرسائل المحفوظة',
     hint: 'ما يرسله الفريق والقواعد. سجّل نسخة معتمدة من Meta لتسمح للرسالة ببدء محادثة.',
     add: 'إضافة رسالة',
@@ -1392,6 +1414,7 @@ export default {
     no_response: 'بلا استجابة',
   },
   activity: {
+    handed_off: 'سُلِّم للمندوب',
     whatsapp_sent: 'أرسلنا رسالة واتساب',
     whatsapp_received: 'ردّ العميل على واتساب',
     whatsapp_opted_out: 'تغيّر إعداد رسائل واتساب',

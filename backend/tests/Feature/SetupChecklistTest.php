@@ -26,6 +26,7 @@ class SetupChecklistTest extends TestCase
     {
         parent::setUp();
         $this->t = $this->provisionTenant('Checklist Co');
+        $this->withoutJourney($this->t['tenant']);
     }
 
     private function steps(): array

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, CalendarPlus, Flame, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
+import { BellRing, Bot, CalendarPlus, Flame, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -565,6 +565,10 @@ function WorkPulse({ summary }: { summary: WorkSummary }) {
     { key: 'hot', label: t('work.stats.hot'), value: summary.hot, icon: Flame },
   ]
 
+  if ((summary.automated ?? 0) > 0) {
+    tiles.push({ key: 'automated', label: t('work.pulse.automated'), value: summary.automated ?? 0, icon: Bot })
+  }
+
   return (
     <div className="grid gap-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-card)] sm:grid-cols-[auto_1fr]" data-testid="work-pulse">
       <div className="flex items-center gap-2.5 px-1.5">
@@ -576,7 +580,7 @@ function WorkPulse({ summary }: { summary: WorkSummary }) {
           <p className="t-caption tabular-nums">{t('work.pulse.ofOpen', { reached, open: summary.open })}</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      <div className={cn('grid grid-cols-2 gap-1.5', tiles.length > 4 ? 'sm:grid-cols-5' : 'sm:grid-cols-4')}>
         {tiles.map(({ key, label, value, icon: Icon, alarming }) => {
           const hot = alarming && value > 0
 

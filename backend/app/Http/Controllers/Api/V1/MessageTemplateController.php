@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\LeadStatus;
 use App\Enums\MessageChannel;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MessageTemplateResource;
 use App\Models\MessageTemplate;
+use App\Models\Project;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -23,6 +25,7 @@ class MessageTemplateController extends Controller
             && $request->user()->can('viewInactive', MessageTemplate::class);
 
         $templates = MessageTemplate::query()
+            ->with('project:id,uuid,name')
             ->when(! $includeInactive, fn ($q) => $q->active())
             // WhatsApp unless asked otherwise: this endpoint was WhatsApp's alone
             // for a long time, and a caller that never heard of email must not
@@ -49,7 +52,7 @@ class MessageTemplateController extends Controller
 
         $template = MessageTemplate::create($data + ['channel' => $channel->value]);
 
-        return ApiResponse::created(['template' => new MessageTemplateResource($template)]);
+        return ApiResponse::created(['template' => new MessageTemplateResource($template->load('project:id,uuid,name'))]);
     }
 
     public function update(Request $request, string $uuid)
@@ -63,7 +66,7 @@ class MessageTemplateController extends Controller
 
         $template->update($data);
 
-        return ApiResponse::success(['template' => new MessageTemplateResource($template->refresh())]);
+        return ApiResponse::success(['template' => new MessageTemplateResource($template->refresh()->load('project:id,uuid,name'))]);
     }
 
     public function destroy(Request $request, string $uuid)
@@ -78,7 +81,7 @@ class MessageTemplateController extends Controller
 
     private function validated(Request $request, ?MessageTemplate $existing = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => [
                 $existing ? 'sometimes' : 'required', 'string', 'max:120',
                 Rule::unique('message_templates', 'name')
@@ -106,6 +109,26 @@ class MessageTemplateController extends Controller
             'meta_parameters' => ['sometimes', 'nullable', 'array', 'max:10'],
             'meta_parameters.*' => ['string', Rule::in(MessageTemplate::VARIABLES)],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
+
+            /*
+             * Who this message is for. A journey asks for "the welcome" and is
+             * given the one written for the lead's project, language, stage and
+             * kind of buyer — so these narrow, and leaving one empty means
+             * "anyone". The project is checked inside the workspace.
+             */
+            'purpose' => ['sometimes', 'nullable', Rule::in(MessageTemplate::PURPOSES)],
+            'project_id' => ['sometimes', 'nullable', 'uuid'],
+            'language' => ['sometimes', 'nullable', Rule::in(['ar', 'en', 'ur', 'hi', 'fr'])],
+            'stage' => ['sometimes', 'nullable', Rule::in(LeadStatus::values())],
+            'audience' => ['sometimes', 'nullable', Rule::in(MessageTemplate::AUDIENCES)],
         ]);
+
+        if (array_key_exists('project_id', $data)) {
+            $data['project_id'] = $data['project_id'] === null
+                ? null
+                : Project::where('uuid', $data['project_id'])->firstOrFail()->id;
+        }
+
+        return $data;
     }
 }

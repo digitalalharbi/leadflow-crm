@@ -212,9 +212,8 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
                     variant="ghost"
                     aria-label={t('common.delete')}
                     onClick={() => remove.mutate(file.id)}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </Button>
+                    icon={<Trash2 className="size-4" />}
+                  />
                 </span>
               </li>
             ))}

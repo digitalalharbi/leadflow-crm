@@ -11,11 +11,13 @@ use App\Http\Controllers\Controller;
 use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Lead;
+use App\Models\MessageTemplate;
 use App\Models\ProjectFile;
 use App\Models\ScheduledAction;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Rules, written by the workspace rather than by a developer.
@@ -59,6 +61,7 @@ class AutomationRuleController extends Controller
         'assign', 'change_stage', 'adjust_score', 'add_tag',
         'schedule_follow_up', 'add_note', 'notify', 'stop_follow_ups',
         'send_whatsapp', 'send_email', 'share_file',
+        'ask_qualification', 'set_priority', 'hand_off',
     ];
 
     public function index(Request $request)
@@ -316,7 +319,7 @@ class AutomationRuleController extends Controller
     {
         $required = $partial ? 'sometimes' : 'required';
 
-        return $request->validate([
+        $data = $request->validate([
             'name' => [$required, 'string', 'max:120'],
             'trigger' => [$required, Rule::in(self::TRIGGERS)],
             'is_enabled' => ['sometimes', 'boolean'],
@@ -386,7 +389,14 @@ class AutomationRuleController extends Controller
              * which one carries that sentence. Required, because a send_whatsapp
              * with no template is a rule that reports a failure on every run.
              */
-            'actions.*.template_uuid' => ['required_if:actions.*.type,send_whatsapp,send_email', 'uuid'],
+            'actions.*.template_uuid' => ['nullable', 'uuid'],
+            // …or what the message is for, and each lead gets the version
+            // written for its project, language and stage.
+            'actions.*.purpose' => ['nullable', Rule::in(MessageTemplate::PURPOSES)],
+            // A waiting step that only makes sense if the customer stayed quiet.
+            'actions.*.unless' => ['sometimes', 'nullable', Rule::in(['replied'])],
+            'actions.*.reason' => ['sometimes', 'nullable', Rule::in(['replied', 'qualified', 'no_reply', 'unreached', 'asked_for_human', 'needs_human'])],
+            'actions.*.when' => ['sometimes', 'nullable', Rule::in(['hot', 'unreached'])],
 
             /*
              * Optional on purpose. Left out, the chooser reads the lead's own
@@ -433,6 +443,17 @@ class AutomationRuleController extends Controller
              */
             'actions.*.delay_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:43200'],
         ]);
+
+        // A send names its message or what the message is for; with neither it
+        // would report a failure on every run.
+        foreach ($data['actions'] ?? [] as $index => $action) {
+            if (in_array($action['type'] ?? null, ['send_whatsapp', 'send_email'], true)
+                && blank($action['template_uuid'] ?? null) && blank($action['purpose'] ?? null)) {
+                throw ValidationException::withMessages(["actions.{$index}.template_uuid" => ['اختر الرسالة أو الغرض منها.']]);
+            }
+        }
+
+        return $data;
     }
 
     private function present(AutomationRule $rule): array
@@ -486,10 +507,29 @@ class AutomationRuleController extends Controller
 
         $template = RuleTemplates::get($key);
 
-        $existing = AutomationRule::where('template_key', $key)->first();
+        $existing = AutomationRule::withTrashed()->where('template_key', $key)->first();
 
-        if ($existing) {
+        if ($existing && ! $existing->trashed()) {
             return ApiResponse::error('هذا القالب مُضاف بالفعل.', status: 422);
+        }
+
+        /*
+         * Deleted once and wanted back. The old row still holds the template's
+         * key, so a fresh insert would collide with it; the rule comes back as
+         * the template describes it today, switched off like any install.
+         */
+        if ($existing) {
+            $existing->restore();
+            $existing->forceFill([
+                'name' => $template['name'],
+                'trigger' => $template['trigger'],
+                'priority' => $template['priority'],
+                'conditions' => $template['conditions'],
+                'actions' => $this->stampRuleName($template['actions'], $template['name']),
+                'is_enabled' => false,
+            ])->save();
+
+            return ApiResponse::success(['rule' => $this->present($existing->refresh())], status: 201);
         }
 
         $rule = AutomationRule::create([

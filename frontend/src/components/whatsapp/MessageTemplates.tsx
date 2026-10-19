@@ -12,6 +12,7 @@ import {
   updateMessageTemplate, type TemplatePayload,
 } from '@/features/conversations'
 import type { MessageTemplate } from '@/types/api'
+import { fetchProjects } from '@/features/leads'
 
 /**
  * The messages a workspace sends, and which of them may open a conversation.
@@ -93,6 +94,9 @@ export function MessageTemplates() {
                   In words, because the difference is not cosmetic: one of these
                   can reach a cold lead and the other will be refused.
                 */}
+                {template.purpose && (
+                  <Badge tone="info">{t(`templates.purpose.${template.purpose}`)}{template.project_name ? ` · ${template.project_name}` : ''}</Badge>
+                )}
                 {template.can_start_conversation ? (
                   <Badge tone="success">{t('templates.canStart')}</Badge>
                 ) : (
@@ -111,17 +115,16 @@ export function MessageTemplates() {
                   variant="ghost"
                   aria-label={t('common.edit')}
                   onClick={() => setEditing(template)}
-                >
-                  <Pencil className="size-4" aria-hidden />
-                </Button>
+                  icon={<Pencil className="size-4" />}
+                  data-testid={`edit-template-${template.id}`}
+                />
                 <Button
                   size="icon"
                   variant="ghost"
                   aria-label={t('common.delete')}
                   onClick={() => remove.mutate(template.id)}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </Button>
+                  icon={<Trash2 className="size-4" />}
+                />
               </span>
             </li>
           ))}
@@ -163,6 +166,13 @@ function TemplateDrawer({
   const [metaName, setMetaName] = useState(template?.meta_template_name ?? '')
   const [metaLanguage, setMetaLanguage] = useState(template?.meta_language ?? 'ar')
   const [parameters, setParameters] = useState<string[]>(template?.meta_parameters ?? [])
+  // Who it is for. Each one narrows; empty is "anyone".
+  const [purpose, setPurpose] = useState(template?.purpose ?? '')
+  const [projectId, setProjectId] = useState(template?.project_id ?? '')
+  const [language, setLanguage] = useState(template?.language ?? '')
+  const [stage, setStage] = useState(template?.stage ?? '')
+  const [audience, setAudience] = useState(template?.audience ?? '')
+  const { data: projects } = useQuery({ queryKey: ['projects-list'], queryFn: fetchProjects })
 
   const save = useMutation({
     mutationFn: () => {
@@ -175,6 +185,11 @@ function TemplateDrawer({
         meta_template_name: metaName.trim() || null,
         meta_language: metaName.trim() ? metaLanguage : null,
         meta_parameters: metaName.trim() ? parameters : null,
+        purpose: purpose || null,
+        project_id: projectId || null,
+        language: language || null,
+        stage: stage || null,
+        audience: audience || null,
       }
 
       return template ? updateMessageTemplate(template.id, payload) : createMessageTemplate(payload)
@@ -221,6 +236,40 @@ function TemplateDrawer({
             <code key={variable} className="me-1.5" dir="ltr">{`{{${variable}}}`}</code>
           ))}
         </p>
+
+        {/*
+          Who this is for. A journey asks for "the welcome" and each lead gets
+          the one written for its project, language, stage and kind of buyer.
+        */}
+        <fieldset className="grid gap-3 rounded-[var(--radius-card)] border border-[var(--color-line)] p-3 sm:grid-cols-2" data-testid="template-targeting">
+          <legend className="t-small px-1 font-medium">{t('templates.target.title')}</legend>
+          <Select label={t('templates.target.purpose')} value={purpose} onChange={(e) => setPurpose(e.target.value)} data-testid="template-purpose">
+            <option value="">{t('templates.target.none')}</option>
+            {['welcome', 'qualification', 'reminder', 'nurture', 'appointment', 'brochure', 'won', 'lost'].map((key) => (
+              <option key={key} value={key}>{t(`templates.purpose.${key}`)}</option>
+            ))}
+          </Select>
+          <Select label={t('templates.target.project')} value={projectId} onChange={(e) => setProjectId(e.target.value)} data-testid="template-project">
+            <option value="">{t('templates.target.any')}</option>
+            {(projects ?? []).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+          </Select>
+          <Select label={t('templates.target.language')} value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <option value="">{t('templates.target.any')}</option>
+            <option value="ar">{t('files.arabic')}</option>
+            <option value="en">{t('files.english')}</option>
+          </Select>
+          <Select label={t('templates.target.stage')} value={stage} onChange={(e) => setStage(e.target.value)}>
+            <option value="">{t('templates.target.any')}</option>
+            {['new', 'contacted', 'replied', 'qualified', 'appointment', 'negotiation'].map((key) => (
+              <option key={key} value={key}>{t(`status.${key}`, { defaultValue: key })}</option>
+            ))}
+          </Select>
+          <Select label={t('templates.target.audience')} value={audience} onChange={(e) => setAudience(e.target.value)}>
+            <option value="">{t('templates.target.any')}</option>
+            <option value="investment">{t('templates.audience.investment')}</option>
+            <option value="end_user">{t('templates.audience.end_user')}</option>
+          </Select>
+        </fieldset>
 
         <fieldset className="space-y-3 rounded-[var(--radius-card)] border border-[var(--color-line)] p-3">
           <legend className="t-small px-1 font-medium">{t('templates.approvedTitle')}</legend>
@@ -277,9 +326,8 @@ function TemplateDrawer({
                       variant="ghost"
                       aria-label={t('common.delete')}
                       onClick={() => setParameters((current) => current.filter((_, i) => i !== index))}
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </Button>
+                      icon={<Trash2 className="size-4" />}
+                    />
                   </div>
                 ))}
                 {parameters.length < variables.length && (

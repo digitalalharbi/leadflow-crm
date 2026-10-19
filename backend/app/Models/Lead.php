@@ -158,6 +158,24 @@ class Lead extends Model
      * import. The job re-checks closure as well, but that would leave the trace
      * saying "pending" for two days about something that is already decided.
      */
+    /**
+     * The customer answered, so every step that was waiting for them not to is
+     * void. Cancelled now rather than when it would have run, so the trace
+     * says so the moment it stops being true.
+     */
+    public function stopWaitingForReply(): void
+    {
+        ScheduledAction::withoutGlobalScopes()
+            ->where('lead_id', $this->id)
+            ->where('status', ScheduledAction::PENDING)
+            ->get()
+            ->filter(fn (ScheduledAction $action) => ($action->action['unless'] ?? null) === 'replied')
+            ->each(fn (ScheduledAction $action) => $action->resolve(
+                ScheduledAction::CANCELLED,
+                'ردّ العميل — لم تعد هذه الخطوة لازمة.',
+            ));
+    }
+
     protected static function cancelPromisedWork(self $lead): void
     {
         ScheduledAction::withoutGlobalScopes()
@@ -168,6 +186,25 @@ class Lead extends Model
                 ScheduledAction::CANCELLED,
                 'أُغلق العميل قبل موعد التنفيذ.',
             ));
+    }
+
+    /** Automation is talking to this lead; reps see it only if it turns hot. */
+    public const AUTOMATION_NURTURING = 'nurturing';
+
+    /** A person's turn — and `needs_human_reason` says why. */
+    public const AUTOMATION_HANDED_OFF = 'handed_off';
+
+    /** Why a lead was handed to a person, in the words a rep would use. */
+    public static function handOffWords(?string $reason): string
+    {
+        return match ($reason) {
+            'replied' => 'ردّ العميل',
+            'qualified' => 'اجتاز التأهيل',
+            'no_reply' => 'لم يرد على الرسائل الآلية',
+            'unreached' => 'لم تصله أي رسالة آلية',
+            'asked_for_human' => 'طلب التحدث مع شخص',
+            default => 'يحتاج تدخلًا بشريًا',
+        };
     }
 
     protected $fillable = [
@@ -197,6 +234,7 @@ class Lead extends Model
     protected function casts(): array
     {
         return [
+            'handed_off_at' => 'datetime',
             'status' => LeadStatus::class,
             'temperature' => LeadTemperature::class,
             'qualification_status' => QualificationStatus::class,

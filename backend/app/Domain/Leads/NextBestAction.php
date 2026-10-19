@@ -79,6 +79,29 @@ class NextBestAction
                 'إجاباته تدل على أنه غير مناسب لهذا المشروع. راجعه ثم أغلقه أو صحّح الإجابة.');
         }
 
+        /*
+         * Automation handed this lead over and nobody has picked it up since.
+         * The hand-off reason is the "why now": the customer answered the
+         * journey, passed its questions, or stayed silent through all of it.
+         */
+        if ($lead->automation_state === Lead::AUTOMATION_HANDED_OFF
+            && $lead->handed_off_at !== null
+            && ($lead->last_contact_at === null || $lead->last_contact_at->lte($lead->handed_off_at))) {
+            $handoff = match ($lead->needs_human_reason) {
+                'replied' => $this->result('reply_now', 'critical',
+                    'ردّ العميل على رسالة الأتمتة — أكمل نفس المحادثة الآن.', 0),
+                'qualified' => $this->result('call_now', 'critical',
+                    'اجتاز أسئلة التأهيل — اتصل واحجز موعدًا.', 0),
+                'no_reply' => $this->result('call_now', 'high',
+                    'لم يرد على الرسائل الآلية — جرّب الاتصال.'),
+                default => null,
+            };
+
+            if ($handoff !== null) {
+                return $handoff;
+            }
+        }
+
         if ($lead->assigned_to === null) {
             return $this->result('assign', 'high',
                 'لا مسؤول على هذا العميل. أسنده قبل أن يتأخر.');

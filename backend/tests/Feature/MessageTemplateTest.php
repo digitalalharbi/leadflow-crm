@@ -45,7 +45,7 @@ class MessageTemplateTest extends TestCase
 
         $response->assertSuccessful();
         $this->assertNotEmpty($response->json('data.templates'));
-        $this->assertSame(['name', 'agent', 'company', 'project'], $response->json('data.variables'));
+        $this->assertSame(['name', 'agent', 'company', 'project', 'questions'], $response->json('data.variables'));
     }
 
     public function test_a_filled_template_reads_as_a_person_wrote_it(): void
@@ -288,5 +288,29 @@ class MessageTemplateTest extends TestCase
             'credentials' => ['verify_token' => 'verify', 'app_secret' => 'secret-secret-secret'],
             'is_active' => true,
         ]));
+    }
+
+    public function test_a_message_can_be_written_for_one_project_language_and_stage(): void
+    {
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'الواحة']));
+
+        $this->actingAs($this->t['admin'])->postJson('/api/v1/message-templates', [
+            'name' => 'ترحيب الواحة', 'body' => 'أهلًا {{name}}', 'purpose' => 'welcome',
+            'project_id' => $project->uuid, 'language' => 'ar', 'stage' => 'new', 'audience' => 'investment',
+        ])->assertCreated()
+            ->assertJsonPath('data.template.purpose', 'welcome')
+            ->assertJsonPath('data.template.project_id', $project->uuid)
+            ->assertJsonPath('data.template.project_name', 'الواحة')
+            ->assertJsonPath('data.template.audience', 'investment');
+    }
+
+    public function test_a_project_from_another_workspace_cannot_be_targeted(): void
+    {
+        $other = $this->provisionTenant('Other Co');
+        $theirs = $this->asTenant($other['tenant'], fn () => Project::create(['name' => 'سر']));
+
+        $this->actingAs($this->t['admin'])->postJson('/api/v1/message-templates', [
+            'name' => 'محاولة', 'body' => 'x', 'project_id' => $theirs->uuid,
+        ])->assertNotFound();
     }
 }

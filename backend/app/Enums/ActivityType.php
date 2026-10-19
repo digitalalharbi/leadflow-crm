@@ -29,6 +29,8 @@ enum ActivityType: string
     case EmailOptedOut = 'email_opted_out';
     case FileShared = 'file_shared';
     case Updated = 'updated';
+    /** Automation handed the lead to a person, and the note says why. */
+    case HandedOff = 'handed_off';
 
     public static function values(): array
     {

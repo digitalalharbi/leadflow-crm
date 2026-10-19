@@ -67,6 +67,8 @@ export function fetchNextInQueue(skip: string[] = []) {
 }
 
 export interface WorkSummary {
+  /** Leads the journey is still talking to — not a rep's job unless they turn hot. */
+  automated?: number
   open: number
   uncontacted: number
   overdue_first_contact: number

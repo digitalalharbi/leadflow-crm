@@ -202,6 +202,14 @@ export interface MessageTemplate {
   meta_parameters: string[]
   /** Whether this message may open a conversation, rather than only answer one. */
   can_start_conversation: boolean
+  /** What a journey asks for: welcome, qualification, reminder, nurture… */
+  purpose: string | null
+  /** Narrow who it is for; empty means anyone. */
+  project_id: string | null
+  project_name: string | null
+  language: string | null
+  stage: string | null
+  audience: string | null
 }
 
 /** Why a lead scores what it scores — one entry per rule that fired. */

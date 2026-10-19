@@ -37,6 +37,7 @@ class AutomatedActionsAreVisibleTest extends TestCase
     {
         parent::setUp();
         $this->t = $this->provisionTenant('Trace Co');
+        $this->withoutJourney($this->t['tenant']);
     }
 
     private function lead(array $attributes = []): Lead

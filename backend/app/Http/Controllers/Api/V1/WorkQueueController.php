@@ -165,7 +165,14 @@ class WorkQueueController extends Controller
             )
             ->first();
 
+        // What the journey is handling on its own — the work nobody had to do.
+        $automated = Lead::query()
+            ->visibleTo($request->user())
+            ->where('automation_state', Lead::AUTOMATION_NURTURING)
+            ->count();
+
         return ApiResponse::success([
+            'automated' => $automated,
             'open' => (int) $row->open,
             'uncontacted' => (int) $row->uncontacted,
             'overdue_first_contact' => (int) $row->overdue_first_contact,
@@ -184,7 +191,17 @@ class WorkQueueController extends Controller
 
         return Lead::query()
             ->visibleTo($request->user())
-            ->whereNotIn('status', $closed);
+            ->whereNotIn('status', $closed)
+            /*
+             * Human by exception. A lead the journey is still talking to is not
+             * a rep's job yet — unless it turned hot, became a priority or
+             * qualified, which is exactly when a person should step in.
+             */
+            ->where(fn ($q) => $q->whereNull('automation_state')
+                ->orWhere('automation_state', '!=', Lead::AUTOMATION_NURTURING)
+                ->orWhere('is_priority', true)
+                ->orWhere('temperature', 'hot')
+                ->orWhere('qualification_status', 'qualified'));
     }
 
     /**

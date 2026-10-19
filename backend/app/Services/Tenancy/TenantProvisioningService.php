@@ -2,6 +2,7 @@
 
 namespace App\Services\Tenancy;
 
+use App\Domain\Automation\JourneyInstaller;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
 use App\Models\Integration;
@@ -70,6 +71,7 @@ class TenantProvisioningService
                     MessageTemplate::create([
                         'name' => $template['name'],
                         'body' => $template['body'],
+                        'purpose' => $template['purpose'] ?? null,
                         'channel' => 'whatsapp',
                         'is_active' => true,
                         'sort_order' => $index,
@@ -81,11 +83,21 @@ class TenantProvisioningService
                         'name' => $template['name'],
                         'subject' => $template['subject'],
                         'body' => $template['body'],
+                        'purpose' => $template['purpose'] ?? null,
                         'channel' => 'email',
                         'is_active' => true,
                         'sort_order' => $index,
                     ]);
                 }
+
+                /*
+                 * The journey every lead starts on: welcome, brochure, the
+                 * project's questions, reminders, and a hand-off to a person
+                 * when it is a person's turn. Installed on, because a workspace
+                 * whose leads wait for a rep to start the conversation is the
+                 * thing this product exists to end.
+                 */
+                app(JourneyInstaller::class)->install($tenant);
 
                 foreach (LostReason::DEFAULTS as $index => $reason) {
                     LostReason::create([

@@ -23,6 +23,65 @@ class RuleTemplates
      * installed ones without renumbering anything.
      */
     private const TEMPLATES = [
+        /*
+         * The journey. Every lead starts here the moment it arrives, and no
+         * lead waits for a person to start the conversation:
+         *
+         *   welcome on WhatsApp and by email → the right brochure → the
+         *   project's own questions → a reminder if they are quiet → a gentler
+         *   email the next day → and only then, still quiet, a person's turn.
+         *
+         * Messages are named by purpose, so each lead gets the version written
+         * for its project, language and stage. Every waiting step carries
+         * `unless: replied` — a customer who answered is a conversation, not a
+         * sequence, and is handed to a person by `reply_hand_off` instead.
+         * A lead nothing could reach (no WhatsApp connected, no email) is
+         * handed over at once rather than left in a journey that cannot run.
+         */
+        'lead_journey' => [
+            'name' => 'رحلة العميل: تواصل آلي من أول دقيقة',
+            'description' => 'ترحيب واتساب وبريد فورًا، ثم البروشور المناسب، ثم أسئلة التأهيل، وتذكير إن لم يرد، ثم تسليم لمندوب.',
+            'trigger' => 'lead.created',
+            'priority' => 6,
+            'conditions' => [],
+            'actions' => [
+                ['type' => 'send_whatsapp', 'purpose' => 'welcome'],
+                ['type' => 'send_email', 'purpose' => 'welcome'],
+                ['type' => 'share_file', 'kind' => '', 'send' => true, 'channel' => 'whatsapp'],
+                ['type' => 'hand_off', 'reason' => 'unreached', 'when' => 'unreached'],
+                ['type' => 'ask_qualification', 'delay_minutes' => 3, 'unless' => 'replied'],
+                ['type' => 'send_whatsapp', 'purpose' => 'reminder', 'delay_minutes' => 180, 'unless' => 'replied'],
+                ['type' => 'send_email', 'purpose' => 'nurture', 'delay_minutes' => 1440, 'unless' => 'replied'],
+                ['type' => 'hand_off', 'reason' => 'no_reply', 'delay_minutes' => 2880, 'unless' => 'replied'],
+            ],
+        ],
+
+        // The moment a customer answers, it is a person's conversation.
+        'reply_hand_off' => [
+            'name' => 'العميل ردّ: رفع الأولوية وتسليم للمندوب',
+            'description' => 'عند أول رد يُرفع التقييم، ويصبح أولوية إن كان اهتمامه مرتفعًا، ويُسلَّم للمندوب ليكمل نفس المحادثة.',
+            'trigger' => 'lead.replied',
+            'priority' => 5,
+            'conditions' => [],
+            'actions' => [
+                ['type' => 'adjust_score', 'by' => 10],
+                ['type' => 'set_priority', 'when' => 'hot'],
+                ['type' => 'hand_off', 'reason' => 'replied'],
+            ],
+        ],
+
+        'qualified_hand_off' => [
+            'name' => 'عميل مؤهَّل: أولوية وتسليم فوري',
+            'description' => 'العميل الذي اجتاز أسئلة التأهيل يصبح أولوية ويُسلَّم للمندوب للاتصال وحجز موعد.',
+            'trigger' => 'lead.qualified',
+            'priority' => 5,
+            'conditions' => [],
+            'actions' => [
+                ['type' => 'set_priority'],
+                ['type' => 'hand_off', 'reason' => 'qualified'],
+            ],
+        ],
+
         'new_lead_assign_notify' => [
             'name' => 'عميل جديد: إسناد وتنبيه ومتابعة',
             'description' => 'يُسنَد العميل الجديد لأقل مندوب انشغالًا، ويُنبَّه فورًا، وتُحدَّد متابعة خلال ساعة.',

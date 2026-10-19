@@ -7,9 +7,11 @@ use App\Domain\Files\FileForTheLead;
 use App\Domain\Files\ShareFile;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
+use App\Enums\MessageStatus;
 use App\Enums\Role;
 use App\Models\FollowUp;
 use App\Models\Lead;
+use App\Models\LeadMessage;
 use App\Models\LostReason;
 use App\Models\MessageTemplate;
 use App\Models\User;
@@ -18,6 +20,7 @@ use App\Services\Email\EmailSender;
 use App\Services\Leads\ActivityLogger;
 use App\Services\Leads\LeadAssignmentService;
 use App\Services\Leads\LeadScoringService;
+use App\Services\Whatsapp\TemplateRenderer;
 use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Support\Carbon;
 use RuntimeException;
@@ -49,6 +52,7 @@ class ActionExecutor
         private FileForTheLead $chooser,
         private ShareFile $sharer,
         private FileDelivery $delivery,
+        private TemplatePicker $picker,
     ) {}
 
     /**
@@ -72,6 +76,9 @@ class ActionExecutor
                 'send_email' => $this->sendEmail($lead, $action),
                 'share_file' => $this->shareFile($lead, $action),
                 'stop_follow_ups' => $this->stopFollowUps($lead, $action),
+                'ask_qualification' => $this->askQualification($lead, $action),
+                'set_priority' => $this->setPriority($lead, $action),
+                'hand_off' => $this->handOff($lead, $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
         } catch (\Throwable $e) {
@@ -347,16 +354,10 @@ class ActionExecutor
      */
     private function sendWhatsapp(Lead $lead, array $action): array
     {
-        $uuid = (string) ($action['template_uuid'] ?? '');
+        $template = $this->template($lead, 'whatsapp', $action);
 
-        if ($uuid === '') {
-            return ['ok' => false, 'description' => 'لم تُحدَّد رسالة — لم يُرسل شيء.'];
-        }
-
-        $template = MessageTemplate::where('uuid', $uuid)->first();
-
-        if (! $template) {
-            return ['ok' => false, 'description' => 'الرسالة المحددة غير موجودة — لم يُرسل شيء.'];
+        if (is_string($template)) {
+            return ['ok' => false, 'description' => $template];
         }
 
         if (! $template->is_active) {
@@ -375,7 +376,7 @@ class ActionExecutor
          * depends on the clock and a rule is written once.
          */
         try {
-            $this->whatsapp->sendSaved($lead, $template);
+            $message = $this->whatsapp->sendSaved($lead, $template);
         } catch (RuntimeException $e) {
             /*
              * Reported, not thrown. The reasons a send is refused are ordinary
@@ -389,6 +390,8 @@ class ActionExecutor
 
         // The sender writes the timeline entry itself, so there is one record
         // of a message whether a rep or a rule sent it.
+        $this->reached($lead, $message);
+
         return ['ok' => true, 'description' => "أُرسلت رسالة واتساب '{$template->name}'."];
     }
 
@@ -399,16 +402,10 @@ class ActionExecutor
      */
     private function sendEmail(Lead $lead, array $action): array
     {
-        $uuid = (string) ($action['template_uuid'] ?? '');
+        $template = $this->template($lead, 'email', $action);
 
-        if ($uuid === '') {
-            return ['ok' => false, 'description' => 'لم يُحدَّد قالب بريد — لم يُرسل شيء.'];
-        }
-
-        $template = MessageTemplate::where('uuid', $uuid)->where('channel', 'email')->first();
-
-        if (! $template) {
-            return ['ok' => false, 'description' => 'قالب البريد المحدد غير موجود — لم يُرسل شيء.'];
+        if (is_string($template)) {
+            return ['ok' => false, 'description' => $template];
         }
 
         if (! $template->is_active) {
@@ -416,10 +413,16 @@ class ActionExecutor
         }
 
         try {
-            $this->email->sendSaved($lead, $template);
+            $message = $this->email->sendSaved($lead, $template);
         } catch (RuntimeException $e) {
             return ['ok' => false, 'description' => 'لم يُرسل البريد: '.$e->getMessage()];
         }
+
+        if ($message->status === MessageStatus::Failed) {
+            return ['ok' => false, 'description' => "لم يُرسل البريد '{$template->name}': ".($message->failure_reason ?? 'رفضه المزوّد.')];
+        }
+
+        $this->reached($lead, $message);
 
         return ['ok' => true, 'description' => "أُرسل بريد '{$template->name}'."];
     }
@@ -488,6 +491,152 @@ class ActionExecutor
             $reason === 'asked_for' => 'النوع المطلوب',
             default => 'الملف الافتراضي',
         };
+    }
+
+    /**
+     * The template an action means: the one it names, or — for a journey,
+     * which names a purpose — the one written for this lead's project,
+     * language and stage. A string back is the reason nothing can be sent.
+     */
+    private function template(Lead $lead, string $channel, array $action): MessageTemplate|string
+    {
+        $uuid = (string) ($action['template_uuid'] ?? '');
+
+        if ($uuid !== '') {
+            $template = MessageTemplate::where('uuid', $uuid)->where('channel', $channel)->first();
+
+            return $template ?? ($channel === 'email'
+                ? 'قالب البريد المحدد غير موجود — لم يُرسل شيء.'
+                : 'الرسالة المحددة غير موجودة — لم يُرسل شيء.');
+        }
+
+        $purpose = (string) ($action['purpose'] ?? '');
+
+        if ($purpose === '') {
+            return $channel === 'email' ? 'لم يُحدَّد قالب بريد — لم يُرسل شيء.' : 'لم تُحدَّد رسالة — لم يُرسل شيء.';
+        }
+
+        return $this->picker->pick($lead, $channel, $purpose)
+            ?? 'لا توجد رسالة '.$this->purposeWords($purpose).($channel === 'email' ? ' بالبريد' : ' على واتساب').' لمشروع هذا العميل — لم يُرسل شيء.';
+    }
+
+    private function purposeWords(string $purpose): string
+    {
+        return match ($purpose) {
+            'welcome' => 'ترحيب',
+            'qualification' => 'أسئلة تأهيل',
+            'reminder' => 'تذكير',
+            'nurture' => 'متابعة',
+            'appointment' => 'موعد',
+            default => "'{$purpose}'",
+        };
+    }
+
+    /**
+     * A message really reached the lead, so automation is looking after them.
+     *
+     * The mock never counts: in development it "sends" to show the product,
+     * and a lead marked as being looked after by a message nobody received is
+     * a lead hidden from every rep.
+     */
+    private function reached(Lead $lead, ?LeadMessage $message): void
+    {
+        if ($message === null || $message->provider === 'mock' || $message->status === MessageStatus::Failed) {
+            return;
+        }
+
+        if ($lead->automation_state === null) {
+            $lead->forceFill(['automation_state' => Lead::AUTOMATION_NURTURING])->saveQuietly();
+        }
+    }
+
+    /**
+     * Asks the project's own qualification questions, numbered, in one message.
+     *
+     * The questions are the ones the project defines — a villa project asks
+     * about plot size, an apartment project about floors — and only the ones
+     * this lead has not answered yet, so a reminder never asks twice.
+     */
+    private function askQualification(Lead $lead, array $action): array
+    {
+        $template = $this->picker->pick($lead, 'whatsapp', 'qualification');
+
+        if (! $template) {
+            return ['ok' => false, 'description' => 'لا توجد رسالة أسئلة تأهيل — لم يُرسل شيء.'];
+        }
+
+        if (blank(app(TemplateRenderer::class)->values($lead)['questions'] ?? null)) {
+            return ['ok' => false, 'description' => 'لا أسئلة تأهيل بلا إجابة لمشروع هذا العميل — لم يُرسل شيء.'];
+        }
+
+        try {
+            $message = $this->whatsapp->sendSaved($lead, $template);
+        } catch (RuntimeException $e) {
+            return ['ok' => false, 'description' => 'لم تُرسل أسئلة التأهيل: '.$e->getMessage()];
+        }
+
+        $this->reached($lead, $message);
+        $this->activities->log($lead, ActivityType::NoteAdded, null, 'أُرسلت أسئلة التأهيل تلقائيًا.', $this->signature($action));
+
+        return ['ok' => true, 'description' => 'أُرسلت أسئلة التأهيل على واتساب.'];
+    }
+
+    /** Marks the lead a priority — when it is hot, if the rule says so. */
+    private function setPriority(Lead $lead, array $action): array
+    {
+        if (($action['when'] ?? null) === 'hot' && $lead->fresh()?->temperature?->value !== 'hot') {
+            return ['ok' => true, 'description' => 'الاهتمام ليس مرتفعًا بعد — لم تتغير الأولوية.'];
+        }
+
+        if ($lead->is_priority) {
+            return ['ok' => true, 'description' => 'العميل أولوية بالفعل.'];
+        }
+
+        $lead->forceFill(['is_priority' => true])->save();
+        $this->activities->log($lead, ActivityType::NoteAdded, null, 'أصبح العميل أولوية تلقائيًا.', $this->signature($action));
+
+        return ['ok' => true, 'description' => 'أصبح العميل أولوية.'];
+    }
+
+    /**
+     * A person's turn.
+     *
+     * The lead leaves the automated journey and joins the rep's queue, with the
+     * reason written on it — "replied", "qualified", "no reply after two days",
+     * "nothing could reach them" — so the first thing the rep reads is why they
+     * are the one holding it now. `when: unreached` hands over only a lead no
+     * automated message actually reached; one that was reached stays with the
+     * journey.
+     */
+    private function handOff(Lead $lead, array $action): array
+    {
+        $reason = (string) ($action['reason'] ?? 'needs_human');
+        $lead = $lead->fresh() ?? $lead;
+
+        if (($action['when'] ?? null) === 'unreached' && $lead->automation_state === Lead::AUTOMATION_NURTURING) {
+            return ['ok' => true, 'description' => 'وصلت الأتمتة إلى العميل — يستمر المسار.'];
+        }
+
+        if ($lead->automation_state === Lead::AUTOMATION_HANDED_OFF && $lead->needs_human_reason === $reason) {
+            return ['ok' => true, 'description' => 'العميل مع المندوب بالفعل.'];
+        }
+
+        $lead->forceFill([
+            'automation_state' => Lead::AUTOMATION_HANDED_OFF,
+            'needs_human_reason' => $reason,
+            'handed_off_at' => now(),
+        ])->save();
+
+        $words = Lead::handOffWords($reason);
+        $this->activities->log($lead, ActivityType::HandedOff, null, "سُلِّم العميل للمندوب: {$words}.", $this->signature($action));
+
+        // Told, except when nothing could reach the lead: that is every lead in
+        // a workspace with no channel connected, and the queue already shows it.
+        if ($reason !== 'unreached') {
+            $this->notify($lead, ['audience' => 'owner', 'message' => "{$lead->full_name}: {$words} — دورك الآن.", 'rule_name' => $action['rule_name'] ?? null]);
+        }
+
+        return ['ok' => true, 'description' => "سُلِّم للمندوب ({$words})."];
     }
 
     private function stopFollowUps(Lead $lead, array $action): array

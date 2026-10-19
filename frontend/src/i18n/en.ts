@@ -48,6 +48,7 @@ export default {
   },
   work: {
     pulse: {
+      automated: 'Handled by automation',
       reached: 'Reached',
       ofOpen: '{{reached}} of {{open}} open',
     },
@@ -1061,6 +1062,27 @@ export default {
   },
 
   templates: {
+    target: {
+      title: 'Who this message is for',
+      purpose: 'Purpose',
+      project: 'Project',
+      language: 'Language',
+      stage: 'Stage',
+      audience: 'Buyer type',
+      any: 'Anyone',
+      none: 'None — manual message',
+    },
+    purpose: {
+      welcome: 'Welcome',
+      qualification: 'Qualification questions',
+      reminder: 'Reminder',
+      nurture: 'Gentle follow-up',
+      appointment: 'Appointment',
+      brochure: 'Brochure',
+      won: 'After the sale',
+      lost: 'After a loss',
+    },
+    audience: { investment: 'Investor', end_user: 'Home buyer' },
     title: 'Saved messages',
     hint: 'What the team and the rules send. Register a Meta-approved twin for a message to let it start a conversation.',
     add: 'Add a message',
@@ -1196,6 +1218,7 @@ export default {
     invalid: 'Invalid', no_response: 'No response',
   },
   activity: {
+    handed_off: 'Handed to a rep',
     whatsapp_sent: 'WhatsApp message sent',
     whatsapp_received: 'Lead replied on WhatsApp',
     whatsapp_opted_out: 'WhatsApp preference changed',

@@ -2,7 +2,9 @@
 
 namespace App\Services\Whatsapp;
 
+use App\Domain\Qualification\ProjectQualification;
 use App\Models\Lead;
+use App\Models\LeadAnswer;
 use App\Models\User;
 
 /**
@@ -37,6 +39,7 @@ class TemplateRenderer
             'agent' => $agent?->name,
             'company' => $company ?: $lead->tenant?->branding?->company_name ?: $lead->tenant?->name,
             'project' => $lead->project?->name,
+            'questions' => $this->questions($lead),
         ];
     }
 
@@ -109,5 +112,27 @@ class TemplateRenderer
         $text = preg_replace('/\n{3,}/', "\n\n", $text) ?? $text;
 
         return trim($text);
+    }
+
+    /**
+     * The project's questions this lead has not answered, numbered.
+     *
+     * Null when there are none, so a qualification message is never sent with
+     * an empty list where the questions should be.
+     */
+    private function questions(Lead $lead): ?string
+    {
+        $answered = LeadAnswer::where('lead_id', $lead->id)->pluck('project_question_id')->all();
+
+        $questions = app(ProjectQualification::class)
+            ->questionsFor($lead)
+            ->reject(fn ($question) => in_array($question->id, $answered, true))
+            ->values();
+
+        if ($questions->isEmpty()) {
+            return null;
+        }
+
+        return $questions->map(fn ($question, $index) => ($index + 1).'. '.$question->label)->implode("\n");
     }
 }

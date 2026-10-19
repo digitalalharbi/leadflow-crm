@@ -10,6 +10,7 @@ use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\MessageStatus;
 use App\Enums\Role;
+use App\Jobs\RunScheduledAction;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\LeadMessage;
@@ -55,6 +56,7 @@ class ActionExecutor
         private ShareFile $sharer,
         private FileDelivery $delivery,
         private TemplatePicker $picker,
+        private Guardrails $guardrails,
     ) {}
 
     /**
@@ -66,6 +68,12 @@ class ActionExecutor
         $type = (string) ($action['type'] ?? '');
 
         try {
+            // Whatever the rule says, automation does not write to somebody it
+            // must not — see Guardrails.
+            if ($held = $this->held($lead, $action)) {
+                return $held;
+            }
+
             return match ($type) {
                 'assign' => $this->assign($lead, $action),
                 'change_stage' => $this->changeStage($lead, $action),
@@ -92,6 +100,60 @@ class ActionExecutor
             // The message, never the trace: a rule's failure is shown in the UI.
             return ['ok' => false, 'description' => "فشل الإجراء '{$type}': ".$e->getMessage()];
         }
+    }
+
+    /**
+     * The guardrails, applied to the actions that write to a person.
+     *
+     * @return ?array{ok:bool, result:string, description:string}
+     */
+    private function held(Lead $lead, array $action): ?array
+    {
+        $type = (string) ($action['type'] ?? '');
+
+        $channel = match ($type) {
+            'send_whatsapp', 'ask_qualification', 'request_appointment', 'start_nurture' => 'whatsapp',
+            'send_email' => 'email',
+            'share_file' => ($action['send'] ?? true) ? (($action['channel'] ?? 'whatsapp') === 'email' ? 'email' : 'whatsapp') : null,
+            default => null,
+        };
+
+        if ($channel === null) {
+            return null;
+        }
+
+        $template = null;
+        if (in_array($type, ['send_whatsapp', 'send_email', 'request_appointment', 'start_nurture'], true)) {
+            $found = $this->template($lead, $channel, $type === 'request_appointment' ? ['purpose' => 'appointment'] + $action : ($type === 'start_nurture' ? ['purpose' => 'nurture'] + $action : $action));
+
+            // A message that cannot be found is the action's own error to report.
+            if (! $found instanceof MessageTemplate) {
+                return null;
+            }
+
+            $template = $found;
+        }
+
+        $verdict = $this->guardrails->check($lead, $channel, $action, $template?->name, $template?->meta_template_name);
+
+        if ($verdict['verdict'] === Guardrails::ALLOW) {
+            return null;
+        }
+
+        if ($verdict['verdict'] === Guardrails::BLOCK) {
+            return ['ok' => true, 'result' => 'skipped', 'description' => $verdict['reason']];
+        }
+
+        $scheduled = ScheduledAction::create([
+            'lead_id' => $lead->id,
+            'rule_name' => $action['rule_name'] ?? 'حواجز الأتمتة',
+            'action' => $action,
+            'run_at' => $verdict['until'],
+            'status' => ScheduledAction::PENDING,
+        ]);
+        RunScheduledAction::dispatch($scheduled->id)->delay($verdict['until']);
+
+        return ['ok' => true, 'result' => 'waiting', 'description' => $verdict['reason']];
     }
 
     /**

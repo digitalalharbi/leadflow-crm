@@ -363,6 +363,11 @@ function GeneralForm({
     work_days: settings.work_days ?? [],
     work_starts_at: settings.work_starts_at?.slice(0, 5) ?? '09:00',
     work_ends_at: settings.work_ends_at?.slice(0, 5) ?? '18:00',
+    quiet_hours_enabled: settings.quiet_hours_enabled ?? false,
+    quiet_hours_start: settings.quiet_hours_start?.slice(0, 5) ?? '21:00',
+    quiet_hours_end: settings.quiet_hours_end?.slice(0, 5) ?? '08:00',
+    max_contacts_per_day: settings.max_contacts_per_day ?? 6,
+    contact_cooldown_minutes: settings.contact_cooldown_minutes ?? 0,
   })
 
   const mutation = useMutation({
@@ -549,6 +554,76 @@ function GeneralForm({
                     />
                   </div>
                 )}
+              </fieldset>
+
+              {/*
+                What automation may not do to a person. Checked at the moment
+                of sending, so a rule written months ago still keeps to it.
+              */}
+              <fieldset className="space-y-3" data-testid="guardrails">
+                <legend className="t-small mb-1 font-medium">{t('settings.guardrails')}</legend>
+                <p className="t-caption">{t('settings.guardrailsHint')}</p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    aria-pressed={form.quiet_hours_enabled}
+                    data-testid="quiet-hours-toggle"
+                    onClick={() => setForm((prev) => ({ ...prev, quiet_hours_enabled: !prev.quiet_hours_enabled }))}
+                    className={cn(
+                      'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
+                      form.quiet_hours_enabled
+                        ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                        : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                    )}
+                  >
+                    {t('settings.quietHours')}
+                  </button>
+                  {form.quiet_hours_enabled && (
+                    <>
+                      <Input
+                        type="time"
+                        dir="ltr"
+                        aria-label={t('settings.quietFrom')}
+                        value={form.quiet_hours_start}
+                        data-testid="quiet-hours-start"
+                        onChange={(e) => setForm((prev) => ({ ...prev, quiet_hours_start: e.target.value }))}
+                      />
+                      <span className="t-caption">{t('settings.quietTo')}</span>
+                      <Input
+                        type="time"
+                        dir="ltr"
+                        aria-label={t('settings.quietTo')}
+                        value={form.quiet_hours_end}
+                        data-testid="quiet-hours-end"
+                        onChange={(e) => setForm((prev) => ({ ...prev, quiet_hours_end: e.target.value }))}
+                      />
+                    </>
+                  )}
+                </div>
+                <p className="t-caption">{t('settings.quietHoursHint')}</p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    label={t('settings.maxContacts')}
+                    value={form.max_contacts_per_day}
+                    data-testid="max-contacts"
+                    onChange={(e) => setForm((prev) => ({ ...prev, max_contacts_per_day: Number(e.target.value) }))}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1440}
+                    label={t('settings.cooldown')}
+                    hint={t('settings.cooldownHint')}
+                    value={form.contact_cooldown_minutes}
+                    data-testid="contact-cooldown"
+                    onChange={(e) => setForm((prev) => ({ ...prev, contact_cooldown_minutes: Number(e.target.value) }))}
+                  />
+                </div>
               </fieldset>
 
               <Textarea

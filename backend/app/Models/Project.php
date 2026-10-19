@@ -22,12 +22,12 @@ class Project extends Model
     }
 
     protected $fillable = [
-        'company_id', 'name', 'service', 'language', 'developer_name', 'location', 'starting_price', 'status', 'notes',
+        'company_id', 'name', 'service', 'language', 'developer_name', 'location', 'starting_price', 'status', 'notes', 'automation_settings',
     ];
 
     protected function casts(): array
     {
-        return ['starting_price' => 'decimal:2', 'scoring' => 'array'];
+        return ['starting_price' => 'decimal:2', 'scoring' => 'array', 'automation_settings' => 'array'];
     }
 
     public function company(): BelongsTo

@@ -584,6 +584,11 @@ export interface TenantSettings {
   work_days: number[] | null
   work_starts_at: string | null
   work_ends_at: string | null
+  quiet_hours_enabled: boolean
+  quiet_hours_start: string
+  quiet_hours_end: string
+  max_contacts_per_day: number
+  contact_cooldown_minutes: number
 }
 
 export interface LostReason {

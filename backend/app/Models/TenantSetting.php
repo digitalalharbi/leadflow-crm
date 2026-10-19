@@ -18,6 +18,7 @@ class TenantSetting extends Model
         'sla_remind_after_minutes', 'sla_escalate_after_minutes', 'sla_reassign_after_minutes',
         'whatsapp_template', 'onboarding',
         'work_days', 'work_starts_at', 'work_ends_at',
+        'quiet_hours_enabled', 'quiet_hours_start', 'quiet_hours_end', 'max_contacts_per_day', 'contact_cooldown_minutes',
         'ai_api_key', 'ai_verified_at', 'ai_last_error',
     ];
 
@@ -28,6 +29,9 @@ class TenantSetting extends Model
     {
         return [
             'work_days' => 'array',
+            'quiet_hours_enabled' => 'boolean',
+            'max_contacts_per_day' => 'integer',
+            'contact_cooldown_minutes' => 'integer',
             'round_robin_cursor' => 'integer',
             'score_warm_threshold' => 'integer',
             'score_hot_threshold' => 'integer',

@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Agents\AgentDirectory;
 use App\Domain\Automation\ActionWords;
 use App\Domain\Automation\AutomationCentre;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationActionLog;
 use App\Models\AutomationRule;
 use App\Models\Project;
+use App\Models\Routine;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
+use App\Support\RoutineClock;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -77,6 +80,38 @@ class AutomationCentreController extends Controller
             ])->all(),
             'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
         ]);
+    }
+
+    /**
+     * Everything that runs on its own: the system's sweeps, each with how
+     * often and when it last finished, and the agents' routines.
+     */
+    public function routines()
+    {
+        $this->authorize('viewAny', AutomationRule::class);
+
+        $system = collect(RoutineClock::SYSTEM)->map(fn ($spec, $key) => [
+            'key' => $key,
+            'kind' => 'system',
+            'cadence' => $spec[1],
+            'last_run_at' => RoutineClock::last($key),
+            'status' => RoutineClock::last($key) ? 'ok' : 'not_run',
+            'agent' => null,
+        ])->values();
+
+        app(AgentDirectory::class)->ensure();
+
+        $agents = Routine::query()->orderBy('id')->get()->map(fn ($routine) => [
+            'key' => $routine->key,
+            'kind' => 'agent',
+            'cadence' => $routine->cron,
+            'last_run_at' => $routine->last_run_at?->toIso8601String(),
+            'status' => $routine->last_status ?? 'not_run',
+            'agent' => $routine->agent,
+            'is_active' => (bool) $routine->is_active,
+        ]);
+
+        return ApiResponse::success(['routines' => $system->concat($agents)->values()->all()]);
     }
 
     public function scoring(string $uuid)

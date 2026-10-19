@@ -1,24 +1,25 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, CircleCheck, Plus, Power, Sparkles, Trash2, Zap } from 'lucide-react'
+import { Plus, Sparkles, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  createRule, deleteRule, fetchInsights, fetchRules, fetchSchema, fetchTemplates,
-  installTemplate, previewRule, updateRule, type AutomationRule,
+  createRule, deleteRule, fetchAutomationSummary, fetchRules, fetchSchema, fetchTemplates,
+  installTemplate, previewRule, updateRule, type AutomationRule, type HistoryResult,
   duplicateRule,
 } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDateTime } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Modal,
-  PageHeader, SkeletonCards,
+  PageHeader, SkeletonCards, Tabs,
 } from '@/components/ui'
-import { AutomationActivityChart, ChartCard, ChartLegend, SERIES } from '@/components/charts'
+import { CentreSummary } from '@/components/automation/CentreSummary'
+import { RulesTable } from '@/components/automation/RulesTable'
+import { ActionHistory } from '@/components/automation/ActionHistory'
+import { AgentsPanel, RoutinesPanel, ScoringCard } from '@/components/automation/CentrePanels'
 import { RuleEditor } from '@/features/automation/RuleEditor'
 import { RuleFlow } from '@/components/automation/RuleFlow'
-import { KpiCard, RingProgress } from '@/components/visual'
-import { formatNumber } from '@/lib/format'
 
 /**
  * The rules screen.
@@ -30,7 +31,7 @@ import { formatNumber } from '@/lib/format'
  * between a feature people use and one they disable after the first surprise.
  */
 export function AutomationPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
@@ -40,13 +41,20 @@ export function AutomationPage() {
   const [confirmDelete, setConfirmDelete] = useState<AutomationRule | null>(null)
 
   const schema = useQuery({ queryKey: ['automation-schema'], queryFn: fetchSchema })
-  const insights = useQuery({ queryKey: ['automation-insights'], queryFn: () => fetchInsights(30) })
+  const [tab, setTab] = useState<'rules' | 'history' | 'routines' | 'agents'>('rules')
+  const [days, setDays] = useState(7)
+  const [search, setSearch] = useState('')
+  const [showAllTemplates, setShowAllTemplates] = useState(false)
+  const [historyResult, setHistoryResult] = useState<HistoryResult | ''>('')
+  const navigate = useNavigate()
+  const summary = useQuery({ queryKey: ['automation-summary', days], queryFn: () => fetchAutomationSummary(days) })
   const rules = useQuery({ queryKey: ['automation-rules'], queryFn: fetchRules })
   const templates = useQuery({ queryKey: ['automation-templates'], queryFn: fetchTemplates })
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['automation-rules'] })
     void queryClient.invalidateQueries({ queryKey: ['automation-templates'] })
+    void queryClient.invalidateQueries({ queryKey: ['automation-summary'] })
   }
 
   const install = useMutation({
@@ -118,228 +126,156 @@ export function AutomationPage() {
     )
   }
 
-  const summary = insights.data?.summary
-  const successRate = summary && summary.runs > 0 ? Math.round(((summary.runs - summary.failed) / summary.runs) * 100) : null
   const uninstalled = (templates.data?.templates ?? []).filter((template) => !template.installed)
+  const shownRules = (rules.data?.rules ?? []).filter((rule) =>
+    search.trim() === '' ? true : rule.name.includes(search.trim()),
+  )
+
+  function drill(target: HistoryResult | 'rules' | 'leads' | '') {
+    if (target === 'rules') {
+      document.querySelector('[data-testid="rules-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+      return
+    }
+
+    if (target === 'leads') {
+      navigate('/leads')
+
+      return
+    }
+
+    setHistoryResult(target)
+    setTab('history')
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title={t('automation.title')}
         subtitle={t('automation.subtitle')}
         actions={
-          <Button icon={<Plus className="size-4" aria-hidden />} onClick={() => setEditing('new')}>
-            {t('automation.newRule')}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Tabs
+              testId="automation-tabs"
+              value={tab}
+              onChange={(key) => setTab(key as typeof tab)}
+              items={[
+                { key: 'rules', label: t('automation.tabs.rules') },
+                { key: 'history', label: t('automation.tabs.history') },
+                { key: 'routines', label: t('automation.tabs.routines') },
+                { key: 'agents', label: t('automation.tabs.agents') },
+              ]}
+            />
+            <Button icon={<Plus className="size-4" aria-hidden />} onClick={() => setEditing('new')}>
+              {t('automation.newRule')}
+            </Button>
+          </div>
         }
       />
 
-      {/*
-        Above the rules, because the first question about a list of rules is
-        whether any of them fires — and a list cannot answer it. A workspace
-        with twelve enabled rules and a flat chart has a problem it would not
-        otherwise find until a customer went uncalled.
-      */}
-      {insights.data && rules.data && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="automation-kpis">
-          <KpiCard
-            label={t('automation.kpi.active')}
-            icon={Power}
-            value={`${rules.data.rules.filter((r) => r.is_enabled).length}/${rules.data.rules.length}`}
-          />
-          <KpiCard label={t('automation.kpi.runs')} icon={Activity} tone="neutral" value={formatNumber(insights.data.summary.runs, i18n.language)} />
-          <KpiCard label={t('automation.kpi.actions')} icon={Zap} value={formatNumber(insights.data.summary.actions, i18n.language)} />
-          <KpiCard
-            label={t('automation.kpi.success')}
-            icon={CircleCheck}
-            tone={insights.data.summary.failed > 0 ? 'warn' : 'good'}
-            value={
-              <span className="flex items-center gap-2.5" dir="ltr">
-                <RingProgress
-                  size={44}
-                  thickness={6}
-                  tone={insights.data.summary.failed > 0 ? 'warn' : 'good'}
-                  value={successRate ?? 100}
+      {tab === 'rules' && (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="t-h3">{t('automation.summaryTitle')}</h2>
+            <div className="flex gap-1 rounded-full bg-[var(--color-chrome-fill)] p-1" role="group" aria-label={t('automation.period')}>
+              {[1, 7, 30].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDays(d)}
+                  aria-pressed={days === d}
+                  className={days === d ? 'rounded-full bg-[var(--color-surface)] px-3 py-1 text-[0.75rem] font-semibold shadow-[var(--shadow-card)]' : 'rounded-full px-3 py-1 text-[0.75rem] text-[var(--color-ink-muted)]'}
                 >
-                  {' '}
-                </RingProgress>
-                {successRate === null ? '—' : `${successRate}%`}
-              </span>
-            }
-          />
-        </div>
-      )}
-
-      {insights.data && insights.data.summary.runs > 0 && (
-        <ChartCard
-          title={t('charts.automation.title')}
-          description={t('charts.automation.hint')}
-          height={200}
-          testId="automation-activity"
-          legend={
-            <ChartLegend
-              items={[
-                { key: 'applied', label: t('charts.automation.applied'), color: SERIES[0] },
-                { key: 'skipped', label: t('charts.automation.skipped'), color: SERIES[1] },
-                { key: 'failed', label: t('charts.automation.failed'), color: 'var(--color-status-lost)' },
-              ]}
-            />
-          }
-          footer={
-            <p className="t-caption">
-              <span className="t-body font-medium text-[var(--color-ink)]">
-                {insights.data.summary.actions}
-              </span>{' '}
-              {t('charts.automation.actionsDone')}
-            </p>
-          }
-          table={{
-            head: [
-              t('charts.automation.rule'),
-              t('charts.automation.applied'),
-              t('charts.automation.skipped'),
-              t('charts.automation.failed'),
-            ],
-            rows: insights.data.by_rule.map((row) => [
-              row.rule,
-              row.applied,
-              row.skipped,
-              row.failed,
-            ]),
-          }}
-        >
-          <AutomationActivityChart days={insights.data.daily} />
-        </ChartCard>
-      )}
-
-      {/* The gallery comes first while the workspace has nothing. */}
-      {uninstalled.length > 0 && (
-        <section className="space-y-3" data-testid="template-gallery">
-          <h2 className="t-h3 flex items-center gap-2">
-            <Sparkles className="size-4 text-[var(--brand)]" aria-hidden />
-            {t('automation.templatesTitle')}
-          </h2>
-          <p className="t-caption">{t('automation.templatesHint')}</p>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {uninstalled.map((template) => (
-              <Card key={template.key}>
-                <CardBody className="flex h-full flex-col gap-3">
-                  <div className="space-y-1">
-                    <h3 className="t-body font-medium">{template.name}</h3>
-                    <p className="t-caption">{template.description}</p>
-                  </div>
-                  <RuleFlow trigger={template.trigger} conditions={template.conditions} actions={template.actions} />
-                  <div className="mt-auto flex items-center justify-between gap-2">
-                    <Badge tone="neutral">{t(`automation.trigger.${template.trigger}`)}</Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      loading={install.isPending && install.variables === template.key}
-                      data-testid={`install-${template.key}`}
-                      onClick={() => install.mutate(template.key)}
-                    >
-                      {t('automation.useTemplate')}
-                    </Button>
-                  </div>
-                </CardBody>
-              </Card>
-            ))}
+                  {t(`automation.period_${d}`)}
+                </button>
+              ))}
+            </div>
           </div>
-        </section>
-      )}
 
-      <section className="space-y-3">
-        <h2 className="t-h3">{t('automation.rulesTitle')}</h2>
+          {summary.data ? <CentreSummary data={summary.data} onDrill={drill} /> : <SkeletonCards count={4} />}
 
-        {rules.isLoading ? (
-          <SkeletonCards count={3} />
-        ) : (rules.data?.rules.length ?? 0) === 0 ? (
-          <Card>
-            <CardBody>
-              <EmptyState
-                icon={<Zap className="size-6" aria-hidden />}
-                title={t('automation.empty.title')}
-                body={t('automation.empty.description')}
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="t-h3">{t('automation.rulesTitle')}</h2>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('automation.searchRules')}
+                className="h-9 w-64 max-w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-[0.8125rem]"
+                data-testid="rules-search"
               />
-            </CardBody>
-          </Card>
-        ) : (
-          <div className="space-y-2" data-testid="rules-list">
-            {rules.data?.rules.map((rule) => (
-              <Card key={rule.id}>
-                <CardBody className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="t-body font-medium">{rule.name}</span>
-                      <Badge tone={rule.is_enabled ? 'success' : 'neutral'}>
-                        {t(rule.is_enabled ? 'automation.on' : 'automation.off')}
-                      </Badge>
-                      <Badge tone="neutral">{t(`automation.trigger.${rule.trigger}`)}</Badge>
-                    </div>
-                    <RuleFlow
-                      testId={`rule-flow-${rule.id}`}
-                      trigger={rule.trigger}
-                      conditions={rule.conditions}
-                      actions={rule.actions}
-                      matched={rule.times_matched}
-                    />
-                    <p className="t-caption">
-                      {[
-                        t('automation.conditionCount', { count: rule.conditions.length }),
-                        t('automation.actionCount', { count: rule.actions.length }),
-                      ].join(' · ')}
-                      {rule.last_matched_at &&
-                        ` · ${t('automation.lastFired', {
-                          when: formatDateTime(rule.last_matched_at, i18n.language),
-                        })}`}
-                    </p>
-                  </div>
+            </div>
 
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setPreviewing(rule)}>
-                      {t('automation.preview')}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(rule)}>
-                      {t('automation.edit')}
-                    </Button>
-                    {/*
-                      A copy to edit, rather than a rule to retype. Three
-                      projects means the same rule three times with one
-                      condition different, and retyping is where the second copy
-                      quietly stops matching the first.
-                    */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      loading={duplicate.isPending && duplicate.variables === rule.id}
-                      onClick={() => duplicate.mutate(rule.id)}
-                      data-testid={`duplicate-rule-${rule.id}`}
-                    >
-                      {t('automation.duplicate')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={rule.is_enabled ? 'secondary' : 'primary'}
-                      data-testid={`toggle-${rule.id}`}
-                      onClick={() => toggle.mutate({ rule, enabled: !rule.is_enabled })}
-                    >
-                      {t(rule.is_enabled ? 'automation.turnOff' : 'automation.turnOn')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={t('automation.delete')}
-                      icon={<Trash2 className="size-4" aria-hidden />}
-                      onClick={() => setConfirmDelete(rule)}
-                    />
-                  </div>
+            {rules.isLoading ? (
+              <SkeletonCards count={3} />
+            ) : (rules.data?.rules.length ?? 0) === 0 ? (
+              <Card>
+                <CardBody>
+                  <EmptyState icon={<Zap className="size-6" aria-hidden />} title={t('automation.empty.title')} body={t('automation.empty.description')} />
                 </CardBody>
               </Card>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : (
+              <RulesTable
+                rules={shownRules}
+                busyId={toggle.isPending ? toggle.variables?.rule.id : null}
+                onToggle={(rule) => toggle.mutate({ rule, enabled: !rule.is_enabled })}
+                onPreview={setPreviewing}
+                onEdit={setEditing}
+                onDuplicate={(rule) => duplicate.mutate(rule.id)}
+                onDelete={setConfirmDelete}
+              />
+            )}
+          </section>
+
+          {/* One press each: ready rules, installed switched off so a person reads them first. */}
+          {uninstalled.length > 0 && (
+            <section className="space-y-3" data-testid="template-gallery">
+              <h2 className="t-h3 flex items-center gap-2">
+                <Sparkles className="size-4 text-[var(--brand)]" aria-hidden />
+                {t('automation.templatesTitle')}
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {(showAllTemplates ? uninstalled : uninstalled.slice(0, 9)).map((template) => (
+                  <Card key={template.key}>
+                    <CardBody className="flex h-full flex-col gap-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-[0.9375rem] font-semibold">{template.name}</h3>
+                        <Badge tone="neutral">{t(`automation.trigger.${template.trigger}`)}</Badge>
+                      </div>
+                      <RuleFlow trigger={template.trigger} conditions={template.conditions} actions={template.actions} />
+                      <div className="mt-auto flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          loading={install.isPending && install.variables === template.key}
+                          data-testid={`install-${template.key}`}
+                          onClick={() => install.mutate(template.key)}
+                        >
+                          {t('automation.useTemplate')}
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+              {uninstalled.length > 9 && (
+                <div className="flex justify-center">
+                  <Button size="sm" variant="ghost" onClick={() => setShowAllTemplates((v) => !v)} data-testid="toggle-templates">
+                    {showAllTemplates ? t('automation.fewerTemplates') : t('automation.allTemplates', { count: uninstalled.length })}
+                  </Button>
+                </div>
+              )}
+            </section>
+          )}
+
+          <ScoringCard />
+        </>
+      )}
+
+      {tab === 'history' && <ActionHistory key={historyResult} initialResult={historyResult} />}
+      {tab === 'routines' && <RoutinesPanel />}
+      {tab === 'agents' && <AgentsPanel />}
 
       {editing && schema.data && (
         <RuleEditor

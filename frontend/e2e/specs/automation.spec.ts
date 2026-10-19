@@ -138,4 +138,50 @@ test.describe('الأتمتة — rules', () => {
   test('the numbers on top say how much the automation is doing', async ({ page }) => {
     await expect(page.getByTestId('automation-kpis')).toBeVisible()
   })
+
+  test('the summary opens with eight numbers, each against the period before', async ({ page }) => {
+    for (const key of ['all_actions', 'auto_contacted', 'follow_ups', 'qualified', 'appointments', 'needs_human', 'failed', 'inactive_rules']) {
+      await expect(page.getByTestId(`card-${key}`)).toBeVisible()
+    }
+
+    await expect(page.getByTestId('automation-funnel')).toBeVisible()
+    await expect(page.getByTestId('automation-success')).toBeVisible()
+  })
+
+  test('a summary card opens the history behind it', async ({ page }) => {
+    await page.getByTestId('card-failed').click()
+
+    await expect(page.getByTestId('action-history')).toBeVisible()
+    await expect(page.getByTestId('history-filter-failed')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  test('routines say how often they run and whether they have', async ({ page }) => {
+    await page.getByRole('tab', { name: 'الروتين' }).click()
+
+    await expect(page.getByTestId('routine-sla_guardian')).toBeVisible()
+    await expect(page.getByTestId('routine-no_reply_review')).toBeVisible()
+    await expect(page.getByTestId('routine-lead_quality_review')).toBeVisible()
+  })
+
+  test('the builder saves a rule that recommends instead of acting', async ({ page }) => {
+    await page.getByRole('button', { name: 'قاعدة جديدة' }).click()
+
+    const dialog = page.getByRole('dialog')
+    await dialog.getByTestId('rule-name').fill('توصية من الاختبار')
+    await dialog.getByTestId('mode-recommend').click()
+    await dialog.getByTestId('save-rule').click()
+
+    const row = page.getByTestId('rules-list').locator('li', { hasText: 'توصية من الاختبار' })
+    await expect(row).toContainText('توصية')
+  })
+
+  test('a project can be given its own scoring', async ({ page }) => {
+    const card = page.getByTestId('scoring-card')
+    await expect(card).toBeVisible()
+
+    await card.getByTestId('scoring-whatsapp_reply').fill('25')
+    await card.getByTestId('save-scoring').click()
+
+    await expect(card).toContainText('مخصّص للمشروع')
+  })
 })

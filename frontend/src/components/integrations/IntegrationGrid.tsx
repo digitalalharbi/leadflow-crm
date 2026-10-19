@@ -33,7 +33,7 @@ const ICON: Record<string, LucideIcon> = {
  * has happened, then warming to green: the ribbon reads left to right as how
  * far the workspace has got, which is the question it is opened to answer.
  */
-const RUNG_COLOR: Record<IntegrationState, string> = {
+export const RUNG_COLOR: Record<IntegrationState, string> = {
   not_configured: 'var(--color-border-strong)',
   code_verified: 'color-mix(in srgb, var(--color-ink-subtle) 70%, var(--color-surface))',
   sandbox_verified: 'var(--color-warning)',

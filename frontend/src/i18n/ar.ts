@@ -1219,7 +1219,38 @@ export default {
   },
 
   readiness: {
+    deployment: {
+      local: 'محلي (Local)',
+      staging: 'تجريبي (Staging)',
+      production: 'إنتاج (Production)',
+      publicName: 'اسم عام',
+      hint: {
+        local: 'هذه ليست نسخة منشورة. أي شيء يعمل هنا لا يُحسب دليلًا على التشغيل الحي.',
+        staging: 'خادم تجريبي حقيقي، وليس الإنتاج. لا يرتفع شيء فوق «جاهز».',
+        production: 'نسخة منشورة على عنوان آمن. وحدها تُسجَّل فيها أدلة التشغيل الحي.',
+      },
+    },
+    evidence: {
+      title: 'الدليل',
+      credentials_entered: 'أُدخلت بيانات الاتصال',
+      accepted_by_provider: 'قبلها المزوّد في فحص حقيقي',
+      real_event: 'حدث حقيقي من الطرف الآخر',
+      recorded_in_production: 'سُجّل في نسخة الإنتاج',
+      no_current_error: 'لا خطأ حاليًا',
+      probe_passed: 'نجح الفحص',
+      api_key: 'مفتاح Claude موجود',
+      production_environment: 'يعمل بوضع الإنتاج',
+      debug_off: 'وضع التصحيح مغلق',
+      app_key: 'مفتاح التطبيق',
+      scheduler_running: 'المجدول يعمل',
+      queue_worker_running: 'عامل الطوابير يعمل',
+      public_domain: 'اسم نطاق عام',
+      https: 'اتصال آمن HTTPS',
+      request_arrived_securely_on_it: 'وصل هذا الطلب بأمان على النطاق',
+    },
     hero: {
+      ladder: 'سلّم الإثبات — كل بنود الشاشة',
+      setupDetails: 'تفاصيل الإعداد',
       proven: 'مُثبت فعليًا',
       ofTotal: '{{proven}} من {{total}} بندًا',
       integrations: 'التكاملات',
@@ -1296,6 +1327,7 @@ export default {
       ads: 'منصات الإعلانات',
     },
     blocker: {
+      not_recorded_in_production: 'يعمل ويثبت المزوّد ذلك، لكن لم يُسجَّل حدث حي في نسخة الإنتاج بعد.',
       replies_not_routed: 'يصل البريد، لكن الردود لا تعود إلى المحادثة بعد.',
       not_production: 'البيئة ليست production بعد.',
       debug_enabled: 'وضع التصحيح مفعّل — عطّله قبل النشر.',

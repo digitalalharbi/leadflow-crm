@@ -559,7 +559,11 @@ class TheEmailChannelTest extends TestCase
         $message->forceFill(['provider' => 'smtp'])->save();
         $this->get('/e/o/'.$message->tracking_token)->assertOk();
 
-        $this->assertSame('live_verified', $this->emailState());
+        // A customer's mail client did fetch it — from a developer machine.
+        $this->assertSame('ready', $this->emailState());
+
+        $this->asProductionDeployment();
+        $this->assertSame('production_verified', $this->emailState());
     }
 
     public function test_the_provider_enum_knows_email_and_it_is_not_a_lead_source(): void

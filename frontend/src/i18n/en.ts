@@ -1065,7 +1065,38 @@ export default {
   },
 
   readiness: {
+    deployment: {
+      local: 'Local',
+      staging: 'Staging',
+      production: 'Production',
+      publicName: 'Public name',
+      hint: {
+        local: 'This is not a published deployment. Nothing that works here counts as live evidence.',
+        staging: 'A real server, but not production. Nothing rises above "Ready".',
+        production: 'Published at a secure address. Only here is live evidence recorded.',
+      },
+    },
+    evidence: {
+      title: 'Evidence',
+      credentials_entered: 'Credentials entered',
+      accepted_by_provider: 'Accepted by the provider in a real check',
+      real_event: 'A real event from the other end',
+      recorded_in_production: 'Recorded on the production deployment',
+      no_current_error: 'No current error',
+      probe_passed: 'The probe passed',
+      api_key: 'Claude key present',
+      production_environment: 'Running in production mode',
+      debug_off: 'Debug mode off',
+      app_key: 'Application key',
+      scheduler_running: 'Scheduler running',
+      queue_worker_running: 'Queue worker running',
+      public_domain: 'A public domain name',
+      https: 'Secure HTTPS',
+      request_arrived_securely_on_it: 'This request arrived securely on the domain',
+    },
     hero: {
+      ladder: 'Proof ladder — every row on this screen',
+      setupDetails: 'Setup details',
       proven: 'Proven live',
       ofTotal: '{{proven}} of {{total}} items',
       integrations: 'Integrations',
@@ -1142,6 +1173,7 @@ export default {
       ads: 'Ad platforms',
     },
     blocker: {
+      not_recorded_in_production: 'It works and the provider confirms it, but no live event has been recorded on the production deployment yet.',
       replies_not_routed: 'Email reaches people, but replies do not come back to the thread yet.',
       not_production: 'The environment is not production yet.',
       debug_enabled: 'Debug mode is on \u2014 turn it off before launch.',

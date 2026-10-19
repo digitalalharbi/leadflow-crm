@@ -5,6 +5,7 @@ namespace App\Domain\Integrations;
 use App\Models\CommissioningRun;
 use App\Models\LeadMessage;
 use App\Models\LeadSourceEvent;
+use App\Support\Deployment;
 
 /**
  * How far an integration has actually got, in six words that do not overclaim.
@@ -80,7 +81,17 @@ class IntegrationState
         $live = ($row['verification'] ?? null) === IntegrationHealthReport::EXTERNALLY_VERIFIED;
 
         if ($live) {
-            return $this->isProduction($row) ? self::PRODUCTION_VERIFIED : self::LIVE_VERIFIED;
+            /*
+             * Real events count as *live* only when they were recorded by a
+             * production deployment. The same event on a developer machine or a
+             * staging server proves the provider and the credentials work —
+             * that is "ready" — and says nothing about what customers use.
+             */
+            if (! Deployment::isProduction()) {
+                return self::READY;
+            }
+
+            return $this->isFresh($row) ? self::PRODUCTION_VERIFIED : self::LIVE_VERIFIED;
         }
 
         // The generic webhook is the workspace's own systems posting to an
@@ -107,17 +118,12 @@ class IntegrationState
     }
 
     /**
-     * Production only counts as production if it is: the platform is running as
-     * production, the last real event is recent, and nothing is currently wrong.
-     * A deployment that proved itself in March and has been silent since has
-     * earned "live", and no more.
+     * Live becomes production-verified while it keeps being true: the last real
+     * event is recent and nothing is currently wrong. A deployment that proved
+     * itself in March and has been silent since has earned "live", and no more.
      */
-    private function isProduction(array $row): bool
+    private function isFresh(array $row): bool
     {
-        if (! app()->environment('production')) {
-            return false;
-        }
-
         if (filled($row['last_error'] ?? null)) {
             return false;
         }

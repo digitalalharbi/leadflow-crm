@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Integrations\IntegrationState;
 use App\Domain\Readiness\ProductionReadiness;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -10,7 +11,6 @@ use App\Enums\Role;
 use App\Models\CommissioningRun;
 use App\Models\Integration;
 use App\Models\Lead;
-use App\Models\LeadEngagement;
 use App\Models\LeadMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,10 +137,69 @@ class ProductionReadinessTest extends TestCase
             'status' => MessageStatus::Delivered,
         ]));
 
+        // From a developer machine: the provider is real and so is the receipt,
+        // and neither says anything about the deployment customers use.
         $row = $this->row('whatsapp');
+        $this->assertSame(ProductionReadiness::READY, $row['status']);
+        $this->assertSame('not_recorded_in_production', $row['blocker']);
+        $this->assertSame('ready', $row['state']);
 
+        $this->asProductionDeployment();
+
+        $row = $this->row('whatsapp');
         $this->assertSame(ProductionReadiness::LIVE, $row['status']);
         $this->assertNull($row['blocker']);
+        $this->assertSame('production_verified', $row['state']);
+    }
+
+    public function test_every_row_has_a_rung_of_the_ladder_and_the_evidence_it_stands_on(): void
+    {
+        $report = $this->actingAs($this->t['admin'])->getJson('/api/v1/readiness')->assertOk()->json('data');
+
+        $this->assertSame('local', $report['deployment']['kind']);
+
+        foreach ($report['items'] as $item) {
+            $this->assertContains($item['state'], IntegrationState::LADDER, $item['key']);
+            $this->assertNotEmpty($item['evidence'] ?? [], "{$item['key']} claims a state with no evidence");
+
+            // Nothing on a developer machine is entitled to a rung above ready.
+            $this->assertNotContains($item['state'], ['live_verified', 'production_verified'], $item['key']);
+        }
+
+        foreach ($report['infrastructure'] as $row) {
+            $this->assertContains($row['ladder'], IntegrationState::LADDER, $row['key']);
+            $this->assertNotEmpty($row['evidence'], $row['key']);
+            $this->assertNotContains($row['ladder'], ['live_verified', 'production_verified'], $row['key']);
+        }
+
+        $this->assertSame(array_sum($report['ladder']), count($report['items']) + count($report['infrastructure']));
+    }
+
+    public function test_the_evidence_says_what_was_seen_and_where(): void
+    {
+        $this->whatsappCredentials();
+        $this->asTenant($this->t['tenant'], fn () => CommissioningRun::create(['key' => 'whatsapp', 'ok' => true, 'steps' => []]));
+
+        $evidence = collect($this->row('whatsapp')['evidence'])->keyBy('key');
+
+        $this->assertTrue($evidence['credentials_entered']['ok']);
+        $this->assertTrue($evidence['accepted_by_provider']['ok']);
+        $this->assertNotNull($evidence['accepted_by_provider']['at']);
+        $this->assertFalse($evidence['real_event']['ok']);
+        $this->assertFalse($evidence['recorded_in_production']['ok']);
+        $this->assertSame('local', $evidence['recorded_in_production']['detail']);
+    }
+
+    public function test_production_means_the_deployment_can_be_reached_not_the_environment_name(): void
+    {
+        $this->app['env'] = 'production';
+        config(['app.url' => 'http://localhost:8000']);
+
+        $this->assertSame('local', $this->actingAs($this->t['admin'])->getJson('/api/v1/readiness')->json('data.deployment.kind'));
+
+        $this->asProductionDeployment();
+
+        $this->assertSame('production', $this->actingAs($this->t['admin'])->getJson('/api/v1/readiness')->json('data.deployment.kind'));
     }
 
     /** Having a credential Meta refuses is not "ready", whatever the form says. */
@@ -230,7 +289,7 @@ class ProductionReadinessTest extends TestCase
 
     public function test_the_server_is_live_only_when_something_has_been_running(): void
     {
-        $this->app['env'] = 'production';
+        $this->asProductionDeployment();
         config(['app.debug' => false]);
 
         $this->assertSame(ProductionReadiness::READY, $this->row('vps')['status']);
@@ -245,6 +304,18 @@ class ProductionReadinessTest extends TestCase
 
         $row = $this->row('vps');
         $this->assertSame(ProductionReadiness::READY, $row['status']);
+    }
+
+    public function test_a_server_that_runs_as_production_at_a_local_address_is_not_production(): void
+    {
+        $this->app['env'] = 'production';
+        config(['app.debug' => false, 'app.url' => 'http://localhost:8000']);
+        Artisan::call('leadflow:heartbeat');
+
+        $row = $this->row('vps');
+
+        $this->assertNotSame(ProductionReadiness::LIVE, $row['status']);
+        $this->assertNotContains($row['state'], ['live_verified', 'production_verified']);
     }
 
     public function test_debug_mode_in_production_is_never_ready(): void
@@ -268,9 +339,16 @@ class ProductionReadinessTest extends TestCase
             $this->row('domain', 'https://other-host.example.net/api/v1/readiness')['status'],
         );
 
+        // Reached securely on its own name — and a staging or test run of the same
+        // name is not the production deployment.
+        $row = $this->row('domain', 'https://crm.mahtam-clients.sa/api/v1/readiness');
+        $this->assertSame(ProductionReadiness::READY, $row['status']);
+
+        $this->app['env'] = 'production';
         $row = $this->row('domain', 'https://crm.mahtam-clients.sa/api/v1/readiness');
 
         $this->assertSame(ProductionReadiness::LIVE, $row['status']);
+        $this->assertSame('production_verified', $row['state']);
     }
 
     public function test_a_local_address_is_not_a_domain(): void
@@ -349,8 +427,21 @@ class ProductionReadinessTest extends TestCase
         config(['mail.default' => 'smtp']);
         $this->assertSame(ProductionReadiness::READY, $row()['status']);
 
+        // An open on a message the log mailer "sent" proves nothing.
         $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create(['full_name' => 'x', 'phone' => '+966550000009', 'phone_normalized' => '+966550000009']));
-        $this->asTenant($this->t['tenant'], fn () => LeadEngagement::create(['lead_id' => $lead->id, 'type' => LeadEngagement::EMAIL_OPENED, 'happened_at' => now()]));
+        $this->asTenant($this->t['tenant'], fn () => LeadMessage::create([
+            'lead_id' => $lead->id, 'direction' => MessageDirection::Outbound, 'channel' => MessageChannel::Email, 'provider' => 'mock',
+            'message_type' => 'text', 'subject' => 's', 'body' => 'b', 'status' => MessageStatus::Read, 'read_at' => now(),
+        ]));
+        $this->assertNotSame(ProductionReadiness::LIVE, $row()['status']);
+
+        // Through a real transport, opened by somebody's mail client — on a developer machine.
+        $this->asTenant($this->t['tenant'], fn () => LeadMessage::withoutGlobalScopes()->where('channel', 'email')->update(['provider' => 'smtp']));
+        $this->assertSame(ProductionReadiness::READY, $row()['status']);
+        $this->assertSame('not_recorded_in_production', $row()['blocker']);
+
+        // And only in production is it live.
+        $this->asProductionDeployment();
         $this->assertSame(ProductionReadiness::LIVE, $row()['status']);
     }
 

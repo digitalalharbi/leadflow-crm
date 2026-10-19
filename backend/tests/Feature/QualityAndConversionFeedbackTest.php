@@ -163,7 +163,11 @@ class QualityAndConversionFeedbackTest extends TestCase
         $this->asTenant($this->t['tenant'], fn () => Integration::create(['provider' => 'meta', 'name' => 'Meta', 'status' => 'connected', 'credentials' => ['pixel_id' => 'p', 'access_token' => 't'], 'is_active' => true]));
 
         $meta = collect($this->actingAs($this->t['admin'])->getJson('/api/v1/conversions/health')->json('data.platforms'))->firstWhere('platform', 'meta');
-        $this->assertSame('live_verified', $meta['state']);
+        $this->assertSame('ready', $meta['state'], 'a sent conversion counted as live outside production');
+
+        $this->asProductionDeployment();
+        $meta = collect($this->actingAs($this->t['admin'])->getJson('/api/v1/conversions/health')->json('data.platforms'))->firstWhere('platform', 'meta');
+        $this->assertSame('production_verified', $meta['state']);
         $this->assertSame(1, $meta['counts']['sent']);
     }
 }

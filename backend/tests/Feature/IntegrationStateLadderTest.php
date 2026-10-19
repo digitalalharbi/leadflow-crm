@@ -127,12 +127,38 @@ class IntegrationStateLadderTest extends TestCase
         $this->assertSame(IntegrationState::SANDBOX_VERIFIED, $this->state('whatsapp'));
     }
 
-    public function test_a_real_receipt_makes_it_live(): void
+    public function test_a_real_receipt_makes_it_live_only_in_production(): void
     {
         $this->whatsapp();
         $this->message('whatsapp_cloud', MessageStatus::Delivered);
 
-        $this->assertSame(IntegrationState::LIVE_VERIFIED, $this->state('whatsapp'));
+        // The same real receipt, seen from a developer machine: the provider and
+        // the credentials work, and nothing has been proven about the deployment.
+        $this->assertSame(IntegrationState::READY, $this->state('whatsapp'));
+
+        $this->asProductionDeployment();
+
+        $this->assertSame(IntegrationState::PRODUCTION_VERIFIED, $this->state('whatsapp'));
+    }
+
+    public function test_production_is_a_deployment_you_can_reach_not_a_setting(): void
+    {
+        $this->whatsapp();
+        $this->message('whatsapp_cloud', MessageStatus::Delivered);
+
+        // APP_ENV=production on a laptop, at localhost, over plain HTTP.
+        $this->app['env'] = 'production';
+        config(['app.url' => 'http://localhost:8000']);
+        $this->assertSame(IntegrationState::READY, $this->state('whatsapp'));
+
+        // HTTPS, but a name nobody outside can open.
+        config(['app.url' => 'https://app.example.com']);
+        $this->assertSame(IntegrationState::READY, $this->state('whatsapp'));
+
+        // Staging is real and still not production.
+        $this->app['env'] = 'staging';
+        config(['app.url' => 'https://staging.muhtam-real.sa']);
+        $this->assertSame(IntegrationState::READY, $this->state('whatsapp'));
     }
 
     public function test_an_ad_platform_event_with_no_credentials_is_a_simulation(): void
@@ -165,17 +191,17 @@ class IntegrationStateLadderTest extends TestCase
     {
         $this->liveWhatsapp();
 
-        // Live on a developer machine is live, and not production.
-        $this->assertSame(IntegrationState::LIVE_VERIFIED, $this->state('whatsapp'));
+        // A real event on a developer machine is not live evidence.
+        $this->assertSame(IntegrationState::READY, $this->state('whatsapp'));
 
-        $this->app['env'] = 'production';
+        $this->asProductionDeployment();
 
         $this->assertSame(IntegrationState::PRODUCTION_VERIFIED, $this->state('whatsapp'));
     }
 
     public function test_a_deployment_that_has_gone_quiet_has_earned_live_and_no_more(): void
     {
-        $this->app['env'] = 'production';
+        $this->asProductionDeployment();
         $this->liveWhatsapp(now()->subDays(20));
 
         $this->assertSame(IntegrationState::LIVE_VERIFIED, $this->state('whatsapp'));
@@ -183,7 +209,7 @@ class IntegrationStateLadderTest extends TestCase
 
     public function test_a_current_error_withholds_production(): void
     {
-        $this->app['env'] = 'production';
+        $this->asProductionDeployment();
         $this->liveWhatsapp();
 
         Integration::withoutGlobalScopes()->where('provider', 'whatsapp')->update(['last_error' => 'token expired']);

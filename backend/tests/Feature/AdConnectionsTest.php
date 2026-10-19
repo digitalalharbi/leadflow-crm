@@ -70,7 +70,11 @@ class AdConnectionsTest extends TestCase
         $this->assertSame('ready', $v->state($adapter, $c));
 
         $c->forceFill(['last_sync_ok_at' => now()]);
-        $this->assertSame('live_verified', $v->state($adapter, $c), 'Production is claimed outside production.');
+        // A real sync from a developer machine proves the account, not the deployment.
+        $this->assertSame('ready', $v->state($adapter, $c), 'Live was claimed outside production.');
+
+        $this->asProductionDeployment();
+        $this->assertSame('production_verified', $v->state($adapter, $c));
     }
 
     public function test_only_admins_hold_the_keys(): void

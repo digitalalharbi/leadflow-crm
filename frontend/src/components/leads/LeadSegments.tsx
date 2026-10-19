@@ -1,13 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, BellRing, Flame, MessageCircleReply, Star, UserX, Users2 } from 'lucide-react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertTriangle, BadgeCheck, BellRing, Bookmark, Flame, Gem, MessageCircleReply, MessageCircleOff, Snowflake, Sparkles, Star, UserCog, UserX, Users2, X,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import { formatNumber } from '@/lib/format'
-import type { LeadFilters } from '@/features/leads'
+import { deleteSavedView, fetchSavedViews, saveView, type LeadFilters, type SavedView } from '@/features/leads'
 import { cn } from '@/lib/cn'
 
-type SegmentKey = 'all' | 'priority' | 'hot' | 'awaiting_contact' | 'overdue' | 'unassigned' | 'replied'
+type SegmentKey =
+  | 'all' | 'priority' | 'hot' | 'awaiting_contact' | 'overdue' | 'unassigned' | 'replied'
+  | 'needs_human' | 'no_reply' | 'high_value' | 'new_today' | 'qualified' | 'stalled'
 
 type Counts = Record<SegmentKey, number>
 
@@ -19,6 +24,12 @@ const SEGMENTS: Array<{ key: SegmentKey; Icon: LucideIcon; apply: Partial<LeadFi
   { key: 'overdue', Icon: BellRing, apply: { overdue: true } },
   { key: 'unassigned', Icon: UserX, apply: { unassigned: true } },
   { key: 'replied', Icon: MessageCircleReply, apply: { replied: true } },
+  { key: 'needs_human', Icon: UserCog, apply: { view: 'needs_human' } },
+  { key: 'no_reply', Icon: MessageCircleOff, apply: { view: 'no_reply' } },
+  { key: 'high_value', Icon: Gem, apply: { view: 'high_value' } },
+  { key: 'new_today', Icon: Sparkles, apply: { view: 'new_today' } },
+  { key: 'qualified', Icon: BadgeCheck, apply: { view: 'qualified' } },
+  { key: 'stalled', Icon: Snowflake, apply: { view: 'stalled' } },
 ]
 
 /** Everything a segment can set, so choosing one clears the others. */
@@ -29,7 +40,25 @@ const CLEARED: Partial<LeadFilters> = {
   overdue: undefined,
   unassigned: undefined,
   replied: undefined,
+  view: undefined,
   page: 1,
+}
+
+/** The filters a saved view may hold: everything a person can set from the list. */
+const SAVEABLE: Array<keyof LeadFilters> = [
+  'search', 'status', 'temperature', 'classification', 'platform', 'project_id', 'assigned_to', 'overdue', 'priority',
+  'wrong_fit', 'unassigned', 'awaiting_contact', 'replied', 'campaign_name', 'follow_up', 'view',
+]
+
+function activeFilters(filters: LeadFilters): Partial<LeadFilters> {
+  return Object.fromEntries(
+    SAVEABLE.flatMap((key) => {
+      const value = filters[key]
+      const empty = value === undefined || value === '' || value === false || (Array.isArray(value) && value.length === 0)
+
+      return empty ? [] : [[key, value]]
+    }),
+  )
 }
 
 function isActive(key: SegmentKey, filters: LeadFilters): boolean {
@@ -40,6 +69,12 @@ function isActive(key: SegmentKey, filters: LeadFilters): boolean {
     overdue: Boolean(filters.overdue),
     unassigned: Boolean(filters.unassigned),
     replied: Boolean(filters.replied),
+    needs_human: filters.view === 'needs_human',
+    no_reply: filters.view === 'no_reply',
+    high_value: filters.view === 'high_value',
+    new_today: filters.view === 'new_today',
+    qualified: filters.view === 'qualified',
+    stalled: filters.view === 'stalled',
   }
 
   if (key === 'all') return !Object.values(on).some(Boolean)
@@ -89,7 +124,7 @@ export function LeadSegments({
       {SEGMENTS.filter((segment) => segment.key !== 'unassigned' || showUnassigned).map(({ key, Icon, apply }) => {
         const active = isActive(key, filters)
         const count = data?.[key]
-        const urgent = (key === 'awaiting_contact' || key === 'overdue' || key === 'priority') && (count ?? 0) > 0
+        const urgent = (key === 'awaiting_contact' || key === 'overdue' || key === 'priority' || key === 'needs_human') && (count ?? 0) > 0
 
         return (
           <button
@@ -123,6 +158,98 @@ export function LeadSegments({
           </button>
         )
       })}
+
+      <SavedViews filters={filters} onChange={onChange} />
     </div>
+  )
+}
+
+/**
+ * The lists a person keeps for themselves. Pressing one sets exactly the
+ * filters it was saved with; the bookmark saves whatever is set right now.
+ */
+function SavedViews({ filters, onChange }: { filters: LeadFilters; onChange: (next: Partial<LeadFilters>) => void }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+
+  const { data } = useQuery({ queryKey: ['lead-saved-views'], queryFn: fetchSavedViews })
+  const current = activeFilters(filters)
+  const saveable = Object.keys(current).length > 0
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['lead-saved-views'] })
+  const create = useMutation({
+    mutationFn: () => saveView(name.trim(), current),
+    onSuccess: () => {
+      setName('')
+      setNaming(false)
+      void refresh()
+    },
+  })
+  const remove = useMutation({ mutationFn: (id: string) => deleteSavedView(id), onSuccess: () => void refresh() })
+
+  const apply = (view: SavedView) => onChange({ ...CLEARED, ...view.filters })
+
+  return (
+    <>
+      {(data?.views ?? []).map((view) => (
+        <span
+          key={view.id}
+          data-testid={`saved-view-${view.id}`}
+          className="inline-flex shrink-0 items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand)]"
+        >
+          <button type="button" onClick={() => apply(view)} className="pressable inline-flex items-center gap-1.5 rounded-full py-1.5 ps-3 pe-1.5 text-[0.9375rem] font-semibold">
+            <Bookmark className="size-3.5" aria-hidden />
+            {view.name}
+          </button>
+          <button
+            type="button"
+            aria-label={t('leads.segments.remove')}
+            data-testid={`saved-view-remove-${view.id}`}
+            onClick={() => remove.mutate(view.id)}
+            className="pressable me-1 grid size-6 place-items-center rounded-full hover:bg-black/10"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        </span>
+      ))}
+
+      {naming ? (
+        <form
+          className="inline-flex shrink-0 items-center gap-1"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (name.trim()) create.mutate()
+          }}
+        >
+          <input
+            autoFocus
+            value={name}
+            maxLength={80}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('leads.segments.saveName')}
+            aria-label={t('leads.segments.saveName')}
+            data-testid="saved-view-name"
+            className="h-8 w-36 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 text-[0.9375rem]"
+          />
+          <button type="submit" data-testid="saved-view-confirm" disabled={!name.trim() || create.isPending} className="pressable rounded-full bg-[var(--brand)] px-3 py-1.5 text-[0.9375rem] font-semibold text-[var(--brand-ink)] disabled:opacity-50">
+            {t('leads.segments.saveConfirm')}
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          disabled={!saveable}
+          data-testid="saved-view-save"
+          title={t('leads.segments.save')}
+          onClick={() => setNaming(true)}
+          className="pressable inline-flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-[var(--color-border-strong)] px-3 py-1.5 text-[0.9375rem] font-medium text-[var(--color-ink-muted)] disabled:opacity-40"
+        >
+          <Bookmark className="size-3.5" aria-hidden />
+          {t('leads.segments.save')}
+        </button>
+      )}
+    </>
   )
 }

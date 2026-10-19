@@ -22,6 +22,8 @@ export interface LeadFilters {
   data_issue?: string
   awaiting_contact?: boolean
   replied?: boolean
+  /** A built-in list: needs_human, no_reply, high_value, new_today, qualified or stalled. */
+  view?: string
   campaign_name?: string
   follow_up?: string
   sort?: string
@@ -156,4 +158,23 @@ export function fetchLostReasons() {
   return apiGet<{ lost_reasons: { id: string; label: string; is_active: boolean }[] }>(
     '/settings',
   ).then((r) => r.lost_reasons.filter((reason) => reason.is_active))
+}
+
+/** A set of filters somebody saved to have one press away. */
+export interface SavedView {
+  id: string
+  name: string
+  filters: Partial<LeadFilters>
+}
+
+export function fetchSavedViews() {
+  return apiGet<{ views: SavedView[] }>('/leads/saved-views')
+}
+
+export function saveView(name: string, filters: Partial<LeadFilters>) {
+  return apiPost<{ view: SavedView }>('/leads/saved-views', { name, filters })
+}
+
+export function deleteSavedView(id: string) {
+  return apiDelete<{ deleted: boolean }>(`/leads/saved-views/${id}`)
 }

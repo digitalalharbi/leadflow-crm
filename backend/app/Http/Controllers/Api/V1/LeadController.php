@@ -7,6 +7,7 @@ use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
+use App\Domain\Leads\LeadViews;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
 use App\Domain\Leads\StageAnnouncer;
@@ -93,7 +94,8 @@ class LeadController extends Controller
                  count(*) filter (where first_contact_at is null and status = ? and created_at <= ?) as awaiting_contact,
                  count(*) filter (where next_follow_up_at < now() and status not in (?, ?)) as overdue,
                  count(*) filter (where assigned_to is null and status not in (?, ?)) as unassigned,
-                 count(*) filter (where first_response_at is not null and status not in (?, ?)) as replied',
+                 count(*) filter (where first_response_at is not null and status not in (?, ?)) as replied,
+                 '.collect(LeadViews::sql((string) ($user->tenant?->settings?->timezone ?: 'UTC')))->map(fn ($sql, $key) => "count(*) filter (where {$sql}) as {$key}")->implode(', '),
                 [
                     ...$open,
                     LeadTemperature::Hot->value, ...$open,
@@ -113,7 +115,7 @@ class LeadController extends Controller
             'overdue' => (int) $row->overdue,
             'unassigned' => $user->seesAllLeads() ? (int) $row->unassigned : 0,
             'replied' => (int) $row->replied,
-        ]);
+        ] + collect(LeadViews::KEYS)->mapWithKeys(fn (string $key) => [$key => (int) $row->{$key}])->all());
     }
 
     public function index(Request $request)

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
+use App\Domain\Leads\PipelineOverview;
+use App\Domain\Sla\SlaMonitor;
 use App\Enums\LeadStatus;
 use App\Enums\MessageStatus;
 use App\Http\Controllers\Controller;
@@ -69,10 +71,13 @@ class CommandCenterController extends Controller
         $messageFailures = LeadMessage::query()
             ->where('status', MessageStatus::Failed->value)->where('created_at', '>=', $since)->count();
 
+        $stalled = Lead::query()->visibleTo($user)->whereRaw(PipelineOverview::stalledSql())->count();
+
         $attention = collect([
             ['key' => 'priority', 'severity' => 'critical', 'count' => (int) $tally->priority, 'href' => '/leads?priority=1'],
             ['key' => 'sla_breached', 'severity' => 'critical', 'count' => (int) $tally->sla_breached, 'href' => '/work', 'minutes' => $target],
             ['key' => 'overdue_follow_ups', 'severity' => 'critical', 'count' => (int) $tally->overdue_follow_ups, 'href' => '/follow-ups'],
+            ['key' => 'stalled', 'severity' => 'warning', 'count' => $stalled, 'href' => '/leads?view=stalled'],
             ['key' => 'wrong_fit', 'severity' => 'warning', 'count' => (int) $tally->wrong_fit, 'href' => '/leads?wrong_fit=1'],
             ['key' => 'hot', 'severity' => 'warning', 'count' => (int) $tally->hot, 'href' => '/leads?temperature=hot'],
             ['key' => 'appointments_awaiting_outcome', 'severity' => 'warning', 'count' => $awaitingOutcome, 'href' => '/follow-ups'],
@@ -88,6 +93,8 @@ class CommandCenterController extends Controller
             'appointments_today' => $this->appointmentsToday($user),
             'workload' => $user->seesAllLeads() ? $this->workload($user, $closed) : [],
             'target_minutes' => $target,
+            // The response promise, as numbers a manager can watch.
+            'sla' => app(SlaMonitor::class)->summary($user, $target),
         ]);
     }
 

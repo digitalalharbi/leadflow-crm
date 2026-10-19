@@ -31,15 +31,27 @@ class PipelineOverview
 
     private function open(): string
     {
+        return self::openSql();
+    }
+
+    /** The one definition of "open", for every screen that has to agree on it. */
+    public static function openSql(): string
+    {
         return "leads.status not in ('".LeadStatus::Won->value."', '".LeadStatus::Lost->value."', '".LeadStatus::Invalid->value."', '".LeadStatus::NoResponse->value."')";
     }
 
     private function stalled(): string
     {
+        return self::stalledSql();
+    }
+
+    /** The one definition of "stalled": open, untouched for days, nothing scheduled ahead. */
+    public static function stalledSql(): string
+    {
         return sprintf(
-            "(%s and coalesce(leads.last_contact_at, leads.created_at) < now() - interval '%d days'
-              and (leads.next_follow_up_at is null or leads.next_follow_up_at < now()))",
-            $this->open(),
+            "(%s and coalesce(leads.last_contact_at, leads.created_at) < (now() at time zone 'UTC') - interval '%d days'
+              and (leads.next_follow_up_at is null or leads.next_follow_up_at < (now() at time zone 'UTC')))",
+            self::openSql(),
             self::STALLED_AFTER_DAYS,
         );
     }

@@ -87,6 +87,13 @@ Schedule::command('leadflow:sync-sheets')
  */
 // The agents' own schedule (daily analysis, budget guard, …), in each
 // workspace's timezone. The runner decides what is due; this only wakes it.
+/*
+ * "No reply" as a moment rules can act on: quiet 15 minutes after our last
+ * message, an hour, four hours, a day… Every five minutes, so "15 min" means
+ * fifteen to twenty.
+ */
+Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlapping();
+
 Schedule::command('leadflow:run-routines')->everyFiveMinutes()->withoutOverlapping();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();

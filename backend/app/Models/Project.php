@@ -27,7 +27,7 @@ class Project extends Model
 
     protected function casts(): array
     {
-        return ['starting_price' => 'decimal:2'];
+        return ['starting_price' => 'decimal:2', 'scoring' => 'array'];
     }
 
     public function company(): BelongsTo

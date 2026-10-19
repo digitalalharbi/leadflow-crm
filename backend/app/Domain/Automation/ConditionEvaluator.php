@@ -2,7 +2,11 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Leads\LeadClassification;
+use App\Models\Call;
+use App\Models\CustomFieldValue;
 use App\Models\Lead;
+use App\Models\LeadMessage;
 use Illuminate\Support\Carbon;
 
 /**
@@ -143,8 +147,28 @@ class ConditionEvaluator
             'minutes_since_last_contact' => $this->minutesSince($lead->last_contact_at),
             'was_contacted' => $lead->first_contact_at !== null,
             'has_replied' => $lead->first_response_at !== null,
-            default => null,
+            'is_priority' => (bool) $lead->is_priority,
+            'classification' => LeadClassification::for($lead)['key'] ?? null,
+            'language' => $lead->language(),
+            'provider' => $lead->provider,
+            'campaign_id' => $lead->campaign_id,
+            'ad_name' => $lead->ad_name,
+            'automation_state' => $lead->automation_state,
+            // How many times anybody — rep or rule — has tried to reach them.
+            'attempts' => LeadMessage::where('lead_id', $lead->id)->where('direction', 'outbound')->count()
+                + Call::where('lead_id', $lead->id)->count(),
+            // Carried on a "no reply" signal: how long they have been quiet.
+            'no_reply_minutes' => $context['no_reply_minutes'] ?? null,
+            default => str_starts_with($field, 'custom.') ? $this->custom($lead, substr($field, 7)) : null,
         };
+    }
+
+    /** An answer the lead gave to a question the form or the sheet asked. */
+    private function custom(Lead $lead, string $key): ?string
+    {
+        return CustomFieldValue::where('lead_id', $lead->id)
+            ->whereHas('field', fn ($q) => $q->where('key', $key))
+            ->value('value');
     }
 
     private function minutesSince(?Carbon $at): ?int

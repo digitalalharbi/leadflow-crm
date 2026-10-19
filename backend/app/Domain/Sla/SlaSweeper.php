@@ -5,6 +5,7 @@ namespace App\Domain\Sla;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Enums\Role;
+use App\Events\LeadSignal;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
@@ -103,6 +104,7 @@ class SlaSweeper
          * and the whole ladder exists because nobody is looking.
          */
         $this->tell($lead->assignee ? [$lead->assignee] : [], $lead, SlaBreachNotification::REMIND, $age);
+        LeadSignal::dispatch($lead, 'lead.sla_breached', ['age_minutes' => $age]);
 
         return 1;
     }

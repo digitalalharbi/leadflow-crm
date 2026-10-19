@@ -305,7 +305,7 @@ class FilesChooseThemselvesTest extends TestCase
     private function whatsappTakes(): ExpectationInterface
     {
         return $this->mock(WhatsappSender::class)
-            ->shouldReceive('sendDocument')
+            ->shouldReceive('sendFile')
             ->once()
             ->withArgs(fn ($lead, $file, $caption) => is_string($caption) && str_contains($caption, '/f/'))
             ->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));

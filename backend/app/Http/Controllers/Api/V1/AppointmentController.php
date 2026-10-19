@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
+use App\Events\LeadSignal;
 use App\Events\LeadStageChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AppointmentResource;
@@ -116,6 +117,9 @@ class AppointmentController extends Controller
      */
     private function advanceToAppointment(Lead $lead, Request $request): void
     {
+        // A booked visit is a signal of its own, whether or not the stage moves.
+        LeadSignal::dispatch($lead, 'lead.appointment_created', [], $request->user());
+
         $from = $lead->status;
 
         // Forwards only, by pipeline position. That one comparison also covers

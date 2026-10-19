@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Domain\Automation\ActionExecutor;
+use App\Domain\Automation\ActionLog;
 use App\Enums\MessageDirection;
 use App\Models\Lead;
 use App\Models\LeadMessage;
@@ -63,6 +64,7 @@ class RunScheduledAction implements ShouldQueue
          */
         if ($lead->status?->isClosed()) {
             $scheduled->resolve(ScheduledAction::CANCELLED, 'أُغلق العميل قبل موعد التنفيذ.');
+            app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], [], 'أُغلق العميل قبل موعد التنفيذ.');
 
             return;
         }
@@ -82,6 +84,7 @@ class RunScheduledAction implements ShouldQueue
 
             if ($replied) {
                 $scheduled->resolve(ScheduledAction::CANCELLED, 'ردّ العميل — لم تعد هذه الخطوة لازمة.');
+                app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], [], 'ردّ العميل — لم تعد هذه الخطوة لازمة.');
 
                 return;
             }
@@ -89,6 +92,7 @@ class RunScheduledAction implements ShouldQueue
 
         $tenants->withTenant($lead->tenant, function () use ($actions, $scheduled, $lead) {
             $result = $actions->execute($lead, $scheduled->action ?? []);
+            app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], $result);
 
             $scheduled->resolve(
                 $result['ok'] ? ScheduledAction::DONE : ScheduledAction::FAILED,

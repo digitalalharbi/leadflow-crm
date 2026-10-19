@@ -4,7 +4,7 @@ import { Plus, Sparkles, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  createRule, deleteRule, fetchAutomationSummary, fetchRules, fetchSchema, fetchTemplates,
+  createRule, deleteRule, fetchAutomationSummary, fetchInsights, fetchRules, fetchSchema, fetchTemplates,
   installTemplate, previewRule, updateRule, type AutomationRule, type HistoryResult,
   duplicateRule,
 } from '@/features/automation'
@@ -14,6 +14,7 @@ import {
   Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Modal,
   PageHeader, SkeletonCards, Tabs,
 } from '@/components/ui'
+import { AutomationActivityChart, ChartCard, ChartLegend, SERIES } from '@/components/charts'
 import { CentreSummary } from '@/components/automation/CentreSummary'
 import { RulesTable } from '@/components/automation/RulesTable'
 import { ActionHistory } from '@/components/automation/ActionHistory'
@@ -48,6 +49,7 @@ export function AutomationPage() {
   const [historyResult, setHistoryResult] = useState<HistoryResult | ''>('')
   const navigate = useNavigate()
   const summary = useQuery({ queryKey: ['automation-summary', days], queryFn: () => fetchAutomationSummary(days) })
+  const insights = useQuery({ queryKey: ['automation-insights', days], queryFn: () => fetchInsights(Math.max(7, days)) })
   const rules = useQuery({ queryKey: ['automation-rules'], queryFn: fetchRules })
   const templates = useQuery({ queryKey: ['automation-templates'], queryFn: fetchTemplates })
 
@@ -193,6 +195,35 @@ export function AutomationPage() {
           </div>
 
           {summary.data ? <CentreSummary data={summary.data} onDrill={drill} /> : <SkeletonCards count={4} />}
+
+          {/*
+            Which rules fired, which did not apply and which failed, day by
+            day: a workspace with twelve rules and a flat line has a problem
+            the cards alone would not show.
+          */}
+          {insights.data && insights.data.summary.runs > 0 && (
+            <ChartCard
+              title={t('charts.automation.title')}
+              description={t('charts.automation.hint')}
+              height={190}
+              testId="automation-activity"
+              legend={
+                <ChartLegend
+                  items={[
+                    { key: 'applied', label: t('charts.automation.applied'), color: SERIES[0] },
+                    { key: 'skipped', label: t('charts.automation.skipped'), color: SERIES[1] },
+                    { key: 'failed', label: t('charts.automation.failed'), color: 'var(--color-status-lost)' },
+                  ]}
+                />
+              }
+              table={{
+                head: [t('charts.automation.rule'), t('charts.automation.applied'), t('charts.automation.skipped'), t('charts.automation.failed')],
+                rows: insights.data.by_rule.map((row) => [row.rule, row.applied, row.skipped, row.failed]),
+              }}
+            >
+              <AutomationActivityChart days={insights.data.daily} />
+            </ChartCard>
+          )}
 
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">

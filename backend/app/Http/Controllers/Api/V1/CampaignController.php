@@ -7,6 +7,8 @@ use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Domain\Campaigns\CampaignMetrics;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Domain\Campaigns\PlatformVerification;
+use App\Domain\Campaigns\QualityBreakdown;
+use App\Domain\Conversions\ConversionHealth;
 use App\Http\Controllers\Controller;
 use App\Models\AdAccount;
 use App\Models\AdConnection;
@@ -101,6 +103,28 @@ class CampaignController extends Controller
             'totals' => $metrics->totals($rows->all()),
             'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
         ]);
+    }
+
+    /** The full chain, from spend to revenue, at whichever level was asked for. */
+    public function quality(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        [$from, $to] = $this->window($request);
+        $level = in_array($request->input('level'), QualityBreakdown::LEVELS, true) ? $request->input('level') : 'platform';
+
+        return ApiResponse::success([
+            'level' => $level,
+            'rows' => (new QualityBreakdown($request->user(), $from, $to))->rows($level),
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+        ]);
+    }
+
+    public function conversionHealth(Request $request, ConversionHealth $health)
+    {
+        $this->authorize('export', Lead::class);
+
+        return ApiResponse::success(['platforms' => $health->summary()]);
     }
 
     /**

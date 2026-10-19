@@ -3,38 +3,30 @@
 namespace App\Domain\Conversions;
 
 use App\Models\ConversionExport;
-use App\Models\Integration;
 
 /**
  * One ad platform's offline conversion upload.
  *
- * Adding Snapchat means writing one class. Nothing upstream — the listener, the
- * queue, the retry policy — knows which platform it is talking to.
+ * Takes a plain bag of credentials rather than a particular record, because a
+ * workspace may have given them on the lead-source integration or on the ad
+ * connection — see ConversionCredentials, which merges the two.
  */
 interface ConversionExporterInterface
 {
-    /** Matches App\Enums\IntegrationProvider values. */
+    /** An App\Domain\Campaigns\AdPlatform value. */
     public function platform(): string;
 
-    /**
-     * Can this actually reach the platform right now?
-     *
-     * False is not a failure. A workspace that has not connected its ad account
-     * has not done anything wrong, and the queue treats "not configured" as a
-     * state to wait in rather than an error to retry.
-     */
-    public function isConfigured(?Integration $integration): bool;
+    /** False is not a failure: an unconnected account is a state to wait in, not an error to retry. */
+    public function isConfigured(?array $credentials): bool;
 
-    /** Credential keys the workspace must supply, for the settings form. */
+    /** @return list<string> keys the workspace must supply */
     public function requiredCredentials(): array;
 
     /**
      * Send one conversion.
      *
      * @return array{ok: bool, summary: array<string,mixed>, error?: string}
-     *                                                                       `summary` is what was sent with every personal identifier
-     *                                                                       removed, so a trace can be kept without keeping the customer's
-     *                                                                       phone number in a second place.
+     *                                                                       `summary` is what was sent with every personal identifier removed.
      */
-    public function send(ConversionExport $export, Integration $integration): array;
+    public function send(ConversionExport $export, array $credentials): array;
 }

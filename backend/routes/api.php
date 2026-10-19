@@ -299,6 +299,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/agent-reports', [AgentController::class, 'reports']);
             Route::get('/agent-reports/{uuid}', [AgentController::class, 'report'])->whereUuid('uuid');
             Route::get('/reports/marketing-sales', [CampaignController::class, 'marketingSales']);
+            Route::get('/reports/quality', [CampaignController::class, 'quality']);
+            Route::get('/conversions/health', [CampaignController::class, 'conversionHealth']);
             Route::get('/client-rules', [ClientRuleController::class, 'show']);
             Route::put('/client-rules', [ClientRuleController::class, 'update']);
 

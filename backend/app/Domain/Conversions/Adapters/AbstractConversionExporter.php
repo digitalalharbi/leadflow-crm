@@ -4,35 +4,40 @@ namespace App\Domain\Conversions\Adapters;
 
 use App\Domain\Conversions\ConversionExporterInterface;
 use App\Models\ConversionExport;
-use App\Models\Integration;
 use Illuminate\Support\Facades\Http;
 
 /**
- * What every platform's upload has in common.
+ * What every conversion upload shares: credential checks, one request with the
+ * platform's own authentication, and a summary that keeps no identifier.
  *
- * Each concrete adapter supplies an endpoint and the shape of one event; this
- * holds the parts that must not vary — how credentials are read, how long we
- * wait, and the rule that nothing identifying a person is written to our own
- * logs or stored in the export row.
+ * Idempotency is the platform's: every exporter sends a stable id derived from
+ * the export row ("leadflow-{id}"), so a retry the queue makes after a timeout
+ * is recognised as the same conversion and counted once.
  */
 abstract class AbstractConversionExporter implements ConversionExporterInterface
 {
     /** Short, because a conversion upload must never hold a queue worker open. */
     protected int $timeoutSeconds = 10;
 
-    abstract protected function endpoint(Integration $integration): string;
+    abstract protected function endpoint(array $credentials): string;
 
-    /** @return array<string,mixed> the request body for one conversion */
-    abstract protected function body(ConversionExport $export, Integration $integration): array;
+    /** @return array<string,mixed> */
+    abstract protected function body(ConversionExport $export, array $credentials): array;
 
-    public function isConfigured(?Integration $integration): bool
+    /** @return array<string,string> authentication headers for this platform */
+    protected function headers(array $credentials, string $url, array $body): array
     {
-        if (! $integration || ! $integration->is_active) {
+        return [];
+    }
+
+    public function isConfigured(?array $credentials): bool
+    {
+        if ($credentials === null) {
             return false;
         }
 
         foreach ($this->requiredCredentials() as $key) {
-            if (blank(data_get($integration->credentials, $key))) {
+            if (blank($credentials[$key] ?? null)) {
                 return false;
             }
         }
@@ -40,22 +45,21 @@ abstract class AbstractConversionExporter implements ConversionExporterInterface
         return true;
     }
 
-    public function send(ConversionExport $export, Integration $integration): array
+    public function send(ConversionExport $export, array $credentials): array
     {
-        $body = $this->body($export, $integration);
-
         try {
+            $body = $this->body($export, $credentials);
+            $url = $this->endpoint($credentials);
             $response = Http::timeout($this->timeoutSeconds)
+                ->withHeaders($this->headers($credentials, $url, $body))
                 ->asJson()
-                ->post($this->endpoint($integration), $body);
+                ->post($url, $body);
         } catch (\Throwable $e) {
-            // The message, never the payload: the payload contains the
-            // customer's hashed identifiers and we do not need a second copy of
-            // them in an exception log.
-            return ['ok' => false, 'summary' => $this->summarise($body), 'error' => $e->getMessage()];
+            // The message, never the payload: it holds hashed identifiers.
+            return ['ok' => false, 'summary' => isset($body) ? $this->summarise($body) : [], 'error' => $e->getMessage()];
         }
 
-        if ($response->successful()) {
+        if ($response->successful() && $this->accepted($response->json() ?? [])) {
             return ['ok' => true, 'summary' => $this->summarise($body)];
         }
 
@@ -66,23 +70,19 @@ abstract class AbstractConversionExporter implements ConversionExporterInterface
         ];
     }
 
-    /**
-     * What we keep about a send: enough to debug, nothing that identifies a
-     * person. Hashed identifiers are still personal data — a hash of a phone
-     * number is a reliable way to recognise that phone number again.
-     */
+    /** Some platforms answer 200 and refuse in the body. */
+    protected function accepted(array $json): bool
+    {
+        return true;
+    }
+
     protected function summarise(array $body): array
     {
         return [
-            'event' => data_get($body, 'event_name') ?? data_get($body, 'event'),
-            'fields_sent' => $this->fieldNames($body),
+            'event' => data_get($body, 'event_name') ?? data_get($body, 'data.0.event_name') ?? data_get($body, 'data.0.event') ?? data_get($body, 'event'),
+            'fields_sent' => array_keys($body),
             'identifiers' => $this->identifierKinds($body),
         ];
-    }
-
-    private function fieldNames(array $body): array
-    {
-        return array_keys($body);
     }
 
     /** Which kinds of identifier were included, not their values. */
@@ -91,9 +91,9 @@ abstract class AbstractConversionExporter implements ConversionExporterInterface
         $flat = json_encode($body) ?: '';
 
         return array_values(array_filter([
-            str_contains($flat, 'ph') ? 'phone' : null,
-            str_contains($flat, 'em') ? 'email' : null,
-            str_contains($flat, 'click') || str_contains($flat, 'clid') ? 'click_id' : null,
+            preg_match('/"(ph|phone|hashedPhoneNumber|hashed_phone_number)"/', $flat) ? 'phone' : null,
+            preg_match('/"(em|email|hashedEmail|hashed_email|SHA256_EMAIL)"/', $flat) ? 'email' : null,
+            preg_match('/clid|click_id|gclid|twclid|lead_id/', $flat) ? 'click_id' : null,
         ]));
     }
 }

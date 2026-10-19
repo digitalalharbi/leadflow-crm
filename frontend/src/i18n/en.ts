@@ -1504,6 +1504,19 @@ export default {
     source: { agent: 'From the agent', user: 'Written by a person' },
   },
 
+  qualityReport: {
+    level: { platform: 'Platform', campaign: 'Campaign', ad_set: 'Ad set', ad: 'Ad', creative: 'Creative' },
+    realCustomers: 'Real customers',
+    col: { spend: 'Spend', leads: 'Leads', valid: 'Valid', engaged: 'Engaged', qualified: 'Qualified', appointments: 'Appointments', won: 'Won', revenue: 'Revenue', cpl: 'CPL', cpql: 'CPQL', cac: 'CAC', roas: 'ROAS' },
+  },
+  conversionHealth: {
+    title: 'Results sent back to the platforms',
+    bar: '{{sent}} sent, {{waiting}} waiting, {{lost}} not delivered',
+    missing: 'Missing: {{keys}}',
+    lastSent: 'Last sent {{when}}',
+    none: 'Nothing sent yet',
+  },
+
   visual: {
     status: {
       healthy: 'Healthy',
@@ -1675,7 +1688,7 @@ export default {
       response_fast: 'First contact is quick: median {{median}} minutes against a target of {{target}}.',
       biggest_leak: 'The biggest leak is between "{{from}}" and "{{to}}": {{lost}}% of leads are lost there.',
     },
-    tabs: { overview: 'Overview', marketing: 'Marketing + sales', weekly: 'Weekly reports', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons', drivers: 'Conversion drivers' },
+    tabs: { overview: 'Overview', marketing: 'Marketing + sales', quality: 'Sales quality', weekly: 'Weekly reports', campaigns: 'Campaigns', platforms: 'Platforms', team: 'Sales team', lost: 'Lost reasons', drivers: 'Conversion drivers' },
     teamHint: 'Measurements per owner — not a ranking of people',
     lostHint: 'Largest reason first — that is the one to fix',
     noLost: 'No lost deals in this period',

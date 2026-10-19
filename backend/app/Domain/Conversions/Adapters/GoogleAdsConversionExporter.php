@@ -4,7 +4,7 @@ namespace App\Domain\Conversions\Adapters;
 
 use App\Domain\Conversions\Hashing;
 use App\Models\ConversionExport;
-use App\Models\Integration;
+use App\Support\GoogleAdsToken;
 
 /**
  * Google Ads offline conversion import.
@@ -23,25 +23,43 @@ class GoogleAdsConversionExporter extends AbstractConversionExporter
 
     public function requiredCredentials(): array
     {
-        return ['customer_id', 'developer_token', 'refresh_token', 'conversion_action_id'];
+        return ['customer_id', 'developer_token', 'client_id', 'client_secret', 'refresh_token', 'conversion_action_id'];
     }
 
-    protected function endpoint(Integration $integration): string
+    protected function endpoint(array $credentials): string
     {
-        $customer = data_get($integration->credentials, 'customer_id');
+        $customer = ($credentials['customer_id'] ?? '');
 
-        return "https://googleads.googleapis.com/v18/customers/{$customer}:uploadClickConversions";
+        return "https://googleads.googleapis.com/v20/customers/{$customer}:uploadClickConversions";
     }
 
-    protected function body(ConversionExport $export, Integration $integration): array
+    /** OAuth access token minted from the refresh token, plus the developer token. */
+    protected function headers(array $credentials, string $url, array $body): array
+    {
+        return array_filter([
+            'Authorization' => 'Bearer '.GoogleAdsToken::mint((string) $credentials['client_id'], (string) $credentials['client_secret'], (string) $credentials['refresh_token']),
+            'developer-token' => (string) $credentials['developer_token'],
+            'login-customer-id' => isset($credentials['login_customer_id']) ? preg_replace('/\D/', '', (string) $credentials['login_customer_id']) : null,
+        ]);
+    }
+
+    /** With partialFailure, Google answers 200 and reports a refused row in the body. */
+    protected function accepted(array $json): bool
+    {
+        return empty($json['partialFailureError']);
+    }
+
+    protected function body(ConversionExport $export, array $credentials): array
     {
         $lead = $export->lead;
 
         return [
             'conversions' => [array_filter([
-                'conversionAction' => 'customers/'.data_get($integration->credentials, 'customer_id')
-                    .'/conversionActions/'.data_get($integration->credentials, 'conversion_action_id'),
+                'conversionAction' => 'customers/'.($credentials['customer_id'] ?? '')
+                    .'/conversionActions/'.($credentials['conversion_action_id'] ?? ''),
                 'conversionDateTime' => $export->occurred_at->format('Y-m-d H:i:sP'),
+                // Google's deduplication key: the same order id is one conversion.
+                'orderId' => 'leadflow-'.$export->id,
                 'conversionValue' => $export->value,
                 'currencyCode' => $export->currency,
                 'gclid' => $lead->click_id,

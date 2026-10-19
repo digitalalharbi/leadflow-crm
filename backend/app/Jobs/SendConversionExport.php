@@ -2,9 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Domain\Conversions\ConversionCredentials;
 use App\Domain\Conversions\ExporterRegistry;
 use App\Models\ConversionExport;
-use App\Models\Integration;
 use App\Support\TenantContext;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,9 +45,9 @@ class SendConversionExport implements ShouldQueue
         $tenants->withTenant($export->tenant, function () use ($export, $registry) {
             $exporter = $registry->get($export->platform);
 
-            $integration = Integration::where('provider', $export->platform)->first();
+            $credentials = ConversionCredentials::for($export->platform);
 
-            if (! $exporter->isConfigured($integration)) {
+            if (! $exporter->isConfigured($credentials)) {
                 // Waiting, not failing. The sweep picks these up again once the
                 // workspace connects the account, including ones recorded
                 // months earlier.
@@ -59,7 +59,7 @@ class SendConversionExport implements ShouldQueue
                 return;
             }
 
-            $result = $exporter->send($export, $integration);
+            $result = $exporter->send($export, $credentials);
 
             $export->update([
                 'attempts' => $export->attempts + 1,

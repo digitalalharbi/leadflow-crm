@@ -158,6 +158,24 @@ test.describe('الحملات — the campaign command center', () => {
     await expect(page.getByTestId('campaign-detail')).toBeVisible()
   })
 
+  test('the sales-quality report drills from platform to creative', async ({ page }) => {
+    await page.goto('/reports')
+    await page.getByTestId('tab-quality').click()
+    const report = page.getByTestId('quality-report')
+    await expect(report.getByTestId('quality-table').locator('tbody tr').first()).toBeVisible()
+
+    await report.getByTestId('quality-level').getByRole('tab', { name: 'الحملة' }).click()
+    await expect(report.getByTestId('quality-table').locator('tbody tr').first()).toBeVisible()
+  })
+
+  test('the ad accounts view says whether results reach each platform', async ({ page }) => {
+    await page.goto('/integrations')
+    await page.getByTestId('integrations-tabs').getByRole('tab', { name: 'حسابات الإعلانات' }).click()
+    for (const key of ['meta', 'tiktok', 'google_ads', 'snapchat', 'linkedin', 'x']) {
+      await expect(page.getByTestId(`conversion-${key}`)).toBeVisible()
+    }
+  })
+
   test('a sales rep is not offered campaigns at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
     await page.goto('/')

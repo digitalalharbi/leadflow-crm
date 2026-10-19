@@ -4,7 +4,6 @@ namespace App\Domain\Conversions\Adapters;
 
 use App\Domain\Conversions\Hashing;
 use App\Models\ConversionExport;
-use App\Models\Integration;
 
 /**
  * Meta's Conversions API.
@@ -26,14 +25,14 @@ class MetaConversionExporter extends AbstractConversionExporter
         return ['pixel_id', 'access_token'];
     }
 
-    protected function endpoint(Integration $integration): string
+    protected function endpoint(array $credentials): string
     {
-        $pixel = data_get($integration->credentials, 'pixel_id');
+        $pixel = $credentials['pixel_id'] ?? '';
 
         return "https://graph.facebook.com/v21.0/{$pixel}/events";
     }
 
-    protected function body(ConversionExport $export, Integration $integration): array
+    protected function body(ConversionExport $export, array $credentials): array
     {
         $lead = $export->lead;
 
@@ -48,7 +47,7 @@ class MetaConversionExporter extends AbstractConversionExporter
         ]);
 
         return [
-            'access_token' => data_get($integration->credentials, 'access_token'),
+            'access_token' => $credentials['access_token'] ?? null,
             'data' => [[
                 'event_name' => $export->event->standardName(),
                 'event_time' => $export->occurred_at->timestamp,

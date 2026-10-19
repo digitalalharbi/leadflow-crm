@@ -46,6 +46,28 @@ export default {
     settings: 'Settings', superAdmin: 'Platform', notifications: 'Notifications', profile: 'Profile',
     platformConsole: 'Platform console',
   },
+  manager: {
+    title: 'Command center',
+    period: 'Period',
+    funnel: 'Lead funnel',
+    team: 'Team — most sales',
+    noTeam: 'No assigned leads yet.',
+    open: 'open',
+    late: 'late',
+    temperature: 'Open leads by temperature',
+    sources: 'Lead sources',
+    trend: 'Leads per day',
+    leadsPerDay: 'Leads',
+    unit: { s: 's', m: 'm', h: 'h', d: 'd' },
+    kpi: {
+      leadsToday: 'Leads today', qualified: 'Qualified', overdue: 'Overdue follow-ups', stalled: 'Stalled leads', response: 'Avg first human response',
+      appointmentRate: 'Appointment rate', conversion: 'Conversion', revenue: 'Revenue', period: 'Leads, last {{days}} days',
+    },
+    sla: {
+      title: 'Kept to the {{minutes}}-minute target', ring: 'Share contacted in time', overdue: 'Overdue follow-ups', breached: 'Past first-contact target',
+      automated: 'First automated reply', human: 'First human reply', stalled: 'Stalled leads',
+    },
+  },
   simulation: {
     title: 'If this rule had run in the last {{days}} days',
     noExecution: 'Nothing is executed',

@@ -100,6 +100,28 @@ export default {
     notifications: 'الإشعارات',
     profile: 'الملف الشخصي',
   },
+  manager: {
+    title: 'مركز القيادة',
+    period: 'الفترة',
+    funnel: 'مسار العملاء',
+    team: 'الفريق — الأكثر صفقات',
+    noTeam: 'لا عملاء مُسندون بعد.',
+    open: 'مفتوح',
+    late: 'متأخر',
+    temperature: 'حرارة العملاء المفتوحين',
+    sources: 'مصادر العملاء',
+    trend: 'العملاء يوميًا',
+    leadsPerDay: 'عملاء',
+    unit: { s: 'ث', m: 'د', h: 'س', d: 'ي' },
+    kpi: {
+      leadsToday: 'عملاء اليوم', qualified: 'مؤهلون', overdue: 'متابعات متأخرة', stalled: 'عملاء راكدون', response: 'متوسط أول رد بشري',
+      appointmentRate: 'نسبة المواعيد', conversion: 'نسبة التحويل', revenue: 'الإيراد', period: 'عملاء آخر {{days}} يومًا',
+    },
+    sla: {
+      title: 'الالتزام بمهلة {{minutes}} دقيقة', ring: 'نسبة من تواصلنا معهم في الوقت', overdue: 'متابعات متأخرة', breached: 'تجاوزوا مهلة أول تواصل',
+      automated: 'أول رد آلي', human: 'أول رد بشري', stalled: 'عملاء راكدون',
+    },
+  },
   simulation: {
     title: 'لو عملت هذه القاعدة خلال آخر {{days}} أيام',
     noExecution: 'بلا تنفيذ فعلي',

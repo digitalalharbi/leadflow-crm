@@ -22,13 +22,13 @@ use Illuminate\Support\Facades\DB;
  */
 class SlaMonitor
 {
-    private const DAYS = 30;
+    public const DAYS = 30;
 
     /** @return array<string,mixed> */
-    public function summary(User $user, int $targetMinutes): array
+    public function summary(User $user, int $targetMinutes, int $days = self::DAYS): array
     {
         $leads = fn (): Builder => Lead::query()->visibleTo($user);
-        $since = now()->subDays(self::DAYS);
+        $since = now()->subDays($days);
         $open = PipelineOverview::openSql();
 
         // Only leads whose target has already passed can have missed it or kept it.

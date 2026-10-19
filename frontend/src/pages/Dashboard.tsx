@@ -11,6 +11,7 @@ import { can, useAuth } from '@/stores/auth'
 import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
+import { ManagerCommandCenter } from '@/components/dashboard/ManagerCommandCenter'
 import { HoldingOverview } from '@/components/company/HoldingOverview'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDue, formatNumber } from '@/lib/format'
@@ -158,6 +159,7 @@ export function DashboardPage() {
           {/* Holding → company → project, when the workspace has companies at all. */}
           <HoldingOverview />
 
+
           {/* The whole promise in one row: arrived → automated → reached → followed up → waiting for the team → outcome. */}
           <JourneyStrip days={range === 'all' ? 90 : Number(range)} />
 
@@ -175,6 +177,9 @@ export function DashboardPage() {
             itself off the page for good once the five steps are done.
           */}
           <OnboardingChecklist />
+
+          {/* The manager's own screen: figures, SLA, team, sources, funnel and trend. */}
+          {can.seeAllLeads(user) && <ManagerCommandCenter />}
 
           {/* What has to happen today, and what is already late. */}
           <TodayStrip data={data} today={today} />

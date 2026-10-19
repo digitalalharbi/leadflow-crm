@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Analytics\ManagerCenter;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
@@ -96,6 +97,24 @@ class CommandCenterController extends Controller
             // The response promise, as numbers a manager can watch.
             'sla' => app(SlaMonitor::class)->summary($user, $target),
         ]);
+    }
+
+    /**
+     * The manager's view: arrivals, qualified, overdue, stalled, response time,
+     * appointment and conversion rates, revenue, the team ranked, the sources,
+     * the funnel, the trend and the SLA ring. Managers and admins only.
+     */
+    public function manager(Request $request)
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $user = $request->user();
+        abort_unless($user->seesAllLeads(), 403);
+
+        $days = in_array((int) $request->input('days', 30), [7, 30, 90], true) ? (int) $request->input('days', 30) : 30;
+        $target = (int) ($user->tenant?->settings?->first_contact_target_minutes ?? 30);
+
+        return ApiResponse::success(app(ManagerCenter::class)->build($user, $days, $target));
     }
 
     /**

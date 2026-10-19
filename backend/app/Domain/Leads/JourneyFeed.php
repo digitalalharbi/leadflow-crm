@@ -211,7 +211,7 @@ class JourneyFeed
             ActivityType::EmailOptedOut, ActivityType::EmailBounced => 'email',
             ActivityType::FollowUpCreated, ActivityType::FollowUpCompleted, ActivityType::FollowUpOutcomeRecorded => 'followup',
             ActivityType::HandedOff => 'automation',
-            ActivityType::ReEngaged => 'source',
+            ActivityType::ReEngaged, ActivityType::Merged => 'source',
             default => 'note',
         };
     }

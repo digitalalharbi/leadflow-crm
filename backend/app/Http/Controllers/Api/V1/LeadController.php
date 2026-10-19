@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
+use App\Domain\Leads\DuplicateFinder;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
+use App\Domain\Leads\LeadMerger;
 use App\Domain\Leads\LeadViews;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
@@ -219,6 +221,33 @@ class LeadController extends Controller
             'classification' => $overview->classification(),
             'sources' => $overview->sources(),
             'trend' => $overview->trend(30),
+        ]);
+    }
+
+    /** Other records that may be the same person as this one. */
+    public function duplicates(Request $request, string $uuid)
+    {
+        $lead = $this->findLead($uuid);
+        $this->authorize('merge', $lead);
+
+        return ApiResponse::success(['duplicates' => app(DuplicateFinder::class)->for($lead)]);
+    }
+
+    /** Folds a duplicate record into this one. A manager's call: it cannot be cleanly undone. */
+    public function merge(Request $request, string $uuid)
+    {
+        $keep = $this->findLead($uuid);
+        $this->authorize('merge', $keep);
+
+        $data = $request->validate(['duplicate_id' => ['required', 'uuid']]);
+        $duplicate = $this->findLead($data['duplicate_id']);
+        $this->authorize('merge', $duplicate);
+
+        $result = app(LeadMerger::class)->merge($keep, $duplicate, $request->user());
+
+        return ApiResponse::success([
+            'lead' => new LeadResource($result['lead']->load(['assignee:id,uuid,name', 'project:id,uuid,name'])),
+            'moved' => $result['moved'],
         ]);
     }
 

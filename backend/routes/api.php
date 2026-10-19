@@ -181,6 +181,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads', [LeadController::class, 'store']);
             Route::get('/leads/{uuid}', [LeadController::class, 'show']);
             Route::get('/leads/{uuid}/journey', [LeadController::class, 'journey']);
+            Route::get('/leads/{uuid}/duplicates', [LeadController::class, 'duplicates']);
+            Route::post('/leads/{uuid}/merge', [LeadController::class, 'merge']);
             Route::patch('/leads/{uuid}', [LeadController::class, 'update']);
             Route::delete('/leads/{uuid}', [LeadController::class, 'destroy']);
             Route::post('/leads/{uuid}/assign', [LeadController::class, 'assign']);

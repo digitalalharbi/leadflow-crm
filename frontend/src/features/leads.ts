@@ -178,3 +178,25 @@ export function saveView(name: string, filters: Partial<LeadFilters>) {
 export function deleteSavedView(id: string) {
   return apiDelete<{ deleted: boolean }>(`/leads/saved-views/${id}`)
 }
+
+/** A record that may be the same person as the lead on screen. */
+export interface DuplicateCandidate {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  status: string | null
+  platform: string | null
+  campaign: string | null
+  created_at: string | null
+  /** Why it was suggested: provider_lead_id, email or phone. Never a name. */
+  reasons: Array<'provider_lead_id' | 'email' | 'phone'>
+}
+
+export function fetchDuplicates(leadId: string) {
+  return apiGet<{ duplicates: DuplicateCandidate[] }>(`/leads/${leadId}/duplicates`)
+}
+
+export function mergeLead(leadId: string, duplicateId: string) {
+  return apiPost<{ lead: Lead; moved: Record<string, number> }>(`/leads/${leadId}/merge`, { duplicate_id: duplicateId })
+}

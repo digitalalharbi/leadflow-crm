@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, X } from 'lucide-react'
+import { Bell, Filter, Plus, Workflow, X, Zap } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Select } from '@/components/ui'
 import { fetchAssignableUsers, fetchLostReasons } from '@/features/leads'
@@ -48,6 +49,14 @@ const ACTION_DEFAULTS: Record<string, Record<string, unknown>> = {
   send_whatsapp: { template_uuid: '' },
   // Same reasoning as above: an email template is chosen, never defaulted.
   send_email: { template_uuid: '' },
+  ask_qualification: {},
+  set_priority: {},
+  hand_off: { reason: 'needs_human' },
+  set_temperature: { temperature: 'hot' },
+  stop_automation: {},
+  start_nurture: {},
+  create_call_task: { in_hours: 1 },
+  request_appointment: {},
   // Left empty on purpose: with no kind, the chooser reads the lead's own
   // answers, which is the behaviour worth having by default.
   share_file: { kind: '', send: true, channel: 'whatsapp' },
@@ -65,7 +74,12 @@ function withDefaults(type: string): RuleAction {
  * minutes. The API accepts any minute count up to thirty days, so a rule
  * written elsewhere is still honoured.
  */
-const DELAYS = [60, 240, 1440, 2880, 4320, 10080, 20160, 43200] as const
+const PURPOSES = ['welcome', 'qualification', 'reminder', 'nurture', 'appointment', 'brochure'] as const
+
+const DELAYS = [5, 15, 60, 240, 1440, 2880, 4320, 10080, 20160, 43200] as const
+
+/** The three ways a rule can run: do it, suggest it, or only write it down. */
+const MODES = ['auto', 'recommend', 'monitor'] as const
 
 /**
  * What a project file can be, for the one action that may ask for a kind.
@@ -135,6 +149,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const [actions, setActions] = useState<RuleAction[]>(
     rule?.actions ?? [withDefaults(schema.actions[0])],
   )
+  const [mode, setMode] = useState<string>(rule?.mode ?? 'auto')
 
   function patchCondition(index: number, patch: Partial<RuleCondition>) {
     setConditions((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
@@ -168,6 +183,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
         value: VALUELESS.has(condition.operator) ? null : (condition.value ?? null),
       })),
       actions,
+      mode,
     })
   }
 
@@ -198,6 +214,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
           data-testid="rule-name"
         />
 
+        <Step n={1} icon={Zap} title={t('automation.step.trigger')} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Select
             label={t('automation.whenLabel')}
@@ -222,6 +239,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
         </div>
 
         <section className="space-y-2">
+          <Step n={2} icon={Filter} title={t('automation.step.conditions')} />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="t-body font-medium">{t('automation.ifLabel')}</h3>
@@ -356,6 +374,7 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
         </section>
 
         <section className="space-y-2">
+          <Step n={3} icon={Workflow} title={t('automation.step.action')} hint={t('automation.step.timingHint')} />
           <div className="flex items-center justify-between">
             <h3 className="t-body font-medium">{t('automation.thenLabel')}</h3>
             <Button
@@ -434,8 +453,51 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
             </div>
           ))}
         </section>
+
+        {/*
+          How the rule runs. Auto is the default for the ordinary work —
+          messages, follow-ups, scoring — and a person steps in only where a
+          rule says Recommend.
+        */}
+        <section className="space-y-2">
+          <Step n={5} icon={Bell} title={t('automation.step.mode')} />
+          <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('automation.step.mode')} data-testid="rule-mode">
+            {MODES.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={mode === key}
+                onClick={() => setMode(key)}
+                data-testid={`mode-${key}`}
+                className={
+                  mode === key
+                    ? 'rounded-xl border-2 border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_8%,transparent)] p-3 text-start'
+                    : 'rounded-xl border border-[var(--color-line)] p-3 text-start hover:bg-[var(--color-surface-muted)]'
+                }
+              >
+                <span className="block text-[0.875rem] font-semibold">{t(`automation.mode.${key}`)}</span>
+                <span className="block text-[0.6875rem] text-[var(--color-ink-muted)]">{t(`automation.modeHint.${key}`)}</span>
+              </button>
+            ))}
+          </div>
+        </section>
       </div>
     </Modal>
+  )
+}
+
+/** A numbered step of the builder: what to decide here, in two or three words. */
+function Step({ n, icon: Icon, title, hint }: { n: number; icon: LucideIcon; title: string; hint?: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[0.75rem] font-bold text-[var(--brand-contrast)]" aria-hidden>
+        {n}
+      </span>
+      <Icon className="size-4 text-[var(--color-ink-muted)]" aria-hidden />
+      <h3 className="text-[0.9375rem] font-semibold">{title}</h3>
+      {hint && <span className="t-caption">{hint}</span>}
+    </div>
   )
 }
 
@@ -590,44 +652,76 @@ function ActionDetail({
       them carries that sentence.
     */
     case 'send_whatsapp':
+    case 'send_email': {
+      const list = action.type === 'send_email' ? emailTemplates : templates
+      const value = action.purpose ? `purpose:${String(action.purpose)}` : action.template_uuid ? `template:${String(action.template_uuid)}` : ''
+
       return (
         <Select
           className="min-w-48 flex-1"
-          label={labelled ? t('automation.template') : undefined}
-          value={String(action.template_uuid ?? '')}
-          onChange={(e) => onChange({ template_uuid: e.target.value })}
+          label={labelled ? t(action.type === 'send_email' ? 'automation.emailTemplate' : 'automation.template') : undefined}
+          value={value}
+          data-testid="action-message"
+          onChange={(e) => {
+            const [kind, id] = e.target.value.split(':')
+            onChange(kind === 'purpose' ? { purpose: id, template_uuid: undefined } : { template_uuid: id, purpose: undefined })
+          }}
         >
           {/*
-            Unselectable until there is one to name, which also covers the
-            moment before the list has loaded. A rule saved with no message
-            reports a failure on every run.
+            Unselectable until there is one to name. By purpose is the usual
+            choice: each lead then gets the version written for its project,
+            language and stage.
           */}
-          <option value="" disabled>
-            {templates.length === 0 ? t('automation.noTemplates') : t('automation.pickTemplate')}
-          </option>
-          {templates.map((template) => (
-            <option key={template.id} value={template.id}>
-              {template.name}
-            </option>
-          ))}
+          <option value="" disabled>{t('automation.pickTemplate')}</option>
+          <optgroup label={t('automation.byPurpose')}>
+            {PURPOSES.map((purpose) => (
+              <option key={purpose} value={`purpose:${purpose}`}>{t(`templates.purpose.${purpose}`)}</option>
+            ))}
+          </optgroup>
+          {list.length > 0 && (
+            <optgroup label={t('automation.byTemplate')}>
+              {list.map((template) => (
+                <option key={template.id} value={`template:${template.id}`}>{template.name}</option>
+              ))}
+            </optgroup>
+          )}
+        </Select>
+      )
+    }
+
+    case 'set_temperature':
+      return (
+        <Select
+          className="min-w-36"
+          label={labelled ? t('automation.classification') : undefined}
+          value={String(action.temperature ?? 'hot')}
+          onChange={(e) => onChange({ temperature: e.target.value })}
+        >
+          {['hot', 'warm', 'cold'].map((key) => <option key={key} value={key}>{t(`temperature.${key}`, { defaultValue: key })}</option>)}
         </Select>
       )
 
-    case 'send_email':
+    case 'create_call_task':
+      return (
+        <Input
+          className="min-w-32"
+          type="number"
+          label={labelled ? t('automation.inHours') : undefined}
+          value={String(action.in_hours ?? 1)}
+          onChange={(e) => onChange({ in_hours: Number(e.target.value) })}
+        />
+      )
+
+    case 'hand_off':
       return (
         <Select
-          className="min-w-48 flex-1"
-          label={labelled ? t('automation.emailTemplate') : undefined}
-          value={String(action.template_uuid ?? '')}
-          onChange={(e) => onChange({ template_uuid: e.target.value })}
+          className="min-w-40 flex-1"
+          label={labelled ? t('automation.handOffReason') : undefined}
+          value={String(action.reason ?? 'needs_human')}
+          onChange={(e) => onChange({ reason: e.target.value })}
         >
-          <option value="" disabled>
-            {emailTemplates.length === 0 ? t('automation.noEmailTemplates') : t('automation.pickTemplate')}
-          </option>
-          {emailTemplates.map((template) => (
-            <option key={template.id} value={template.id}>
-              {template.name}
-            </option>
+          {['needs_human', 'replied', 'qualified', 'no_reply', 'asked_for_human'].map((key) => (
+            <option key={key} value={key}>{t(`workspace.handoff.${key}`)}</option>
           ))}
         </Select>
       )

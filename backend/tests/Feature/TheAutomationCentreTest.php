@@ -25,6 +25,7 @@ use App\Models\ScheduledAction;
 use App\Services\Leads\LeadIngestionService;
 use App\Services\Leads\LeadScoringService;
 use App\Services\Whatsapp\InboundWhatsappProcessor;
+use App\Support\RoutineClock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -337,5 +338,17 @@ class TheAutomationCentreTest extends TestCase
         $other = $this->provisionTenant('Other Co');
 
         $this->actingAs($other['admin'])->patchJson("/api/v1/projects/{$this->project->uuid}/scoring", ['whatsapp_reply' => 50])->assertNotFound();
+    }
+
+    public function test_routines_say_how_often_they_run_and_when_they_last_did(): void
+    {
+        RoutineClock::stamp('sla_guardian');
+
+        $routines = collect($this->actingAs($this->t['admin'])->getJson('/api/v1/automation/routines')->assertOk()->json('data.routines'))->keyBy('key');
+
+        $this->assertSame('ok', $routines['sla_guardian']['status']);
+        $this->assertNotNull($routines['sla_guardian']['last_run_at']);
+        $this->assertSame('not_run', $routines['no_reply_review']['status']);
+        $this->assertSame('agent', $routines['lead_quality_review']['kind']);
     }
 }

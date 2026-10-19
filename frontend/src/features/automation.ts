@@ -43,6 +43,13 @@ export interface AutomationRule {
   name: string
   trigger: string
   is_enabled: boolean
+  /** auto: do it · recommend: tell the owner · monitor: only record it. */
+  mode?: 'auto' | 'recommend' | 'monitor'
+  template_key?: string | null
+  /** How it last ran, for the table's result column. */
+  last_run?: { outcome: 'applied' | 'skipped' | 'failed'; at: string } | null
+  /** The project its conditions name, if any. */
+  project?: string | null
   priority: number
   stops_processing: boolean
   conditions: RuleCondition[]
@@ -166,4 +173,80 @@ export function cancelScheduledAction(id: string) {
  */
 export function duplicateRule(id: string) {
   return apiPost<{ rule: AutomationRule }>(`/automation/rules/${id}/duplicate`, {})
+}
+
+/* ----------------------------------------------------------- the centre */
+
+export interface SummaryCard {
+  value: number
+  previous: number | null
+  change: number | null
+}
+
+export interface AutomationSummary {
+  days: number
+  cards: Record<'all_actions' | 'auto_contacted' | 'follow_ups' | 'qualified' | 'appointments' | 'needs_human' | 'failed' | 'inactive_rules', SummaryCard>
+  success_rate: number | null
+  qualification: Record<string, number>
+  follow_up_trend: { date: string; value: number }[]
+  human_vs_automated: { date: string; automated: number; human: number }[]
+  funnel: { key: string; count: number }[]
+}
+
+export function fetchAutomationSummary(days = 7) {
+  return apiGet<AutomationSummary>('/automation/summary', { days })
+}
+
+export type HistoryResult = 'completed' | 'waiting' | 'failed' | 'skipped' | 'needs_human'
+
+export interface HistoryEntry {
+  id: string
+  at: string | null
+  lead: { id: string; name: string; score: number } | null
+  rule: string | null
+  rule_id: string | null
+  action: string
+  action_words: string
+  channel: 'whatsapp' | 'email' | 'team' | 'call' | null
+  mode: string
+  before: string | null
+  after: string | null
+  result: HistoryResult
+  description: string | null
+}
+
+export function fetchHistory(params: { result?: HistoryResult | ''; page?: number; rule?: string; lead?: string }) {
+  return apiGet<{ entries: HistoryEntry[]; meta: { current_page: number; last_page: number; total: number } }>(
+    '/automation/history',
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')),
+  )
+}
+
+export interface ScoringValue {
+  value: number
+  default: number
+  custom: boolean
+}
+
+export function fetchProjectScoring(projectId: string) {
+  return apiGet<{ scoring: Record<string, ScoringValue> }>(`/projects/${projectId}/scoring`)
+}
+
+export function updateProjectScoring(projectId: string, values: Record<string, number | null>) {
+  return apiPatch<{ scoring: Record<string, ScoringValue> }>(`/projects/${projectId}/scoring`, values)
+}
+
+export interface RoutineRow {
+  key: string
+  kind: 'system' | 'agent'
+  /** A word for system routines (continuous, hourly…), a cron line for agents'. */
+  cadence: string
+  last_run_at: string | null
+  status: 'ok' | 'failed' | 'not_run'
+  agent: string | null
+  is_active?: boolean
+}
+
+export function fetchRoutines() {
+  return apiGet<{ routines: RoutineRow[] }>('/automation/routines')
 }

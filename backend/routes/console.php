@@ -1,9 +1,11 @@
 <?php
 
+use App\Support\RoutineClock;
 use Illuminate\Support\Facades\Schedule;
 
 // Keeps the "due today / overdue" counters and notifications accurate.
-Schedule::command('leadflow:follow-up-reminders')->hourly()->withoutOverlapping();
+Schedule::command('leadflow:follow-up-reminders')->hourly()->withoutOverlapping()
+    ->after(fn () => RoutineClock::stamp('follow_up_reminders'));
 
 /*
  * Every five minutes, because an SLA measured in minutes cannot be enforced by
@@ -11,7 +13,8 @@ Schedule::command('leadflow:follow-up-reminders')->hourly()->withoutOverlapping(
  * a reminder. `withoutOverlapping` matters more here than elsewhere — two
  * concurrent sweeps would race on the same leads.
  */
-Schedule::command('leadflow:sweep-sla')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('leadflow:sweep-sla')->everyFiveMinutes()->withoutOverlapping()
+    ->after(fn () => RoutineClock::stamp('sla_guardian'));
 
 // Horizon metrics snapshot for the queue dashboard.
 /*
@@ -33,7 +36,8 @@ Schedule::command('leadflow:sweep-conversions')->everyFifteenMinutes()->withoutO
  * `withoutOverlapping` because a slow provider must not stack polls on top of
  * each other, each re-reading the same window.
  */
-Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping()
+    ->after(fn () => RoutineClock::stamp('provider_pull'));
 
 /*
  * The morning summary, hourly — and sent to each workspace at eight o'clock its
@@ -47,7 +51,8 @@ Schedule::command('leadflow:pull-leads')->everyFiveMinutes()->withoutOverlapping
  * So the command runs every hour and each tenant is sent to only on the hour
  * that is 08:00 where it is. Exactly one hour a day matches.
  */
-Schedule::command('leadflow:daily-digest')->hourly()->withoutOverlapping();
+Schedule::command('leadflow:daily-digest')->hourly()->withoutOverlapping()
+    ->after(fn () => RoutineClock::stamp('manager_summary'));
 
 /*
  * The repair pass for repository activity.
@@ -77,7 +82,8 @@ Schedule::command('leadflow:reconcile-repositories')
  */
 Schedule::command('leadflow:sync-sheets')
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->after(fn () => RoutineClock::stamp('new_lead_watch'));
 
 /*
  * Ad accounts into the campaign tables, and leads onto their campaigns, is the
@@ -92,7 +98,8 @@ Schedule::command('leadflow:sync-sheets')
  * message, an hour, four hours, a day… Every five minutes, so "15 min" means
  * fifteen to twenty.
  */
-Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlapping()
+    ->after(fn () => RoutineClock::stamp('no_reply_review'));
 
 Schedule::command('leadflow:run-routines')->everyFiveMinutes()->withoutOverlapping();
 

@@ -7,10 +7,12 @@ use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Models\ProjectQuestion;
+use App\Models\Tenant;
+use App\Models\TenantSetting;
 use App\Models\User;
 
 /**
- * Everything a project needs for its leads to run on their own — seven
+ * Everything a project needs for its leads to run on their own — eleven
  * answers, not dozens of rules.
  *
  * The journey is the workspace's and already applies to every project; what
@@ -21,7 +23,10 @@ use App\Models\User;
  */
 class AutomationPack
 {
-    public const STEPS = ['service', 'language', 'brochure', 'whatsapp_template', 'email_template', 'qualification', 'sales_team'];
+    public const STEPS = [
+        'service', 'language', 'brochure', 'whatsapp_template', 'email_template', 'qualification', 'sales_team',
+        'sla', 'scoring', 'cadence', 'quiet_hours',
+    ];
 
     /** Asked when a project has no questions of its own yet. */
     private const DEFAULT_QUESTIONS = [
@@ -35,6 +40,8 @@ class AutomationPack
         $own = fn (string $channel) => MessageTemplate::where('channel', $channel)->where('purpose', 'welcome')->where('is_active', true)->where('project_id', $project->id)->exists();
         $general = fn (string $channel) => MessageTemplate::where('channel', $channel)->where('purpose', 'welcome')->where('is_active', true)->whereNull('project_id')->exists();
         $team = $project->team()->count();
+        $mine = ProjectSettings::of($project);
+        $workspaceQuiet = (bool) TenantSetting::query()->value('quiet_hours_enabled');
 
         $steps = [
             'service' => ['done' => filled($project->service), 'detail' => $project->service],
@@ -43,6 +50,12 @@ class AutomationPack
             'whatsapp_template' => ['done' => $own('whatsapp') || $general('whatsapp'), 'detail' => $own('whatsapp') ? 'project' : ($general('whatsapp') ? 'general' : null)],
             'email_template' => ['done' => $own('email') || $general('email'), 'detail' => $own('email') ? 'project' : ($general('email') ? 'general' : null)],
             'qualification' => ['done' => ($n = ProjectQuestion::where('project_id', $project->id)->where('is_active', true)->count()) > 0, 'detail' => (string) $n],
+            // How fast the first call must happen, how leads are scored, how quickly the
+            // journey follows up, and when it keeps quiet.
+            'sla' => ['done' => (int) ($mine['sla_minutes'] ?? 0) > 0, 'detail' => isset($mine['sla_minutes']) ? (string) $mine['sla_minutes'] : null],
+            'scoring' => ['done' => true, 'detail' => $project->scoring ? 'custom' : 'default'],
+            'cadence' => ['done' => isset($mine['cadence']), 'detail' => $mine['cadence'] ?? null],
+            'quiet_hours' => ['done' => isset($mine['quiet_hours']['enabled']) ? (bool) $mine['quiet_hours']['enabled'] : $workspaceQuiet, 'detail' => isset($mine['quiet_hours']['enabled']) ? 'project' : ($workspaceQuiet ? 'workspace' : null)],
             'sales_team' => ['done' => $team > 0 || User::where('role', 'sales')->where('is_active', true)->exists(), 'detail' => $team > 0 ? 'project' : 'everyone'],
         ];
 
@@ -51,6 +64,13 @@ class AutomationPack
             'done' => collect($steps)->where('done', true)->count(),
             'total' => count($steps),
             'journey_on' => AutomationRule::where('template_key', 'lead_journey')->where('is_enabled', true)->exists(),
+            // Whether automation may contact this project's leads at all, and what the project has chosen.
+            'active' => (bool) ($mine['active'] ?? true),
+            'settings' => [
+                'cadence' => $mine['cadence'] ?? 'standard',
+                'sla_minutes' => $mine['sla_minutes'] ?? null,
+                'quiet_hours' => $mine['quiet_hours'] ?? null,
+            ],
         ];
     }
 
@@ -65,6 +85,17 @@ class AutomationPack
             'service' => $answers['service'] ?? null,
             'language' => $answers['language'] ?? null,
         ], fn ($v) => filled($v)))->save();
+
+        // The project's own pace, target and quiet window — only what was given.
+        $settings = ProjectSettings::of($project);
+        foreach (['cadence', 'sla_minutes', 'quiet_hours'] as $key) {
+            if (array_key_exists($key, $answers) && $answers[$key] !== null) {
+                $settings[$key] = $answers[$key];
+            }
+        }
+        // A project that is set up runs at the standard pace unless it chose another.
+        $settings['cadence'] ??= 'standard';
+        $project->forceFill(['automation_settings' => $settings])->save();
 
         $language = $project->language ?: 'ar';
         $service = $project->service ?: $project->name;
@@ -95,6 +126,38 @@ class AutomationPack
                 ProjectQuestion::create($question + ['project_id' => $project->id, 'type' => 'text', 'is_active' => true, 'is_required' => false, 'sort_order' => $order]);
             }
         }
+
+        return $this->status($project->refresh());
+    }
+
+    /**
+     * "Activate Automation": complete what can be completed, make sure the
+     * workspace's journey exists and is on, and let this project's leads be
+     * contacted. One press, and the answer is the pack's new state.
+     */
+    public function activate(Project $project, array $answers = []): array
+    {
+        $this->complete($project, $answers);
+
+        $tenant = $project->tenant ?? Tenant::find($project->tenant_id);
+        if ($tenant) {
+            app(JourneyInstaller::class)->install($tenant);
+        }
+        AutomationRule::whereIn('template_key', JourneyInstaller::RULES)->where('is_enabled', false)->update(['is_enabled' => true]);
+
+        $settings = ProjectSettings::of($project->refresh());
+        $settings['active'] = true;
+        $project->forceFill(['automation_settings' => $settings])->save();
+
+        return $this->status($project->refresh());
+    }
+
+    /** Pause this project's automation: its leads stop being contacted, nothing else changes. */
+    public function pause(Project $project): array
+    {
+        $settings = ProjectSettings::of($project);
+        $settings['active'] = false;
+        $project->forceFill(['automation_settings' => $settings])->save();
 
         return $this->status($project->refresh());
     }

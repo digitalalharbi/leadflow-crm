@@ -98,6 +98,19 @@ test.describe('الأتمتة — rules', () => {
     await expect(result).toContainText('المعاينة لا تنفّذ أي إجراء')
   })
 
+  test('the preview also simulates the last seven days, as numbers, without carrying anything out', async ({ page }) => {
+    await page.getByTestId('install-hot_lead_priority').click()
+    await page.getByRole('button', { name: 'معاينة' }).first().click()
+
+    const sim = page.getByTestId('simulation')
+    await expect(sim).toBeVisible()
+    await expect(sim).toContainText('بلا تنفيذ فعلي')
+    for (const key of ['leads', 'whatsapp', 'email', 'files', 'stages', 'escalations', 'notifications']) {
+      await expect(sim.getByTestId(`sim-${key}`), `${key} tile`).toBeVisible()
+      await expect(sim.getByTestId(`sim-${key}`)).toContainText(/\d/)
+    }
+  })
+
   test('a rule can be switched on and off', async ({ page }) => {
     await page.getByTestId('install-hot_lead_priority').click()
     const rules = page.getByTestId('rules-list')

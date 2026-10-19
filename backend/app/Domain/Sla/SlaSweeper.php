@@ -2,6 +2,7 @@
 
 namespace App\Domain\Sla;
 
+use App\Domain\Automation\ProjectSettings;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Enums\Role;
@@ -53,6 +54,7 @@ class SlaSweeper
             ->whereNull('first_contact_at')
             ->whereNotNull('assigned_to')
             ->whereIn('status', [LeadStatus::New->value, LeadStatus::Contacted->value])
+            ->with('project:id,automation_settings')
             ->orderBy('created_at')
             ->limit(500)
             ->get();
@@ -73,6 +75,12 @@ class SlaSweeper
 
         foreach ($candidates as $lead) {
             $age = $hours->minutesBetween($lead->created_at, now());
+
+            // A project with its own first-contact target is held to it: its rungs come
+            // earlier, or later, in the same proportion as its target does.
+            $workspaceTarget = (int) ($settings->first_contact_target_minutes ?: 30);
+            $projectTarget = ProjectSettings::firstContactTarget($lead, $workspaceTarget);
+            $age = (int) round($age * $workspaceTarget / max(1, $projectTarget));
 
             $counts['reassigned'] += $this->maybeReassign($lead, $settings, $age);
             $counts['escalated'] += $this->maybeEscalate($lead, $settings, $age);

@@ -79,6 +79,26 @@ export interface RulePreview {
   examples: { id: string; full_name: string; status: string | null }[]
 }
 
+/** "If this rule had run over the last seven days" — nothing is executed. */
+export interface RuleSimulation {
+  days: number
+  mode: string
+  trigger_events: number
+  capped: boolean
+  leads_affected: number
+  messages: { whatsapp: number; email: number; files: number; total: number; held: Record<string, number> }
+  stage_changes: { total: number; to: Record<string, number> }
+  escalations: number
+  notifications: number
+  other: Record<string, number>
+  examples: { id: string; name: string; status: string | null; would: string[] }[]
+  basis: 'current_state'
+}
+
+export function simulateRule(id: string) {
+  return apiGet<{ simulation: RuleSimulation }>(`/automation/rules/${id}/simulate`)
+}
+
 export interface AppliedAction {
   ok: boolean
   type: string
@@ -252,7 +272,9 @@ export function fetchRoutines() {
 }
 
 export interface PackStep {
-  key: 'service' | 'language' | 'brochure' | 'whatsapp_template' | 'email_template' | 'qualification' | 'sales_team'
+  key:
+    | 'service' | 'language' | 'brochure' | 'whatsapp_template' | 'email_template' | 'qualification' | 'sales_team'
+    | 'sla' | 'scoring' | 'cadence' | 'quiet_hours'
   done: boolean
   detail: string | null
 }
@@ -262,12 +284,34 @@ export interface AutomationPackStatus {
   done: number
   total: number
   journey_on: boolean
+  /** Whether automation may contact this project's leads at all. */
+  active: boolean
+  settings: { cadence: Cadence; sla_minutes: number | null; quiet_hours: { enabled: boolean; start?: string; end?: string } | null }
+}
+
+export type Cadence = 'gentle' | 'standard' | 'intensive'
+
+export interface PackAnswers {
+  service?: string
+  language?: string
+  cadence?: Cadence
+  sla_minutes?: number | null
+  quiet_hours?: { enabled: boolean; start?: string; end?: string } | null
 }
 
 export function fetchAutomationPack(projectId: string) {
   return apiGet<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack`)
 }
 
-export function completeAutomationPack(projectId: string, answers: { service?: string; language?: string }) {
+export function completeAutomationPack(projectId: string, answers: PackAnswers) {
   return apiPost<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack`, answers)
+}
+
+/** One press: complete the pack, switch the journey on, and let this project's leads be contacted. */
+export function activateAutomationPack(projectId: string, answers: { service?: string; language?: string } = {}) {
+  return apiPost<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack/activate`, answers)
+}
+
+export function pauseAutomationPack(projectId: string) {
+  return apiPost<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack/pause`, {})
 }

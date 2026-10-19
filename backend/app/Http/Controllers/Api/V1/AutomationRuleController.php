@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Automation\ActionLog;
 use App\Domain\Automation\AutomationInsights;
 use App\Domain\Automation\ConditionEvaluator;
+use App\Domain\Automation\RuleSimulator;
 use App\Domain\Automation\RuleTemplates;
 use App\Domain\Leads\OutcomeRecorder;
 use App\Enums\LeadStatus;
@@ -265,6 +266,19 @@ class AutomationRuleController extends Controller
                 'status' => $pair[0]->status?->value,
             ])->values(),
         ]);
+    }
+
+    /**
+     * "If this rule had run over the last seven days": leads affected, messages,
+     * stage changes, hand-offs. Nothing is executed, sent, queued or notified.
+     */
+    public function simulate(Request $request, string $uuid)
+    {
+        $this->authorize('viewAny', AutomationRule::class);
+
+        $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
+
+        return ApiResponse::success(['simulation' => app(RuleSimulator::class)->run($rule, $request->user())]);
     }
 
     /** The trace for one lead: every rule considered, in order, with reasons. */

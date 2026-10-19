@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Sparkles, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { SimulationPanel } from '@/components/automation/SimulationPanel'
 import {
   createRule, deleteRule, fetchAutomationSummary, fetchInsights, fetchRules, fetchSchema, fetchTemplates,
   installTemplate, previewRule, updateRule, type AutomationRule, type HistoryResult,
@@ -349,6 +350,7 @@ export function AutomationPage() {
             <p className="t-caption">{t('automation.previewNote')}</p>
           </div>
         ) : null}
+        {previewing && <div className="mt-5 border-t border-[var(--color-border)] pt-4"><SimulationPanel ruleId={previewing.id} /></div>}
       </Drawer>
 
       <Modal

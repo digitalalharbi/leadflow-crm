@@ -6,6 +6,7 @@ use App\Domain\Agents\AgentDirectory;
 use App\Domain\Automation\ActionWords;
 use App\Domain\Automation\AutomationCentre;
 use App\Domain\Automation\AutomationPack;
+use App\Domain\Automation\ProjectSettings;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationActionLog;
 use App\Models\AutomationRule;
@@ -131,10 +132,42 @@ class AutomationCentreController extends Controller
         $data = $request->validate([
             'service' => ['sometimes', 'nullable', 'string', 'max:160'],
             'language' => ['sometimes', 'nullable', Rule::in(['ar', 'en'])],
+            'cadence' => ['sometimes', 'nullable', Rule::in(array_keys(ProjectSettings::CADENCE))],
+            'sla_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'quiet_hours' => ['sometimes', 'nullable', 'array'],
+            'quiet_hours.enabled' => ['required_with:quiet_hours', 'boolean'],
+            'quiet_hours.start' => ['sometimes', 'date_format:H:i'],
+            'quiet_hours.end' => ['sometimes', 'date_format:H:i'],
         ]);
 
         $pack = app(AutomationPack::class)->complete($project, $data);
         $this->audit->log('project.automation_pack', $request->user(), null, ['project' => $project->name]);
+
+        return ApiResponse::success(['pack' => $pack]);
+    }
+
+    /** One press: complete what defaults can complete, switch the journey on, let this project's leads be contacted. */
+    public function activatePack(Request $request, string $uuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('create', AutomationRule::class);
+
+        $pack = app(AutomationPack::class)->activate($project, $request->validate([
+            'service' => ['sometimes', 'nullable', 'string', 'max:160'],
+            'language' => ['sometimes', 'nullable', Rule::in(['ar', 'en'])],
+        ]));
+        $this->audit->log('project.automation_activated', $request->user(), null, ['project' => $project->name]);
+
+        return ApiResponse::success(['pack' => $pack]);
+    }
+
+    public function pausePack(Request $request, string $uuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('create', AutomationRule::class);
+
+        $pack = app(AutomationPack::class)->pause($project);
+        $this->audit->log('project.automation_paused', $request->user(), null, ['project' => $project->name]);
 
         return ApiResponse::success(['pack' => $pack]);
     }

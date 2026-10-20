@@ -100,3 +100,53 @@ export const updateLink = (id: string, input: Partial<LinkInput>) => apiPatch<{ 
 export const deleteLink = (id: string) => apiDelete(`/tracking/links/${id}`)
 export const fetchAttribution = (model: AttributionModel, dimension: Dimension, days: number, projectId?: string) =>
   apiGet<AttributionData>('/tracking/attribution', { model, dimension, days, project_id: projectId })
+
+export type HealthStatus = 'healthy' | 'attention' | 'risk' | 'idle'
+
+export interface PlatformHealth {
+  platform: 'meta' | 'tiktok' | 'snapchat' | 'google_ads' | 'x' | 'linkedin' | 'whatsapp' | 'landing_page'
+  status: HealthStatus
+  connected: boolean
+  receiving: boolean
+  events: number
+  accepted: number
+  last_event_at: string | null
+  success_rate: number | null
+  rejected: number
+  duplicates: number
+  duplicate_rate: number | null
+  leads: number
+  missing_utm: number
+  missing_utm_percent: number | null
+  unattributed: number
+  unattributed_percent: number | null
+  offline: {
+    state: string
+    configured: boolean
+    missing: string[]
+    sent: number
+    failed: number
+    last_sent_at: string | null
+    last_error: string | null
+    won_last_sent_at: string | null
+    won_waiting: number
+  } | null
+  trend: number[]
+}
+
+export interface HealthRecommendation {
+  key: 'won_not_sent' | 'platform_silent' | 'rejecting' | 'duplicates' | 'unattributed' | 'links_without_utm' | 'leads_without_utm' | 'no_links'
+  severity: 'critical' | 'warning'
+  platform: PlatformHealth['platform'] | null
+  params: Record<string, number>
+  to: 'health' | 'attribution' | 'links'
+}
+
+export interface TrackingHealthData {
+  days: number
+  summary: { connected: number; receiving: number; at_risk: number; platforms: number; unattributed_percent: number | null; missing_utm_percent: number | null; links_without_utm_percent: number | null }
+  platforms: PlatformHealth[]
+  recommendations: HealthRecommendation[]
+}
+
+export const fetchTrackingHealth = (days: number) => apiGet<TrackingHealthData>('/tracking/health', { days })

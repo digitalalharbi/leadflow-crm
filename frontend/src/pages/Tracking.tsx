@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, EmptyState, ErrorState, PageHeader, Select, Skeleton, Tabs } from '@/components/ui'
 import { KpiCard } from '@/components/visual'
 import { AttributionPanel } from '@/components/tracking/AttributionPanel'
+import { HealthPanel } from '@/components/tracking/HealthPanel'
 import { LinkCard } from '@/components/tracking/LinkCard'
 import { LinkDrawer } from '@/components/tracking/LinkDrawer'
 import { fetchLinks } from '@/features/tracking'
@@ -13,7 +14,7 @@ import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 
-const TABS = ['links', 'attribution'] as const
+const TABS = ['links', 'health', 'attribution'] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -95,6 +96,7 @@ export function TrackingPage() {
           </>
         )}
 
+        {tab === 'health' && <HealthPanel onGo={setTab} />}
         {tab === 'attribution' && <AttributionPanel days={days} />}
       </div>
 

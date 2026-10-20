@@ -84,7 +84,7 @@ fi
 if [ -n "$CI_RUN" ]; then
   RID="$(printf '%s' "$CI_RUN" | cut -f1)"; RST="$(printf '%s' "$CI_RUN" | cut -f2)"; RCO="$(printf '%s' "$CI_RUN" | cut -f3)"; RSHA="$(printf '%s' "$CI_RUN" | cut -f4)"
 
-  for pair in "Backend CI|backend" "Frontend CI|frontend" "E2E CI|e2e"; do
+  for pair in "Backend CI|backend" "Frontend CI|frontend" "E2E CI|end-to-end"; do
     label="${pair%%|*}"; key="${pair##*|}"
     J="$(api "repos/${REPO}/actions/runs/${RID}/jobs" --jq ".jobs[] | select(.name | ascii_downcase | startswith(\"${key}\")) | [.status, (.conclusion // \"\")] | @tsv" | head -1)"
     if [ -z "$J" ]; then row "$label" AMBER "no run yet"; continue; fi

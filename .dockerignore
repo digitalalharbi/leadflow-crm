@@ -1,0 +1,99 @@
+# What never enters a production image.
+#
+# Every image here is built from the repository root (`context: .`), so this one file is
+# the ignore list for BOTH the backend and the frontend build; a .dockerignore inside
+# backend/ or frontend/ would not be read. The Dockerfiles copy `backend/` and `frontend/`
+# whole, which means anything that is lying in those folders on the build machine —
+# an untracked dev file, a local .env, a node_modules from another platform, a test report —
+# would be baked into the image if it were not named here.
+#
+# Rule of thumb: the image gets source that a commit contains and a build needs, nothing else.
+# scripts/check-deploy-source.sh fails CI if the essentials below are removed.
+
+# --- version control and the editor ------------------------------------------------
+.git
+.gitignore
+.gitattributes
+.github
+.idea
+.vscode
+.DS_Store
+**/.DS_Store
+
+# --- environment files: secrets live on the server, never in an image ---------------
+.env
+.env.*
+**/.env
+**/.env.*
+.deploy.env
+.verify-passed
+.last-good-commit
+.last-good-commit.tmp
+# (the *.example templates are documentation, not configuration)
+
+# --- the server's own state --------------------------------------------------------
+backups
+**/*.sql
+**/*.sql.gz
+**/*.dump
+
+# --- things the repository does not need to build either app -----------------------
+docs
+docker-compose*.yml
+scripts
+*.md
+artifacts
+
+# --- logs and temp files -----------------------------------------------------------
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/*.tmp
+**/*.swp
+**/*.orig
+**/*.rej
+**/*.bak
+
+# --- backend -----------------------------------------------------------------------
+# Installed fresh inside the image (`composer install --no-dev`); a host vendor/ would
+# overwrite it, dev packages included.
+backend/vendor
+backend/node_modules
+backend/public/build
+backend/public/hot
+backend/public/storage
+# Tests are not part of a production image, and neither are their artifacts.
+backend/tests
+backend/phpunit.xml
+backend/.phpunit.cache
+backend/.phpunit.result.cache
+backend/coverage
+backend/build
+backend/storage/logs/*
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/framework/testing
+backend/storage/pail
+backend/storage/*.key
+backend/storage/app/imports
+backend/bootstrap/cache/*.php
+
+# --- frontend ----------------------------------------------------------------------
+# Rebuilt inside the image (`npm ci && npm run build`).
+frontend/node_modules
+frontend/dist
+frontend/coverage
+frontend/.vite
+frontend/.cache
+frontend/.turbo
+frontend/*.tsbuildinfo
+# Browser-test sources, results and reports: not part of the SPA.
+frontend/e2e
+frontend/playwright.config.ts
+frontend/playwright.visual.config.ts
+frontend/playwright-report
+frontend/test-results
+frontend/.results
+frontend/.report

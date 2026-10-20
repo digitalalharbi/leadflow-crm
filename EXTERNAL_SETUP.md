@@ -35,7 +35,7 @@ cp .deploy.env.example .deploy.env     # host, user, key path, paths, domains
 $EDITOR .deploy.env                    # git-ignored; the key stays a path
 
 ./scripts/verify-all.sh                # what the four workflows run, run here
-./scripts/deploy-direct.sh staging     # ... then production
+./scripts/deploy-direct.sh staging     # staging only; production is never deployed from a machine
 ```
 
 `verify-all.sh` mirrors `backend-tests.yml`, `frontend-tests.yml` and

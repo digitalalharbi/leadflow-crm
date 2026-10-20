@@ -18,6 +18,9 @@ say() { printf '\n\033[1;36m==>\033[0m %s\n' "$1"; }
 
 cd "$DEPLOY_PATH"
 
+# shellcheck source=lib/worktree-guard.sh
+. "$DEPLOY_PATH/scripts/lib/worktree-guard.sh"
+
 compose() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
 
 # DEPLOY_SECRET is read from the environment file rather than passed from CI:
@@ -28,6 +31,9 @@ if [ -f "$ENV_FILE" ]; then
   DEPLOY_SECRET=$(sed -n 's/^DEPLOY_SECRET=//p' "$ENV_FILE" | tail -1 | tr -d "\"'")
   export DEPLOY_SECRET
 fi
+
+# A server with uncommitted source is refused before anything changes (no rollback needed).
+require_clean_worktree || exit 1
 
 # Remember where we were, so a failed deploy can go straight back.
 PREVIOUS_COMMIT="$(git rev-parse HEAD)"

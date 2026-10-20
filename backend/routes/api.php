@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
+use App\Http\Controllers\Api\V1\TrackingHealthController;
 use App\Http\Controllers\Api\V1\TrackingLinkController;
 use App\Http\Controllers\Api\V1\TwilioStatusController;
 use App\Http\Controllers\Api\V1\UserController;
@@ -298,6 +299,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/tracking/links/{uuid}', [TrackingLinkController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/links/{uuid}', [TrackingLinkController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/tracking/attribution', AttributionController::class);
+            Route::get('/tracking/health', TrackingHealthController::class);
 
             // The units a project sells or lets.
             Route::get('/properties', [PropertyController::class, 'index']);

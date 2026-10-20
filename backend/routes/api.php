@@ -245,6 +245,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/automation/history', [AutomationCentreController::class, 'history']);
             Route::get('/automation/routines', [AutomationCentreController::class, 'routines']);
             Route::get('/projects/{uuid}/scoring', [AutomationCentreController::class, 'scoring'])->whereUuid('uuid');
+            Route::get('/projects/{uuid}/thresholds', [AutomationCentreController::class, 'thresholds'])->whereUuid('uuid');
+            Route::patch('/projects/{uuid}/thresholds', [AutomationCentreController::class, 'updateThresholds'])->whereUuid('uuid');
             Route::get('/projects/{uuid}/automation-pack', [AutomationCentreController::class, 'pack'])->whereUuid('uuid');
             Route::post('/projects/{uuid}/automation-pack', [AutomationCentreController::class, 'completePack'])->whereUuid('uuid');
             Route::post('/projects/{uuid}/automation-pack/activate', [AutomationCentreController::class, 'activatePack'])->whereUuid('uuid');

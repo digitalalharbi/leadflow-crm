@@ -2,7 +2,7 @@
 
 namespace App\Domain\Notifications;
 
-use App\Domain\Leads\LeadViews;
+use App\Domain\Automation\Thresholds;
 use App\Enums\Role;
 use App\Models\Lead;
 use App\Models\Project;
@@ -50,13 +50,15 @@ class ImportantAlerts
     public static function highValue(Lead $lead): void
     {
         $value = (float) ($lead->budget_max ?? ($lead->project_id ? Project::withoutGlobalScopes()->whereKey($lead->project_id)->value('starting_price') : 0));
+        // The line is the workspace's, or the project's own.
+        $from = Thresholds::forLead($lead, 'high_value_from');
 
-        if ($value < LeadViews::HIGH_VALUE_FROM || ! AlertGate::once("high_value:{$lead->id}")) {
+        if ($value < $from || ! AlertGate::once("high_value:{$lead->id}")) {
             return;
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'high_value_lead', 'عميل عالي القيمة', "{$lead->full_name} — ميزانية تتجاوز ".number_format(LeadViews::HIGH_VALUE_FROM).' ر.س.', $lead->uuid, null, 'warning',
+            'high_value_lead', 'عميل عالي القيمة', "{$lead->full_name} — ميزانية تتجاوز ".number_format($from).' ر.س.', $lead->uuid, null, 'warning',
         ));
     }
 

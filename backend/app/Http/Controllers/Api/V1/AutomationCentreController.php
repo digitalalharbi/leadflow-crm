@@ -7,11 +7,13 @@ use App\Domain\Automation\ActionWords;
 use App\Domain\Automation\AutomationCentre;
 use App\Domain\Automation\AutomationPack;
 use App\Domain\Automation\ProjectSettings;
+use App\Domain\Automation\Thresholds;
 use App\Http\Controllers\Controller;
 use App\Models\AutomationActionLog;
 use App\Models\AutomationRule;
 use App\Models\Project;
 use App\Models\Routine;
+use App\Models\TenantSetting;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use App\Support\RoutineClock;
@@ -170,6 +172,54 @@ class AutomationCentreController extends Controller
         $this->audit->log('project.automation_paused', $request->user(), null, ['project' => $project->name]);
 
         return ApiResponse::success(['pack' => $pack]);
+    }
+
+    /** Every threshold in force for a project, and where each one comes from. */
+    public function thresholds(string $uuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('viewAny', AutomationRule::class);
+
+        return ApiResponse::success(['thresholds' => Thresholds::describe(TenantSetting::query()->first(), $project)]);
+    }
+
+    /**
+     * Set or clear the lines a project holds its own leads to. A null puts the
+     * workspace's value back. Scoring lines live with the scoring; the rest with
+     * the automation settings — the caller does not need to know.
+     */
+    public function updateThresholds(Request $request, string $uuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('create', AutomationRule::class);
+
+        $rules = [];
+        foreach (Thresholds::LIMITS as $key => [$min, $max]) {
+            $rules[$key] = ['sometimes', 'nullable', 'integer', "min:{$min}", "max:{$max}"];
+        }
+        $data = $request->validate($rules);
+
+        $scoring = (array) ($project->scoring ?? []);
+        $settings = ProjectSettings::of($project);
+
+        foreach ($data as $key => $value) {
+            $bucket = in_array($key, ['hot_from', 'warm_from', 'priority_from'], true) ? 'scoring' : 'settings';
+
+            if ($value === null) {
+                unset($$bucket[$key]);
+            } else {
+                $$bucket[$key] = (int) $value;
+            }
+        }
+
+        if (isset($data['hot_from'], $data['warm_from']) && $data['warm_from'] >= $data['hot_from']) {
+            return ApiResponse::error('Hot must start above warm.', ['hot_from' => ['Hot must start above warm.']], 422);
+        }
+
+        $project->forceFill(['scoring' => $scoring ?: null, 'automation_settings' => $settings ?: null])->save();
+        $this->audit->log('project.thresholds_changed', $request->user(), null, ['project' => $project->name, 'keys' => array_keys($data)]);
+
+        return ApiResponse::success(['thresholds' => Thresholds::describe(TenantSetting::query()->first(), $project->refresh())]);
     }
 
     public function scoring(string $uuid)

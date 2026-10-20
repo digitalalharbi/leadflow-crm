@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
+import type { Thresholds } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { SetupCheck } from '@/components/onboarding/SetupCheck'
 import { useApiError } from '@/hooks/useApiError'
@@ -19,6 +20,7 @@ import { cn } from '@/lib/cn'
 interface SettingsResponse {
   branding: Branding
   settings: TenantSettings
+  thresholds?: Thresholds
   subscription: { plan: string; status: string; trial_ends_at: string | null; subscription_ends_at: string | null }
   lost_reasons: LostReason[]
   custom_fields: CustomField[]
@@ -135,6 +137,7 @@ export function SettingsPage() {
           {tab === 'scoring' && canManage && (
             <GeneralForm
               settings={data.settings}
+              thresholds={data.thresholds}
               section="scoring"
               onSaved={() => {
                 void queryClient.invalidateQueries({ queryKey: ['settings'] })
@@ -339,10 +342,12 @@ function ColorInput({
  */
 function GeneralForm({
   settings,
+  thresholds,
   section,
   onSaved,
 }: {
   settings: TenantSettings
+  thresholds?: Thresholds
   section: 'general' | 'scoring'
   onSaved: () => void
 }) {
@@ -358,6 +363,9 @@ function GeneralForm({
     assignment_mode: settings.assignment_mode,
     score_warm_threshold: settings.score_warm_threshold,
     score_hot_threshold: settings.score_hot_threshold,
+    score_priority_threshold: settings.score_priority_threshold ?? '',
+    high_value_from: settings.high_value_from ?? '',
+    stalled_after_days: settings.stalled_after_days ?? '',
     first_contact_target_minutes: settings.first_contact_target_minutes ?? 30,
     whatsapp_template: settings.whatsapp_template ?? '',
     work_days: settings.work_days ?? [],
@@ -373,6 +381,10 @@ function GeneralForm({
   const mutation = useMutation({
     mutationFn: () => apiPatch('/settings', {
       ...form,
+      // A blank is "the default", sent as null so the server puts it back.
+      score_priority_threshold: form.score_priority_threshold === '' ? null : Number(form.score_priority_threshold),
+      high_value_from: form.high_value_from === '' ? null : Number(form.high_value_from),
+      stalled_after_days: form.stalled_after_days === '' ? null : Number(form.stalled_after_days),
       /*
        * No days chosen means always open, and the hours go with it — sending
        * times beside an empty week would store an opinion nobody expressed.
@@ -477,6 +489,37 @@ function GeneralForm({
                   label={t('settings.hotThreshold')}
                   value={form.score_hot_threshold}
                   onChange={(e) => setForm((prev) => ({ ...prev, score_hot_threshold: Number(e.target.value) }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  label={t('thresholds.priority_from')}
+                  placeholder={String(thresholds?.priority_from.default ?? 88)}
+                  value={form.score_priority_threshold}
+                  data-testid="threshold-priority"
+                  onChange={(e) => setForm((prev) => ({ ...prev, score_priority_threshold: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  label={t('thresholds.high_value_from')}
+                  hint={t('thresholds.high_value_hint')}
+                  placeholder={String(thresholds?.high_value_from.default ?? 500000)}
+                  value={form.high_value_from}
+                  data-testid="threshold-high-value"
+                  onChange={(e) => setForm((prev) => ({ ...prev, high_value_from: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  max={90}
+                  label={t('thresholds.stalled_after_days')}
+                  hint={t('thresholds.stalled_hint')}
+                  placeholder={String(thresholds?.stalled_after_days.default ?? 3)}
+                  value={form.stalled_after_days}
+                  data-testid="threshold-stalled"
+                  onChange={(e) => setForm((prev) => ({ ...prev, stalled_after_days: e.target.value }))}
                 />
                 <Input
                   type="number"

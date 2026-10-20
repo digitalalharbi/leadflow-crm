@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Automation\Thresholds;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Providers\ManualCallProvider;
 use App\Domain\Calls\Providers\TwilioCallProvider;
@@ -40,6 +41,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -81,6 +83,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // A queue worker lives for days: judge each job by the lines as they are now.
+        Queue::before(fn () => Thresholds::flush());
+
         /*
          * One listener for every lead event. Registered on the *interface*:
          * Laravel resolves listeners through interfaces but not through parent

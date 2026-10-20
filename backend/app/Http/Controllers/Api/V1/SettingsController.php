@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Automation\Thresholds;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BrandingResource;
 use App\Models\CustomField;
@@ -46,7 +47,12 @@ class SettingsController extends Controller
                 'quiet_hours_end' => $tenant->settings?->quiet_hours_end ?? '08:00',
                 'max_contacts_per_day' => $tenant->settings?->max_contacts_per_day ?? 6,
                 'contact_cooldown_minutes' => $tenant->settings?->contact_cooldown_minutes ?? 0,
+                // Raw, so a blank can mean "the default"; the value in force is under `thresholds`.
+                'score_priority_threshold' => $tenant->settings?->score_priority_threshold,
+                'high_value_from' => $tenant->settings?->high_value_from,
+                'stalled_after_days' => $tenant->settings?->stalled_after_days,
             ],
+            'thresholds' => Thresholds::describe($tenant->settings),
             'subscription' => [
                 'plan' => $tenant->plan,
                 'status' => $tenant->subscription_status,
@@ -127,6 +133,10 @@ class SettingsController extends Controller
             'quiet_hours_end' => ['sometimes', 'date_format:H:i'],
             'max_contacts_per_day' => ['sometimes', 'integer', 'min:1', 'max:50'],
             'contact_cooldown_minutes' => ['sometimes', 'integer', 'min:0', 'max:1440'],
+            // The three lines that were constants. Null puts back the default.
+            'score_priority_threshold' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
+            'high_value_from' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:1000000000'],
+            'stalled_after_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:90'],
         ]);
 
         $tenant->settings->update($data);

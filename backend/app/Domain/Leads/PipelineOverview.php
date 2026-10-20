@@ -2,6 +2,7 @@
 
 namespace App\Domain\Leads;
 
+use App\Domain\Automation\Thresholds;
 use App\Enums\LeadStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -46,13 +47,16 @@ class PipelineOverview
     }
 
     /** The one definition of "stalled": open, untouched for days, nothing scheduled ahead. */
-    public static function stalledSql(): string
+    public static function stalledSql(?int $workspaceDays = null): string
     {
+        // The project's own line when it has one, else the workspace's, else three days.
+        $days = Thresholds::sql('stalled_after_days', $workspaceDays ?? Thresholds::workspace('stalled_after_days'));
+
         return sprintf(
-            "(%s and coalesce(leads.last_contact_at, leads.created_at) < (now() at time zone 'UTC') - interval '%d days'
+            "(%s and coalesce(leads.last_contact_at, leads.created_at) < (now() at time zone 'UTC') - (%s * interval '1 day')
               and (leads.next_follow_up_at is null or leads.next_follow_up_at < (now() at time zone 'UTC')))",
             self::openSql(),
-            self::STALLED_AFTER_DAYS,
+            $days,
         );
     }
 
@@ -140,7 +144,7 @@ class PipelineOverview
             'won_value' => round(((int) $row->won_value_minor) / 100, 2),
             'win_rate' => $total > 0 ? round(((int) $row->won) / $total * 100, 1) : null,
             'avg_response_seconds' => $row->response_seconds !== null ? (int) round((float) $row->response_seconds) : null,
-            'stalled_after_days' => self::STALLED_AFTER_DAYS,
+            'stalled_after_days' => Thresholds::workspace('stalled_after_days'),
         ];
     }
 

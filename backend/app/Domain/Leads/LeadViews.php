@@ -2,6 +2,7 @@
 
 namespace App\Domain\Leads;
 
+use App\Domain\Automation\Thresholds;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -15,9 +16,6 @@ class LeadViews
 {
     /** What an open lead is likely worth, in whole currency units. */
     private const VALUE = '(coalesce(leads.budget_max, (select projects.starting_price from projects where projects.id = leads.project_id), 0))';
-
-    /** A lead at or above this is "high value". */
-    public const HIGH_VALUE_FROM = 500_000;
 
     public const KEYS = ['needs_human', 'no_reply', 'high_value', 'new_today', 'qualified', 'stalled'];
 
@@ -38,7 +36,7 @@ class LeadViews
             'needs_human' => "({$open} and leads.automation_state = 'handed_off' and (leads.last_contact_at is null or leads.last_contact_at <= leads.handed_off_at))",
             // We wrote, they did not answer, and a day has passed.
             'no_reply' => "({$open} and leads.first_contact_at is not null and leads.first_response_at is null and coalesce(leads.last_contact_at, leads.first_contact_at) < {$now} - interval '1 day')",
-            'high_value' => sprintf('(%s and %s >= %d)', $open, self::VALUE, self::HIGH_VALUE_FROM),
+            'high_value' => sprintf('(%s and %s >= %s)', $open, self::VALUE, Thresholds::sql('high_value_from', Thresholds::workspace('high_value_from'))),
             'new_today' => "(leads.created_at >= '{$today}')",
             'qualified' => "({$open} and leads.qualification_status = 'qualified')",
             'stalled' => PipelineOverview::stalledSql(),

@@ -591,6 +591,10 @@ export interface TenantSettings {
   quiet_hours_end: string
   max_contacts_per_day: number
   contact_cooldown_minutes: number
+  /** Raw: blank means "the product's default". The value in force is `thresholds`. */
+  score_priority_threshold: number | null
+  high_value_from: number | null
+  stalled_after_days: number | null
 }
 
 export interface LostReason {

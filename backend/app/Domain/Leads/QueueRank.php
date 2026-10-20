@@ -2,6 +2,7 @@
 
 namespace App\Domain\Leads;
 
+use App\Domain\Automation\Thresholds;
 use App\Models\Lead;
 
 /**
@@ -105,10 +106,13 @@ class QueueRank
     {
         $major = $lead->deal_value_minor !== null ? $lead->deal_value_minor / 100 : (float) ($lead->budget_max ?? 0);
 
+        // Tiers are fractions of the workspace's (or the project's) own "high value" line.
+        $line = Thresholds::forLead($lead, 'high_value_from');
+
         return match (true) {
-            $major >= 1_000_000 => 8,
-            $major >= 500_000 => 5,
-            $major >= 200_000 => 3,
+            $major >= $line * 2 => 8,
+            $major >= $line => 5,
+            $major >= $line * 0.4 => 3,
             default => 0,
         };
     }

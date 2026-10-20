@@ -8,6 +8,7 @@ use App\Enums\MessageStatus;
 use App\Models\FileShare;
 use App\Models\Lead;
 use App\Models\LeadMessage;
+use App\Models\Project;
 use App\Models\TenantSetting;
 use Illuminate\Support\Carbon;
 
@@ -70,17 +71,18 @@ class Guardrails
         }
 
         // 4 — how often, and how soon after the last one.
-        $settings = $this->settings($lead);
+        $project = $lead->project_id ? Project::withoutGlobalScopes()->find($lead->project_id) : null;
+        $lines = Thresholds::describe($this->settings($lead), $project);
         $recent = $this->automatedSince($lead, now()->subDay());
 
-        $cap = (int) ($settings?->max_contacts_per_day ?? 6);
+        $cap = $lines['max_contacts_per_day']['value'];
         if ($cap > 0 && $recent->count() >= $cap) {
             $until = $recent->sortBy('created_at')->first()->created_at->copy()->addDay();
 
             return $this->defer('max_frequency', "بلغ العميل حدّ {$cap} رسائل آلية في اليوم — تُؤجَّل.", $until);
         }
 
-        $cooldown = (int) ($settings?->contact_cooldown_minutes ?? 0);
+        $cooldown = $lines['cooldown_minutes']['value'];
         $last = $recent->sortByDesc('created_at')->first();
         if ($cooldown > 0 && $last && $last->created_at->copy()->addMinutes($cooldown)->isFuture()) {
             return $this->defer('cooldown', "فترة تهدئة {$cooldown} دقيقة بين الرسائل الآلية.", $last->created_at->copy()->addMinutes($cooldown));

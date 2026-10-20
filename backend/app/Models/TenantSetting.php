@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Automation\Thresholds;
 use App\Models\Concerns\TenantOwnedSingleton;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 class TenantSetting extends Model
 {
     use HasFactory, TenantOwnedSingleton;
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => Thresholds::flush());
+    }
 
     protected $fillable = [
         'locale', 'currency', 'timezone', 'default_country_code',
@@ -18,6 +24,7 @@ class TenantSetting extends Model
         'sla_remind_after_minutes', 'sla_escalate_after_minutes', 'sla_reassign_after_minutes',
         'whatsapp_template', 'onboarding',
         'work_days', 'work_starts_at', 'work_ends_at',
+        'score_priority_threshold', 'high_value_from', 'stalled_after_days',
         'quiet_hours_enabled', 'quiet_hours_start', 'quiet_hours_end', 'max_contacts_per_day', 'contact_cooldown_minutes',
         'ai_api_key', 'ai_verified_at', 'ai_last_error',
     ];
@@ -29,6 +36,9 @@ class TenantSetting extends Model
     {
         return [
             'work_days' => 'array',
+            'score_priority_threshold' => 'integer',
+            'high_value_from' => 'integer',
+            'stalled_after_days' => 'integer',
             'quiet_hours_enabled' => 'boolean',
             'max_contacts_per_day' => 'integer',
             'contact_cooldown_minutes' => 'integer',

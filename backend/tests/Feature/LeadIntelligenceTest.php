@@ -50,7 +50,7 @@ class LeadIntelligenceTest extends TestCase
     {
         $this->asTenant($this->t['tenant'], function () use ($lead, $type, $times) {
             for ($i = 0; $i < $times; $i++) {
-                LeadEngagement::create(['lead_id' => $lead->id, 'type' => $type, 'happened_at' => now()->subHours($i + 1)]);
+                LeadEngagement::create(['lead_id' => $lead->id, 'type' => $type, 'happened_at' => now()->subMinutes($i + 1)]);
             }
         });
     }

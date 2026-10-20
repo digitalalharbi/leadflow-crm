@@ -93,6 +93,11 @@ export default {
     sources: 'Lead sources',
     trend: 'Leads per day',
     leadsPerDay: 'Leads',
+    automation: {
+      title: 'Automation', coverage: 'Automation coverage', human: 'Human intervention', lost: 'Lost, no response', qualify: 'Avg time to qualify',
+      lostHint: '{{count}} of {{total}} lost leads never replied', recovered: 'Recovered automations', needsHuman: '{{count}} handed to a rep',
+      trend: 'Leads automation reached', revenueByQuality: 'Revenue by lead quality', noRevenue: 'No won deals in this period.', unrated: 'Unrated',
+    },
     unit: { s: 's', m: 'm', h: 'h', d: 'd' },
     kpi: {
       leadsToday: 'Leads today', qualified: 'Qualified', overdue: 'Overdue follow-ups', stalled: 'Stalled leads', response: 'Avg first human response',

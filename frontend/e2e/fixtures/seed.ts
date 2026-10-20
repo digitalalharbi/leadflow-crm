@@ -29,10 +29,13 @@ export function resetFixtures(): void {
 }
 
 /** Runs an artisan command and returns its stdout — used for one-off lookups. */
-export function artisan(args: string[]): string {
+export function artisan(args: string[], env: Record<string, string> = {}): string {
   return execFileSync('php', ['artisan', ...args], {
     cwd: backendDir,
     encoding: 'utf8',
     timeout: 60_000,
+    // `env` lets a spec run a command with the queue inline (QUEUE_CONNECTION=sync), so the
+    // notifications it sends are written before it returns rather than left for a worker.
+    env: { ...process.env, ...env },
   })
 }

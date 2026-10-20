@@ -26,6 +26,41 @@ test.describe('Manager command center', () => {
     }
   })
 
+  test('shows how much the automation did: rings, time to qualify, recovered, lost to silence, revenue by quality and a trend', async ({ page }) => {
+    await signInAs(page, ALPHA.admin.email)
+    await page.goto('/')
+
+    const automation = page.getByTestId('manager-center').getByTestId('manager-automation')
+    await expect(automation).toBeVisible()
+
+    for (const ring of ['coverage', 'human', 'lost']) {
+      await expect(automation.getByTestId(`ring-${ring}`), `${ring} ring`).toBeVisible()
+      // A percentage, or a dash when there is nothing to divide — never blank.
+      await expect(automation.getByTestId(`ring-${ring}-value`), `${ring} value`).toHaveText(/^(\d[\d.,٠-٩]*%|—)$/)
+    }
+    await expect(automation.getByTestId('automation-qualify-value')).toHaveText(/\S/)
+    await expect(automation.getByTestId('automation-recovered-value')).toHaveText(/\d/)
+    await expect(automation.getByTestId('automation-trend')).toBeVisible()
+
+    // The money by lead quality is a donut, or says plainly that nothing was won.
+    const revenue = page.getByTestId('manager-revenue-quality')
+    await expect(revenue).toBeVisible()
+    await expect(revenue.locator('svg').or(revenue.getByTestId('revenue-quality-empty')).first()).toBeVisible()
+  })
+
+  test('the automation figures follow the period', async ({ page }) => {
+    await signInAs(page, ALPHA.admin.email)
+    await page.goto('/')
+    const center = page.getByTestId('manager-center')
+
+    const asked = page.waitForResponse((r) => r.url().includes('/dashboard/manager') && r.url().includes('days=7'))
+    await center.getByTestId('manager-period-7').click()
+    const body = await (await asked).json()
+
+    expect(body.data.automation.trend).toHaveLength(7)
+    await expect(center.getByTestId('manager-automation')).toBeVisible()
+  })
+
   test('the period can be changed and the tiles follow', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
     await page.goto('/')

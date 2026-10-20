@@ -114,6 +114,7 @@ export function Topbar() {
           type="button"
           onClick={() => setNotificationsOpen((v) => !v)}
           aria-label={t('nav.notifications')}
+          data-testid="notifications-toggle"
           className="chrome-circle relative"
         >
           <Bell className="size-[1.125rem]" aria-hidden />
@@ -167,6 +168,8 @@ export function Topbar() {
                         notification.data.severity === 'critical' && 'border-s-4 border-s-[var(--color-danger)]',
                         notification.data.severity === 'warning' && 'border-s-4 border-s-[var(--color-warning)]',
                       )}
+                      data-testid="notification-item"
+                      data-type={notification.type}
                       data-kind={notification.data.kind}
                     >
                       <p className="text-[0.9375rem] font-medium">

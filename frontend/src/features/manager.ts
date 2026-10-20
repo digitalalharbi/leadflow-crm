@@ -24,6 +24,19 @@ export interface ManagerData {
     breached_first_contact: number
     stalled: { count: number; leads: { id: string; name: string; days: number }[] }
   }
+  /** How much of the work automation did, and what it cost a person. Percentages are null with no leads. */
+  automation: {
+    coverage_percent: number | null
+    human_percent: number | null
+    leads: number
+    avg_seconds_to_qualify: number | null
+    qualified_samples: number
+    recovered: number
+    needs_human: number
+    lost: { total: number; no_response: number; percent: number | null }
+    revenue_by_quality: { key: 'hot' | 'warm' | 'cold' | 'unrated'; deals: number; revenue: number }[]
+    trend: { date: string; leads: number; automated: number; human: number }[]
+  }
   funnel: { key: 'leads' | 'valid' | 'engaged' | 'qualified' | 'appointments' | 'won'; count: number }[]
   temperature: { key: 'hot' | 'warm' | 'cold'; count: number }[]
   sources: { key: string; count: number }[]

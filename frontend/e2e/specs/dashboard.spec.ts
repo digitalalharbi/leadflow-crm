@@ -23,7 +23,7 @@ test.describe('Dashboard', () => {
     }
 
     for (const key of ['total', 'qualified', 'hot', 'appointments', 'won']) {
-      await expect(page.getByTestId(`kpi-${key}`)).toBeVisible()
+      await expect(page.getByTestId('dashboard-board').getByTestId(`kpi-${key}`)).toBeVisible()
     }
   })
 
@@ -64,7 +64,7 @@ test.describe('Dashboard', () => {
   test('the date filter changes what is counted', async ({ page }) => {
     // The figure, not the whole tile: the card also carries a change
     // percentage, and stripping non-digits from the card glues them together.
-    const total = page.getByTestId('kpi-total-value')
+    const total = page.getByTestId('dashboard-board').getByTestId('kpi-total-value')
     const count = async () => Number(((await total.textContent()) ?? '').replace(/\D/g, ''))
 
     /*

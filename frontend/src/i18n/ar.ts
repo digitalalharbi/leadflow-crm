@@ -147,6 +147,11 @@ export default {
     sources: 'مصادر العملاء',
     trend: 'العملاء يوميًا',
     leadsPerDay: 'عملاء',
+    automation: {
+      title: 'الأتمتة', coverage: 'تغطية الأتمتة', human: 'تدخل بشري', lost: 'خسارة بلا رد', qualify: 'متوسط زمن التأهيل',
+      lostHint: '{{count}} من {{total}} عميل خسرناه لم يردّ قط', recovered: 'أتمتة مُستردّة', needsHuman: '{{count}} سُلّمت لمندوب',
+      trend: 'عملاء وصلتهم الأتمتة', revenueByQuality: 'الإيراد حسب جودة العميل', noRevenue: 'لا صفقات مغلقة في هذه الفترة.', unrated: 'غير مصنّف',
+    },
     unit: { s: 'ث', m: 'د', h: 'س', d: 'ي' },
     kpi: {
       leadsToday: 'عملاء اليوم', qualified: 'مؤهلون', overdue: 'متابعات متأخرة', stalled: 'عملاء راكدون', response: 'متوسط أول رد بشري',

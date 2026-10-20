@@ -7,7 +7,8 @@ GitHub is the source of truth. The VPS is never edited by hand. Every deploy is
 on GitHub.
 
 ```
-local → push → PR → CI → merge to develop → staging (when configured) → production (when approved)
+local → push → PR → CI → merge to develop → staging (when configured)
+      → release (merge to main) → "Deploy production" workflow, run from main (when approved)
 ```
 
 CI (`ci.yml`) decides whether the code is healthy; the deploy workflows only ship what CI passed and

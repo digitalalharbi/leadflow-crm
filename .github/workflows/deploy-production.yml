@@ -1,14 +1,19 @@
 name: Deploy production
 
-# Production is manual and approved: it never runs on a push. Someone starts it, types
-# the word "deploy", and it runs only when the owner has switched production on
+# This workflow is the ONLY way production is deployed. There is no deploy from a
+# maintainer's machine, no file upload, no copy of source onto the server: the server
+# fetches one exact commit from GitHub.
+#
+#   PR -> CI -> merge to develop -> release (merge to main) -> this workflow, run from main
+#     -> CI must have passed for that exact SHA -> the server's working tree must be clean
+#     -> SSH: git fetch the SHA from GitHub -> backup -> build -> migrate -> restart
+#     -> health -> smoke -> the serving SHA is asserted.
+#
+# It is manual and approved: it never runs on a push. Someone starts it from `main`,
+# types the word "deploy", and it runs only when the owner has switched production on
 # (repository variable PRODUCTION_ENABLED=true) after the server, the domain, HTTPS,
 # the secrets and the backups exist (docs/PRODUCTION_RUNBOOK.md). Until then it says
 # PRODUCTION NOT CONFIGURED and ends — which is a state, not a failure.
-#
-# The one-command path from a maintainer's machine is scripts/release-production.sh,
-# which runs the same preflight, backup, migrate, health, smoke and verification, with
-# automatic rollback.
 on:
   workflow_dispatch:
     inputs:
@@ -27,9 +32,40 @@ permissions:
   deployments: write
 
 jobs:
+  # Production comes from main and from nowhere else. Started from develop, a feat/* branch
+  # or a tag, this fails loudly before anything else is looked at — it is not left to the
+  # server happening not to have the commit.
+  branch:
+    name: Production deploys only from main
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refuse any ref but main
+        env:
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error title=Production deploy refused::Production deploys only from main; this run is on $REF."
+            {
+              echo "### PRODUCTION DEPLOY REFUSED"
+              echo "This workflow was started from \`$REF\`. Production is released only from \`main\`."
+              echo "Nothing was deployed and the server was not contacted."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          # The commit being shipped is one GitHub has on main.
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error title=Production deploy refused::$SHA is not on main."; exit 1; }
+
   # Production has not been switched on: say so, and record no deployment.
   awaiting:
     name: Production not configured
+    needs: [branch]
     if: vars.PRODUCTION_ENABLED != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -47,7 +83,8 @@ jobs:
   # before the VPS is touched.
   verify:
     name: Pre-flight verification
-    if: vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
+    needs: [branch]
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -110,10 +147,13 @@ jobs:
       - name: Refuse destructive commands in the deploy path
         run: ./scripts/check-deploy-safety.sh
 
+      - name: Refuse a deploy path that bypasses GitHub
+        run: ./scripts/check-deploy-source.sh
+
   deploy:
     name: Deploy to production VPS
-    needs: [verify]
-    if: vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
+    needs: [branch, verify]
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:
@@ -178,6 +218,39 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
+      # The server's checkout is a mirror of GitHub. Uncommitted or untracked source there
+      # would ride into the image (or be erased by the reset) — so the deploy stops before it
+      # fetches, builds or migrates anything. Checked here, over SSH, rather than only inside
+      # deploy-production.sh: that script on the server is the one the PREVIOUS deploy left,
+      # and a guard that only exists after the first release is not a guard.
+      - name: Refuse a server whose working tree is not clean
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" \
+            "PRODUCTION_PATH='${PRODUCTION_PATH:-/var/www/leads-crm/production}' DEPLOY_COMMIT='${DEPLOY_COMMIT}' bash -s" <<'REMOTE'
+          set -e
+          cd "$PRODUCTION_PATH"
+
+          DIRTY="$(git status --porcelain --untracked-files=all -- . ':(exclude).last-good-commit' ':(exclude).last-good-commit.tmp')"
+          if [ -n "$DIRTY" ]; then
+            echo "ABORT DEPLOY — the working tree on the server is not clean. Nothing was changed." >&2
+            printf '%s\n' "$DIRTY" | head -40 | sed 's/^/    /' >&2
+            exit 1
+          fi
+
+          # The exact commit, from GitHub, and it is on main.
+          git fetch --prune origin main
+          git cat-file -e "${DEPLOY_COMMIT}^{commit}" || { echo "ABORT DEPLOY — ${DEPLOY_COMMIT} was not fetched from GitHub." >&2; exit 1; }
+          git merge-base --is-ancestor "$DEPLOY_COMMIT" origin/main || { echo "ABORT DEPLOY — ${DEPLOY_COMMIT} is not on origin/main." >&2; exit 1; }
+          echo "Server tree is clean; ${DEPLOY_COMMIT:0:8} is on origin/main."
+          REMOTE
+
       - name: Deploy
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -229,6 +302,37 @@ jobs:
 
           echo "Production did not report healthy." >&2
           exit 1
+
+      # Healthy is not the same as working. The smoke test is what a customer's browser meets:
+      # HTTPS and the certificate, the app shell, HTTP -> HTTPS, auth enforced, the login
+      # endpoint, no debug output, HSTS — and that the commit answering is the commit shipped.
+      # A failure here fails the run; it does not pass quietly.
+      - name: Smoke test the release
+        env:
+          PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          PRODUCTION_API_DOMAIN: ${{ vars.PRODUCTION_API_DOMAIN }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+          DEPLOY_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.VPS_USER }}
+          DEPLOY_PORT: ${{ secrets.VPS_PORT || 22 }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+        run: |
+          if [ -z "$PRODUCTION_API_DOMAIN" ]; then
+            {
+              echo "## Production deployed, and not smoke-tested"
+              echo ""
+              echo "The repository variable **PRODUCTION_API_DOMAIN** is not set, so the smoke test"
+              echo "could not run. Set it under Settings → Secrets and variables → Actions → Variables."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Cannot smoke-test the deploy::PRODUCTION_API_DOMAIN is not set — see the job summary."
+            exit 1
+          fi
+
+          export DEPLOY_SSH_KEY="$HOME/.ssh/deploy_key"
+          set -o pipefail
+          ./scripts/smoke-production.sh | tee -a "$GITHUB_STEP_SUMMARY"
+
+          echo "::notice title=Production deployed and verified::${EXPECTED_COMMIT:0:8} at https://${PRODUCTION_DOMAIN}"
 
       - name: Clean up the key
         if: always()

@@ -1,9 +1,10 @@
 # shellcheck shell=bash
-# Shared by preflight-production.sh, smoke-production.sh, verify-production.sh
-# and release-production.sh. Sourced, never executed.
+# Shared by preflight-production.sh, smoke-production.sh and verify-production.sh.
+# Sourced, never executed.
 #
-# Configuration is the same git-ignored .deploy.env that deploy-direct.sh reads,
-# so there is exactly one place an operator writes the server down.
+# Configuration is read from a git-ignored .deploy.env when one exists (an operator's
+# machine), and from the environment otherwise (the GitHub Actions runner). These
+# scripts check a release; none of them ships one.
 
 BOLD=$'\033[1m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; OFF=$'\033[0m'
 
@@ -16,7 +17,8 @@ if [ -f "$CONFIG_PATH" ]; then
 fi
 
 DEPLOY_PORT="${DEPLOY_PORT:-22}"
-PRODUCTION_BRANCH="${PRODUCTION_BRANCH:-develop}"
+# Production is released from `main` and nothing else.
+PRODUCTION_BRANCH="${PRODUCTION_BRANCH:-main}"
 # The key is a path; "~" is not expanded inside a sourced assignment.
 DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-}"
 DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY/#\~/$HOME}"

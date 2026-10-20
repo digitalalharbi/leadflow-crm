@@ -1,8 +1,24 @@
 # Production runbook — from nothing to a live, verified URL
 
-One document, copy/paste in order. Everything deploys from **`develop`**; `main`
-is not touched until the release below is verified and a rollback has been
-rehearsed.
+One document, copy/paste in order.
+
+## The one road to production
+
+```
+PR → CI → merge to develop → release (merge to main) → "Deploy production" workflow, run from main
+   → CI must have passed for that exact SHA → the server's working tree must be clean
+   → SSH: git fetch that SHA from GitHub → backup → build → migrate → restart
+   → health → smoke → the serving SHA is asserted
+```
+
+Production is released from **`main`** by that workflow and by nothing else. There is no
+deploy from a laptop, no FTP or file-manager upload, no `scp`/`rsync`, no copy of source
+onto the server, and no edit on the server that is not a commit: the server fetches one
+exact commit from GitHub. `scripts/check-deploy-source.sh` fails the build if a second
+road is opened.
+
+**By hand, once:** the VPS, the SSH key, DNS and the domain, HTTPS, GitHub secrets and
+variables, `.env.production`, Docker. Everything after that is a commit.
 
 > Nothing in this file is "done" until `./scripts/verify-production.sh` prints
 > **PRODUCTION VERIFIED**. That is the only thing that may call a deployment
@@ -39,7 +55,7 @@ dig +short app.<domain>; dig +short api.<domain>
 
 ```bash
 ssh root@<VPS_IP>
-curl -fsSL https://raw.githubusercontent.com/<OWNER>/leadflow-crm/develop/scripts/provision-server.sh | bash -s -- <OWNER>
+curl -fsSL https://raw.githubusercontent.com/<OWNER>/leadflow-crm/main/scripts/provision-server.sh | bash -s -- <OWNER>
 ```
 
 Creates the `deploy` user, installs Docker, clones the repo into
@@ -118,15 +134,18 @@ gh secret set VPS_USER        --body 'deploy'
 gh secret set VPS_PORT        --body '22'
 gh secret set VPS_SSH_KEY     < ~/.ssh/leadflow_deploy
 gh secret set PRODUCTION_PATH --body '/var/www/leads-crm/production'
-gh variable set PRODUCTION_DOMAIN --body 'app.<domain>'
+gh variable set PRODUCTION_DOMAIN     --body 'app.<domain>'
+gh variable set PRODUCTION_API_DOMAIN --body 'api.<domain>'   # the smoke test needs it
+gh variable set PRODUCTION_ENABLED    --body 'true'           # only when everything above exists
 ```
 
-(They are the same values the one-command deploy reads from `.deploy.env`.)
+## 7. Operator checks from your machine (optional, they deploy nothing)
 
-## 7. Local deploy configuration (your machine)
+`preflight-production.sh` and `verify-production.sh` read the server and report; neither
+ships a release. They read a git-ignored `.deploy.env`:
 
 ```bash
-cd leadflow-crm && git checkout develop && git pull
+cd leadflow-crm && git checkout main && git pull
 cp .deploy.env.example .deploy.env          # git-ignored
 ```
 
@@ -135,11 +154,17 @@ Set: `DEPLOY_HOST=<VPS_IP>`, `DEPLOY_USER=deploy`, `DEPLOY_PORT=22`,
 `PRODUCTION_DOMAIN=app.<domain>`, `PRODUCTION_API_DOMAIN=api.<domain>`.
 Never put `DEPLOY_SECRET` here — it stays in the server's `.env.production`.
 
-## 8. Test the exact commit you will ship
-
 ```bash
-./scripts/verify-all.sh        # writes .verify-passed for this commit
+./scripts/preflight-production.sh      # PASS/FAIL per item: server, HTTPS, env, database, backups, CI
 ```
+
+## 8. CI must pass for the exact commit
+
+Production ships only a commit CI has passed. Merge `develop` into `main` (the release),
+let CI finish on that commit, and note its SHA. The workflow checks this itself
+(`scripts/ci/ci-is-green.sh <sha>`) and refuses otherwise. If GitHub Actions cannot run
+(billing), the answer is **BLOCKED — BILLING** and production does not ship: there is no
+way around it from a laptop, by design.
 
 ## 9. Backups
 
@@ -172,23 +197,21 @@ cd /var/www/leads-crm/production
   The readiness row stays **Ready**, not Live, until you trigger a test event
   and see it in Sentry's inbox.
 
-## 11. Deploy — one command
+## 11. Deploy — the workflow
 
-```bash
-./scripts/release-production.sh
-```
+GitHub → Actions → **Deploy production** → *Run workflow* → branch **`main`** → type `deploy`.
 
-Runs, in order, and stops at the first failure:
+It runs, in order, and stops at the first failure:
 
-1. **Preflight** (`preflight-production.sh`) — PASS/FAIL per item; any FAIL aborts before the server is touched.
-2. **Backup** — verified pg_dump, gzip-tested, recorded for the readiness screen.
-3. **Deploy** — pull the commit from `origin/develop`, build, start Postgres + Redis.
-4. **Migrate** — shown first; short maintenance window; caches rebuilt.
-5. **Restart workers** — `horizon:terminate`, restart `horizon` + `scheduler`.
-6. **Health check** — the commit just shipped must be the one answering (on the server, then from the internet).
-7. **Smoke test** (`smoke-production.sh`) — HTTPS, SPA, HTTP→HTTPS, auth enforced, login, no debug output, HSTS, release.
-8. **Verification** (`verify-production.sh`) — the eight conditions of §12.
-9. **Automatic rollback** if step 3–6 fail (on the server) or 7–8 fail (from your machine).
+1. **Branch guard** — any ref but `main` is refused before the server is contacted.
+2. **Pre-flight verification** — production config caches, migrations apply to an empty database, no destructive command in the deploy path, no deploy path that bypasses GitHub.
+3. **CI for the exact SHA** — must be green.
+4. **Clean-tree guard** — over SSH: any modified or untracked source file on the server aborts the deploy with nothing changed. The SHA must be on `origin/main`.
+5. **Deploy** — `git fetch` that SHA from GitHub, verified backup, build, show pending migrations, short maintenance window, migrate, rebuild caches, restart Horizon and the scheduler, and the commit just shipped must be the one answering.
+6. **Health check** — `https://<domain>/api/health`.
+7. **Smoke test** (`smoke-production.sh`) — HTTPS, SPA, HTTP→HTTPS, auth enforced, login, no debug output, HSTS, and the release SHA.
+
+Then, from your machine, `./scripts/verify-production.sh` for the eight conditions of §12.
 
 Services: `postgres`, `redis`, `backend` (php-fpm), `api` (nginx), `frontend`,
 `horizon` (queue worker), `scheduler` (`schedule:work`; also writes the heartbeat
@@ -218,7 +241,9 @@ screen's Evidence list. Credentials alone are never evidence.
 
 ## 13. Rollback
 
-Automatic during `release-production.sh`. Manual:
+The on-server deploy rolls its code back by itself if the migration or its own health
+check fails. A smoke-test failure makes the workflow run red and leaves the release up:
+roll back by hand:
 
 ```bash
 ssh deploy@<VPS_IP> 'cd /var/www/leads-crm/production && ./scripts/rollback.sh production'            # last good
@@ -227,8 +252,8 @@ ssh deploy@<VPS_IP> 'cd /var/www/leads-crm/production && ./scripts/rollback.sh p
 
 Code only. Migrations are not reversed; if a release changed the schema
 destructively, restore the pre-deploy backup with `scripts/restore-db.sh`.
-**Rehearse a rollback once** before `main` is touched: run the release, then the
-manual rollback, then `./scripts/smoke-production.sh`.
+**Rehearse a rollback once** after the first release: run the manual rollback, then
+`./scripts/smoke-production.sh`.
 
 ## 14. After verification
 
@@ -238,5 +263,5 @@ manual rollback, then `./scripts/smoke-production.sh`.
   on the Readiness screen only when that event is recorded.
 * Sentry SDK is not installed yet (`composer require sentry/sentry-laravel`
   on `develop`); until it is, error tracking reads *Not configured*.
-* Only after: Production verified + smoke passed + rollback rehearsed → merge
-  `develop` into `main`.
+* Every later release is the same road: merge `develop` into `main`, CI on that commit,
+  run **Deploy production** from `main`.

@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\ActivityType;
+use App\Enums\MessageChannel;
+use App\Enums\MessageDirection;
 use App\Enums\Role;
+use App\Models\AutomationActionLog;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\LeadMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -148,5 +152,123 @@ class ManagerCommandCenterTest extends TestCase
 
         $this->actingAs($rep)->getJson('/api/v1/dashboard/manager')->assertForbidden();
         $this->assertSame(0, $this->center()['kpis']['leads_period'], 'another workspace\'s leads are not counted');
+    }
+    // ------------------------------------------------------------ what automation did
+
+    private function message(Lead $lead, string $direction, ?int $userId = null, string $status = 'sent'): void
+    {
+        $this->asTenant($this->t['tenant'], fn () => LeadMessage::create([
+            'lead_id' => $lead->id, 'user_id' => $userId, 'direction' => $direction === 'in' ? MessageDirection::Inbound : MessageDirection::Outbound,
+            'channel' => MessageChannel::Whatsapp, 'provider' => 'mock', 'message_type' => 'text', 'body' => 'x', 'status' => $status,
+        ]));
+    }
+
+    public function test_automation_coverage_and_human_intervention_are_shares_of_the_periods_leads(): void
+    {
+        $a = $this->lead();
+        $b = $this->lead();
+        $c = $this->lead();
+        $this->lead();
+        $this->message($a, 'out');                                              // automation reached a
+        $this->message($b, 'out');                                              // ... and b
+        $this->message($b, 'out', $this->t['admin']->id);                       // a person wrote to b too
+        $this->message($c, 'out', status: 'failed');                            // a failed send reached nobody
+
+        $auto = $this->center()['automation'];
+
+        $this->assertSame(4, $auto['leads']);
+        $this->assertEquals(50.0, $auto['coverage_percent'], 'two of four were reached automatically');
+        $this->assertEquals(25.0, $auto['human_percent'], 'one of four was touched by a person');
+        $this->assertSame(1, $auto['trend'][29]['human']);
+        $this->assertSame(2, $auto['trend'][29]['automated']);
+    }
+
+    public function test_a_call_by_a_rep_counts_as_a_human_touch(): void
+    {
+        $lead = $this->lead();
+        $this->lead();
+        $this->asTenant($this->t['tenant'], fn () => LeadActivity::create(['lead_id' => $lead->id, 'user_id' => $this->t['admin']->id, 'type' => ActivityType::Called]));
+
+        $this->assertEquals(50.0, $this->center()['automation']['human_percent']);
+    }
+
+    public function test_time_to_qualify_averages_arrival_to_qualified(): void
+    {
+        $this->lead(['created_at' => now()->subHours(5), 'qualified_at' => now()->subHours(4), 'qualification_status' => 'qualified']);   // 1h
+        $this->lead(['created_at' => now()->subHours(6), 'qualified_at' => now()->subHours(2), 'qualification_status' => 'qualified']);   // 4h
+        $this->lead();                                                                                                                      // never qualified
+
+        $auto = $this->center()['automation'];
+
+        $this->assertEqualsWithDelta(9000, $auto['avg_seconds_to_qualify'], 5, 'two and a half hours');
+        $this->assertSame(2, $auto['qualified_samples']);
+    }
+
+    public function test_recovered_automations_are_the_deliveries_that_still_got_through(): void
+    {
+        $lead = $this->lead();
+        $this->asTenant($this->t['tenant'], function () use ($lead) {
+            foreach ([AutomationActionLog::RECOVERED, AutomationActionLog::RECOVERED, AutomationActionLog::NEEDS_HUMAN, AutomationActionLog::COMPLETED] as $result) {
+                AutomationActionLog::create(['lead_id' => $lead->id, 'action_type' => 'send_whatsapp', 'result' => $result, 'happened_at' => now()]);
+            }
+            AutomationActionLog::create(['lead_id' => $lead->id, 'action_type' => 'send_whatsapp', 'result' => AutomationActionLog::RECOVERED, 'happened_at' => now()->subDays(60)]);
+        });
+
+        $auto = $this->center()['automation'];
+
+        $this->assertSame(2, $auto['recovered'], 'the old one is outside the period');
+        $this->assertSame(1, $auto['needs_human']);
+    }
+
+    public function test_lost_for_no_response_means_lost_without_the_customer_ever_answering(): void
+    {
+        $silent = $this->lead(['status' => 'lost']);
+        $answered = $this->lead(['status' => 'lost']);
+        $this->lead(['status' => 'lost']);
+        $this->asTenant($this->t['tenant'], function () {
+            Lead::whereIn('id', Lead::pluck('id'))->get()->each(fn (Lead $l) => $l->forceFill(['lost_at' => now()])->saveQuietly());
+        });
+        $this->message($answered, 'in');
+        $this->message($silent, 'out');
+
+        $lost = $this->center()['automation']['lost'];
+
+        $this->assertSame(3, $lost['total']);
+        $this->assertSame(2, $lost['no_response']);
+        $this->assertEquals(66.7, $lost['percent']);
+    }
+
+    public function test_revenue_is_split_by_the_quality_the_lead_ended_at(): void
+    {
+        foreach ([['hot', 30_000_000], ['hot', 10_000_000], ['warm', 20_000_000]] as [$temperature, $minor]) {
+            $lead = $this->lead(['status' => 'won', 'won_at' => now()->subHour(), 'temperature' => $temperature]);
+            $this->asTenant($this->t['tenant'], fn () => $lead->forceFill(['deal_value_minor' => $minor])->saveQuietly());
+        }
+
+        $rows = collect($this->center()['automation']['revenue_by_quality'])->keyBy('key');
+
+        $this->assertEquals(400000.0, $rows['hot']['revenue']);
+        $this->assertSame(2, $rows['hot']['deals']);
+        $this->assertEquals(200000.0, $rows['warm']['revenue']);
+        $this->assertSame(['hot', 'warm'], $rows->keys()->all());
+        $this->assertEquals($this->center()['kpis']['revenue'], $rows->sum('revenue'), 'the split adds up to the revenue tile');
+    }
+
+    public function test_an_empty_workspace_says_nothing_rather_than_zero_percent(): void
+    {
+        $auto = $this->center()['automation'];
+
+        $this->assertNull($auto['coverage_percent']);
+        $this->assertNull($auto['human_percent']);
+        $this->assertNull($auto['avg_seconds_to_qualify']);
+        $this->assertNull($auto['lost']['percent']);
+        $this->assertSame([], $auto['revenue_by_quality']);
+    }
+
+    public function test_a_rep_is_still_refused_the_manager_screen(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->actingAs($rep)->getJson('/api/v1/dashboard/manager')->assertForbidden();
     }
 }

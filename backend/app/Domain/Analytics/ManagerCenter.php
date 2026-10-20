@@ -4,6 +4,7 @@ namespace App\Domain\Analytics;
 
 use App\Domain\Leads\PipelineOverview;
 use App\Domain\Sla\SlaMonitor;
+use App\Models\AutomationActionLog;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -82,9 +83,72 @@ class ManagerCenter
                 ['key' => 'warm', 'count' => (int) $now->warm],
                 ['key' => 'cold', 'count' => (int) $now->cold],
             ],
+            'automation' => $this->automation($user, $since, $days),
             'sources' => $this->sources($user, $since),
             'team' => $this->team($user, $since, $open),
             'trend' => $this->trend($user, $days),
+        ];
+    }
+
+    /**
+     * How much of the work the automation did, and what it cost a person.
+     *
+     *  - coverage: the period's leads that automation reached with at least one message
+     *  - human: the period's leads a person actually touched (a message in their name, a call)
+     *  - time to qualify: average from arrival to qualified, for leads qualified in the period
+     *  - recovered: deliveries that failed on one channel and reached the customer on the other
+     *  - lost, no response: leads lost without the customer ever answering
+     *  - revenue by quality: what won deals brought, by the temperature the lead ended at
+     *
+     * @return array<string,mixed>
+     */
+    private function automation(User $user, $since, int $days): array
+    {
+        $reached = "exists (select 1 from lead_messages m where m.lead_id = leads.id and m.direction = 'outbound' and m.user_id is null and m.status <> 'failed')";
+        $touched = "(exists (select 1 from lead_messages m where m.lead_id = leads.id and m.direction = 'outbound' and m.user_id is not null)
+                     or exists (select 1 from lead_activities a where a.lead_id = leads.id and a.user_id is not null and a.type in ('called','whatsapp_sent','email_sent','whatsapp_clicked')))";
+        $answered = "(leads.first_response_at is not null or exists (select 1 from lead_messages m where m.lead_id = leads.id and m.direction = 'inbound'))";
+
+        $cohort = Lead::query()->visibleTo($user)->reorder()->where('leads.created_at', '>=', $since)
+            ->selectRaw("count(*) as total, count(*) filter (where {$reached}) as automated, count(*) filter (where {$touched}) as human")->first();
+        $total = (int) $cohort->total;
+        $pct = fn (int $n) => $total > 0 ? round($n / $total * 100, 1) : null;
+
+        $qualify = Lead::query()->visibleTo($user)->reorder()->where('leads.qualified_at', '>=', $since)->whereColumn('leads.qualified_at', '>=', 'leads.created_at')
+            ->selectRaw('count(*) as n, avg(extract(epoch from (leads.qualified_at - leads.created_at))) as seconds')->first();
+
+        $logs = AutomationActionLog::query()->where('happened_at', '>=', $since)->whereIn('result', [AutomationActionLog::RECOVERED, AutomationActionLog::NEEDS_HUMAN])
+            ->selectRaw('result, count(*) as n')->groupBy('result')->pluck('n', 'result');
+
+        $lost = Lead::query()->visibleTo($user)->reorder()->where('leads.status', 'lost')->where('leads.lost_at', '>=', $since)
+            ->selectRaw("count(*) as total, count(*) filter (where not {$answered}) as silent")->first();
+
+        $byDay = Lead::query()->visibleTo($user)->reorder()->where('leads.created_at', '>=', now()->subDays($days - 1)->startOfDay())
+            ->selectRaw("to_char(leads.created_at, 'YYYY-MM-DD') as d, count(*) as total, count(*) filter (where {$reached}) as automated, count(*) filter (where {$touched}) as human")
+            ->groupBy('d')->get()->keyBy('d');
+
+        $order = ['hot' => 0, 'warm' => 1, 'cold' => 2, 'unrated' => 3];
+        $revenue = Lead::query()->visibleTo($user)->reorder()->where('leads.won_at', '>=', $since)
+            ->selectRaw("coalesce(leads.temperature::text, 'unrated') as k, count(*) as deals, coalesce(sum(leads.deal_value_minor), 0) as minor")->groupBy('k')->get()
+            ->map(fn ($r) => ['key' => (string) $r->k, 'deals' => (int) $r->deals, 'revenue' => round((int) $r->minor / 100, 2)])
+            ->sortBy(fn (array $r) => $order[$r['key']] ?? 9)->values()->all();
+
+        return [
+            'coverage_percent' => $pct((int) $cohort->automated),
+            'human_percent' => $pct((int) $cohort->human),
+            'leads' => $total,
+            'avg_seconds_to_qualify' => $qualify->seconds !== null ? (int) round((float) $qualify->seconds) : null,
+            'qualified_samples' => (int) $qualify->n,
+            'recovered' => (int) ($logs[AutomationActionLog::RECOVERED] ?? 0),
+            'needs_human' => (int) ($logs[AutomationActionLog::NEEDS_HUMAN] ?? 0),
+            'lost' => ['total' => (int) $lost->total, 'no_response' => (int) $lost->silent, 'percent' => (int) $lost->total > 0 ? round((int) $lost->silent / (int) $lost->total * 100, 1) : null],
+            'revenue_by_quality' => $revenue,
+            'trend' => collect(range($days - 1, 0))->map(function (int $ago) use ($byDay) {
+                $day = now()->subDays($ago)->toDateString();
+                $row = $byDay->get($day);
+
+                return ['date' => $day, 'leads' => (int) ($row->total ?? 0), 'automated' => (int) ($row->automated ?? 0), 'human' => (int) ($row->human ?? 0)];
+            })->all(),
         ];
     }
 

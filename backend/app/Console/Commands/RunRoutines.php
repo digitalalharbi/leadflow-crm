@@ -26,6 +26,8 @@ class RunRoutines extends Command
     {
         $tenants = $context->withoutScope(fn () => Tenant::where('is_active', true)
             ->when($this->option('tenant'), fn ($q, $slug) => $q->where('slug', $slug))
+            // Read below for every tenant; where lazy loading is forbidden (everywhere but production) a lazy read failed the tenant.
+            ->with('settings')
             ->get());
 
         $ran = 0;

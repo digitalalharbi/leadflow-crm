@@ -54,7 +54,7 @@ class SlaSweeper
             ->whereNull('first_contact_at')
             ->whereNotNull('assigned_to')
             ->whereIn('status', [LeadStatus::New->value, LeadStatus::Contacted->value])
-            ->with('project:id,automation_settings')
+            ->with(['project:id,automation_settings', 'assignee'])
             ->orderBy('created_at')
             ->limit(500)
             ->get();
@@ -71,6 +71,9 @@ class SlaSweeper
          * A workspace that has not said when it works is always open, so this
          * is the same number it has always been until somebody says otherwise.
          */
+        // The tenant is the one being swept: say so, rather than let each lead look it up again.
+        $candidates->each(fn (Lead $lead) => $lead->setRelation('tenant', $tenant));
+
         $hours = BusinessHours::for($settings);
 
         foreach ($candidates as $lead) {

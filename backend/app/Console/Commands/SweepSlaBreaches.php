@@ -19,7 +19,9 @@ class SweepSlaBreaches extends Command
 
         // Every active tenant, one at a time, each inside its own scope. One
         // tenant's bad data must not stop the sweep for the rest.
-        $context->withoutScope(fn () => Tenant::where('is_active', true)->get())
+        // `settings` is loaded here: the sweeper reads it for every tenant, and where lazy loading
+        // is forbidden (every environment but production) a lazy read failed each tenant's sweep.
+        $context->withoutScope(fn () => Tenant::where('is_active', true)->with('settings')->get())
             ->each(function (Tenant $tenant) use ($sweeper, &$totals) {
                 try {
                     $counts = $sweeper->sweep($tenant);

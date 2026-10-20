@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, BellRing, CalendarCheck, Clock, Coins, Snowflake, Sparkles, Target, TrendingUp } from 'lucide-react'
+import { BadgeCheck, BellRing, CalendarCheck, Clock, Coins, LifeBuoy, Snowflake, Sparkles, Target, TrendingUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody, Skeleton } from '@/components/ui'
 import { platformColor, TEMPERATURE_COLOR } from '@/components/charts'
@@ -54,7 +54,7 @@ export function ManagerCommandCenter() {
 
       {!data ? (
         // As tall as what replaces it, so the page below does not jump when it arrives.
-        <Skeleton className="h-[62rem] lg:h-[46rem]" />
+        <Skeleton className="h-[88rem] lg:h-[64rem]" />
       ) : (
         <>
           <ManagerTiles data={data} duration={duration} money={(v) => formatMoneyCompact(v, 'SAR', i18n.language)} />
@@ -93,6 +93,8 @@ export function ManagerCommandCenter() {
               </CardBody>
             </Card>
           </div>
+
+          <AutomationRow data={data} duration={duration} money={(v) => formatMoneyCompact(v, 'SAR', i18n.language)} />
 
           <div className="grid gap-3 lg:grid-cols-12">
             <Card className="lg:col-span-4" data-testid="manager-temperature">
@@ -202,5 +204,92 @@ function SlaCard({ data, duration }: { data: ManagerData; duration: (s: number |
         </div>
       </CardBody>
     </Card>
+  )
+}
+
+/** Higher is better for coverage; lower is better for human work and for silent losses. */
+const toneUp = (v: number | null) => (v === null ? 'neutral' : v >= 70 ? 'good' : v >= 40 ? 'warn' : 'bad') as 'good' | 'warn' | 'bad' | 'neutral'
+const toneDown = (v: number | null) => (v === null ? 'neutral' : v <= 30 ? 'good' : v <= 60 ? 'warn' : 'bad') as 'good' | 'warn' | 'bad' | 'neutral'
+
+/**
+ * What automation is doing for the team: how many leads it reached, how many still needed a
+ * person, how fast they qualify, what it rescued, what was lost to silence — and what each
+ * kind of lead is worth. Rings first, numbers second.
+ */
+function AutomationRow({ data, duration, money }: { data: ManagerData; duration: (s: number | null) => string; money: (v: number) => string }) {
+  const { t, i18n } = useTranslation()
+  const a = data.automation
+  const pct = (v: number | null) => (v === null ? '—' : `${formatNumber(v, i18n.language)}%`)
+  const revenue = a.revenue_by_quality.filter((row) => row.revenue > 0)
+  const COLOR: Record<string, string> = { ...TEMPERATURE_COLOR, unrated: 'var(--color-ink-subtle)' }
+
+  const ring = (key: string, value: number | null, tone: 'good' | 'warn' | 'bad' | 'neutral', label: string, hint?: string) => (
+    <div className="flex flex-col items-center gap-1 text-center" data-testid={`automation-${key}`} title={hint}>
+      <RingProgress value={value ?? 0} size={84} thickness={9} tone={tone} label={label} testId={`ring-${key}`}>
+        <span className="text-[1.125rem] font-extrabold tabular-nums" data-testid={`ring-${key}-value`}>{pct(value)}</span>
+      </RingProgress>
+      <span className="text-[0.9375rem] font-semibold">{label}</span>
+    </div>
+  )
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-12">
+      <Card className="lg:col-span-8" data-testid="manager-automation">
+        <CardBody className="space-y-3">
+          <h3 className="t-card-title">{t('manager.automation.title')}</h3>
+
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-4">
+            {ring('coverage', a.coverage_percent, toneUp(a.coverage_percent), t('manager.automation.coverage'))}
+            {ring('human', a.human_percent, toneDown(a.human_percent), t('manager.automation.human'))}
+            {ring('lost', a.lost.percent, toneDown(a.lost.percent), t('manager.automation.lost'), t('manager.automation.lostHint', { count: a.lost.no_response, total: a.lost.total }))}
+            <div className="flex flex-col items-center gap-1 text-center" data-testid="automation-qualify">
+              <span className="grid size-[84px] place-items-center rounded-full bg-[var(--color-surface-muted)]">
+                <span className="text-[1.25rem] font-extrabold tabular-nums" data-testid="automation-qualify-value">{duration(a.avg_seconds_to_qualify)}</span>
+              </span>
+              <span className="text-[0.9375rem] font-semibold">{t('manager.automation.qualify')}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2" data-testid="automation-recovered">
+            <LifeBuoy className="size-5 text-[var(--color-success)]" aria-hidden />
+            <span className="text-[1rem] font-semibold">{t('manager.automation.recovered')}</span>
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--color-success)_16%,transparent)] px-2.5 py-0.5 text-[1rem] font-extrabold tabular-nums text-[var(--color-success)]" data-testid="automation-recovered-value">{formatNumber(a.recovered, i18n.language)}</span>
+            {a.needs_human > 0 && (
+              <span className="text-[0.9375rem] text-[var(--color-ink-muted)]" data-testid="automation-needs-human">· {t('manager.automation.needsHuman', { count: a.needs_human })}</span>
+            )}
+          </div>
+
+          <div data-testid="automation-trend">
+            <AreaTrend
+              height={96}
+              axes
+              valueLabel={t('manager.automation.trend')}
+              points={a.trend.map((point) => ({ label: point.date.slice(5), value: point.automated }))}
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      <Card className="lg:col-span-4" data-testid="manager-revenue-quality">
+        <CardBody>
+          <h3 className="t-card-title mb-3">{t('manager.automation.revenueByQuality')}</h3>
+          {revenue.length === 0 ? (
+            <p className="t-caption" data-testid="revenue-quality-empty">{t('manager.automation.noRevenue')}</p>
+          ) : (
+            <Donut
+              size={132}
+              thickness={16}
+              legend="side"
+              segments={revenue.map((row) => ({
+                key: row.key,
+                label: `${row.key === 'unrated' ? t('manager.automation.unrated') : t(`temperature.${row.key}`)} · ${money(row.revenue)}`,
+                value: row.revenue,
+                color: COLOR[row.key],
+              }))}
+            />
+          )}
+        </CardBody>
+      </Card>
+    </div>
   )
 }

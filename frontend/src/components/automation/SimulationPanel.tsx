@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRightLeft, BellRing, Mail, MessageCircle, FileText, UserCog, Users } from 'lucide-react'
+import { ArrowRightLeft, BadgeCheck, BellRing, Mail, MessageCircle, FileText, UserCog, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Skeleton } from '@/components/ui'
-import { simulateRule } from '@/features/automation'
+import { AreaTrend } from '@/components/visual'
+import { simulateRule, type SimulationDays } from '@/features/automation'
 import { cn } from '@/lib/cn'
 
 /**
@@ -14,15 +16,22 @@ import { cn } from '@/lib/cn'
  */
 export function SimulationPanel({ ruleId }: { ruleId: string }) {
   const { t } = useTranslation()
-  const { data, isLoading } = useQuery({ queryKey: ['automation-simulation', ruleId], queryFn: () => simulateRule(ruleId) })
+  const [days, setDays] = useState<SimulationDays>(7)
+  const { data } = useQuery({
+    queryKey: ['automation-simulation', ruleId, days],
+    queryFn: () => simulateRule(ruleId, days),
+    placeholderData: (previous) => previous,
+  })
 
-  if (isLoading || !data) return <Skeleton className="h-40" />
+  if (!data) return <Skeleton className="h-40" />
 
   const sim = data.simulation
   const held = Object.entries(sim.messages.held)
 
-  const tiles: Array<{ key: string; Icon: LucideIcon; value: number; strong?: boolean }> = [
+  const tiles: Array<{ key: string; Icon: LucideIcon; value: number | string; strong?: boolean }> = [
     { key: 'leads', Icon: Users, value: sim.leads_affected, strong: true },
+    // Never a number we cannot stand behind: too little history reads as a dash.
+    { key: 'qualified', Icon: BadgeCheck, value: sim.qualified.estimated ?? '—' },
     { key: 'whatsapp', Icon: MessageCircle, value: sim.messages.whatsapp },
     { key: 'email', Icon: Mail, value: sim.messages.email },
     { key: 'files', Icon: FileText, value: sim.messages.files },
@@ -35,8 +44,22 @@ export function SimulationPanel({ ruleId }: { ruleId: string }) {
     <section className="space-y-3" data-testid="simulation">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-[1.0625rem] font-bold">{t('simulation.title', { days: sim.days })}</h3>
-        <span className="rounded-full bg-[var(--color-surface-sunken)] px-2.5 py-0.5 text-[0.8125rem] font-semibold">{t('simulation.noExecution')}</span>
+        <div role="group" aria-label={t('simulation.period')} className="inline-flex gap-1 rounded-full bg-[var(--color-chrome-fill)] p-1">
+          {([7, 30] as const).map((period) => (
+            <button
+              key={period}
+              type="button"
+              aria-pressed={days === period}
+              data-testid={`sim-period-${period}`}
+              onClick={() => setDays(period)}
+              className={cn('pressable rounded-full px-3 py-0.5 text-[0.9375rem] font-semibold', days === period ? 'bg-[var(--color-surface)] shadow-[var(--shadow-card)]' : 'text-[var(--color-ink-muted)]')}
+            >
+              {t('dashboard.lastDays', { count: period })}
+            </button>
+          ))}
+        </div>
       </div>
+      <span className="inline-block rounded-full bg-[var(--color-surface-sunken)] px-2.5 py-0.5 text-[0.8125rem] font-semibold">{t('simulation.noExecution')}</span>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {tiles.map(({ key, Icon, value, strong }) => (
@@ -52,6 +75,11 @@ export function SimulationPanel({ ruleId }: { ruleId: string }) {
         ))}
       </div>
 
+      <div data-testid="sim-by-day">
+        <p className="t-caption mb-1">{t('simulation.perDay')}</p>
+        <AreaTrend height={72} points={sim.by_day.map((point) => ({ label: point.date.slice(5), value: point.leads }))} />
+      </div>
+
       {held.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" data-testid="sim-held">
           {held.map(([code, count]) => (
@@ -62,7 +90,10 @@ export function SimulationPanel({ ruleId }: { ruleId: string }) {
         </ul>
       )}
 
-      <p className="t-caption">
+      <p className="t-caption" data-testid="sim-basis">
+        {sim.qualified.reason === 'not_enough_history'
+          ? t('simulation.noHistory')
+          : t('simulation.rates', { withMessage: sim.qualified.rate_with_message, without: sim.qualified.rate_without })}{' '}
         {t('simulation.basis')}
         {sim.capped && ` ${t('simulation.capped')}`}
       </p>

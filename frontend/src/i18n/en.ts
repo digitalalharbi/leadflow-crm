@@ -86,6 +86,11 @@ export default {
   simulation: {
     title: 'If this rule had run in the last {{days}} days',
     noExecution: 'Nothing is executed',
+    period: 'Period',
+    perDay: 'Leads affected per day',
+    qualified: 'Estimated qualified',
+    noHistory: 'Not enough history to estimate qualified leads.',
+    rates: 'Qualified {{withMessage}}% with an automated message vs {{without}}% without.',
     leads: 'Leads affected',
     whatsapp: 'WhatsApp messages',
     email: 'Emails',
@@ -94,7 +99,7 @@ export default {
     escalations: 'Handed to a person',
     notifications: 'Notifications',
     held: { quiet_hours: 'Quiet hours', duplicate_message: 'Repeat message', brochure_repeat: 'Repeat brochure', max_frequency: 'Daily cap', cooldown: 'Cooldown', human_takeover: 'With a rep', project_paused: 'Project paused' },
-    basis: 'An estimate from each lead\'s current state, not a replay of history.',
+    basis: 'Read from each lead as it was when the event happened, with the guardrails of that moment.',
     capped: 'Sampled the first 500 leads.',
   },
   merge: {

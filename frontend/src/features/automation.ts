@@ -91,12 +91,17 @@ export interface RuleSimulation {
   escalations: number
   notifications: number
   other: Record<string, number>
-  examples: { id: string; name: string; status: string | null; would: string[] }[]
-  basis: 'current_state'
+  /** Of the leads affected: those that did qualify, and what the workspace's own history suggests. */
+  qualified: { already: number; estimated: number | null; rate_with_message: number | null; rate_without: number | null; reason: 'not_enough_history' | null }
+  by_day: { date: string; leads: number; messages: number }[]
+  examples: { id: string; name: string; status: string | null; at: string; would: string[] }[]
+  basis: 'history'
 }
 
-export function simulateRule(id: string) {
-  return apiGet<{ simulation: RuleSimulation }>(`/automation/rules/${id}/simulate`)
+export type SimulationDays = 7 | 30
+
+export function simulateRule(id: string, days: SimulationDays = 7) {
+  return apiGet<{ simulation: RuleSimulation }>(`/automation/rules/${id}/simulate`, { days })
 }
 
 export interface AppliedAction {

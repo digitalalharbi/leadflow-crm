@@ -298,6 +298,7 @@ class Lead extends Model
             'appointment_interest' => 'boolean',
             'reservation_intent' => 'boolean',
             'first_touch_at' => 'datetime',
+            'last_customer_message_at' => 'datetime',
             'interest_signals' => 'array',
             'interest_at' => 'datetime',
             'interest_level_changed_at' => 'datetime',

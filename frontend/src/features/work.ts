@@ -21,6 +21,7 @@ export type NextActionKind =
   | 'close_lost'
   | 'schedule_follow_up'
   | 'assign'
+  | 'review_fit'
   | 'wait'
   | 'none'
 
@@ -45,6 +46,9 @@ export interface QueuedLead {
   /** Why it is where it is in the queue, in a few words. */
   rank_reason?: string | null
   waiting_since: string | null
+  /** How far along the lead is, and whether its clock is running late. */
+  interest_level?: string | null
+  sla_state?: SlaState | null
 }
 
 /** The last few things that happened to the lead on the card. */
@@ -52,6 +56,45 @@ export interface QueueTimelineEntry {
   id: string
   type: string
   actor: string | null
+  at: string | null
+}
+
+export type SlaState = 'ok' | 'due_soon' | 'breached' | 'done'
+
+/** How long an interested lead may wait for a person, and where the clock is. */
+export interface InterestSlaClock {
+  level: string
+  state: SlaState
+  target_minutes: number
+  since: string
+  deadline: string
+  minutes_left: number
+}
+
+/** What the rep needs in the first second of the call. Anything the lead has not said is absent. */
+export interface QueueProfile {
+  project?: string
+  property?: string
+  budget_min?: number
+  budget_max?: number
+  transaction_type?: string
+  purpose?: string
+  timeline?: string
+  district?: string
+  property_type?: string
+  bedrooms?: number
+  payment_method?: string
+  location?: string
+  map_url?: string
+  waiting_since?: string
+}
+
+/** Why this lead is on this rep: the rules that applied, then the strategy that chose among who was left. */
+export interface AssignmentWhy {
+  rules: string[]
+  strategy: 'workload' | 'round_robin' | 'performance' | null
+  candidates: number | null
+  availability: boolean
   at: string | null
 }
 
@@ -72,6 +115,10 @@ export interface NextInQueue {
   rank?: { score: number; reason: string }
   intelligence?: LeadIntelligence
   handoff?: HandoffBrief | null
+  interest?: { level: string; score: number; override: string | null }
+  sla?: InterestSlaClock | null
+  profile?: QueueProfile
+  assignment?: AssignmentWhy | null
 }
 
 /** `skip` carries the leads passed over in this sitting, so "skip" actually
@@ -133,6 +180,8 @@ export const OUTCOMES = [
   'meeting_booked',
   'won',
   'lost',
+  'reservation',
+  'not_interested',
 ] as const
 
 export type Outcome = (typeof OUTCOMES)[number]

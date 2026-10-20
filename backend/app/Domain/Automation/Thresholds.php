@@ -24,13 +24,14 @@ use App\Models\TenantSetting;
  */
 class Thresholds
 {
-    public const KEYS = ['hot_from', 'warm_from', 'priority_from', 'high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes'];
+    public const KEYS = ['hot_from', 'warm_from', 'priority_from', 'high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes', 'sla_hot_minutes', 'sla_interested_minutes', 'sla_visit_minutes', 'sla_reservation_minutes'];
 
     /** Bounds a person may set, so a typo cannot make every lead "stalled". */
     public const LIMITS = [
         'hot_from' => [1, 99], 'warm_from' => [1, 99], 'priority_from' => [1, 100],
         'high_value_from' => [1, 1_000_000_000], 'sla_minutes' => [1, 10080], 'stalled_after_days' => [1, 90],
         'max_contacts_per_day' => [1, 50], 'cooldown_minutes' => [0, 1440],
+        'sla_hot_minutes' => [1, 10080], 'sla_interested_minutes' => [1, 10080], 'sla_visit_minutes' => [1, 10080], 'sla_reservation_minutes' => [1, 10080],
     ];
 
     /** Where a project keeps each of its overrides. */
@@ -47,6 +48,11 @@ class Thresholds
             'stalled_after_days' => 3,
             'max_contacts_per_day' => 6,
             'cooldown_minutes' => 0,
+            // How long an interested lead may wait for a person, by how far along they are.
+            'sla_hot_minutes' => 15,
+            'sla_interested_minutes' => 60,
+            'sla_visit_minutes' => 30,
+            'sla_reservation_minutes' => 5,
         ];
     }
 
@@ -62,6 +68,10 @@ class Thresholds
             'stalled_after_days' => $settings?->stalled_after_days,
             'max_contacts_per_day' => $settings?->max_contacts_per_day,
             'cooldown_minutes' => $settings?->contact_cooldown_minutes,
+            'sla_hot_minutes' => $settings?->sla_hot_minutes,
+            'sla_interested_minutes' => $settings?->sla_interested_minutes,
+            'sla_visit_minutes' => $settings?->sla_visit_minutes,
+            'sla_reservation_minutes' => $settings?->sla_reservation_minutes,
         ];
     }
 
@@ -78,7 +88,7 @@ class Thresholds
             }
         }
 
-        foreach (['high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes'] as $key) {
+        foreach (['high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes', 'sla_hot_minutes', 'sla_interested_minutes', 'sla_visit_minutes', 'sla_reservation_minutes'] as $key) {
             if (isset($own[$key]) && $own[$key] !== '') {
                 $out[$key] = (int) $own[$key];
             }

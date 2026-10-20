@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, Bot, CalendarCheck, CalendarPlus, FileText, Flame, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
+import { BellRing, Bot, CalendarCheck, CalendarPlus, FileText, Flame, MapPin, MessageCircle, MessagesSquare, PartyPopper, Phone, SkipForward, TimerOff, UserX, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -21,6 +21,8 @@ import {
 import { cn } from '@/lib/cn'
 import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
 import { RingProgress } from '@/components/visual'
+import { InterestBadge } from '@/components/visual/InterestBadge'
+import { InterestStrip } from '@/components/work/InterestStrip'
 
 /**
  * One lead, one decision, one keystroke.
@@ -287,6 +289,9 @@ export function WorkPage() {
                             </Badge>
                           )}
                         </div>
+                        {item.interest_level && ['interested', 'hot', 'visit_ready', 'reservation_ready'].includes(item.interest_level) && (
+                          <InterestBadge level={item.interest_level} testId={`queue-interest-${item.id}`} className="mb-0.5 !px-1.5 !py-0 !text-[0.8125rem]" />
+                        )}
                         <p className="t-caption truncate">
                           {[item.action ? t(`work.action.${item.action}`) : null, item.city]
                             .filter(Boolean)
@@ -345,6 +350,9 @@ export function WorkPage() {
                     )}
                   </div>
                 </div>
+
+                {/* How far along they are, how long they may still wait, and what they want. */}
+                {data && <InterestStrip data={data} />}
 
                 {/* Automation handed this lead over: everything to start the call, without opening the lead. */}
                 {data?.handoff && <HandoffBriefCard brief={data.handoff} compact />}
@@ -462,8 +470,24 @@ export function WorkPage() {
                     onClick={() => setContactOpen(true)}
                     data-testid="work-file"
                   >
-                    {t('leadView.file')}
+                    {t('work.more.brochure')}
                   </Button>
+
+                  {/* The project's map pin, in the lead's WhatsApp, in one press. */}
+                  {lead.whatsapp && data?.profile?.map_url && (
+                    <ButtonLink
+                      size="sm"
+                      variant="secondary"
+                      href={whatsappLink(lead.whatsapp, '{{text}}', { text: t('work.more.locationText', { project: data.profile.project ?? '', url: data.profile.map_url }) }) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      icon={<MapPin className="size-3.5" aria-hidden />}
+                      onClick={() => log.mutate({ channel: 'whatsapp', note: t('work.more.location') })}
+                      data-testid="work-location"
+                    >
+                      {t('work.more.location')}
+                    </ButtonLink>
+                  )}
 
                   <Button
                     variant="secondary"

@@ -40,7 +40,9 @@ export interface ManagerData {
   funnel: { key: 'leads' | 'valid' | 'engaged' | 'qualified' | 'appointments' | 'won'; count: number }[]
   temperature: { key: 'hot' | 'warm' | 'cold'; count: number }[]
   sources: { key: string; count: number }[]
-  team: { id: string; name: string; open: number; overdue: number; hot: number; won: number; revenue: number }[]
+  /** Interested leads right now, by how far along they are, and how many wait past their window. */
+  interest?: { levels: Record<'hot' | 'interested' | 'visit_ready' | 'reservation_ready', number>; late: number; due_soon: number }
+  team: { id: string; name: string; open: number; overdue: number; hot: number; won: number; revenue: number; interested?: number; sla_late?: number }[]
   trend: { date: string; leads: number; qualified: number; won: number }[]
 }
 

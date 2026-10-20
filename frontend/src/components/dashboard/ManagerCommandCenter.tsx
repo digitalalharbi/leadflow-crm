@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardBody, Skeleton } from '@/components/ui'
 import { platformColor, TEMPERATURE_COLOR } from '@/components/charts'
 import { AreaTrend, Donut, KpiCard, PipelineFunnel, RankBars, RingProgress } from '@/components/visual'
+import { InterestBadge } from '@/components/visual/InterestBadge'
 import { fetchManager, type ManagerData } from '@/features/manager'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -85,6 +86,7 @@ export function ManagerCommandCenter() {
                         <span className="tabular-nums" dir="ltr">
                           {member.open} {t('manager.open')}
                           {member.overdue > 0 && <span className="ms-1.5 font-bold text-[var(--color-danger)]">· {member.overdue} {t('manager.late')}</span>}
+                          {(member.sla_late ?? 0) > 0 && <span className="ms-1.5 font-bold text-[var(--color-danger)]" data-testid={`team-sla-late-${member.id}`}>· {member.sla_late} {t('manager.slaLate')}</span>}
                         </span>
                       ),
                     }))}
@@ -93,6 +95,8 @@ export function ManagerCommandCenter() {
               </CardBody>
             </Card>
           </div>
+
+          {data.interest && <InterestWaitingRow interest={data.interest} />}
 
           <AutomationRow data={data} duration={duration} money={(v) => formatMoneyCompact(v, 'SAR', i18n.language)} />
 
@@ -291,5 +295,42 @@ function AutomationRow({ data, duration, money }: { data: ManagerData; duration:
         </CardBody>
       </Card>
     </div>
+  )
+}
+
+/**
+ * Interested leads right now, by how far along they are — and how many are waiting longer than
+ * their window. The ring is the share still inside it: a manager reads one shape, not a table.
+ */
+function InterestWaitingRow({ interest }: { interest: NonNullable<ManagerData['interest']> }) {
+  const { t } = useTranslation()
+  const total = Object.values(interest.levels).reduce((sum, n) => sum + n, 0)
+  const onTime = total > 0 ? Math.round(((total - interest.late) / total) * 100) : 100
+
+  return (
+    <Card data-testid="manager-interest">
+      <CardBody className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="flex items-center gap-3">
+          <RingProgress value={onTime} size={56} thickness={6} tone={interest.late > 0 ? 'bad' : 'good'} label={t('manager.interestTitle')} testId="manager-interest-ring">
+            <span className="text-[0.875rem] font-extrabold tabular-nums" dir="ltr">{onTime}%</span>
+          </RingProgress>
+          <div className="leading-tight">
+            <h3 className="t-card-title">{t('manager.interestTitle')}</h3>
+            <p className="t-caption tabular-nums">
+              <span className={cn('font-bold', interest.late > 0 && 'text-[var(--color-danger)]')} data-testid="manager-interest-late">{interest.late}</span> {t('manager.interestLate')}
+              {interest.due_soon > 0 && <> · <span className="font-bold text-[var(--color-warning)]">{interest.due_soon}</span> {t('manager.interestDueSoon')}</>}
+            </p>
+          </div>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {(['reservation_ready', 'visit_ready', 'hot', 'interested'] as const).map((level) => (
+            <li key={level} className="flex items-center gap-1.5">
+              <InterestBadge level={level} testId={`manager-interest-${level}`} />
+              <span className="text-[1.0625rem] font-bold tabular-nums">{interest.levels[level]}</span>
+            </li>
+          ))}
+        </ul>
+      </CardBody>
+    </Card>
   )
 }

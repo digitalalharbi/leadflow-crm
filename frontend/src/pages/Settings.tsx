@@ -361,6 +361,11 @@ function GeneralForm({
     timezone: settings.timezone,
     default_country_code: settings.default_country_code,
     assignment_mode: settings.assignment_mode,
+    assignment_strategy: settings.assignment_strategy ?? 'workload',
+    sla_hot_minutes: settings.sla_hot_minutes ?? '',
+    sla_interested_minutes: settings.sla_interested_minutes ?? '',
+    sla_visit_minutes: settings.sla_visit_minutes ?? '',
+    sla_reservation_minutes: settings.sla_reservation_minutes ?? '',
     score_warm_threshold: settings.score_warm_threshold,
     score_hot_threshold: settings.score_hot_threshold,
     score_priority_threshold: settings.score_priority_threshold ?? '',
@@ -385,6 +390,10 @@ function GeneralForm({
       score_priority_threshold: form.score_priority_threshold === '' ? null : Number(form.score_priority_threshold),
       high_value_from: form.high_value_from === '' ? null : Number(form.high_value_from),
       stalled_after_days: form.stalled_after_days === '' ? null : Number(form.stalled_after_days),
+      sla_hot_minutes: form.sla_hot_minutes === '' ? null : Number(form.sla_hot_minutes),
+      sla_interested_minutes: form.sla_interested_minutes === '' ? null : Number(form.sla_interested_minutes),
+      sla_visit_minutes: form.sla_visit_minutes === '' ? null : Number(form.sla_visit_minutes),
+      sla_reservation_minutes: form.sla_reservation_minutes === '' ? null : Number(form.sla_reservation_minutes),
       /*
        * No days chosen means always open, and the hours go with it — sending
        * times beside an empty week would store an opinion nobody expressed.
@@ -457,15 +466,31 @@ function GeneralForm({
           )}
 
           {section === 'general' ? (
-            <Select
-              label={t('settings.assignmentMode')}
-              hint={t('settings.assignmentHint')}
-              value={form.assignment_mode}
-              onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
-            >
-              <option value="manual">{t('settings.manual')}</option>
-              <option value="round_robin">{t('settings.roundRobin')}</option>
-            </Select>
+            <div className="space-y-4">
+              <Select
+                label={t('settings.assignmentMode')}
+                hint={t('settings.assignmentHint')}
+                value={form.assignment_mode}
+                onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
+              >
+                <option value="manual">{t('settings.manual')}</option>
+                <option value="round_robin">{t('settings.roundRobin')}</option>
+              </Select>
+              {/* Who is chosen once the rules (project, language, city, deal type, who is in) have narrowed the team. */}
+              {form.assignment_mode === 'round_robin' && (
+                <Select
+                  label={t('settings.assignmentStrategy')}
+                  hint={t('settings.assignmentStrategyHint')}
+                  value={form.assignment_strategy}
+                  data-testid="assignment-strategy"
+                  onChange={(e) => setForm((prev) => ({ ...prev, assignment_strategy: e.target.value as 'workload' | 'round_robin' | 'performance' }))}
+                >
+                  <option value="workload">{t('settings.strategy.workload')}</option>
+                  <option value="round_robin">{t('settings.strategy.round_robin')}</option>
+                  <option value="performance">{t('settings.strategy.performance')}</option>
+                </Select>
+              )}
+            </div>
           ) : (
             <>
               {/*
@@ -521,6 +546,20 @@ function GeneralForm({
                   data-testid="threshold-stalled"
                   onChange={(e) => setForm((prev) => ({ ...prev, stalled_after_days: e.target.value }))}
                 />
+                {/* How long an interested lead may wait for a person, by how far along they are. */}
+                {(['sla_reservation_minutes', 'sla_visit_minutes', 'sla_hot_minutes', 'sla_interested_minutes'] as const).map((key) => (
+                  <Input
+                    key={key}
+                    type="number"
+                    min={1}
+                    max={10_080}
+                    label={t(`thresholds.${key}`)}
+                    placeholder={String(thresholds?.[key]?.default ?? '')}
+                    value={form[key]}
+                    data-testid={`threshold-${key}`}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                  />
+                ))}
                 <Input
                   type="number"
                   min={1}

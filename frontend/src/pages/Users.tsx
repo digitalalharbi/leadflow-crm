@@ -28,6 +28,7 @@ export function UsersPage() {
   const [cities, setCities] = useState('')
   const [weight, setWeight] = useState('1')
   const [speaks, setSpeaks] = useState<string[]>([])
+  const [handles, setHandles] = useState<('buy' | 'rent')[]>([])
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
 
@@ -78,6 +79,7 @@ export function UsersPage() {
       .filter(Boolean),
     assignment_weight: Number(weight) || 1,
     speaks,
+    handles,
   })
 
   const mutation = useMutation({
@@ -149,6 +151,7 @@ export function UsersPage() {
     setCities((user.covers_cities ?? []).join('، '))
     setWeight(String(user.assignment_weight ?? 1))
     setSpeaks(user.speaks ?? [])
+    setHandles(user.handles ?? [])
     setFieldErrors({})
     setOpen(true)
   }
@@ -387,6 +390,37 @@ export function UsersPage() {
             every language, which is what every rep starts as, and nothing about
             assignment changes until somebody here says otherwise.
           */}
+          {/* Which kinds of deal this rep takes — one of the reasons a lead lands on them. Empty means every kind. */}
+          {editing && (
+            <fieldset className="space-y-2">
+              <legend className="t-small mb-1 font-medium">{t('users.handles')}</legend>
+              <p className="t-caption">{t('users.handlesHint')}</p>
+              <div className="flex flex-wrap gap-2" data-testid="handles">
+                {(['buy', 'rent'] as const).map((kind) => {
+                  const chosen = handles.includes(kind)
+
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={chosen}
+                      data-testid={`handles-${kind}`}
+                      onClick={() => setHandles((previous) => (chosen ? previous.filter((it) => it !== kind) : [...previous, kind]))}
+                      className={cn(
+                        'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
+                        chosen
+                          ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                          : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                      )}
+                    >
+                      {t(`users.handle.${kind}`)}
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          )}
+
           {editing && languages.length > 0 && (
             <fieldset className="space-y-2">
               <legend className="t-small mb-1 font-medium">{t('users.speaks')}</legend>

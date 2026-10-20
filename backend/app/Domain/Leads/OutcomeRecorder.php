@@ -11,6 +11,7 @@ use App\Events\LeadStageChanged;
 use App\Events\LeadWon;
 use App\Models\FollowUp;
 use App\Models\Lead;
+use App\Models\Reservation;
 use App\Models\User;
 use App\Services\Leads\ActivityLogger;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,12 @@ class OutcomeRecorder
             'activity' => ActivityType::QualificationUpdated,
             'followUpHours' => 48,
             'label' => 'مهتم',
+        ],
+        'reservation' => [
+            'stage' => LeadStatus::Negotiation,
+            'activity' => ActivityType::ReservationCreated,
+            'followUpHours' => 24,
+            'label' => 'حجز وحدة',
         ],
         'call_later' => [
             'stage' => LeadStatus::Contacted,
@@ -93,6 +100,12 @@ class OutcomeRecorder
             'label' => 'رقم خاطئ',
         ],
     ];
+
+    /**
+     * What the rep's word does to the interest level: a person's "interested" is a floor and "not
+     * interested" forces cold, over whatever the numbers say.
+     */
+    private const OVERRIDES = ['interested' => 'interested', 'not_interested' => 'not_interested'];
 
     public function __construct(private readonly ActivityLogger $activities) {}
 
@@ -144,6 +157,17 @@ class OutcomeRecorder
             $stageChanged = $this->advance($lead, $spec['stage']);
             $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label'], $via);
 
+            if ($outcome === 'reservation') {
+                $this->reserve($lead, $actor);
+            }
+
+            if (isset(self::OVERRIDES[$outcome])) {
+                // Quietly: it is a statement about the lead's interest, not an edit to its data.
+                Lead::withoutGlobalScopes()->whereKey($lead->id)->update(['interest_override' => self::OVERRIDES[$outcome]]);
+            }
+
+            $lead->refresh();
+            InterestEngine::touch($lead->id, 'outcome');
             $lead->refresh();
 
             /*
@@ -168,6 +192,24 @@ class OutcomeRecorder
                 'summary' => $this->summarise($spec, $stageChanged, $followUp),
             ];
         });
+    }
+
+    /** Holds a unit for the lead — one open reservation at a time, the one they asked about if there is one. */
+    private function reserve(Lead $lead, User $actor): void
+    {
+        if (Reservation::where('lead_id', $lead->id)->whereIn('status', Reservation::OPEN)->exists()) {
+            return;
+        }
+
+        Reservation::create([
+            'lead_id' => $lead->id,
+            'project_id' => $lead->project_id,
+            'property_id' => $lead->interested_property_id,
+            'created_by' => $actor->id,
+            'status' => 'pending',
+            'reserved_at' => now(),
+            'expires_at' => now()->addDays(3),
+        ]);
     }
 
     /** Moves the lead forward only. Never backwards — see OUTCOMES. */

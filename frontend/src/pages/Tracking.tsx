@@ -1,0 +1,104 @@
+import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Eye, MousePointerClick, Plus, Target, TrendingUp, Users } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Button, EmptyState, ErrorState, PageHeader, Select, Skeleton, Tabs } from '@/components/ui'
+import { KpiCard } from '@/components/visual'
+import { AttributionPanel } from '@/components/tracking/AttributionPanel'
+import { LinkCard } from '@/components/tracking/LinkCard'
+import { LinkDrawer } from '@/components/tracking/LinkDrawer'
+import { fetchLinks } from '@/features/tracking'
+import { formatMoneyCompact, formatNumber } from '@/lib/format'
+import { can, useAuth } from '@/stores/auth'
+import { useUi } from '@/stores/ui'
+
+const TABS = ['links', 'attribution'] as const
+type Tab = (typeof TABS)[number]
+
+/**
+ * Tracking: the links a workspace hands out, and who gets the credit for what they bring.
+ *
+ * One screen rather than three, because the questions are one question — "which of the things we
+ * put out into the world made this customer?" — asked of links, of the leads they became, and of
+ * the money those leads turned into.
+ */
+export function TrackingPage() {
+  const { t, i18n } = useTranslation()
+  const user = useAuth((s) => s.user)
+  const toast = useUi((s) => s.toast)
+  const canEdit = can.manageProjects(user)
+  const canSee = can.viewReports(user)
+
+  const [tab, setTab] = useState<Tab>('links')
+  const [days, setDays] = useState(30)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [drawer, setDrawer] = useState(false)
+
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['tracking-links', days], queryFn: () => fetchLinks(days), enabled: canSee })
+
+  // Money and attribution: the people who may read reports, as in the navigation and the API.
+  if (!canSee) return <Navigate to="/" replace />
+
+  const links = data?.links ?? []
+  const sum = (key: 'clicks' | 'visitors' | 'leads' | 'won' | 'revenue') => links.reduce((n, l) => n + l.stats[key], 0)
+
+  const copy = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast(t('tracking.copied'), 'success')
+    } catch {
+      toast(url, 'info')
+    }
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={t('tracking.title')}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={String(days)} onChange={(e) => setDays(Number(e.target.value))} className="filter-pill min-w-32" aria-label={t('common.date')} data-testid="tracking-range">
+              {[7, 30, 90].map((d) => <option key={d} value={d}>{t('dashboard.lastDays', { count: d })}</option>)}
+            </Select>
+            {canEdit && (
+              <Button icon={<Plus className="size-4" />} onClick={() => { setOpenId(null); setDrawer(true) }} data-testid="new-link">{t('tracking.new')}</Button>
+            )}
+          </div>
+        }
+      />
+
+      <Tabs testId="tracking-tabs" value={tab} onChange={setTab} items={TABS.map((key) => ({ key, label: t(`tracking.tabs.${key}`) }))} />
+
+      <div className="mt-3 space-y-3">
+        {tab === 'links' && (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" data-testid="tracking-kpis">
+              <KpiCard testId="tk-clicks" valueTestId="tk-clicks-value" label={t('tracking.stat.clicks')} value={formatNumber(sum('clicks'), i18n.language)} icon={MousePointerClick} />
+              <KpiCard testId="tk-visitors" valueTestId="tk-visitors-value" label={t('tracking.stat.visitors')} value={formatNumber(sum('visitors'), i18n.language)} icon={Eye} />
+              <KpiCard testId="tk-leads" valueTestId="tk-leads-value" label={t('tracking.stat.leads')} value={formatNumber(sum('leads'), i18n.language)} icon={Users} />
+              <KpiCard testId="tk-won" valueTestId="tk-won-value" label={t('tracking.stat.won')} value={formatNumber(sum('won'), i18n.language)} icon={Target} />
+              <KpiCard testId="tk-revenue" valueTestId="tk-revenue-value" label={t('tracking.stat.revenue')} value={formatMoneyCompact(sum('revenue'), 'SAR', i18n.language)} icon={TrendingUp} />
+            </div>
+
+            {isLoading ? <Skeleton className="h-48" /> : isError ? (
+              <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
+            ) : links.length === 0 ? (
+              <EmptyState title={t('tracking.emptyTitle')} body={t('tracking.emptyBody')} />
+            ) : (
+              <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="link-list">
+                {links.map((link) => (
+                  <LinkCard key={link.id} link={link} onOpen={() => { setOpenId(link.id); setDrawer(true) }} onCopy={() => void copy(link.url)} />
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+
+        {tab === 'attribution' && <AttributionPanel days={days} />}
+      </div>
+
+      <LinkDrawer open={drawer} linkId={openId} canEdit={canEdit} onClose={() => setDrawer(false)} />
+    </>
+  )
+}

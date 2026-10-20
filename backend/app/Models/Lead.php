@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Domain\Automation\ActionLog;
 use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Notifications\ImportantAlerts;
+use App\Domain\Tracking\EventRecorder;
+use App\Domain\Tracking\EventType;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
@@ -118,6 +120,12 @@ class Lead extends Model
         static::saved(function (self $lead) {
             if ($lead->wasChanged('status') && $lead->status?->isClosed()) {
                 self::cancelPromisedWork($lead);
+            }
+
+            // The sale is an event on the lead's trail: what the ad platform is told, and what a
+            // tracking link's revenue is made of. Never allowed to break the save.
+            if ($lead->wasChanged('status') && $lead->status === LeadStatus::Won) {
+                app(EventRecorder::class)->outcome($lead, EventType::Won, ['deal_value_minor' => $lead->deal_value_minor]);
             }
 
             // Who can be reached changed: the follow-up plan lays out again, or ends.
@@ -282,6 +290,8 @@ class Lead extends Model
             'score' => 'integer',
             'appointment_interest' => 'boolean',
             'reservation_intent' => 'boolean',
+            'first_touch_at' => 'datetime',
+            'last_touch_at' => 'datetime',
             'bedrooms' => 'integer',
             'area_sqm' => 'decimal:2',
             'budget_min' => 'decimal:2',

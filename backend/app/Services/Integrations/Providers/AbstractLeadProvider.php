@@ -232,8 +232,20 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
             'provider_lead_id',
             'purchase_purpose', 'payment_method', 'preferred_property_type',
             'preferred_location', 'purchase_timeline', 'budget_min', 'budget_max',
+            // What the customer wants, in real estate terms.
+            'transaction_type', 'preferred_district', 'bedrooms', 'area_sqm', 'nationality', 'preferred_channel', 'reservation_intent',
         ];
     }
+
+    /**
+     * What a landing page's own script adds to a form post: who the visitor is, the link they came
+     * through, and where they came from. Carried as-is — these are identifiers and context, never
+     * something a payload is allowed to point at another workspace's rows with.
+     */
+    private const TRACKING_KEYS = [
+        'visitor_id', 'mt_vid', 'tracking_token', 'mt_t', 'referrer', 'landing_url', 'device', 'browser',
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'click_id', 'gclid', 'fbclid', 'ttclid', 'sccid',
+    ];
 
     /** Fields an incoming payload may be mapped onto. */
     public function mappableKeys(): array
@@ -260,6 +272,14 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
 
         if (! isset($mapped['platform'])) {
             $mapped['platform'] = $this->provider()->defaultPlatform()->value;
+        }
+
+        // `utm_source` and friends are aliased onto `source` and `campaign_name` above, which is right
+        // for a human reading the lead and loses the UTM set; keep the originals too.
+        foreach (self::TRACKING_KEYS as $key) {
+            if (isset($payload[$key]) && is_scalar($payload[$key]) && ! isset($mapped[$key])) {
+                $mapped[$key] = (string) $payload[$key];
+            }
         }
 
         return IncomingLead::fromArray($this->provider(), $mapped, $payload);

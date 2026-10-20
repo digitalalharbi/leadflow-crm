@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
+use App\Http\Controllers\Api\V1\AttributionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
@@ -51,6 +52,8 @@ use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
+use App\Http\Controllers\Api\V1\TrackBeaconController;
+use App\Http\Controllers\Api\V1\TrackingLinkController;
 use App\Http\Controllers\Api\V1\TwilioStatusController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
@@ -78,6 +81,9 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+    // What a landing page tells us a visitor did. Public; the link token says whose it is.
+    Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:240,1')->where('token', '[A-Za-z0-9]{6,24}');
 
     // Lead ingestion. Authenticated by the per-endpoint shared secret, not a session.
     Route::prefix('integrations/webhooks/{key}')->middleware('throttle:webhook')->group(function () {
@@ -284,6 +290,14 @@ Route::prefix('v1')->group(function () {
             // Projects
             Route::apiResource('projects', ProjectController::class)
                 ->parameters(['projects' => 'uuid']);
+
+            // Tracking links, and who gets the credit for the leads they bring.
+            Route::get('/tracking/links', [TrackingLinkController::class, 'index']);
+            Route::post('/tracking/links', [TrackingLinkController::class, 'store']);
+            Route::get('/tracking/links/{uuid}', [TrackingLinkController::class, 'show'])->whereUuid('uuid');
+            Route::patch('/tracking/links/{uuid}', [TrackingLinkController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tracking/links/{uuid}', [TrackingLinkController::class, 'destroy'])->whereUuid('uuid');
+            Route::get('/tracking/attribution', AttributionController::class);
 
             // The units a project sells or lets.
             Route::get('/properties', [PropertyController::class, 'index']);

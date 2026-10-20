@@ -6,6 +6,8 @@ use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Leads\DuplicateMatcher;
+use App\Domain\Tracking\Attribution;
+use App\Domain\Tracking\EventRecorder;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadCreated;
@@ -95,6 +97,23 @@ class LeadIngestionService
         return null;
     }
 
+    /**
+     * Put the lead on the trail it left, before any rule reads it. A failure here costs the
+     * attribution, never the lead: a customer who filled in a form is a customer first.
+     */
+    private function attribute(Lead $lead, IncomingLead $incoming): void
+    {
+        if (blank($incoming->visitorId) && blank($incoming->trackingToken)) {
+            return;
+        }
+
+        try {
+            DB::transaction(fn () => app(Attribution::class)->attachLead($lead, $incoming, app(EventRecorder::class)->link($incoming->trackingToken)));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     private function create(Tenant $tenant, IncomingLead $incoming, ?string $phone, $settings): IngestionResult
     {
         $lead = Lead::create([
@@ -148,6 +167,7 @@ class LeadIngestionService
         $lead->saveQuietly();
 
         $this->recordSourceEvent($lead, $incoming, false);
+        $this->attribute($lead, $incoming);
         $this->storeCustomFields($lead, $incoming);
         $this->activities->log($lead, ActivityType::Created, null, null, ['provider' => $incoming->provider->value]);
 

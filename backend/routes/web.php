@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\SharedFileController;
 use App\Http\Controllers\ApprovalLinkController;
 use App\Http\Controllers\EmailTrackingController;
+use App\Http\Controllers\TrackerScriptController;
+use App\Http\Controllers\TrackingRedirectController;
 use Illuminate\Support\Facades\Route;
 
 // API-only application. The React SPA is served by Nginx (or `npm run dev` locally).
@@ -58,3 +60,11 @@ Route::middleware('throttle:120,1')->group(function () {
     Route::get('/e/c/{token}', [EmailTrackingController::class, 'click'])->name('email.click');
     Route::match(['get', 'post'], '/e/u/{token}', [EmailTrackingController::class, 'unsubscribe'])->name('email.unsubscribe');
 });
+
+/*
+ * The tracking link: `/t/{token}` records the click and sends the visitor on. Short, because it is
+ * printed on billboards and pasted into messages; throttled, because it is public and writes.
+ * `/tracker/{token}.js` is the script a landing page embeds to report what the visitor does next.
+ */
+Route::get('/t/{token}', TrackingRedirectController::class)->middleware('throttle:300,1')->where('token', '[A-Za-z0-9]{6,24}')->name('tracking.redirect');
+Route::get('/tracker/{token}.js', TrackerScriptController::class)->middleware('throttle:120,1')->where('token', '[A-Za-z0-9]{6,24}')->name('tracking.script');

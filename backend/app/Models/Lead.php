@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Automation\ActionLog;
+use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Notifications\ImportantAlerts;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
@@ -117,6 +118,15 @@ class Lead extends Model
         static::saved(function (self $lead) {
             if ($lead->wasChanged('status') && $lead->status?->isClosed()) {
                 self::cancelPromisedWork($lead);
+            }
+
+            // Who can be reached changed: the follow-up plan lays out again, or ends.
+            if ($lead->wasChanged(['whatsapp_opt_out_at', 'email_opt_out_at', 'email_bounced_at']) && ! $lead->wasRecentlyCreated) {
+                try {
+                    app(FollowUpPlanner::class)->contactChanged($lead);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
             }
         });
     }
@@ -263,6 +273,8 @@ class Lead extends Model
             'handed_off_at' => 'datetime',
             'stage_entered_at' => 'datetime',
             'facts_at' => 'datetime',
+            'follow_up_plan' => 'array',
+            'follow_up_planned_at' => 'datetime',
             'status' => LeadStatus::class,
             'temperature' => LeadTemperature::class,
             'qualification_status' => QualificationStatus::class,

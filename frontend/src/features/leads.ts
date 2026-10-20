@@ -1,3 +1,4 @@
+import type { FollowUpPlan } from './followUpPlan'
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
 import type {
   FollowUp, Lead, LeadActivity, LeadAppointment, LeadCall, LeadListItem, LeadNote, LeadStatus, NextAction,
@@ -106,6 +107,8 @@ export interface LeadDetailResponse {
   conversation?: ConversationFacts
   /** Present while a person holds a lead automation handed over. */
   handoff?: HandoffBrief | null
+  /** The next week of automatic follow-up: null for a lead that predates the planner. */
+  follow_up?: FollowUpPlan | null
   intelligence?: LeadIntelligence
   activities: LeadActivity[]
   notes: LeadNote[]

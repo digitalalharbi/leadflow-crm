@@ -165,12 +165,18 @@ class NoLeadWaitsForAPersonTest extends TestCase
         $this->assertNotNull($lead->first_contact_at);
 
         // What is still to come, each step void the moment they reply.
+        // The journey's four are there, and the follow-up plan adds its own rungs beside them.
         $waiting = $this->pending($lead);
-        $this->assertEqualsCanonicalizing(
-            ['ask_qualification', 'send_whatsapp', 'send_email', 'hand_off'],
-            $waiting->map(fn ($s) => $s->action['type'])->all(),
-        );
-        $this->assertTrue($waiting->every(fn ($s) => ($s->action['unless'] ?? null) === 'replied'));
+        $types = $waiting->map(fn ($s) => $s->action['type'])->unique()->all();
+        foreach (['ask_qualification', 'send_whatsapp', 'send_email', 'hand_off'] as $type) {
+            $this->assertContains($type, $types);
+        }
+        // Every one of them is void the moment the customer answers or somebody calls.
+        $this->assertTrue($waiting->every(fn ($s) => in_array($s->action['unless'] ?? null, ['replied', 'contacted'], true)));
+        // And the plan never writes to the customer twice for the same purpose.
+        $messages = $waiting->filter(fn ($s) => str_starts_with($s->action['type'], 'send_'))
+            ->map(fn ($s) => $s->action['type'].'|'.($s->action['purpose'] ?? ''));
+        $this->assertSame($messages->unique()->count(), $messages->count());
 
         // So no rep is asked to do what automation is already doing.
         $this->assertNull($this->queue()['lead']);
@@ -202,8 +208,12 @@ class NoLeadWaitsForAPersonTest extends TestCase
         $this->assertSame('replied', $lead->needs_human_reason);
         $this->assertGreaterThan($scoreBefore, $lead->score);
 
-        // Nothing that was waiting for silence is still waiting.
-        $this->assertCount(0, $this->pending($lead));
+        // Nothing that was waiting for silence is still waiting: no message to the customer, no
+        // hand-off. What remains is the rep's own plan — calls that fall away once somebody has called.
+        $left = $this->pending($lead);
+        $this->assertCount(0, $left->filter(fn ($s) => str_starts_with($s->action['type'], 'send_') || ($s->action['unless'] ?? null) === 'replied'
+            || in_array($s->action['type'], ['hand_off', 'ask_qualification'], true)));
+        $this->assertTrue($left->every(fn ($s) => ($s->action['unless'] ?? null) === 'contacted' && ! empty($s->action['plan'])));
 
         // And it is the first thing the rep sees, with the reason.
         $queue = $this->queue();

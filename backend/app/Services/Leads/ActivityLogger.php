@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Automation\HumanTakeover;
 use App\Enums\ActivityType;
 use App\Models\Lead;
@@ -36,6 +37,15 @@ class ActivityLogger
                 $type === ActivityType::StatusChanged && ($meta['to'] ?? null) === 'no_response' => $takeover->noResponse($lead),
                 default => null,
             };
+        }
+
+        // A booked visit ends the automatic follow-up: the rep has it from here.
+        if ($type === ActivityType::AppointmentCreated) {
+            try {
+                app(FollowUpPlanner::class)->appointmentBooked($lead);
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return $activity;

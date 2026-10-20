@@ -151,7 +151,8 @@ class ActionExecutor
         $scheduled = ScheduledAction::create([
             'lead_id' => $lead->id,
             'rule_name' => $action['rule_name'] ?? 'حواجز الأتمتة',
-            'action' => $action,
+            // Marked, so "nothing reached them" can tell a message held for the night from one never sent.
+            'action' => $action + ['deferred' => true],
             'run_at' => $verdict['until'],
             'status' => ScheduledAction::PENDING,
         ]);
@@ -713,6 +714,12 @@ class ActionExecutor
 
         if (($action['when'] ?? null) === 'unreached' && $lead->automation_state === Lead::AUTOMATION_NURTURING) {
             return ['ok' => true, 'description' => 'وصلت الأتمتة إلى العميل — يستمر المسار.'];
+        }
+
+        // Their welcome is held for the quiet hours: it will reach them in the morning, so a person is not needed.
+        if (($action['when'] ?? null) === 'unreached' && ScheduledAction::withoutGlobalScopes()->where('lead_id', $lead->id)->where('status', ScheduledAction::PENDING)->get()
+            ->contains(fn (ScheduledAction $s) => ! empty($s->action['deferred']) && Recovery::isContact((string) ($s->action['type'] ?? '')))) {
+            return ['ok' => true, 'description' => 'رسائل العميل مؤجلة لانتهاء ساعات الهدوء — يستمر المسار.'];
         }
 
         if ($lead->automation_state === Lead::AUTOMATION_HANDED_OFF && $lead->needs_human_reason === $reason) {

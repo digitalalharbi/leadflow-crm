@@ -86,6 +86,8 @@ export interface Ref {
 
 export interface LeadListItem {
   id: string
+  interest_level?: string
+  interest_score?: number
   full_name: string
   phone: string | null
   whatsapp: string | null
@@ -160,6 +162,11 @@ export interface Lead extends LeadListItem {
   qualification_status: QualificationStatus
   qualified_at: string | null
   appointment_interest: boolean | null
+  /** How interested they are, from what they do — apart from how good a fit (score). */
+  interest_level?: string
+  interest_score?: number
+  interest_override?: 'interested' | 'not_interested' | null
+  interest_signals?: { key: string; points: number; count?: number }[]
   /** Real estate facts: what they want, where, how big, and how they want to be reached. */
   transaction_type?: 'buy' | 'rent' | null
   preferred_district?: string | null

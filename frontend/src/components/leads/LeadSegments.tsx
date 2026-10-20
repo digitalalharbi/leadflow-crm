@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle, BadgeCheck, BellRing, Bookmark, Flame, Gem, MessageCircleReply, MessageCircleOff, Snowflake, Sparkles, Star, UserCog, UserX, Users2, X,
+  AlertTriangle, BadgeCheck, BellRing, Bookmark, Flame, Gem, HeartHandshake, MessageCircleReply, MessageCircleOff, Snowflake, Sparkles, Star, UserCog, UserX, Users2, X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn'
 
 type SegmentKey =
   | 'all' | 'priority' | 'hot' | 'awaiting_contact' | 'overdue' | 'unassigned' | 'replied'
-  | 'needs_human' | 'no_reply' | 'high_value' | 'new_today' | 'qualified' | 'stalled'
+  | 'needs_human' | 'no_reply' | 'high_value' | 'new_today' | 'qualified' | 'stalled' | 'interested'
 
 type Counts = Record<SegmentKey, number>
 
@@ -30,6 +30,7 @@ const SEGMENTS: Array<{ key: SegmentKey; Icon: LucideIcon; apply: Partial<LeadFi
   { key: 'new_today', Icon: Sparkles, apply: { view: 'new_today' } },
   { key: 'qualified', Icon: BadgeCheck, apply: { view: 'qualified' } },
   { key: 'stalled', Icon: Snowflake, apply: { view: 'stalled' } },
+  { key: 'interested', Icon: HeartHandshake, apply: { view: 'interested' } },
 ]
 
 /** Everything a segment can set, so choosing one clears the others. */
@@ -75,6 +76,7 @@ function isActive(key: SegmentKey, filters: LeadFilters): boolean {
     new_today: filters.view === 'new_today',
     qualified: filters.view === 'qualified',
     stalled: filters.view === 'stalled',
+    interested: filters.view === 'interested',
   }
 
   if (key === 'all') return !Object.values(on).some(Boolean)

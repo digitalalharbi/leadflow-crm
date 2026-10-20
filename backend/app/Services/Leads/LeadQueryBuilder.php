@@ -112,6 +112,7 @@ class LeadQueryBuilder
         $query
             ->when($request->filled('status'), fn ($q) => $q->whereIn('status', (array) $request->input('status')))
             ->when($request->filled('classification'), fn ($q) => $this->applyClassification($q, (array) $request->input('classification')))
+            ->when($request->filled('interest_level'), fn ($q) => $q->whereIn('interest_level', (array) $request->input('interest_level')))
             ->when($request->filled('temperature'), fn ($q) => $q->whereIn('temperature', (array) $request->input('temperature')))
             ->when($request->filled('platform'), fn ($q) => $q->whereIn('platform', (array) $request->input('platform')))
             ->when($request->filled('source'), fn ($q) => $q->where('source', $request->input('source')))

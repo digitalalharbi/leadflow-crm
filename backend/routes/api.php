@@ -205,6 +205,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/assign', [LeadController::class, 'assign']);
             Route::post('/leads/{uuid}/status', [LeadController::class, 'changeStatus']);
             Route::post('/leads/{uuid}/temperature', [LeadController::class, 'changeTemperature']);
+            Route::post('/leads/{uuid}/interest', [LeadController::class, 'setInterest']);
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);
             // What came of a call, once the rep knows. Nothing watches a rep's

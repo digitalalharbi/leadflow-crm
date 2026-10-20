@@ -98,6 +98,9 @@ Schedule::command('leadflow:sync-sheets')
  * message, an hour, four hours, a day… Every five minutes, so "15 min" means
  * fifteen to twenty.
  */
+// Interest decays with silence and no event says so: re-read what has gone stale, hourly.
+Schedule::command('leadflow:refresh-interest')->hourly()->withoutOverlapping();
+
 Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlapping()
     ->after(fn () => RoutineClock::stamp('no_reply_review'));
 

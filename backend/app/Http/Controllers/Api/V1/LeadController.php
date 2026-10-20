@@ -9,6 +9,7 @@ use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Conversation\ConversationIntelligence;
 use App\Domain\Leads\DuplicateFinder;
 use App\Domain\Leads\HandoffBrief;
+use App\Domain\Leads\InterestEngine;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\LeadMerger;
@@ -552,6 +553,32 @@ class LeadController extends Controller
         ]);
 
         return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project']))]);
+    }
+
+    /**
+     * A person's word on how interested the lead is, over what the numbers say.
+     *
+     * "Interested" is a floor the arithmetic cannot take away; "not interested" forces the lead
+     * cold and says so in the history. Sending null gives the decision back to the numbers.
+     */
+    public function setInterest(Request $request, string $uuid)
+    {
+        $lead = $this->findLead($uuid);
+        $this->authorize('update', $lead);
+
+        $data = $request->validate(['override' => ['present', 'nullable', Rule::in(['interested', 'not_interested'])]]);
+
+        $before = $lead->interest_level;
+        $lead->forceFill(['interest_override' => $data['override']])->saveQuietly();
+        app(InterestEngine::class)->refresh($lead->refresh(), 'person');
+        $lead->refresh();
+
+        $this->activities->log($lead, ActivityType::InterestChanged, $request->user(), null, [
+            'override' => $data['override'], 'from' => $before, 'to' => $lead->interest_level,
+        ]);
+        $this->audit->log('lead.interest_set', $request->user(), $lead, ['before' => ['level' => $before], 'after' => ['override' => $data['override'], 'level' => $lead->interest_level]]);
+
+        return ApiResponse::success(['lead' => new LeadResource($lead->load(['assignee:id,uuid,name', 'project:id,uuid,name', 'lostReason:id,uuid,label']))]);
     }
 
     public function addNote(Request $request, string $uuid)

@@ -34,6 +34,9 @@ final class Vocabulary
 
     public const RESERVATION = 'reservation_intent';
 
+    /** What they asked about: the price, the financing, the location, whether it is still available. Accumulates, like objections. */
+    public const INQUIRY = 'inquiry';
+
     /** Free-valued, validated by shape rather than by a list: a number of rooms, a district's name. */
     public const BEDROOMS = 'bedrooms';
 
@@ -52,6 +55,7 @@ final class Vocabulary
         self::PAYMENT => ['cash', 'financing'],
         self::PURPOSE => ['residence', 'investment'],
         self::RESERVATION => ['ready', 'interested'],
+        self::INQUIRY => ['price', 'financing', 'location', 'availability'],
     ];
 
     /** One value at a time (the latest wins); an objection, by contrast, accumulates. */

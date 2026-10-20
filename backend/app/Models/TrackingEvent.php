@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Leads\InterestEngine;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,12 @@ class TrackingEvent extends Model
     use BelongsToTenant;
 
     public const UPDATED_AT = null;
+
+    protected static function booted(): void
+    {
+        // A page view or a brochure open changes how interested the lead is.
+        static::saved(fn (self $m) => in_array($m->event_type, ['visit', 'project_view', 'property_view', 'brochure_open'], true) && InterestEngine::touch($m->lead_id, 'tracking'));
+    }
 
     protected $fillable = [
         'tracking_link_id', 'lead_id', 'visitor_id', 'event_type', 'occurred_at', 'project_id', 'property_id',

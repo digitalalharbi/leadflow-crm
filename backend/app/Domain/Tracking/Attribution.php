@@ -3,6 +3,7 @@
 namespace App\Domain\Tracking;
 
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Leads\InterestEngine;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
@@ -90,6 +91,9 @@ class Attribution
         if ($updates !== []) {
             $lead->forceFill($updates)->saveQuietly();
         }
+
+        // Their earlier visits are theirs now: how interested they are includes them.
+        $visitor !== null && InterestEngine::touch($lead->id, 'attribution');
 
         if ($last !== null) {
             app(EventRecorder::class)->record(EventType::FormSubmit, [

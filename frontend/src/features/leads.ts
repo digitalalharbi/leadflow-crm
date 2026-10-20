@@ -9,6 +9,7 @@ export interface LeadFilters {
   search?: string
   status?: string[]
   temperature?: string[]
+  interest_level?: string[]
   classification?: string[]
   platform?: string[]
   project_id?: string
@@ -201,6 +202,11 @@ export interface PlacedCall {
 
 export function logContact(id: string, channel: 'call' | 'whatsapp' | 'email' | 'no_answer') {
   return apiPost<{ lead: Lead; call: PlacedCall | null }>(`/leads/${id}/contact`, { channel })
+}
+
+/** A person's word on how interested a lead is; null hands the decision back to the numbers. */
+export function setInterest(id: string, override: 'interested' | 'not_interested' | null) {
+  return apiPost<{ lead: Lead }>(`/leads/${id}/interest`, { override })
 }
 
 export function fetchProjects() {

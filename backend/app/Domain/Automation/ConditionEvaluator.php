@@ -122,6 +122,8 @@ class ConditionEvaluator
             'temperature' => $lead->temperature?->value,
             'qualification_status' => $lead->qualification_status?->value,
             'score' => (int) $lead->score,
+            'interest_level' => $lead->interest_level,
+            'interest_score' => (int) $lead->interest_score,
             'platform' => $lead->platform,
             'source' => $lead->source,
             'campaign_name' => $lead->campaign_name,

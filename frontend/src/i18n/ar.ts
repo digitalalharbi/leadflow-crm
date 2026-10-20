@@ -1661,6 +1661,7 @@ export default {
       new_today: 'جدد اليوم',
       qualified: 'مؤهلون',
       stalled: 'راكدون',
+      interested: 'مهتمون',
       mine: 'عروضي',
       save: 'حفظ هذا العرض',
       saveName: 'اسم العرض',
@@ -2601,6 +2602,17 @@ export default {
     answers: { ad: 'أي إعلان جلب العملاء؟', interested: 'أي حملة جلبت المهتمين؟', visit: 'أي مصدر جلب الزيارات؟', reservation: 'أي حملة جلبت الحجوزات؟', revenue: 'أي قناة جلبت الإيراد؟' },
     unattributed: 'بلا إسناد', noValue: 'غير محدد', unattributedRing: 'عملاء بلا إسناد', creditShare: 'حصة العملاء', revenueRank: 'الإيراد',
     totals: '{{leads}} عميل · {{won}} صفقة',
+  },
+  interest: {
+    title: 'مستوى الاهتمام', ladder: 'درجات الاهتمام', clear: 'إلغاء «{{word}}»',
+    level: { cold: 'بارد', warm: 'دافئ', interested: 'مهتم', hot: 'ساخن', visit_ready: 'جاهز للزيارة', reservation_ready: 'جاهز للحجز' },
+    override: { interested: 'مهتم', not_interested: 'غير مهتم' },
+    signal: {
+      replied: 'ردّ على الرسائل', recent_reply: 'ردّ حديثًا', brochure_opened: 'فتح البروشور', email_engaged: 'تفاعل مع البريد', project_viewed: 'شاهد صفحة المشروع',
+      came_back: 'عاد في يوم آخر', asked_price: 'سأل عن السعر', asked_financing: 'سأل عن التمويل', asked_for_visit: 'طلب زيارة', visit_booked: 'حُجزت زيارة', visited: 'زار الموقع',
+      asked_to_reserve: 'طلب الحجز', qualified: 'مؤهل', no_response: 'لا رد بعد عدة رسائل', unsubscribed: 'ألغى الاشتراك', unreachable: 'لا وسيلة تواصل صالحة',
+      gone_quiet: 'صمت أسبوعين', not_interested: 'قال إنه غير مهتم', wrong_contact: 'رقم خاطئ',
+    },
   },
   qualification: {
     gaps: {

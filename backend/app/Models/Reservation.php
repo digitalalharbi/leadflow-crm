@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Leads\InterestEngine;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** A property held for a lead: the step between a visit and a sale. */
 class Reservation extends Model
 {
+    protected static function booted(): void
+    {
+        // Whatever this is, it changes how interested the lead is.
+        static::saved(fn (self $m) => true && InterestEngine::touch($m->lead_id, 'reservation'));
+    }
+
     use BelongsToTenant, HasUuid;
 
     public const OPEN = ['pending', 'confirmed'];

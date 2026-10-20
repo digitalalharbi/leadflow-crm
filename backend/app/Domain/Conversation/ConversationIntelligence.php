@@ -2,6 +2,7 @@
 
 namespace App\Domain\Conversation;
 
+use App\Domain\Leads\InterestEngine;
 use App\Enums\MessageDirection;
 use App\Models\Lead;
 use App\Models\LeadFact;
@@ -72,6 +73,9 @@ class ConversationIntelligence
         $this->completer->fromReply($lead, $latest);
         $this->completer->applyFacts($lead->refresh(), $stored);
         $this->completer->syncAnswers($lead->refresh());
+
+        // What they asked and what they want change how interested they are.
+        InterestEngine::touch($lead->id, 'conversation');
 
         return ['engine' => $engine, 'note' => $note, 'facts' => count($facts), 'skipped' => false];
     }

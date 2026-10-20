@@ -36,7 +36,18 @@ class QualificationCompleter
         'purpose' => 'purpose', 'purchase_purpose' => 'purpose',
         'property_type' => 'property', 'unit_type' => 'property', 'service' => 'property', 'type' => 'property',
         'appointment' => 'appointment', 'visit' => 'appointment', 'meeting' => 'appointment', 'viewing' => 'appointment',
+        // The real estate questions.
+        'transaction' => 'transaction', 'buy_or_rent' => 'transaction', 'deal_type' => 'transaction',
+        'payment' => 'payment', 'payment_method' => 'payment', 'financing' => 'payment', 'cash_or_financing' => 'payment',
+        'bedrooms' => 'bedrooms', 'rooms' => 'bedrooms', 'bedroom' => 'bedrooms',
+        'district' => 'district', 'neighborhood' => 'district', 'neighbourhood' => 'district',
+        'city' => 'city', 'location' => 'city',
+        'reservation' => 'reservation', 'reserve' => 'reservation',
     ];
+
+    private const TRANSACTION = ['buy' => 'شراء', 'rent' => 'إيجار'];
+
+    private const PAYMENT = ['cash' => 'كاش', 'financing' => 'تمويل'];
 
     private const TIMELINE = ['immediate' => 'فورًا', 'within_1_month' => 'خلال شهر', 'within_3_months' => 'خلال 3 أشهر', 'within_6_months' => 'خلال 6 أشهر', 'later' => 'لاحقًا'];
 
@@ -82,6 +93,28 @@ class QualificationCompleter
             $fill['appointment_interest'] = true;
         }
 
+        // What they want, in real estate terms — onto the blank fields, never over an answer.
+        $said = fn (string $kind) => $facts->firstWhere('kind', $kind)?->value;
+
+        if (($v = $said(Vocabulary::TRANSACTION)) && blank($lead->transaction_type)) {
+            $fill['transaction_type'] = $v;
+        }
+        if (($v = $said(Vocabulary::PAYMENT)) && (blank($lead->payment_method) || $lead->payment_method === 'unknown')) {
+            $fill['payment_method'] = $v;
+        }
+        if (($v = $said(Vocabulary::PURPOSE)) && (blank($lead->purchase_purpose) || $lead->purchase_purpose === 'unknown')) {
+            $fill['purchase_purpose'] = $v;
+        }
+        if (($v = $said(Vocabulary::BEDROOMS)) && $lead->bedrooms === null) {
+            $fill['bedrooms'] = (int) $v;
+        }
+        if (($v = $said(Vocabulary::DISTRICT)) && blank($lead->preferred_district)) {
+            $fill['preferred_district'] = $v;
+        }
+        if ($said(Vocabulary::RESERVATION) === 'ready' && ! $lead->reservation_intent) {
+            $fill['reservation_intent'] = true;
+        }
+
         $fill = array_filter($fill, fn ($v) => $v !== null);
 
         if ($fill === []) {
@@ -89,6 +122,9 @@ class QualificationCompleter
         }
 
         $lead->fill($fill)->save();
+
+        // The score and the classification follow what was just learned, now — not at the next edit.
+        $this->scoring->refresh($lead->refresh(), 'conversation');
 
         return array_keys($fill);
     }
@@ -153,6 +189,12 @@ class QualificationCompleter
             'purpose' => [$lead->purchase_purpose && $lead->purchase_purpose !== 'unknown' ? $lead->purchase_purpose : null, self::PURPOSE[$lead->purchase_purpose] ?? null],
             'property' => [$lead->preferred_property_type, self::PROPERTY[$lead->preferred_property_type] ?? $lead->preferred_property_type],
             'appointment' => [$lead->appointment_interest ? true : null, null],
+            'transaction' => [$lead->transaction_type, self::TRANSACTION[$lead->transaction_type] ?? null],
+            'payment' => [$lead->payment_method && $lead->payment_method !== 'unknown' ? $lead->payment_method : null, self::PAYMENT[$lead->payment_method] ?? null],
+            'bedrooms' => [$lead->bedrooms, null],
+            'district' => [$lead->preferred_district, null],
+            'city' => [$lead->preferred_location, null],
+            'reservation' => [$lead->reservation_intent ? true : null, null],
             default => [null, null],
         };
 
@@ -161,8 +203,8 @@ class QualificationCompleter
         }
 
         return match ($question->type) {
-            'number' => $what === 'budget' ? (int) $code : null,
-            'boolean' => $what === 'appointment' ? true : null,
+            'number' => in_array($what, ['budget', 'bedrooms'], true) ? (int) $code : null,
+            'boolean' => in_array($what, ['appointment', 'reservation'], true) ? true : null,
             'text' => $what === 'budget' ? number_format((float) $code).' ر.س' : ($label ?? (string) $code),
             'select' => $this->option($question, (string) $code, $label),
             default => null,

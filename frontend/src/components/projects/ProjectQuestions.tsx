@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { Building2, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
-  createProjectQuestion, deleteProjectQuestion, fetchProjectQuestions, updateProjectQuestion,
+  addRealEstateQuestions, createProjectQuestion, deleteProjectQuestion, fetchProjectQuestions, updateProjectQuestion,
   type ProjectQuestion, type QuestionOption, type QuestionRule, type QuestionType, type RuleOp,
 } from '@/features/projectQuestions'
 import { ApiError } from '@/lib/api'
@@ -75,6 +75,15 @@ export function ProjectQuestions({ projectId }: { projectId: string }) {
     },
   })
 
+  const addRealEstate = useMutation({
+    mutationFn: () => addRealEstateQuestions(projectId),
+    onSuccess: (result) => {
+      refresh()
+      toast(result.created > 0 ? t('pq.realEstateAdded', { count: result.created }) : t('pq.realEstateHad'), 'success')
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
   const remove = useMutation({
     mutationFn: () => deleteProjectQuestion(editing!.id),
     onSuccess: () => {
@@ -122,9 +131,14 @@ export function ProjectQuestions({ projectId }: { projectId: string }) {
         description={t('pq.hint')}
         action={
           canEdit ? (
-            <Button size="sm" icon={<Plus className="size-4" />} onClick={openCreate} data-testid="add-question">
-              {t('pq.add')}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" icon={<Building2 className="size-4" />} loading={addRealEstate.isPending} onClick={() => addRealEstate.mutate()} data-testid="add-real-estate-questions">
+                {t('pq.realEstate')}
+              </Button>
+              <Button size="sm" icon={<Plus className="size-4" />} onClick={openCreate} data-testid="add-question">
+                {t('pq.add')}
+              </Button>
+            </div>
           ) : undefined
         }
       />

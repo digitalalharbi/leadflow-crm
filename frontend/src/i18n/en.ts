@@ -52,6 +52,11 @@ export default {
     qualification: 'Qualification',
   },
   conversation: {
+    transaction: { buy: 'Buy', rent: 'Rent' },
+    payment: { cash: 'Cash', financing: 'Financing' },
+    purpose: { residence: 'Residence', investment: 'Investment' },
+    reservation: { ready: 'Ready to reserve', interested: 'Asking about reserving' },
+    bedrooms: '{{count}} bedrooms',
     title: 'What the customer said',
     analyze: 'Analyse the conversation now',
     empty: 'The customer has not written anything yet.',
@@ -2071,6 +2076,7 @@ export default {
   },
 
   pq: {
+    realEstate: 'Real estate questions', realEstateAdded: '{{count}} real estate questions added.', realEstateHad: 'The real estate questions are all there.',
     card: '{{project}} questions',
     wrongFit: 'Wrong fit',
     unanswered: '—',
@@ -2338,6 +2344,10 @@ export default {
     totals: '{{leads}} leads · {{won}} won',
   },
   qualification: {
+    gaps: {
+      title: 'Qualification complete', next: 'Next question', done: 'Fully qualified',
+      q: { project: 'Project', transaction: 'Buy or rent', budget: 'Budget', district: 'District', property_type: 'Property type', bedrooms: 'Bedrooms', payment: 'Payment', timeline: 'Timeline', visit: 'Visit', reservation: 'Reservation' },
+    },
     transaction: 'Buy or rent',
     district: 'Preferred district',
     bedrooms: 'Bedrooms',

@@ -107,6 +107,11 @@ export default {
     qualification: 'التأهيل',
   },
   conversation: {
+    transaction: { buy: 'شراء', rent: 'إيجار' },
+    payment: { cash: 'كاش', financing: 'تمويل' },
+    purpose: { residence: 'سكن', investment: 'استثمار' },
+    reservation: { ready: 'جاهز للحجز', interested: 'يسأل عن الحجز' },
+    bedrooms: '{{count}} غرف',
     title: 'ماذا قال العميل',
     analyze: 'حلّل المحادثة الآن',
     empty: 'لم يكتب العميل شيئًا بعد.',
@@ -2295,6 +2300,7 @@ export default {
   },
 
   pq: {
+    realEstate: 'أسئلة العقار', realEstateAdded: 'أُضيف {{count}} سؤال عقاري.', realEstateHad: 'أسئلة العقار موجودة كلها.',
     card: 'أسئلة {{project}}',
     wrongFit: 'غير مناسب',
     unanswered: '—',
@@ -2597,6 +2603,10 @@ export default {
     totals: '{{leads}} عميل · {{won}} صفقة',
   },
   qualification: {
+    gaps: {
+      title: 'اكتمال التأهيل', next: 'السؤال التالي', done: 'اكتمل التأهيل',
+      q: { project: 'المشروع', transaction: 'شراء أم إيجار', budget: 'الميزانية', district: 'الحي', property_type: 'نوع العقار', bedrooms: 'الغرف', payment: 'الدفع', timeline: 'التوقيت', visit: 'الزيارة', reservation: 'الحجز' },
+    },
     transaction: 'شراء أم إيجار',
     district: 'الحي المفضل',
     bedrooms: 'عدد الغرف',

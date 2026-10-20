@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { apiGet, apiLogin } from '../fixtures/api'
+import { apiGet, apiLogin, inboundWhatsappMessage, postWhatsappWebhook } from '../fixtures/api'
 import { ALPHA, LEADS } from '../fixtures/data'
 import { authenticateAs, openLeadByName } from '../fixtures/pages'
 import { resetFixtures } from '../fixtures/seed'
@@ -101,5 +101,52 @@ test.describe('Real estate model', () => {
     await expect(card).toContainText('220')
     await expect(card).toContainText('واتساب')
     await expect(card).toContainText('جاهز للحجز')
+  })
+
+  test('a manager adds the real estate questions to a project in one press, and once', async ({ page }) => {
+    await authenticateAs(page, ALPHA.admin.email)
+    await page.goto(`/projects/${projectId}?tab=questions`)
+
+    await page.getByTestId('add-real-estate-questions').click()
+    const list = page.getByTestId('question-list')
+    await expect(list.locator('li')).toHaveCount(9)
+    await expect(list).toContainText('شراء أم إيجار')
+    await expect(list).toContainText('هل أنت جاهز للحجز')
+
+    await page.getByTestId('add-real-estate-questions').click()
+    await expect(list.locator('li')).toHaveCount(9)
+  })
+
+  test('what a customer volunteers becomes facts, fills the lead, and closes the gaps', async ({ page }) => {
+    const admin = await apiLogin(ALPHA.admin.email)
+    let id = ''
+    try {
+      const created = await admin.context.post('/api/v1/leads', { data: { full_name: 'عميل يتكلم عقار', phone: '0509990077', project_id: projectId } })
+      expect(created.ok()).toBeTruthy()
+      id = (await created.json()).data.lead.id as string
+    } finally {
+      await admin.dispose()
+    }
+
+    const delivered = await postWhatsappWebhook(inboundWhatsappMessage('966509990077', 'ابغى اشتري فيلا 4 غرف في حي الياسمين كاش للسكن', `wamid.e2e.re.${Date.now()}`))
+    expect(delivered.status).toBe(200)
+
+    await authenticateAs(page, ALPHA.admin.email)
+    await page.goto(`/leads/${id}`)
+
+    const card = page.getByTestId('conversation-card')
+    await expect(card.getByTestId('fact-district')).toContainText('الياسمين')
+    await expect(card.getByTestId('fact-bedrooms')).toContainText('4')
+    await expect(card.getByTestId('fact-payment')).toContainText('كاش')
+    await expect(card.getByTestId('fact-transaction')).toContainText('شراء')
+
+    // What was said is known now: it is not among the questions still to ask.
+    const gaps = page.getByTestId('qualification-gaps')
+    await expect(gaps).toBeVisible()
+    for (const answered of ['district', 'bedrooms', 'payment', 'transaction']) {
+      await expect(gaps.locator(`[data-key="${answered}"]`)).toHaveCount(0)
+    }
+    await expect(gaps.getByTestId('gaps-missing').locator('[data-key="budget"]')).toBeVisible()
+    await expect(gaps.getByTestId('gaps-next')).toHaveText(/\S/)
   })
 })

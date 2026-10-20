@@ -75,6 +75,12 @@ final class ClaudeExtractor
                         'signal' => $enum(Vocabulary::BUDGET), 'min' => ['type' => 'integer'], 'max' => ['type' => 'integer'],
                     ]],
                     'objections' => ['type' => 'array', 'items' => $enum(Vocabulary::OBJECTION)],
+                    'transaction' => $enum(Vocabulary::TRANSACTION),
+                    'payment' => $enum(Vocabulary::PAYMENT),
+                    'purpose' => $enum(Vocabulary::PURPOSE),
+                    'reservation_intent' => $enum(Vocabulary::RESERVATION),
+                    'bedrooms' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20],
+                    'district' => ['type' => 'string', 'description' => 'Only the neighbourhood name, nothing else.'],
                 ],
             ],
         ];
@@ -99,6 +105,18 @@ final class ClaudeExtractor
         $add(Vocabulary::SERVICE, $input['service_interest'] ?? null);
         $add(Vocabulary::APPOINTMENT, $input['appointment_intent'] ?? null);
         $add(Vocabulary::SENTIMENT, $input['sentiment'] ?? null);
+        $add(Vocabulary::TRANSACTION, $input['transaction'] ?? null);
+        $add(Vocabulary::PAYMENT, $input['payment'] ?? null);
+        $add(Vocabulary::PURPOSE, $input['purpose'] ?? null);
+        $add(Vocabulary::RESERVATION, $input['reservation_intent'] ?? null);
+
+        // Free-valued facts are held to their shape, not a list.
+        if (is_numeric($input['bedrooms'] ?? null)) {
+            $add(Vocabulary::BEDROOMS, (string) (int) $input['bedrooms']);
+        }
+        if (is_string($input['district'] ?? null)) {
+            $add(Vocabulary::DISTRICT, trim($input['district']));
+        }
 
         $budget = (array) ($input['budget'] ?? []);
         if (is_string($budget['signal'] ?? null) && Vocabulary::valid(Vocabulary::BUDGET, $budget['signal'])) {

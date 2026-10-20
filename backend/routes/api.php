@@ -169,6 +169,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard/journey', [JourneyController::class, 'show']);
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
+            Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);
             Route::patch('/project-questions/{uuid}', [ProjectQuestionController::class, 'update']);
             Route::delete('/project-questions/{uuid}', [ProjectQuestionController::class, 'destroy']);
             Route::get('/leads/{uuid}/answers', [LeadAnswerController::class, 'show']);

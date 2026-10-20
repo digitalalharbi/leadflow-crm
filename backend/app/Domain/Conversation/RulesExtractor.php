@@ -59,6 +59,38 @@ final class RulesExtractor
         'flexible' => ['ميزانيتي مرنه', 'اقدر ازيد', 'budget is flexible', 'flexible on price', 'can stretch'],
     ];
 
+    /** Buying or renting. A customer who names both ("شراء مو ايجار") is buying: the rent word is the one being refused. */
+    private const TRANSACTION = [
+        'buy' => ['للبيع', 'تمليك', 'ابي اشتري', 'ابغى اشتري', 'ابغي اشتري', 'اريد الشراء', 'ارغب بالشراء', 'شراء', 'اشتري', 'to buy', 'buy ', 'purchase', 'for sale'],
+        // Not a bare "ايجار": "عائد ايجاري" is a rental yield, which is an investment, not a tenancy.
+        'rent' => ['للايجار', 'ابي ايجار', 'ابغى ايجار', 'ابغي ايجار', 'اريد ايجار', 'استئجار', 'ابي استاجر', 'ابغى استاجر', 'ابغي استاجر', 'for rent', 'to rent', 'want to rent', 'renting', 'lease'],
+    ];
+
+    private const PAYMENT = [
+        'cash' => ['كاش', 'نقدا', 'نقدي', 'دفعه واحده', 'cash'],
+        'financing' => ['ابي تمويل', 'ابغى تمويل', 'ابغي تمويل', 'بتمويل', 'تمويل عقاري', 'تمويل بنكي', 'عن طريق البنك', 'قرض', 'mortgage', 'financing', 'bank loan', 'finance it'],
+    ];
+
+    private const PURPOSE = [
+        'investment' => ['استثمار', 'استثمر', 'للاستثمار', 'عائد', 'investment', 'invest', 'rental yield'],
+        'residence' => ['للسكن', 'سكن', 'اسكن', 'بيت العمر', 'residence', 'to live in', 'live there', 'family home'],
+    ];
+
+    private const RESERVATION = [
+        'ready' => ['ابي احجز وحده', 'ابغى احجز وحده', 'ابغي احجز وحده', 'ابي احجزها', 'ابغى احجزها', 'احجز لي', 'حجز الوحده', 'ادفع العربون', 'دفع العربون', 'ارسل رابط الدفع', 'reserve it', 'reserve a unit', 'put a deposit', 'pay the deposit', 'book the unit'],
+        'interested' => ['كيف الحجز', 'كيف احجز', 'شروط الحجز', 'كم العربون', 'how to reserve', 'reservation process', 'how much is the deposit'],
+    ];
+
+    /** Spoken numbers of rooms: the ones people actually say. */
+    private const ROOM_WORDS = ['غرفه واحده' => 1, 'غرفتين' => 2, 'ثلاث غرف' => 3, 'ثلاثه غرف' => 3, 'اربع غرف' => 4, 'اربعه غرف' => 4, 'خمس غرف' => 5, 'خمسه غرف' => 5, 'ست غرف' => 6, 'سته غرف' => 6, 'one bedroom' => 1, 'two bedrooms' => 2, 'three bedrooms' => 3, 'four bedrooms' => 4, 'five bedrooms' => 5];
+
+    /** Words that end a district's name rather than belonging to it. */
+    private const DISTRICT_STOP = [
+        'في', 'او', 'و', 'على', 'عند', 'ب', 'مع', 'قريب', 'وين', 'فيه', 'بس', 'ابي', 'ابغى', 'ابغي', 'مناسب', 'سعر', 'اسعار',
+        // What people say right after a district: how they will pay, what they want, how much.
+        'كاش', 'نقدا', 'تمويل', 'فيلا', 'شقه', 'تاون', 'ارض', 'دوبلكس', 'ميزانيتي', 'ميزانيه', 'غرف', 'غرفه', 'مليون', 'الف', 'ريال', 'لو', 'اذا', 'يعني', 'شكرا',
+    ];
+
     private const POSITIVE = ['ممتاز', 'حلو', 'رائع', 'شكرا', 'مناسب', 'يعجبني', 'تمام', 'great', 'good', 'thanks', 'thank you', 'perfect', 'love it', 'excellent'];
 
     private const NEGATIVE = ['سيء', 'مزعج', 'كفايه', 'ازعاج', 'ما عجبني', 'زعلان', 'bad', 'annoying', 'angry', 'terrible', 'not happy', 'disappointed', 'waste of time'];
@@ -101,6 +133,24 @@ final class RulesExtractor
             }
         }
 
+        // What they want, in real estate terms: said in a sentence, kept as a fact.
+        foreach ([Vocabulary::TRANSACTION => 'transaction', Vocabulary::PAYMENT => 'payment', Vocabulary::PURPOSE => 'purpose', Vocabulary::RESERVATION => 'reservation'] as $kind => $set) {
+            foreach ($lex[$set] as $value => $phrases) {
+                if ($this->has($text, $phrases)) {
+                    $facts[] = new Fact($kind, $value, 75);
+                    break;
+                }
+            }
+        }
+
+        if (($rooms = $this->bedrooms($text)) !== null) {
+            $facts[] = new Fact(Vocabulary::BEDROOMS, (string) $rooms, 80);
+        }
+
+        if (($district = $this->district($text)) !== null) {
+            $facts[] = new Fact(Vocabulary::DISTRICT, $district, 70);
+        }
+
         // A stated amount beats a feeling about the price.
         if ($amount = AmountParser::parse($text)) {
             $facts[] = new Fact(Vocabulary::BUDGET, 'stated', 85, $amount + ['currency' => 'SAR']);
@@ -138,6 +188,51 @@ final class RulesExtractor
         return null;
     }
 
+    /** "3 غرف", "ثلاث غرف", "two bedrooms" → 3, 3, 2; nothing when no number of rooms was said. */
+    private function bedrooms(string $text): ?int
+    {
+        if (preg_match('/(\d{1,2})\s*(?:غرف|غرفه|bed(?:room)?s?|br)\b/u', $text, $m) === 1) {
+            $n = (int) $m[1];
+
+            return $n >= 1 && $n <= 20 ? $n : null;
+        }
+
+        foreach (self::lexicon()['rooms'] as $phrase => $n) {
+            if (str_contains($text, $phrase)) {
+                return $n;
+            }
+        }
+
+        return null;
+    }
+
+    /** "في حي النرجس" → النرجس; the name only, never the sentence around it. */
+    private function district(string $text): ?string
+    {
+        if (preg_match('/(?:^|\s)حي\s+((?:[\p{Arabic}]{2,})(?:\s+[\p{Arabic}]{2,}){0,2})/u', $text, $m) === 1) {
+            $words = preg_split('/\s+/u', trim($m[1])) ?: [];
+            $name = [];
+
+            foreach ($words as $i => $word) {
+                // The first word is always part of the name; later ones stop at a connector.
+                if ($i > 0 && (in_array($word, self::lexicon()['stop'], true) || preg_match('/^[وبل][\p{Arabic}]{3,}$/u', $word) === 1)) {
+                    break;
+                }
+                $name[] = $word;
+            }
+
+            $name = implode(' ', array_slice($name, 0, 2));
+
+            return Vocabulary::valid(Vocabulary::DISTRICT, $name) ? $name : null;
+        }
+
+        if (preg_match('/\b(?:in|at)\s+(?:the\s+)?([a-z]{3,}(?:\s[a-z]{3,})?)\s+(?:district|neighbou?rhood|area)\b/u', $text, $m) === 1) {
+            return Vocabulary::valid(Vocabulary::DISTRICT, $m[1]) ? $m[1] : null;
+        }
+
+        return null;
+    }
+
     private function has(string $text, array $phrases): bool
     {
         return $this->hits($text, $phrases) > 0;
@@ -167,6 +262,12 @@ final class RulesExtractor
             'appointment' => self::compile(self::APPOINTMENT),
             'budget' => self::compile(self::BUDGET),
             'timeline' => self::compile(self::TIMELINE),
+            'transaction' => self::compile(self::TRANSACTION),
+            'payment' => self::compile(self::PAYMENT),
+            'purpose' => self::compile(self::PURPOSE),
+            'reservation' => self::compile(self::RESERVATION),
+            'rooms' => array_combine(array_map([Text::class, 'normalise'], array_keys(self::ROOM_WORDS)), array_values(self::ROOM_WORDS)),
+            'stop' => array_map([Text::class, 'normalise'], self::DISTRICT_STOP),
             'positive' => array_map([Text::class, 'normalise'], self::POSITIVE),
             'negative' => array_map([Text::class, 'normalise'], self::NEGATIVE),
         ];

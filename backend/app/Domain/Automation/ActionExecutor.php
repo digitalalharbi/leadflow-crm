@@ -2,6 +2,7 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Conversation\QualificationCompleter;
 use App\Domain\Files\FileDelivery;
 use App\Domain\Files\FileForTheLead;
 use App\Domain\Files\ShareFile;
@@ -648,14 +649,25 @@ class ActionExecutor
             return ['ok' => false, 'description' => 'لا توجد رسالة أسئلة تأهيل — لم يُرسل شيء.'];
         }
 
-        if (blank(app(TemplateRenderer::class)->values($lead)['questions'] ?? null)) {
-            return ['ok' => false, 'description' => 'لا أسئلة تأهيل بلا إجابة لمشروع هذا العميل — لم يُرسل شيء.'];
+        // Whatever the lead already told us — on the form, or in the conversation — answers its
+        // question; nobody is asked for something they have said.
+        $completer = app(QualificationCompleter::class);
+        $completer->syncAnswers($lead);
+        $asking = $completer->unanswered($lead);
+
+        if ($asking->isEmpty() || blank(app(TemplateRenderer::class)->values($lead)['questions'] ?? null)) {
+            return ['ok' => true, 'result' => 'skipped', 'description' => 'كل أسئلة التأهيل مُجابة — لم يُرسل شيء.'];
         }
 
         try {
             $message = $this->whatsapp->sendSaved($lead, $template);
         } catch (RuntimeException $e) {
             return ['ok' => false, 'description' => 'لم تُرسل أسئلة التأهيل: '.$e->getMessage()];
+        }
+
+        // Remembered, so the reply can be read as the answers to exactly these questions, in this order.
+        if ($message->exists) {
+            $message->forceFill(['context' => ['questions' => $asking->pluck('id')->all()]])->saveQuietly();
         }
 
         $this->reached($lead, $message);

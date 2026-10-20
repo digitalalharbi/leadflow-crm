@@ -20,6 +20,7 @@ import {
   Input, Modal, Select, Skeleton, StatusBadge, Tabs, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
+import { ConversationCard } from '@/components/lead/ConversationCard'
 import { DuplicatesBanner } from '@/components/lead/DuplicatesBanner'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
@@ -710,6 +711,7 @@ export function LeadDetailPage() {
         <div className="space-y-4">
           <NextActionBanner action={data.next_action} onAct={actOnNext} />
           <WhyThisLead lead={lead} signals={data.signals ?? []} />
+          <ConversationCard leadId={lead.id} conversation={data.conversation} />
           <AutomationStatus lead={lead} onShowSteps={() => { setHistory('automation'); document.querySelector('[data-testid="history-tabs"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
           <Engagement lead={lead} />
           <QualificationCard lead={lead} />

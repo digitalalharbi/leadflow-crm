@@ -182,6 +182,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads', [LeadController::class, 'store']);
             Route::get('/leads/{uuid}', [LeadController::class, 'show']);
             Route::get('/leads/{uuid}/journey', [LeadController::class, 'journey']);
+            Route::post('/leads/{uuid}/conversation/analyze', [LeadController::class, 'analyzeConversation']);
             Route::get('/leads/{uuid}/duplicates', [LeadController::class, 'duplicates']);
             Route::post('/leads/{uuid}/merge', [LeadController::class, 'merge']);
             Route::patch('/leads/{uuid}', [LeadController::class, 'update']);

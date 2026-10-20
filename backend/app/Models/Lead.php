@@ -261,6 +261,7 @@ class Lead extends Model
             'email_bounced_at' => 'datetime',
             'handed_off_at' => 'datetime',
             'stage_entered_at' => 'datetime',
+            'facts_at' => 'datetime',
             'status' => LeadStatus::class,
             'temperature' => LeadTemperature::class,
             'qualification_status' => QualificationStatus::class,

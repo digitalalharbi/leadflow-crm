@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
+use App\Jobs\ExtractConversationFacts;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,11 +17,21 @@ class LeadMessage extends Model
 {
     use BelongsToTenant, HasFactory, HasUuid;
 
+    protected static function booted(): void
+    {
+        // What the customer writes is read once it is saved — after commit, off the request.
+        static::created(function (self $message) {
+            if (($message->direction instanceof MessageDirection ? $message->direction : MessageDirection::tryFrom((string) $message->direction)) === MessageDirection::Inbound && filled($message->body)) {
+                ExtractConversationFacts::dispatch($message->lead_id)->afterCommit();
+            }
+        });
+    }
+
     protected $fillable = [
         'lead_id', 'user_id', 'direction', 'channel', 'provider',
         'provider_message_id', 'message_type', 'template_name', 'subject', 'tracking_token', 'body',
         'status', 'attempts', 'sent_at', 'delivered_at', 'read_at', 'failed_at',
-        'failure_code', 'failure_reason', 'provider_payload', 'send_spec',
+        'failure_code', 'failure_reason', 'provider_payload', 'send_spec', 'context',
     ];
 
     /** The raw provider envelope repeats the body and carries routing metadata. */
@@ -38,6 +49,7 @@ class LeadMessage extends Model
             'failed_at' => 'datetime',
             'provider_payload' => 'array',
             'send_spec' => 'array',
+            'context' => 'array',
         ];
     }
 

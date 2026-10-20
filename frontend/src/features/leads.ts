@@ -62,8 +62,30 @@ export interface LeadIntelligence {
   trend: number[] | null
 }
 
+/** What the conversation said, as structured facts — and which engine read it. */
+export interface ConversationFacts {
+  /** `claude`, or `rules` when Claude was not available — `note` says why. */
+  engine: 'claude' | 'rules' | null
+  note: 'no_api_key' | 'claude_failed' | 'claude_empty' | null
+  analyzed_at: string | null
+  facts: {
+    intent: { value: 'ready_to_buy' | 'interested' | 'inquiring' | 'comparing' | 'callback_request' | 'not_interested' | 'wrong_contact'; confidence: number } | null
+    urgency: { value: 'high' | 'medium' | 'low'; timeline: string | null } | null
+    service_interest: 'villa' | 'apartment' | 'townhouse' | 'land' | 'commercial' | null
+    budget: { signal: 'stated' | 'tight' | 'flexible'; min?: number; max?: number; currency?: string } | null
+    appointment_intent: 'requested' | 'interested' | null
+    sentiment: 'positive' | 'neutral' | 'negative' | null
+    objections: string[]
+  }
+}
+
+export function analyzeConversation(leadId: string) {
+  return apiPost<{ conversation: ConversationFacts }>(`/leads/${leadId}/conversation/analyze`, {})
+}
+
 export interface LeadDetailResponse {
   lead: Lead
+  conversation?: ConversationFacts
   intelligence?: LeadIntelligence
   activities: LeadActivity[]
   notes: LeadNote[]

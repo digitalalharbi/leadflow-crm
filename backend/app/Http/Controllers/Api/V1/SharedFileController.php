@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Tracking\EventRecorder;
+use App\Domain\Tracking\EventType;
 use App\Events\LeadSignal;
 use App\Http\Controllers\Controller;
 use App\Models\FileShare;
@@ -88,6 +90,8 @@ class SharedFileController extends Controller
                 // edits the lead — a hot lead is hot while the brochure is open.
                 $lead = Lead::find($share->lead_id);
                 $lead && app(LeadScoringService::class)->refresh($lead, 'engagement');
+                // The brochure is on the lead's trail too: opened once per file, however often it is reopened.
+                $lead && app(EventRecorder::class)->outcome($lead, EventType::BrochureOpen, ['file' => $share->project_file_id], (string) $share->project_file_id);
                 $lead && LeadSignal::dispatch($lead->fresh(), 'lead.file_opened', ['file' => $share->project_file_id, 'opens' => $share->opens]);
             });
         } catch (\Throwable $e) {

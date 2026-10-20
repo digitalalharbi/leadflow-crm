@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Tracking\EventRecorder;
+use App\Domain\Tracking\EventType;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadSignal;
@@ -73,6 +75,8 @@ class AppointmentController extends Controller
             'موعد في '.$appointment->scheduled_at->toDayDateTimeString(),
             ['appointment_id' => $appointment->uuid]);
 
+        app(EventRecorder::class)->outcome($lead, EventType::AppointmentRequest, ['appointment' => $appointment->uuid, 'at' => $appointment->scheduled_at->toIso8601String()], $appointment->uuid);
+
         $this->advanceToAppointment($lead, $request);
 
         return ApiResponse::created([
@@ -103,6 +107,8 @@ class AppointmentController extends Controller
          */
         if (($data['status'] ?? null) === 'completed' && ! $appointment->completed_at) {
             $appointment->forceFill(['completed_at' => now()])->save();
+            // The visit happened: the trail says so, once per appointment.
+            app(EventRecorder::class)->outcome($appointment->lead, EventType::SiteVisit, ['appointment' => $appointment->uuid], $appointment->uuid);
         }
 
         return ApiResponse::success([

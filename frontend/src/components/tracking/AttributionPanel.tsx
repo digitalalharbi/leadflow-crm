@@ -1,0 +1,145 @@
+import { useState } from 'react'
+import { useQueries, useQuery } from '@tanstack/react-query'
+import { CalendarCheck, Coins, Eye, Megaphone, Sparkles } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Card, CardBody, Select, Skeleton } from '@/components/ui'
+import { Donut, RankBars, RingProgress } from '@/components/visual'
+import { fetchAttribution, DIMENSIONS, MODELS, type AttributionModel, type AttributionRow, type Dimension } from '@/features/tracking'
+import { formatMoneyCompact, formatNumber } from '@/lib/format'
+import { cn } from '@/lib/cn'
+
+const RAMP = ['var(--brand)', 'var(--color-info)', 'var(--color-warning)', 'var(--color-success)', 'var(--color-temp-hot)', 'var(--color-status-appointment)']
+
+/** The five questions a marketing manager asks, each answered by one card. */
+const ANSWERS: { key: string; dimension: Dimension; metric: keyof AttributionRow; icon: LucideIcon }[] = [
+  { key: 'ad', dimension: 'ad', metric: 'leads', icon: Megaphone },
+  { key: 'interested', dimension: 'campaign', metric: 'interested', icon: Sparkles },
+  { key: 'visit', dimension: 'source', metric: 'visits', icon: Eye },
+  { key: 'reservation', dimension: 'campaign', metric: 'reservations', icon: CalendarCheck },
+  { key: 'revenue', dimension: 'channel', metric: 'revenue', icon: Coins },
+]
+
+/**
+ * Who gets the credit, all the way to revenue.
+ *
+ * First touch and last touch lead (they are what people argue about); linear and position are one
+ * press away. The ring is the share of leads nobody can explain — the first number to fix.
+ */
+export function AttributionPanel({ days }: { days: number }) {
+  const { t, i18n } = useTranslation()
+  const [model, setModel] = useState<AttributionModel>('last')
+  const [dimension, setDimension] = useState<Dimension>('channel')
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['attribution', model, dimension, days],
+    queryFn: () => fetchAttribution(model, dimension, days),
+    placeholderData: (previous) => previous,
+  })
+
+  const answers = useQueries({
+    queries: ANSWERS.map((a) => ({
+      queryKey: ['attribution-answer', a.key, model, days],
+      queryFn: () => fetchAttribution(model, a.dimension, days),
+      staleTime: 60_000,
+    })),
+  })
+
+  const label = (row: AttributionRow, dim: Dimension) => {
+    if (row.key === 'unattributed') return t('tracking.unattributed')
+    if (row.key === 'none') return t('tracking.noValue')
+    if (dim === 'channel') return t(`tracking.channels.${row.key}`, { defaultValue: row.label ?? row.key })
+
+    return row.label ?? row.key
+  }
+
+  const money = (v: number) => formatMoneyCompact(v, 'SAR', i18n.language)
+  const num = (v: number) => formatNumber(Math.round(v * 10) / 10, i18n.language)
+  const ring = data?.totals.unattributed_percent ?? null
+
+  return (
+    <div className="space-y-3" data-testid="attribution-panel">
+      <div className="flex flex-wrap items-center gap-2">
+        <div role="group" aria-label={t('tracking.model')} className="inline-flex gap-1 rounded-full bg-[var(--color-chrome-fill)] p-1">
+          {MODELS.map((m) => (
+            <button key={m} type="button" aria-pressed={model === m} data-testid={`model-${m}`} onClick={() => setModel(m)}
+              className={cn('pressable rounded-full px-3 py-1 text-[0.9375rem] font-semibold', model === m ? 'bg-[var(--color-surface)] shadow-[var(--shadow-card)]' : 'text-[var(--color-ink-muted)]')}>
+              {t(`tracking.models.${m}`)}
+            </button>
+          ))}
+        </div>
+        <Select value={dimension} onChange={(e) => setDimension(e.target.value as Dimension)} className="filter-pill min-w-36" aria-label={t('tracking.dimension')} data-testid="attribution-dimension">
+          {DIMENSIONS.map((d) => <option key={d} value={d}>{t(`tracking.dimensions.${d}`)}</option>)}
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="attribution-answers">
+        {ANSWERS.map((a, i) => {
+          const q = answers[i]
+          const rows = (q.data?.rows ?? []).filter((r) => r.key !== 'unattributed' && r.key !== 'none')
+          const top = rows.toSorted((x, y) => Number(y[a.metric]) - Number(x[a.metric]))[0]
+          const value = top ? Number(top[a.metric]) : 0
+          const Icon = a.icon
+
+          return (
+            <Card key={a.key} data-testid={`answer-${a.key}`}>
+              <CardBody className="space-y-1">
+                <p className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-[var(--color-ink-muted)]"><Icon className="size-4" aria-hidden />{t(`tracking.answers.${a.key}`)}</p>
+                {q.isLoading ? <Skeleton className="h-10" /> : top && value > 0 ? (
+                  <>
+                    <p className="truncate text-[1.125rem] font-extrabold" data-testid={`answer-${a.key}-name`}>{label(top, a.dimension)}</p>
+                    <p className="text-[0.9375rem] tabular-nums text-[var(--color-ink-subtle)]" dir="ltr">{a.metric === 'revenue' ? money(value) : num(value)}</p>
+                  </>
+                ) : <p className="text-[1rem] text-[var(--color-ink-subtle)]" data-testid={`answer-${a.key}-none`}>—</p>}
+              </CardBody>
+            </Card>
+          )
+        })}
+      </div>
+
+      {isLoading && !data ? <Skeleton className="h-64" /> : data && (
+        <div className="grid gap-3 lg:grid-cols-12">
+          <Card className="lg:col-span-3" data-testid="attribution-unattributed">
+            <CardBody className="flex flex-col items-center gap-2 text-center">
+              <RingProgress value={ring ?? 0} size={112} thickness={12} tone={ring === null ? 'neutral' : ring <= 10 ? 'good' : ring <= 30 ? 'warn' : 'bad'} label={t('tracking.unattributedRing')} testId="unattributed-ring">
+                <span className="text-[1.375rem] font-extrabold tabular-nums" data-testid="unattributed-percent">{ring === null ? '—' : `${ring}%`}</span>
+              </RingProgress>
+              <p className="text-[0.9375rem] font-semibold">{t('tracking.unattributedRing')}</p>
+              <p className="text-[0.875rem] text-[var(--color-ink-subtle)]" data-testid="attribution-totals">
+                {t('tracking.totals', { leads: data.totals.leads, won: num(data.totals.won) })}
+              </p>
+            </CardBody>
+          </Card>
+
+          <Card className="lg:col-span-4" data-testid="attribution-donut">
+            <CardBody>
+              <h3 className="t-card-title mb-3">{t('tracking.creditShare')}</h3>
+              <Donut
+                size={128}
+                thickness={16}
+                legend="side"
+                segments={data.rows.filter((r) => r.leads > 0).map((r, i) => ({
+                  key: r.key, label: label(r, data.dimension), value: Math.round(r.leads * 100) / 100,
+                  color: r.key === 'unattributed' ? 'var(--color-ink-subtle)' : RAMP[i % RAMP.length],
+                }))}
+              />
+            </CardBody>
+          </Card>
+
+          <Card className="lg:col-span-5" data-testid="attribution-ranking">
+            <CardBody>
+              <h3 className="t-card-title mb-3">{t('tracking.revenueRank')}</h3>
+              <RankBars
+                limit={6}
+                items={data.rows.filter((r) => r.key !== 'unattributed').map((r) => ({
+                  key: r.key, label: label(r, data.dimension), value: r.revenue > 0 ? r.revenue : r.won,
+                  note: <span className="tabular-nums" dir="ltr">{r.revenue > 0 ? money(r.revenue) : `${num(r.won)} ${t('tracking.stat.won')}`} · {num(r.leads)} {t('tracking.stat.leads')}</span>,
+                }))}
+              />
+            </CardBody>
+          </Card>
+        </div>
+      )}
+    </div>
+  )
+}

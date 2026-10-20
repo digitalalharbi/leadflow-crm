@@ -60,6 +60,13 @@ class IncomingLead
          * @var array<string,mixed>
          */
         public readonly array $realEstate = [],
+        /** The identity a landing page handed the visitor, and the link they came through. */
+        public readonly ?string $visitorId = null,
+        public readonly ?string $trackingToken = null,
+        public readonly ?string $referrer = null,
+        public readonly ?string $landingUrl = null,
+        public readonly ?string $device = null,
+        public readonly ?string $browser = null,
         public readonly array $rawPayload = [],
         /** What each custom key was called where it came from — a header, a form question. */
         public readonly array $customLabels = [],
@@ -132,6 +139,12 @@ class IncomingLead
             budgetMax: is_numeric(Arr::get($data, 'budget_max')) ? (float) Arr::get($data, 'budget_max') : null,
             custom: Arr::get($data, 'custom', []),
             realEstate: self::realEstateFacts($data),
+            visitorId: Arr::get($data, 'visitor_id') ?? Arr::get($data, 'mt_vid'),
+            trackingToken: Arr::get($data, 'tracking_token') ?? Arr::get($data, 'mt_t'),
+            referrer: Arr::get($data, 'referrer'),
+            landingUrl: Arr::get($data, 'landing_url'),
+            device: Arr::get($data, 'device'),
+            browser: Arr::get($data, 'browser'),
             rawPayload: $raw ?: $data,
             customLabels: Arr::get($data, 'custom_labels', []),
         );

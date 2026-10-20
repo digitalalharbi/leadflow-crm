@@ -3,7 +3,11 @@
 # Deploy straight to the server, with no CI in the path.
 #
 #   ./scripts/deploy-direct.sh staging
-#   ./scripts/deploy-direct.sh production
+#
+# STAGING ONLY. Production has exactly one road — the "Deploy production" workflow on
+# `main`, after CI has passed for that exact commit — and this script refuses to be a
+# second one. A release that does not come from a GitHub commit CI checked is the kind
+# nobody can reproduce, so there is no flag, variable or argument that enables it.
 #
 # The GitHub Actions workflows do three things: run the tests, SSH in, and run
 # the on-server deploy script. When Actions cannot run — a billing hold, an
@@ -47,15 +51,21 @@ case "$TARGET" in
     ON_SERVER=deploy-staging.sh
     ;;
   production)
-    BRANCH="${PRODUCTION_BRANCH:-main}"
-    PATH_KEY=PRODUCTION_PATH
-    DOMAIN_KEY=PRODUCTION_DOMAIN
-    ON_SERVER=deploy-production.sh
+    cat >&2 <<'MSG'
+
+Refusing: production is not deployed from a machine.
+
+The only way to ship production is the "Deploy production" workflow in GitHub Actions,
+run from `main`, which checks that CI passed for that exact commit before it touches the
+server. See docs/PRODUCTION_RUNBOOK.md.
+
+MSG
+    exit 1
     ;;
   *)
     cat >&2 <<USAGE
 
-usage: scripts/deploy-direct.sh staging|production
+usage: scripts/deploy-direct.sh staging
 
 Configuration is read from ${CONFIG} (git-ignored). Copy the example:
 

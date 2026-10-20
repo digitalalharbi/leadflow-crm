@@ -9,7 +9,7 @@
 # is not in the path. It mirrors backend-tests.yml, frontend-tests.yml and
 # e2e-tests.yml step for step rather than approximating them, and on success it
 # writes `.verify-passed` with the commit it ran against — which is what
-# deploy-direct.sh refuses to deploy without.
+# deploy-direct.sh (staging) refuses to deploy without.
 #
 # It is not CI and does not claim to be. CI runs on a clean checkout, a clean
 # database and a machine doing nothing else; this runs on yours. A failure here

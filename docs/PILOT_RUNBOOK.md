@@ -52,8 +52,10 @@ Provisioning also installs, without being asked:
 cp .deploy.env.example .deploy.env     # fill DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, domains
 ./scripts/verify-all.sh                # the tests; deploy refuses without it
 ./scripts/deploy-direct.sh staging
-./scripts/deploy-direct.sh production
 ```
+
+Production is deployed only by the **Deploy production** workflow, run from `main`
+(docs/PRODUCTION_RUNBOOK.md); `deploy-direct.sh production` refuses.
 
 A deploy is complete only when the **public HTTPS domain** answers with the new
 commit. The script verifies that, and treats "the container is up" as not enough.

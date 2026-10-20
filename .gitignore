@@ -60,3 +60,6 @@ Thumbs.db
 # Direct deploy configuration — real values, never committed.
 .deploy.env
 .verify-passed
+# Written by the on-server deploy scripts (the commit to roll back to).
+.last-good-commit
+.last-good-commit.tmp

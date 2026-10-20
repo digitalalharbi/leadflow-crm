@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Production deploy. Deliberately more conservative than staging:
+# Production deploy. Runs ON THE VPS; the "Deploy production" workflow invokes it over SSH.
+# Deliberately more conservative than staging:
+#   - only `main`, and only a commit GitHub has on `main`;
+#   - a server whose working tree is not clean is refused before anything changes;
 #   - a verified backup is taken BEFORE any migration;
 #   - migrations are shown before they run;
 #   - the app goes into maintenance mode only while migrations run;
@@ -19,6 +22,9 @@ say() { printf '\n\033[1;36m==>\033[0m %s\n' "$1"; }
 
 cd "$DEPLOY_PATH"
 
+# shellcheck source=lib/worktree-guard.sh
+. "$DEPLOY_PATH/scripts/lib/worktree-guard.sh"
+
 compose() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
 
 # DEPLOY_SECRET is read from the environment file rather than passed from CI:
@@ -32,6 +38,25 @@ fi
 
 PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 BACKUP_PATH=""
+
+# ---------------------------------------------------------------------------
+# Refusals. All of them come BEFORE the rollback trap is armed: a deploy that is
+# refused has changed nothing, so there is nothing to roll back — and a rollback
+# would itself rebuild and restart the containers.
+# ---------------------------------------------------------------------------
+[ "$BRANCH" = "main" ] || { echo "ABORT DEPLOY — production deploys only from main (asked for '${BRANCH}')." >&2; exit 1; }
+
+require_clean_worktree || exit 1
+
+say "Fetching ${BRANCH} from GitHub"
+git fetch --prune origin "$BRANCH"
+
+# The exact commit asked for must be one GitHub has on main. A SHA from a feature
+# branch, or one that does not exist, never reaches the build.
+if [ -n "$COMMIT" ]; then
+  git cat-file -e "${COMMIT}^{commit}" 2>/dev/null || { echo "ABORT DEPLOY — ${COMMIT} is not a commit fetched from origin/${BRANCH}." >&2; exit 1; }
+  git merge-base --is-ancestor "$COMMIT" "origin/${BRANCH}" || { echo "ABORT DEPLOY — ${COMMIT} is not on origin/${BRANCH}." >&2; exit 1; }
+fi
 
 rollback() {
   say "Deploy failed — rolling back to ${PREVIOUS_COMMIT:0:8}"
@@ -53,8 +78,6 @@ EOF
 }
 trap rollback ERR
 
-say "Fetching ${BRANCH}"
-git fetch --prune origin "$BRANCH"
 git reset --hard "${COMMIT:-origin/$BRANCH}"
 say "Now at $(git rev-parse --short HEAD) — $(git log -1 --pretty=%s)"
 

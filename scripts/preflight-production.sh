@@ -6,9 +6,10 @@
 #
 #   ./scripts/preflight-production.sh
 #
-# A deploy never starts from a preflight that failed: release-production.sh
-# refuses. There is no "skip" — a check that cannot run because something it
-# depends on is missing FAILs, and says what it was waiting for.
+# An operator's readiness check, run before the first "Deploy production" workflow and
+# whenever something about the server changes. It deploys nothing. There is no "skip" —
+# a check that cannot run because something it depends on is missing FAILs, and says
+# what it was waiting for.
 # ---------------------------------------------------------------------------
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -117,7 +118,11 @@ head1 "6. Release"
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then fail "working tree" "uncommitted changes"; else pass "working tree" "clean"; fi
 git fetch --quiet origin "$PRODUCTION_BRANCH" 2>/dev/null || true
 if [ "$(git rev-parse HEAD 2>/dev/null)" = "$(git rev-parse "origin/${PRODUCTION_BRANCH}" 2>/dev/null)" ]; then pass "commit pushed" "HEAD = origin/${PRODUCTION_BRANCH}"; else fail "commit pushed" "HEAD is not origin/${PRODUCTION_BRANCH}"; fi
-if [ -f .verify-passed ] && [ "$(cat .verify-passed)" = "$(git rev-parse "origin/${PRODUCTION_BRANCH}" 2>/dev/null)" ]; then pass "tests on this commit" "scripts/verify-all.sh passed"; else fail "tests on this commit" "run ./scripts/verify-all.sh first"; fi
+case "$(GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" scripts/ci/ci-is-green.sh "$(git rev-parse "origin/${PRODUCTION_BRANCH}" 2>/dev/null)" 0 2>/dev/null)" in
+  green=true) pass "CI on this commit" "passed for origin/${PRODUCTION_BRANCH}" ;;
+  green=blocked) fail "CI on this commit" "could not run (GitHub Actions billing) — production ships only what CI has passed" ;;
+  *) fail "CI on this commit" "CI has not passed for origin/${PRODUCTION_BRANCH}" ;;
+esac
 
 head1 "Not blocking, but Production Verified will say so"
 if [ "$SSH_OK" = 1 ]; then

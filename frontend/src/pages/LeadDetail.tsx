@@ -719,7 +719,7 @@ export function LeadDetailPage() {
           <ConversationCard leadId={lead.id} conversation={data.conversation} />
           <AutomationStatus lead={lead} onShowSteps={() => { setHistory('automation'); document.querySelector('[data-testid="history-tabs"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
           <Engagement lead={lead} />
-          <QualificationCard lead={lead} />
+          <QualificationCard lead={lead} gaps={data.qualification_gaps} />
           <ProjectAnswers lead={lead} />
           <JourneyCard lead={lead} />
           <SourceChain lead={lead} />

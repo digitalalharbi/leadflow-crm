@@ -143,6 +143,12 @@ class ConversationIntelligence
                 'budget' => $one(Vocabulary::BUDGET) ? ['signal' => $one(Vocabulary::BUDGET)->value] + (array) $one(Vocabulary::BUDGET)->detail : null,
                 'appointment_intent' => $one(Vocabulary::APPOINTMENT)?->value,
                 'sentiment' => $one(Vocabulary::SENTIMENT)?->value,
+                'transaction' => $one(Vocabulary::TRANSACTION)?->value,
+                'payment' => $one(Vocabulary::PAYMENT)?->value,
+                'purpose' => $one(Vocabulary::PURPOSE)?->value,
+                'reservation_intent' => $one(Vocabulary::RESERVATION)?->value,
+                'bedrooms' => $one(Vocabulary::BEDROOMS) ? (int) $one(Vocabulary::BEDROOMS)->value : null,
+                'district' => $one(Vocabulary::DISTRICT)?->value,
                 'objections' => $facts->where('kind', Vocabulary::OBJECTION)->pluck('value')->values()->all(),
             ],
         ];

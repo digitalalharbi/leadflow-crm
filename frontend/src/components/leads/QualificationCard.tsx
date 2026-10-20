@@ -9,6 +9,8 @@ import { formatBudgetRange } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, Input, Modal, Select, TemperatureBadge,
 } from '@/components/ui'
+import { RingProgress } from '@/components/visual'
+import type { QualificationGaps } from '@/features/leads'
 import type { Lead, QualificationInput } from '@/types/api'
 import { cn } from '@/lib/cn'
 
@@ -25,7 +27,7 @@ const STATUS_TONE = {
  * its points, so a rep who disagrees can see which answer to change rather
  * than distrusting the whole thing.
  */
-export function QualificationCard({ lead }: { lead: Lead }) {
+export function QualificationCard({ lead, gaps }: { lead: Lead; gaps?: QualificationGaps }) {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -104,6 +106,26 @@ export function QualificationCard({ lead }: { lead: Lead }) {
                 </div>
               ))}
             </dl>
+          )}
+
+          {gaps && gaps.total > 0 && (
+            <div className="space-y-2" data-testid="qualification-gaps" data-next={gaps.next ?? ''}>
+              <div className="flex items-center gap-3">
+                <RingProgress value={gaps.percent} size={44} thickness={6} tone={gaps.percent >= 80 ? 'good' : gaps.percent >= 40 ? 'warn' : 'neutral'} label={t('qualification.gaps.title')} testId="gaps-ring">
+                  <span className="text-[0.8125rem] font-extrabold tabular-nums" data-testid="gaps-percent">{gaps.percent}%</span>
+                </RingProgress>
+                <p className="text-[0.9375rem] font-semibold">
+                  {gaps.next ? <>{t('qualification.gaps.next')}: <span className="text-[var(--brand)]" data-testid="gaps-next">{t(`qualification.gaps.q.${gaps.next}`)}</span></> : t('qualification.gaps.done')}
+                </p>
+              </div>
+              {gaps.gaps.length > 0 && (
+                <ul className="flex flex-wrap gap-1.5" data-testid="gaps-missing">
+                  {gaps.gaps.map((key) => (
+                    <li key={key} data-key={key} className="rounded-full border border-dashed border-[var(--color-border-strong)] px-2.5 py-0.5 text-[0.875rem] text-[var(--color-ink-muted)]">{t(`qualification.gaps.q.${key}`)}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
 
           {breakdown && breakdown.reasons.length > 0 && (

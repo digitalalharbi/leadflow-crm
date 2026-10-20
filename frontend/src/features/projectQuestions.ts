@@ -80,3 +80,8 @@ export function fetchLeadAnswers(leadId: string) {
 export function saveLeadAnswers(leadId: string, answers: Record<string, unknown>) {
   return apiPut<LeadAnswers>(`/leads/${leadId}/answers`, { answers })
 }
+
+/** The real estate set — transaction, budget, district, type, rooms, payment, timeline, visit, reservation — where missing. */
+export function addRealEstateQuestions(projectId: string) {
+  return apiPost<{ created: number; questions: ProjectQuestion[] }>(`/projects/${projectId}/questions/real-estate`, {})
+}

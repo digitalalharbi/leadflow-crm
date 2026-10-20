@@ -17,6 +17,7 @@ use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
 use App\Domain\Leads\StageAnnouncer;
 use App\Domain\Leads\WhyNow;
+use App\Domain\Qualification\QualificationGaps;
 use App\Enums\ActivityType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -165,6 +166,8 @@ class LeadController extends Controller
             'intelligence' => $intelligence,
             // What the conversation says, as structured facts — and which engine read it.
             'conversation' => app(ConversationIntelligence::class)->summary($lead),
+            // What is still unknown about what they want — and the one thing to ask next.
+            'qualification_gaps' => app(QualificationGaps::class)->for($lead),
             'activities' => LeadActivityResource::collection(
                 $lead->activities()->with('user:id,uuid,name')->limit(100)->get()
             ),

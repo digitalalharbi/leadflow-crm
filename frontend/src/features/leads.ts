@@ -77,7 +77,23 @@ export interface ConversationFacts {
     appointment_intent: 'requested' | 'interested' | null
     sentiment: 'positive' | 'neutral' | 'negative' | null
     objections: string[]
+    /** Real estate facts the customer volunteered. */
+    transaction?: 'buy' | 'rent' | null
+    payment?: 'cash' | 'financing' | null
+    purpose?: 'residence' | 'investment' | null
+    reservation_intent?: 'ready' | 'interested' | null
+    bedrooms?: number | null
+    district?: string | null
   }
+}
+
+/** What is still unknown about what a lead wants — and the one thing to ask next. */
+export interface QualificationGaps {
+  known: string[]
+  gaps: string[]
+  next: string | null
+  total: number
+  percent: number
 }
 
 /** What a rep needs in the first ten seconds after automation hands them a lead. */
@@ -105,6 +121,7 @@ export function analyzeConversation(leadId: string) {
 export interface LeadDetailResponse {
   lead: Lead
   conversation?: ConversationFacts
+  qualification_gaps?: QualificationGaps
   /** Present while a person holds a lead automation handed over. */
   handoff?: HandoffBrief | null
   /** The next week of automatic follow-up: null for a lead that predates the planner. */

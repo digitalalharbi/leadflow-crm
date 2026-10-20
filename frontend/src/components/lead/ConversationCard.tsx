@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarCheck, Frown, Home, Meh, MessageSquareQuote, RefreshCw, ShieldAlert, Smile, Sparkles, Wallet, Zap } from 'lucide-react'
+import { BedDouble, CalendarCheck, CreditCard, Frown, Home, KeyRound, Landmark, MapPin, Meh, MessageSquareQuote, RefreshCw, ShieldAlert, Smile, Sparkles, Target, Wallet, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody } from '@/components/ui'
@@ -50,6 +50,13 @@ export function ConversationCard({ leadId, conversation }: { leadId: string; con
     })
   }
   if (facts.appointment_intent) chips.push({ key: 'appointment', Icon: CalendarCheck, label: t(`conversation.appointment.${facts.appointment_intent}`), color: facts.appointment_intent === 'requested' ? 'var(--color-status-appointment)' : undefined, testId: 'fact-appointment' })
+  // What they want in real estate terms.
+  if (facts.transaction) chips.push({ key: 'transaction', Icon: KeyRound, label: t(`conversation.transaction.${facts.transaction}`), testId: 'fact-transaction' })
+  if (facts.district) chips.push({ key: 'district', Icon: MapPin, label: facts.district, testId: 'fact-district' })
+  if (facts.bedrooms) chips.push({ key: 'bedrooms', Icon: BedDouble, label: t('conversation.bedrooms', { count: facts.bedrooms }), testId: 'fact-bedrooms' })
+  if (facts.payment) chips.push({ key: 'payment', Icon: CreditCard, label: t(`conversation.payment.${facts.payment}`), testId: 'fact-payment' })
+  if (facts.purpose) chips.push({ key: 'purpose', Icon: facts.purpose === 'investment' ? Landmark : Target, label: t(`conversation.purpose.${facts.purpose}`), testId: 'fact-purpose' })
+  if (facts.reservation_intent) chips.push({ key: 'reservation', Icon: KeyRound, label: t(`conversation.reservation.${facts.reservation_intent}`), color: facts.reservation_intent === 'ready' ? 'var(--color-success)' : undefined, testId: 'fact-reservation' })
   if (sentiment && facts.sentiment) chips.push({ key: 'sentiment', Icon: sentiment.icon, label: t(`conversation.sentiment.${facts.sentiment}`), color: sentiment.color, testId: 'fact-sentiment' })
 
   return (

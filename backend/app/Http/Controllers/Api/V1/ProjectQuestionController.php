@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Qualification\ProjectQualification;
+use App\Domain\Qualification\RealEstateQuestions;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectQuestion;
@@ -54,6 +55,20 @@ class ProjectQuestionController extends Controller
         ]);
 
         return ApiResponse::created(['question' => $this->present($question)]);
+    }
+
+    /** The real estate set — transaction, budget, district, type, rooms, payment, timeline, visit, reservation — added where missing. */
+    public function seedRealEstate(string $projectUuid, RealEstateQuestions $set)
+    {
+        $project = Project::where('uuid', $projectUuid)->firstOrFail();
+        $this->authorize('update', $project);
+
+        $created = $set->seed($project);
+
+        return ApiResponse::success([
+            'created' => count($created),
+            'questions' => ProjectQuestion::where('project_id', $project->id)->orderBy('sort_order')->orderBy('id')->get()->map(fn (ProjectQuestion $q) => $this->present($q))->values(),
+        ]);
     }
 
     public function update(Request $request, string $uuid)

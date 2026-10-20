@@ -132,6 +132,7 @@ class LeadIngestionService
             'preferred_property_type' => $incoming->preferredPropertyType,
             'preferred_location' => $incoming->preferredLocation,
             'purchase_timeline' => $incoming->purchaseTimeline,
+        ] + $incoming->realEstate + [
             'provider' => $incoming->provider->value,
             'provider_lead_id' => $incoming->providerLeadId,
             'provider_payload' => $incoming->redactedPayload() ?: null,

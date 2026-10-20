@@ -2354,6 +2354,7 @@ export default {
     tabs: {
       overview: 'نظرة عامة',
       leads: 'العملاء',
+      units: 'الوحدات',
       files: 'الملفات',
       questions: 'الأسئلة',
       campaigns: 'الحملات',
@@ -2553,7 +2554,22 @@ export default {
     },
   },
 
+  propertyUnits: {
+    title: 'الوحدات', add: 'إضافة وحدة', edit: 'تعديل الوحدة', filter: 'حالة الوحدة', all: 'الكل',
+    emptyTitle: 'لا وحدات بعد', emptyBody: 'أضف وحدات المشروع ليظهر ما تبقّى للبيع وليُطابَق كل عميل مع ما يناسبه.',
+    code: 'رمز الوحدة', type: 'النوع', transaction: 'للبيع أو الإيجار', sale: 'بيع', rent: 'إيجار', statusLabel: 'الحالة',
+    price: 'السعر', area: 'المساحة (م²)', bedrooms: 'الغرف', bathrooms: 'دورات المياه', city: 'المدينة', district: 'الحي',
+    status: { available: 'متاحة', reserved: 'محجوزة', sold: 'مباعة', rented: 'مؤجرة', hidden: 'مخفية' },
+    types: { apartment: 'شقة', villa: 'فيلا', townhouse: 'تاون هاوس', duplex: 'دوبلكس', land: 'أرض', office: 'مكتب', shop: 'محل', other: 'أخرى' },
+  },
   qualification: {
+    transaction: 'شراء أم إيجار',
+    district: 'الحي المفضل',
+    bedrooms: 'عدد الغرف',
+    area: 'المساحة (م²)',
+    nationality: 'الجنسية',
+    channel: 'قناة التواصل المفضلة',
+    reservationIntent: 'جاهز للحجز',
     title: 'التأهيل',
     subtitle: 'املأ ما تعرفه عن العميل، وسيُحدَّث التقييم تلقائيًا',
     action: 'تأهيل العميل',

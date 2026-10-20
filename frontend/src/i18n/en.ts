@@ -2131,6 +2131,7 @@ export default {
     tabs: {
       overview: 'Overview',
       leads: 'Leads',
+      units: 'Units',
       files: 'Files',
       questions: 'Questions',
       campaigns: 'Campaigns',
@@ -2294,7 +2295,22 @@ export default {
     },
   },
 
+  propertyUnits: {
+    title: 'Units', add: 'Add a unit', edit: 'Edit the unit', filter: 'Unit status', all: 'All',
+    emptyTitle: 'No units yet', emptyBody: 'Add the project\'s units to see what is left to sell and to match every lead with what suits them.',
+    code: 'Unit code', type: 'Type', transaction: 'For sale or rent', sale: 'Sale', rent: 'Rent', statusLabel: 'Status',
+    price: 'Price', area: 'Area (m²)', bedrooms: 'Bedrooms', bathrooms: 'Bathrooms', city: 'City', district: 'District',
+    status: { available: 'Available', reserved: 'Reserved', sold: 'Sold', rented: 'Rented', hidden: 'Hidden' },
+    types: { apartment: 'Apartment', villa: 'Villa', townhouse: 'Townhouse', duplex: 'Duplex', land: 'Land', office: 'Office', shop: 'Shop', other: 'Other' },
+  },
   qualification: {
+    transaction: 'Buy or rent',
+    district: 'Preferred district',
+    bedrooms: 'Bedrooms',
+    area: 'Area (m²)',
+    nationality: 'Nationality',
+    channel: 'Preferred channel',
+    reservationIntent: 'Ready to reserve',
     title: 'Qualification',
     subtitle: 'Fill in what you know; the score updates itself',
     action: 'Qualify lead',

@@ -160,6 +160,15 @@ export interface Lead extends LeadListItem {
   qualification_status: QualificationStatus
   qualified_at: string | null
   appointment_interest: boolean | null
+  /** Real estate facts: what they want, where, how big, and how they want to be reached. */
+  transaction_type?: 'buy' | 'rent' | null
+  preferred_district?: string | null
+  bedrooms?: number | null
+  area_sqm?: number | null
+  nationality?: string | null
+  preferred_channel?: 'whatsapp' | 'call' | 'email' | null
+  reservation_intent?: boolean
+  interested_property_id?: string | null
   first_contact_at: string | null
   first_response_at: string | null
   /** Hot, and the one to call first. Not a fourth temperature. */
@@ -241,6 +250,8 @@ export interface QualificationOption {
 }
 
 export interface QualificationOptions {
+  transaction_type: QualificationOption[]
+  preferred_channel: QualificationOption[]
   purchase_purpose: QualificationOption[]
   payment_method: QualificationOption[]
   financing_status: QualificationOption[]
@@ -257,6 +268,13 @@ export interface QualificationInput {
   preferred_location?: string | null
   purchase_timeline?: string | null
   appointment_interest?: boolean | null
+  transaction_type?: string | null
+  preferred_district?: string | null
+  bedrooms?: number | null
+  area_sqm?: number | null
+  nationality?: string | null
+  preferred_channel?: string | null
+  reservation_intent?: boolean | null
 }
 
 /** Status is derived from what is filled in, so the UI never guesses. */

@@ -52,6 +52,14 @@ class IncomingLead
         public readonly ?float $budgetMin = null,
         public readonly ?float $budgetMax = null,
         public readonly array $custom = [],
+        /**
+         * The real estate facts, keyed by lead column: transaction_type, preferred_district,
+         * bedrooms, area_sqm, nationality, preferred_channel, reservation_intent. Kept as one
+         * array because they are carried, not interpreted, between a form and the lead.
+         *
+         * @var array<string,mixed>
+         */
+        public readonly array $realEstate = [],
         public readonly array $rawPayload = [],
         /** What each custom key was called where it came from — a header, a form question. */
         public readonly array $customLabels = [],
@@ -123,9 +131,38 @@ class IncomingLead
             budgetMin: is_numeric(Arr::get($data, 'budget_min')) ? (float) Arr::get($data, 'budget_min') : null,
             budgetMax: is_numeric(Arr::get($data, 'budget_max')) ? (float) Arr::get($data, 'budget_max') : null,
             custom: Arr::get($data, 'custom', []),
+            realEstate: self::realEstateFacts($data),
             rawPayload: $raw ?: $data,
             customLabels: Arr::get($data, 'custom_labels', []),
         );
+    }
+
+    /** @return array<string,mixed> */
+    private static function realEstateFacts(array $data): array
+    {
+        $facts = [];
+
+        foreach (['transaction_type', 'preferred_district', 'nationality', 'preferred_channel'] as $key) {
+            if (filled(Arr::get($data, $key))) {
+                $facts[$key] = (string) Arr::get($data, $key);
+            }
+        }
+
+        foreach (['bedrooms'] as $key) {
+            if (is_numeric(Arr::get($data, $key))) {
+                $facts[$key] = (int) Arr::get($data, $key);
+            }
+        }
+
+        if (is_numeric(Arr::get($data, 'area_sqm'))) {
+            $facts['area_sqm'] = (float) Arr::get($data, 'area_sqm');
+        }
+
+        if (Arr::has($data, 'reservation_intent')) {
+            $facts['reservation_intent'] = filter_var(Arr::get($data, 'reservation_intent'), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $facts;
     }
 
     public function hasIdentity(): bool

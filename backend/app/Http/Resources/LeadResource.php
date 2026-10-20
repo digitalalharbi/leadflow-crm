@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Domain\Leads\LeadClassification;
+use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -62,6 +63,15 @@ class LeadResource extends JsonResource
             'preferred_location' => $this->preferred_location,
             'purchase_timeline' => $this->purchase_timeline,
             'appointment_interest' => $this->appointment_interest,
+            // Real estate facts: what they want, where, and how they want to be reached.
+            'transaction_type' => $this->transaction_type,
+            'preferred_district' => $this->preferred_district,
+            'bedrooms' => $this->bedrooms,
+            'area_sqm' => $this->area_sqm !== null ? (float) $this->area_sqm : null,
+            'nationality' => $this->nationality,
+            'preferred_channel' => $this->preferred_channel,
+            'reservation_intent' => (bool) $this->reservation_intent,
+            'interested_property_id' => $this->interested_property_id ? Property::withoutGlobalScopes()->whereKey($this->interested_property_id)->value('uuid') : null,
 
             'next_follow_up_at' => $this->next_follow_up_at?->toIso8601String(),
             'last_contact_at' => $this->last_contact_at?->toIso8601String(),

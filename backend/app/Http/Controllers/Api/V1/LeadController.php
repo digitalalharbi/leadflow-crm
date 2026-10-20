@@ -39,6 +39,7 @@ use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\LostReason;
 use App\Models\Project;
+use App\Models\Property;
 use App\Models\TenantSetting;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -356,6 +357,10 @@ class LeadController extends Controller
 
         if (array_key_exists('project_id', $data)) {
             $data['project_id'] = $this->resolveProjectId($data['project_id']);
+        }
+
+        if (array_key_exists('interested_property_id', $data)) {
+            $data['interested_property_id'] = $this->resolvePropertyId($data['interested_property_id']);
         }
 
         if (array_key_exists('phone', $data) && filled($data['phone'])) {
@@ -740,6 +745,19 @@ class LeadController extends Controller
      * Scoped lookup. A uuid belonging to another tenant is not found here, and
      * the caller gets the same 404 they would get for one that never existed.
      */
+    private function resolvePropertyId(?string $uuid): ?int
+    {
+        if (blank($uuid)) {
+            return null;
+        }
+
+        $id = Property::where('uuid', $uuid)->value('id');
+
+        abort_if($id === null, 404, 'Resource not found.');
+
+        return $id;
+    }
+
     private function resolveProjectId(?string $uuid): ?int
     {
         if (blank($uuid)) {

@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Domain\Automation\ActionExecutor;
 use App\Domain\Automation\ActionLog;
+use App\Domain\Automation\FollowUpPlanner;
+use App\Domain\Automation\HumanTakeover;
 use App\Enums\MessageDirection;
 use App\Models\Lead;
 use App\Models\LeadMessage;
@@ -38,6 +40,11 @@ class RunScheduledAction implements ShouldQueue
 
         // Cancelled while it waited, or already run. Both are ordinary.
         if (! $scheduled || $scheduled->status !== ScheduledAction::PENDING) {
+            return;
+        }
+
+        // Moved to a later time by a person: this is the old timer going off early, and the new one will run it.
+        if (isset($scheduled->action['moved_to']) && $scheduled->run_at->isFuture()) {
             return;
         }
 
@@ -90,6 +97,22 @@ class RunScheduledAction implements ShouldQueue
             }
         }
 
+        // A call task for a lead somebody has since called is no longer needed.
+        if (($scheduled->action['unless'] ?? null) === 'contacted' && HumanTakeover::contactedSince($lead, $scheduled->created_at)) {
+            $scheduled->resolve(ScheduledAction::CANCELLED, 'تواصل المندوب مع العميل — لم تعد هذه الخطوة لازمة.');
+            app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], [], 'تواصل المندوب مع العميل — لم تعد هذه الخطوة لازمة.');
+
+            return;
+        }
+
+        // The follow-up plan looks again before it acts: a booked visit, an unsubscribe, or a person's pause.
+        if ($why = app(FollowUpPlanner::class)->gate($lead, $scheduled)) {
+            $scheduled->resolve(ScheduledAction::CANCELLED, $why);
+            app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], [], $why);
+
+            return;
+        }
+
         $tenants->withTenant($lead->tenant, function () use ($actions, $scheduled, $lead) {
             $result = $actions->execute($lead, $scheduled->action ?? []);
             app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], $result);
@@ -98,6 +121,11 @@ class RunScheduledAction implements ShouldQueue
                 $result['ok'] ? ScheduledAction::DONE : ScheduledAction::FAILED,
                 $result['description'] ?? null,
             );
+
+            // Then it asks again whether the rest is still wanted: continue, escalate, or stop.
+            if (! empty($scheduled->action['plan'])) {
+                app(FollowUpPlanner::class)->afterStep($lead);
+            }
         });
     }
 }

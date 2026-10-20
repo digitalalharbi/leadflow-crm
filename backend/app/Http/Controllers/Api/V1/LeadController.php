@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Conversation\ConversationIntelligence;
@@ -177,6 +178,8 @@ class LeadController extends Controller
             'next_action' => $next = $this->nextAction($request, $lead),
             // When a person has been handed the lead: the brief, so nothing has to be reconstructed.
             'handoff' => $lead->automation_state === Lead::AUTOMATION_HANDED_OFF ? app(HandoffBrief::class)->for($lead, $next) : null,
+            // The next week of automatic follow-up, and what it will do about this lead.
+            'follow_up' => app(FollowUpPlanner::class)->view($lead),
             'signals' => WhyNow::signals($lead),
             // The rep's name comes from a join, not an eager load: an eager load is
             // skipped when there are no calls, which would make a quiet lead cost

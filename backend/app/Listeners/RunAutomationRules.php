@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Domain\Automation\AutomationEngine;
+use App\Domain\Automation\FollowUpPlanner;
 use App\Events\Contracts\LeadDomainEvent;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,6 +43,13 @@ class RunAutomationRules implements ShouldQueue
         $this->context->set($tenant);
 
         $this->engine->handle($event);
+
+        // After the rules, so what the journey scheduled is known: the plan fills in around it.
+        try {
+            app(FollowUpPlanner::class)->onEvent($event);
+        } catch (\Throwable $e) {
+            Log::warning('follow_up_plan_failed', ['lead' => $event->lead()->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**

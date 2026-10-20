@@ -22,6 +22,7 @@ import {
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
 import { ConversationCard } from '@/components/lead/ConversationCard'
 import { DuplicatesBanner } from '@/components/lead/DuplicatesBanner'
+import { FollowUpPlanCard } from '@/components/lead/FollowUpPlanCard'
 import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
@@ -713,6 +714,7 @@ export function LeadDetailPage() {
 
         <div className="space-y-4">
           <NextActionBanner action={data.next_action} onAct={actOnNext} />
+          {data.follow_up && <FollowUpPlanCard leadId={lead.id} plan={data.follow_up} onChanged={() => void queryClient.invalidateQueries({ queryKey: ['lead', id] })} />}
           <WhyThisLead lead={lead} signals={data.signals ?? []} />
           <ConversationCard leadId={lead.id} conversation={data.conversation} />
           <AutomationStatus lead={lead} onShowSteps={() => { setHistory('automation'); document.querySelector('[data-testid="history-tabs"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />

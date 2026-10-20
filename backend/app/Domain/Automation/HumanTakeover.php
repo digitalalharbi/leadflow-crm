@@ -27,6 +27,14 @@ class HumanTakeover
     /** How long after "no answer" the first resumed message may go. */
     private const RESUME_AFTER_HOURS = 24;
 
+    /** Whether a person (not a rule) has contacted this lead since the given moment. */
+    public static function contactedSince(Lead $lead, \DateTimeInterface $since): bool
+    {
+        return LeadActivity::query()->withoutGlobalScopes()->where('lead_id', $lead->id)->whereNotNull('user_id')
+            ->whereIn('type', [ActivityType::Called->value, ActivityType::WhatsappSent->value, ActivityType::EmailSent->value, ActivityType::WhatsappClicked->value])
+            ->where('created_at', '>=', $since)->exists();
+    }
+
     /** A person made contact. Returns how many waiting steps were cancelled, or null when nothing changed. */
     public function tookOver(Lead $lead): ?int
     {

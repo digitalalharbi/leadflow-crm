@@ -435,7 +435,7 @@ class LeadScoringService
         $wrongFit = ! empty($project['wrong_fit']);
         $priority = ! $wrongFit
             && $temperature === LeadTemperature::Hot
-            && ($score >= (int) ($this->project['priority_from'] ?? config('scoring.temperature.priority_from')) || ! empty($project['priority']));
+            && ($score >= (int) ($this->project['priority_from'] ?? $settings?->score_priority_threshold ?? config('scoring.temperature.priority_from')) || ! empty($project['priority']));
 
         return [
             'score' => $score,

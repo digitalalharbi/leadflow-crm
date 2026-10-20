@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Automation\Thresholds;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\CompanyScope;
@@ -18,6 +19,7 @@ class Project extends Model
 
     protected static function booted(): void
     {
+        static::saved(fn () => Thresholds::flush());
         static::addGlobalScope(new CompanyScope);
     }
 

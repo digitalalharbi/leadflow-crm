@@ -5,6 +5,7 @@ import { Check, Circle, Pause, Play, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, Input, Select } from '@/components/ui'
 import { RingProgress } from '@/components/visual'
+import { ThresholdsPanel } from '@/components/projects/ThresholdsPanel'
 import { activateAutomationPack, completeAutomationPack, fetchAutomationPack, pauseAutomationPack, type Cadence, type PackStep } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -164,6 +165,8 @@ export function AutomationPackCard({ projectId }: { projectId: string }) {
               </Button>
             </div>
           </div>
+
+          <ThresholdsPanel projectId={projectId} />
 
           <div className="flex flex-wrap items-center gap-2">
             {pack.active ? (

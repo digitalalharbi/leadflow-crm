@@ -315,3 +315,25 @@ export function activateAutomationPack(projectId: string, answers: { service?: s
 export function pauseAutomationPack(projectId: string) {
   return apiPost<{ pack: AutomationPackStatus }>(`/projects/${projectId}/automation-pack/pause`, {})
 }
+
+/** Every line the product draws, as the project sees it: the value in force and where it comes from. */
+export const THRESHOLD_KEYS = ['hot_from', 'warm_from', 'priority_from', 'high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes'] as const
+export type ThresholdKey = (typeof THRESHOLD_KEYS)[number]
+
+export interface ThresholdValue {
+  value: number
+  source: 'project' | 'workspace' | 'default'
+  workspace: number
+  default: number
+}
+
+export type Thresholds = Record<ThresholdKey, ThresholdValue>
+
+export function fetchProjectThresholds(projectId: string) {
+  return apiGet<{ thresholds: Thresholds }>(`/projects/${projectId}/thresholds`)
+}
+
+/** A null clears the override and puts the workspace's value back. */
+export function updateProjectThresholds(projectId: string, values: Partial<Record<ThresholdKey, number | null>>) {
+  return apiPatch<{ thresholds: Thresholds }>(`/projects/${projectId}/thresholds`, values)
+}

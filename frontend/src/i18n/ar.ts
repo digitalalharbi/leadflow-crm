@@ -140,6 +140,11 @@ export default {
   simulation: {
     title: 'لو عملت هذه القاعدة خلال آخر {{days}} أيام',
     noExecution: 'بلا تنفيذ فعلي',
+    period: 'الفترة',
+    perDay: 'العملاء المتأثرون يوميًا',
+    qualified: 'مؤهلون متوقعون',
+    noHistory: 'لا تاريخ كافٍ لتقدير المؤهلين.',
+    rates: 'مؤهلون {{withMessage}}% مع رسالة آلية مقابل {{without}}% بدونها.',
     leads: 'عملاء متأثرون',
     whatsapp: 'رسائل واتساب',
     email: 'رسائل بريد',
@@ -148,7 +153,7 @@ export default {
     escalations: 'تحويل لمندوب',
     notifications: 'تنبيهات',
     held: { quiet_hours: 'ساعات الهدوء', duplicate_message: 'رسالة مكررة', brochure_repeat: 'بروشور مكرر', max_frequency: 'حد التكرار اليومي', cooldown: 'فترة تهدئة', human_takeover: 'العميل مع مندوب', project_paused: 'أتمتة المشروع موقوفة' },
-    basis: 'تقدير بحسب حالة كل عميل الآن، لا إعادة تشغيل للتاريخ.',
+    basis: 'محسوب على حالة كل عميل لحظة وقوع الحدث، وبقواعد الحماية في ذلك الوقت.',
     capped: 'العينة أول 500 عميل.',
   },
   merge: {

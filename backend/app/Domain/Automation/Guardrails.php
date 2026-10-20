@@ -151,6 +151,7 @@ class Guardrails
             ->where('status', '!=', MessageStatus::Failed->value)
             ->whereIn('template_name', $names)
             ->where('created_at', '>=', now()->subHours(self::DUPLICATE_WINDOW_HOURS))
+            ->where('created_at', '<=', now())
             ->exists();
     }
 
@@ -159,7 +160,7 @@ class Guardrails
         ['file' => $file] = $this->chooser->pick($lead, ($action['kind'] ?? null) ?: null);
 
         return $file !== null
-            && FileShare::withoutGlobalScopes()->where('lead_id', $lead->id)->where('project_file_id', $file->id)->exists();
+            && FileShare::withoutGlobalScopes()->where('lead_id', $lead->id)->where('project_file_id', $file->id)->where('created_at', '<=', now())->exists();
     }
 
     /** Automated messages only: a person's message has a `user_id`. */
@@ -171,6 +172,7 @@ class Guardrails
             ->whereNull('user_id')
             ->where('status', '!=', MessageStatus::Failed->value)
             ->where('created_at', '>=', $since)
+            ->where('created_at', '<=', now())
             ->get(['id', 'created_at']);
     }
 

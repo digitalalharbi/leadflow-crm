@@ -278,7 +278,7 @@ class AutomationRuleController extends Controller
 
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
 
-        return ApiResponse::success(['simulation' => app(RuleSimulator::class)->run($rule, $request->user())]);
+        return ApiResponse::success(['simulation' => app(RuleSimulator::class)->run($rule, $request->user(), (int) $request->input('days', 7))]);
     }
 
     /** The trace for one lead: every rule considered, in order, with reasons. */

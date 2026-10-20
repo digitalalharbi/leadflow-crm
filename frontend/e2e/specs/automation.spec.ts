@@ -109,6 +109,22 @@ test.describe('الأتمتة — rules', () => {
       await expect(sim.getByTestId(`sim-${key}`), `${key} tile`).toBeVisible()
       await expect(sim.getByTestId(`sim-${key}`)).toContainText(/\d/)
     }
+    // Estimated qualified is a number or an honest dash — never a guess dressed as one.
+    await expect(sim.getByTestId('sim-qualified')).toBeVisible()
+    await expect(sim.getByTestId('sim-by-day')).toBeVisible()
+    await expect(sim.getByTestId('sim-basis')).toContainText(/\S/)
+  })
+
+  test('the simulation can look back seven or thirty days', async ({ page }) => {
+    await page.getByTestId('install-hot_lead_priority').click()
+    await page.getByRole('button', { name: 'معاينة' }).first().click()
+
+    const sim = page.getByTestId('simulation')
+    await expect(sim.getByTestId('sim-period-7')).toHaveAttribute('aria-pressed', 'true')
+    await sim.getByTestId('sim-period-30').click()
+    await expect(sim.getByTestId('sim-period-30')).toHaveAttribute('aria-pressed', 'true')
+    await expect(sim).toContainText('30')
+    await expect(sim.getByTestId('sim-leads')).toContainText(/\d/)
   })
 
   test('a rule can be switched on and off', async ({ page }) => {

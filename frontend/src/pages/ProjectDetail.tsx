@@ -18,6 +18,7 @@ import {
 } from '@/features/development'
 import { ProjectFiles } from '@/components/projects/ProjectFiles'
 import { ProjectQuestions } from '@/components/projects/ProjectQuestions'
+import { ProjectUnits } from '@/components/projects/ProjectUnits'
 import {
   ProjectActivities, ProjectAutomations, ProjectCampaigns, ProjectIntegrations,
   ProjectLeads, ProjectNumbers, ProjectReports,
@@ -38,7 +39,7 @@ import type { Project } from '@/types/api'
  * for a different reader and was the only tab there was.
  */
 const TABS = [
-  'overview', 'leads', 'files', 'questions', 'campaigns', 'automations',
+  'overview', 'leads', 'units', 'files', 'questions', 'campaigns', 'automations',
   'activities', 'reports', 'integrations', 'development',
 ] as const
 
@@ -103,6 +104,7 @@ export function ProjectDetailPage() {
       )}
 
       {tab === 'leads' && <ProjectLeads projectId={id} />}
+      {tab === 'units' && <ProjectUnits projectId={id} />}
       {tab === 'files' && <ProjectFiles projectId={id} />}
       {tab === 'questions' && <ProjectQuestions projectId={id} />}
       {tab === 'campaigns' && <ProjectCampaigns projectId={id} />}

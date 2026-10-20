@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Platform;
+use App\Support\Qualification;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -36,6 +37,14 @@ class UpdateLeadRequest extends FormRequest
             'preferred_property_type' => ['nullable', 'string', 'max:120'],
             'preferred_location' => ['nullable', 'string', 'max:255'],
             'purchase_timeline' => ['nullable', 'string', 'max:60'],
+            'transaction_type' => ['nullable', Rule::in(Qualification::TRANSACTIONS)],
+            'preferred_district' => ['nullable', 'string', 'max:120'],
+            'bedrooms' => ['nullable', 'integer', 'min:0', 'max:50'],
+            'area_sqm' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'nationality' => ['nullable', 'string', 'max:60'],
+            'preferred_channel' => ['nullable', Rule::in(Qualification::CHANNELS)],
+            'reservation_intent' => ['nullable', 'boolean'],
+            'interested_property_id' => ['nullable', 'uuid'],
             'custom' => ['nullable', 'array'],
         ];
     }

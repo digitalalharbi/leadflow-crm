@@ -19,6 +19,10 @@ class Qualification
 
     public const TIMELINES = ['within_month', 'within_3_months', 'within_6_months', 'over_6_months', 'unknown'];
 
+    public const TRANSACTIONS = ['buy', 'rent'];
+
+    public const CHANNELS = ['whatsapp', 'call', 'email'];
+
     public const LABELS = [
         'purchase_purpose' => [
             'residence' => 'سكن',
@@ -37,6 +41,8 @@ class Qualification
             'not_required' => 'غير مطلوب',
             'unknown' => 'غير محدد',
         ],
+        'transaction_type' => ['buy' => 'شراء', 'rent' => 'إيجار'],
+        'preferred_channel' => ['whatsapp' => 'واتساب', 'call' => 'اتصال', 'email' => 'بريد'],
         'purchase_timeline' => [
             'within_month' => 'خلال شهر',
             'within_3_months' => 'من شهر إلى 3 أشهر',

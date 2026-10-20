@@ -50,6 +50,12 @@ export function QualificationCard({ lead }: { lead: Lead }) {
     [t('qualification.financingStatus'), label('financing_status', lead.financing_status)],
     [t('qualification.propertyType'), lead.preferred_property_type],
     [t('qualification.location'), lead.preferred_location],
+    [t('qualification.transaction'), label('transaction_type', lead.transaction_type ?? null)],
+    [t('qualification.district'), lead.preferred_district ?? null],
+    [t('qualification.bedrooms'), lead.bedrooms != null ? String(lead.bedrooms) : null],
+    [t('qualification.area'), lead.area_sqm != null ? `${lead.area_sqm} m²` : null],
+    [t('qualification.nationality'), lead.nationality ?? null],
+    [t('qualification.channel'), label('preferred_channel', lead.preferred_channel ?? null)],
     [t('qualification.timeline'), label('purchase_timeline', lead.purchase_timeline)],
     [
       t('qualification.appointmentInterest'),
@@ -59,6 +65,7 @@ export function QualificationCard({ lead }: { lead: Lead }) {
           ? t('qualification.appointmentYes')
           : t('qualification.appointmentNo'),
     ],
+    [t('qualification.reservationIntent'), lead.reservation_intent ? t('qualification.appointmentYes') : null],
   ]
 
   const known = rows.filter(([, value]) => Boolean(value))
@@ -185,6 +192,13 @@ export function QualificationDrawer({
         preferred_location: lead.preferred_location ?? '',
         purchase_timeline: lead.purchase_timeline ?? '',
         appointment_interest: lead.appointment_interest,
+        transaction_type: lead.transaction_type ?? '',
+        preferred_district: lead.preferred_district ?? '',
+        bedrooms: lead.bedrooms ?? null,
+        area_sqm: lead.area_sqm ?? null,
+        nationality: lead.nationality ?? '',
+        preferred_channel: lead.preferred_channel ?? '',
+        reservation_intent: lead.reservation_intent ?? false,
       })
     }
   }, [open, lead])
@@ -199,6 +213,12 @@ export function QualificationDrawer({
         purchase_timeline: form.purchase_timeline || null,
         preferred_property_type: form.preferred_property_type || null,
         preferred_location: form.preferred_location || null,
+        transaction_type: form.transaction_type || null,
+        preferred_district: form.preferred_district || null,
+        nationality: form.nationality || null,
+        preferred_channel: form.preferred_channel || null,
+        bedrooms: form.bedrooms === null || form.bedrooms === undefined || form.bedrooms === ('' as unknown) ? null : Number(form.bedrooms),
+        area_sqm: form.area_sqm === null || form.area_sqm === undefined || form.area_sqm === ('' as unknown) ? null : Number(form.area_sqm),
         budget_min: form.budget_min === null || form.budget_min === undefined ? null : Number(form.budget_min),
         budget_max: form.budget_max === null || form.budget_max === undefined ? null : Number(form.budget_max),
       }),
@@ -287,6 +307,32 @@ export function QualificationDrawer({
           <Input label={t('qualification.propertyType')} data-testid="q-property-type" {...field('preferred_property_type')} />
           <Input label={t('qualification.location')} data-testid="q-location" {...field('preferred_location')} />
         </div>
+
+        {/* The real estate facts: what they want to do, where, how big, and how to reach them. */}
+        <div className="grid gap-4 sm:grid-cols-2" data-testid="q-realestate">
+          <Select label={t('qualification.transaction')} data-testid="q-transaction" {...field('transaction_type')}>
+            <option value="">{t('qualification.appointmentUnknown')}</option>
+            {options?.transaction_type?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+          <Input label={t('qualification.district')} data-testid="q-district" {...field('preferred_district')} />
+          <Input label={t('qualification.bedrooms')} type="number" dir="ltr" data-testid="q-bedrooms" {...field('bedrooms')} />
+          <Input label={t('qualification.area')} type="number" dir="ltr" data-testid="q-area" {...field('area_sqm')} />
+          <Input label={t('qualification.nationality')} data-testid="q-nationality" {...field('nationality')} />
+          <Select label={t('qualification.channel')} data-testid="q-channel" {...field('preferred_channel')}>
+            <option value="">{t('qualification.appointmentUnknown')}</option>
+            {options?.preferred_channel?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+        </div>
+
+        <Select
+          label={t('qualification.reservationIntent')}
+          data-testid="q-reservation"
+          value={form.reservation_intent ? '1' : '0'}
+          onChange={(e) => setForm((p) => ({ ...p, reservation_intent: e.target.value === '1' }))}
+        >
+          <option value="0">{t('qualification.appointmentNo')}</option>
+          <option value="1">{t('qualification.appointmentYes')}</option>
+        </Select>
 
         <Select
           label={t('qualification.appointmentInterest')}

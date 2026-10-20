@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
+use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -283,6 +284,13 @@ Route::prefix('v1')->group(function () {
             // Projects
             Route::apiResource('projects', ProjectController::class)
                 ->parameters(['projects' => 'uuid']);
+
+            // The units a project sells or lets.
+            Route::get('/properties', [PropertyController::class, 'index']);
+            Route::get('/projects/{uuid}/properties', [PropertyController::class, 'forProject'])->whereUuid('uuid');
+            Route::post('/projects/{uuid}/properties', [PropertyController::class, 'store'])->whereUuid('uuid');
+            Route::patch('/properties/{uuid}', [PropertyController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/properties/{uuid}', [PropertyController::class, 'destroy'])->whereUuid('uuid');
 
             // Which repository a project is built in, and what has happened in
             // it. Nested under the project because that is whose question it is.

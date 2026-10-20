@@ -227,6 +227,7 @@ class Lead extends Model
             'no_reply' => 'لم يرد على الرسائل الآلية',
             'unreached' => 'لم تصله أي رسالة آلية',
             'asked_for_human' => 'طلب التحدث مع شخص',
+            'delivery_failed' => 'تعذّر الوصول إليه آليًا على القناتين',
             default => 'يحتاج تدخلًا بشريًا',
         };
     }

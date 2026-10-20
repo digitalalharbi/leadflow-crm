@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Automation\Recovery;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -243,6 +244,9 @@ class EmailInboundController extends Controller
 
             $lead->forceFill(['email_bounced_at' => now()])->saveQuietly();
             $this->activities->log($lead, ActivityType::EmailBounced, null, Str::limit((string) ($event['reason'] ?? ''), 140));
+
+            // An automated email that bounced: the same message on WhatsApp, else a person.
+            app(Recovery::class)->afterDeliveryFailure($message->refresh());
 
             return 'bounces';
         });

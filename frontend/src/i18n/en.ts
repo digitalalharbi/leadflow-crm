@@ -46,6 +46,11 @@ export default {
     settings: 'Settings', superAdmin: 'Platform', notifications: 'Notifications', profile: 'Profile',
     platformConsole: 'Platform console',
   },
+  handoff: {
+    title: 'Handed to you',
+    score: 'Score',
+    qualification: 'Qualification',
+  },
   conversation: {
     title: 'What the customer said',
     analyze: 'Analyse the conversation now',
@@ -336,7 +341,7 @@ export default {
     mode: { auto: 'Auto', recommend: 'Recommend', monitor: 'Monitor' },
     modeHint: { auto: 'Acts immediately', recommend: 'Suggests it to the rep', monitor: 'Records only' },
     outcome: { applied: 'Applied', skipped: 'Skipped', failed: 'Failed' },
-    result: { completed: 'Completed', waiting: 'Waiting', needs_human: 'Needs human', failed: 'Failed', skipped: 'Skipped' },
+    result: { completed: 'Completed', recovered: 'Recovered on another channel', waiting: 'Waiting', needs_human: 'Needs human', failed: 'Failed', skipped: 'Skipped' },
     history: {
       filter: 'Filter by result',
       all: 'All',

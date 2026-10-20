@@ -222,7 +222,7 @@ export function fetchAutomationSummary(days = 7) {
   return apiGet<AutomationSummary>('/automation/summary', { days })
 }
 
-export type HistoryResult = 'completed' | 'waiting' | 'failed' | 'skipped' | 'needs_human'
+export type HistoryResult = 'completed' | 'waiting' | 'failed' | 'skipped' | 'needs_human' | 'recovered'
 
 export interface HistoryEntry {
   id: string

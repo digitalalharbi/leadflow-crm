@@ -19,6 +19,7 @@ import {
   PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
 import { RingProgress } from '@/components/visual'
 
 /**
@@ -344,6 +345,9 @@ export function WorkPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Automation handed this lead over: everything to start the call, without opening the lead. */}
+                {data?.handoff && <HandoffBriefCard brief={data.handoff} compact />}
 
                 <div className="flex flex-wrap items-start justify-between gap-3 pt-0.5">
                   <div className="flex min-w-0 items-start gap-3">

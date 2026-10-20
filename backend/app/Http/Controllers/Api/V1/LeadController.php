@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
+use App\Domain\Conversation\ConversationIntelligence;
 use App\Domain\Leads\DuplicateFinder;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
@@ -159,6 +160,8 @@ class LeadController extends Controller
         return ApiResponse::success([
             'lead' => new LeadResource($lead),
             'intelligence' => $intelligence,
+            // What the conversation says, as structured facts — and which engine read it.
+            'conversation' => app(ConversationIntelligence::class)->summary($lead),
             'activities' => LeadActivityResource::collection(
                 $lead->activities()->with('user:id,uuid,name')->limit(100)->get()
             ),
@@ -222,6 +225,18 @@ class LeadController extends Controller
             'sources' => $overview->sources(),
             'trend' => $overview->trend(30),
         ]);
+    }
+
+    /** Read the conversation now (again): useful after a key is added, or when the first read fell back. */
+    public function analyzeConversation(Request $request, string $uuid)
+    {
+        $lead = $this->findLead($uuid);
+        $this->authorize('update', $lead);
+
+        $conversation = app(ConversationIntelligence::class);
+        $result = $conversation->analyse($lead, force: true);
+
+        return ApiResponse::success(['conversation' => $conversation->summary($lead->refresh()), 'run' => $result]);
     }
 
     /** Other records that may be the same person as this one. */

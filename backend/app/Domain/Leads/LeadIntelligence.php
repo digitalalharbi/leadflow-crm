@@ -8,6 +8,7 @@ use App\Models\FileShare;
 use App\Models\Lead;
 use App\Models\LeadAnswer;
 use App\Models\LeadEngagement;
+use App\Models\LeadFact;
 use App\Models\LeadMessage;
 use App\Models\ProjectFile;
 use Illuminate\Support\Collection;
@@ -88,6 +89,9 @@ class LeadIntelligence
             ->whereIn('lead_id', $ids)->where('direction', MessageDirection::Outbound->value)->where('created_at', '>=', $since)
             ->selectRaw('lead_id, count(*) as n')->groupBy('lead_id')->pluck('n', 'lead_id');
 
+        // What the conversation said: only the two kinds that move intent.
+        $said = LeadFact::withoutGlobalScopes()->whereIn('lead_id', $ids)->whereIn('kind', ['intent', 'appointment_intent'])
+            ->get(['lead_id', 'kind', 'value'])->groupBy('lead_id');
         $answered = LeadAnswer::withoutGlobalScopes()->whereIn('lead_id', $ids)->selectRaw('lead_id, count(*) as n')->groupBy('lead_id')->pluck('n', 'lead_id');
         $shared = FileShare::withoutGlobalScopes()->whereIn('lead_id', $ids)->pluck('lead_id')->flip();
         $brochureProjects = ProjectFile::withoutGlobalScopes()
@@ -116,7 +120,7 @@ class LeadIntelligence
             $channels = $this->channels($lead);
             $contactability = $this->contactability($channels);
             $completeness = $this->completeness($lead, (int) ($answered[$lead->id] ?? 0));
-            $intent = $this->intent($lead, $counts);
+            $intent = $this->intent($lead, $counts, $said->get($lead->id, collect()));
             $staleness = (int) min(100, round($days / self::STALE_AT_DAYS * 100));
             $response = $this->response($lead, $engagement, $staleness, $contactability, $counts['replies'] > 0);
             $health = $this->health($lead, $engagement, $intent, $staleness, $contactability, $completeness);
@@ -197,14 +201,22 @@ class LeadIntelligence
         return ['value' => $value, 'missing' => $missing];
     }
 
-    private function intent(Lead $lead, array $counts): int
+    private function intent(Lead $lead, array $counts, Collection $said): int
     {
-        if ($lead->wrong_fit || $lead->status?->value === 'invalid') {
+        $spoken = $said->pluck('value', 'kind');
+
+        // A customer who has said no, or that this is the wrong person, has no buying intent to measure.
+        if ($lead->wrong_fit || $lead->status?->value === 'invalid' || in_array($spoken['intent'] ?? null, ['not_interested', 'wrong_contact'], true)) {
             return 0;
         }
 
         $points = 0;
-        $points += $lead->appointment_interest ? 35 : 0;
+        $points += $lead->appointment_interest ? 35 : (($spoken['appointment_intent'] ?? null) === 'requested' ? 25 : 0);
+        $points += match ($spoken['intent'] ?? null) {
+            'ready_to_buy' => 20,
+            'interested', 'callback_request' => 8,
+            default => 0,
+        };
         $points += $lead->qualification_status?->value === 'qualified' ? 25 : 0;
         $points += $counts['replies'] > 0 || $lead->first_response_at !== null ? 15 : 0;
         $points += $counts['file_opened'] >= 2 ? 12 : ($counts['file_opened'] === 1 ? 6 : 0);

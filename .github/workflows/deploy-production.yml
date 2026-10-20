@@ -1,8 +1,15 @@
 name: Deploy production
 
+# Production is manual and approved: it never runs on a push. Someone starts it, types
+# the word "deploy", and it runs only when the owner has switched production on
+# (repository variable PRODUCTION_ENABLED=true) after the server, the domain, HTTPS,
+# the secrets and the backups exist (docs/PRODUCTION_RUNBOOK.md). Until then it says
+# PRODUCTION NOT CONFIGURED and ends — which is a state, not a failure.
+#
+# The one-command path from a maintainer's machine is scripts/release-production.sh,
+# which runs the same preflight, backup, migrate, health, smoke and verification, with
+# automatic rollback.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       confirm:
@@ -14,20 +21,33 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
 jobs:
-  backend-tests:
-    uses: ./.github/workflows/backend-tests.yml
+  # Production has not been switched on: say so, and record no deployment.
+  awaiting:
+    name: Production not configured
+    if: vars.PRODUCTION_ENABLED != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          {
+            echo "### PRODUCTION NOT CONFIGURED"
+            echo "Nothing was deployed and no deployment was recorded."
+            echo "Set up the server, domain, HTTPS, secrets and backups (docs/PRODUCTION_RUNBOOK.md),"
+            echo "then set the repository variable PRODUCTION_ENABLED=true."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Production not configured::Nothing deployed."
 
-  frontend-tests:
-    uses: ./.github/workflows/frontend-tests.yml
-
-  e2e-tests:
-    uses: ./.github/workflows/e2e-tests.yml
-
-  # Production gets one more gate than staging: the app must boot and the
-  # schema must apply cleanly against an empty database before we touch the VPS.
+  # The app must boot and the schema must apply cleanly against an empty database
+  # before the VPS is touched.
   verify:
     name: Pre-flight verification
+    if: vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -92,7 +112,8 @@ jobs:
 
   deploy:
     name: Deploy to production VPS
-    needs: [backend-tests, frontend-tests, e2e-tests, verify]
+    needs: [verify]
+    if: vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:
@@ -101,6 +122,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # Ship only what CI has passed.
+      - name: CI must have passed for this commit
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/ci/ci-is-green.sh "${{ github.sha }}" 600 | tee -a "$GITHUB_OUTPUT"
+
+      - name: Refuse — CI is not green
+        if: steps.ci.outputs.green != 'true'
+        run: |
+          echo "::error title=Production deploy refused::CI is not green for this commit (${{ steps.ci.outputs.green }})."
+          exit 1
 
       - name: Require the deployment secrets
         env:

@@ -7,8 +7,12 @@ GitHub is the source of truth. The VPS is never edited by hand. Every deploy is
 on GitHub.
 
 ```
-local → commit → push → GitHub → Actions → tests → VPS → live
+local → push → PR → CI → merge to develop → staging (when configured) → production (when approved)
 ```
+
+CI (`ci.yml`) decides whether the code is healthy; the deploy workflows only ship what CI passed and
+never decide health. See [`GITHUB_FLOW.md`](GITHUB_FLOW.md) for the branches, the workflows and the
+status words (GREEN / AMBER / BLOCKED / RED).
 
 ## Environments
 
@@ -49,7 +53,8 @@ Per-tenant subdomains need a wildcard certificate (DNS-01 challenge).
 
 ## Staging deploy
 
-Triggered by any push to `develop`.
+Triggered by a push to `develop`, and only ships a commit CI has passed. With no staging server
+configured it ends with **STAGING NOT CONFIGURED** — a state, not a failure.
 
 ```
 backend tests  ─┐
@@ -75,7 +80,8 @@ A failed health check triggers an automatic rollback to the previous commit.
 
 ## Production deploy
 
-Triggered by any push to `main`, with three extra gates:
+Started by hand (`workflow_dispatch`, type `deploy`) — never by a push — and only when
+`PRODUCTION_ENABLED=true`; otherwise it ends with **PRODUCTION NOT CONFIGURED**. Extra gates:
 
 1. **Pre-flight job** — installs production dependencies, caches config, routes
    and events, and applies every migration to an empty database. A broken config

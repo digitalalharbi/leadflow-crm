@@ -1,14 +1,9 @@
 name: E2E tests
 
 on:
-  pull_request:
-    branches: [main, develop]
-  # Called by the deploy workflows, which own the push path.
+  # Called by CI (ci.yml), which owns every trigger.
   workflow_call:
 
-concurrency:
-  group: e2e-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   e2e:

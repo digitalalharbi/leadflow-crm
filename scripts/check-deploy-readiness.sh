@@ -102,12 +102,12 @@ say ""
 say "${BOLD}Verdict${OFF}"
 
 if [ "$MISSING" -eq 0 ]; then
-  say "  ${GREEN}Ready.${OFF} A push to develop deploys staging; a push to main deploys production."
+  say "  ${GREEN}Ready.${OFF} A push to develop deploys staging (once CI has passed); production is started by hand."
 else
   say "  ${RED}Not ready — $MISSING required secret(s) missing.${OFF}"
   say ""
-  say "  Until they are set, the deploy jobs run their tests, skip the deploy,"
-  say "  and report ${BOLD}green${OFF}. Nothing reaches a server."
+  say "  Until they are set, \"Deploy staging\" ends with STAGING NOT CONFIGURED and nothing"
+  say "  reaches a server. That is a state to fix, not a failure: CI decides the code's health."
   say ""
   say "  Provision the server first (EXTERNAL_SETUP.md section 2.1), generate a"
   say "  deploy key (2.2), then set the secrets from your own machine:"

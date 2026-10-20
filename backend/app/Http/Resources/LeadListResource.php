@@ -28,6 +28,9 @@ class LeadListResource extends JsonResource
             'city' => $this->city,
             'status' => $this->status?->value,
             'temperature' => $this->temperature?->value,
+            // How interested they are, from what they do — apart from how good a fit.
+            'interest_level' => $this->interest_level,
+            'interest_score' => (int) $this->interest_score,
             // Hot, and the one to call first. Not a fourth temperature.
             'is_priority' => (bool) $this->is_priority,
             'last_contact_at' => $this->last_contact_at?->toIso8601String(),

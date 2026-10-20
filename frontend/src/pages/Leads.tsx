@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Download, MessageCircle, Phone, Plug, Plus, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { RingProgress } from '@/components/visual'
+import { InterestBadge, RingProgress } from '@/components/visual'
 import { apiDownload } from '@/lib/api'
 import { fetchAssignableUsers, fetchLeads, fetchProjects, type LeadFilters } from '@/features/leads'
 import { can, useAuth } from '@/stores/auth'
@@ -274,11 +274,12 @@ export function LeadsPage() {
 
                       <Td className="hidden sm:table-cell">
                         {/* The score as a number with its bar: how far into its bucket. */}
-                        <span className="flex items-center gap-2" data-testid="lead-score">
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="lead-score">
                           <span className="w-7 text-[1.0625rem] font-bold tabular-nums">{lead.score ?? 0}</span>
                           <span className="block h-1.5 w-14 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]" aria-hidden>
                             <span className="block h-full rounded-full" style={{ width: `${Math.min(100, lead.score ?? 0)}%`, background: `var(--color-temp-${lead.temperature})` }} />
                           </span>
+                          {lead.interest_level && lead.interest_level !== 'cold' && <InterestBadge level={lead.interest_level} testId="lead-interest" />}
                           {lead.health && (
                             <span title={t('intel.health')} data-testid="lead-health" data-level={lead.health.level}>
                               <RingProgress value={lead.health.value} size={26} thickness={4} tone={lead.health.level === 'high' ? 'good' : lead.health.level === 'medium' ? 'warn' : 'bad'} label={t('intel.health')} />

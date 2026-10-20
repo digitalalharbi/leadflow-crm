@@ -17,7 +17,7 @@ class LeadViews
     /** What an open lead is likely worth, in whole currency units. */
     private const VALUE = '(coalesce(leads.budget_max, (select projects.starting_price from projects where projects.id = leads.project_id), 0))';
 
-    public const KEYS = ['needs_human', 'no_reply', 'high_value', 'new_today', 'qualified', 'stalled'];
+    public const KEYS = ['needs_human', 'no_reply', 'high_value', 'new_today', 'qualified', 'stalled', 'interested'];
 
     /**
      * @param  string  $timezone  The workspace's, because "today" is a local day.
@@ -40,6 +40,8 @@ class LeadViews
             'new_today' => "(leads.created_at >= '{$today}')",
             'qualified' => "({$open} and leads.qualification_status = 'qualified')",
             'stalled' => PipelineOverview::stalledSql(),
+            // Coming toward us: interested or better, and still open.
+            'interested' => "({$open} and leads.interest_level in ('interested','hot','visit_ready','reservation_ready'))",
         ];
     }
 

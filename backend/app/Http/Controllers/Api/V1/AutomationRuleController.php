@@ -47,7 +47,7 @@ class AutomationRuleController extends Controller
         // What the customer did, and what did not happen.
         'lead.sheet_row', 'lead.email_opened', 'lead.email_clicked', 'lead.file_opened',
         'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
-        'lead.re_engaged', 'lead.sla_breached',
+        'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed',
     ];
 
     private const FIELDS = [
@@ -62,6 +62,8 @@ class AutomationRuleController extends Controller
         'minutes_since_last_contact', 'was_contacted', 'has_replied',
         'is_priority', 'classification', 'language', 'provider', 'campaign_id', 'ad_name',
         'automation_state', 'attempts', 'no_reply_minutes',
+        // How interested they are, apart from how good a fit.
+        'interest_level', 'interest_score',
     ];
 
     private const OPERATORS = [

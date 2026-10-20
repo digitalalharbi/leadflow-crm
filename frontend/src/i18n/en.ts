@@ -1506,6 +1506,7 @@ export default {
       new_today: 'New today',
       qualified: 'Qualified',
       stalled: 'Stalled',
+      interested: 'Interested',
       mine: 'My views',
       save: 'Save this view',
       saveName: 'View name',
@@ -2342,6 +2343,17 @@ export default {
     answers: { ad: 'Which ad brought the leads?', interested: 'Which campaign brought the interested?', visit: 'Which source brought the visits?', reservation: 'Which campaign brought the reservations?', revenue: 'Which channel brought the revenue?' },
     unattributed: 'Unattributed', noValue: 'Not set', unattributedRing: 'Leads with no attribution', creditShare: 'Share of leads', revenueRank: 'Revenue',
     totals: '{{leads}} leads · {{won}} won',
+  },
+  interest: {
+    title: 'Interest', ladder: 'Interest levels', clear: 'Undo “{{word}}”',
+    level: { cold: 'Cold', warm: 'Warm', interested: 'Interested', hot: 'Hot', visit_ready: 'Visit ready', reservation_ready: 'Reservation ready' },
+    override: { interested: 'Interested', not_interested: 'Not interested' },
+    signal: {
+      replied: 'Replied', recent_reply: 'Replied recently', brochure_opened: 'Opened the brochure', email_engaged: 'Engaged with email', project_viewed: 'Viewed the project page',
+      came_back: 'Came back another day', asked_price: 'Asked the price', asked_financing: 'Asked about financing', asked_for_visit: 'Asked for a visit', visit_booked: 'Visit booked', visited: 'Visited the site',
+      asked_to_reserve: 'Asked to reserve', qualified: 'Qualified', no_response: 'No reply after several messages', unsubscribed: 'Unsubscribed', unreachable: 'No working way to reach them',
+      gone_quiet: 'Quiet for two weeks', not_interested: 'Said not interested', wrong_contact: 'Wrong number',
+    },
   },
   qualification: {
     gaps: {

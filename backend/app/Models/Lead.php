@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Automation\ActionLog;
 use App\Domain\Automation\FollowUpPlanner;
+use App\Domain\Leads\InterestEngine;
 use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
@@ -126,6 +127,12 @@ class Lead extends Model
             // tracking link's revenue is made of. Never allowed to break the save.
             if ($lead->wasChanged('status') && $lead->status === LeadStatus::Won) {
                 app(EventRecorder::class)->outcome($lead, EventType::Won, ['deal_value_minor' => $lead->deal_value_minor]);
+            }
+
+            // Something that moves how interested they are: a visit or a reservation asked for, a channel
+            // lost, the sale, a person's word. (Quiet saves from the engine itself do not come back here.)
+            if ($lead->wasChanged(['appointment_interest', 'reservation_intent', 'whatsapp_opt_out_at', 'email_opt_out_at', 'email_bounced_at', 'status', 'interest_override', 'qualification_status'])) {
+                InterestEngine::touch($lead->id, 'lead_changed');
             }
 
             // Who can be reached changed: the follow-up plan lays out again, or ends.
@@ -291,6 +298,9 @@ class Lead extends Model
             'appointment_interest' => 'boolean',
             'reservation_intent' => 'boolean',
             'first_touch_at' => 'datetime',
+            'interest_signals' => 'array',
+            'interest_at' => 'datetime',
+            'interest_level_changed_at' => 'datetime',
             'last_touch_at' => 'datetime',
             'bedrooms' => 'integer',
             'area_sqm' => 'decimal:2',

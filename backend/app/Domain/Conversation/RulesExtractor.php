@@ -91,6 +91,14 @@ final class RulesExtractor
         'كاش', 'نقدا', 'تمويل', 'فيلا', 'شقه', 'تاون', 'ارض', 'دوبلكس', 'ميزانيتي', 'ميزانيه', 'غرف', 'غرفه', 'مليون', 'الف', 'ريال', 'لو', 'اذا', 'يعني', 'شكرا',
     ];
 
+    /** Questions, not statements: asking the price is a buying signal, saying it is high is an objection. */
+    private const INQUIRY = [
+        'price' => ['كم السعر', 'وش السعر', 'كم سعر', 'كم يبدا', 'كم يبدأ', 'ابي اعرف السعر', 'اسعار', 'قائمه الاسعار', 'how much', 'what is the price', 'price list', 'pricing'],
+        'financing' => ['فيه تمويل', 'يوجد تمويل', 'تمويل؟', 'كيف التمويل', 'تقسيط', 'خطه الدفع', 'خطة الدفع', 'دفعه اولي', 'دفعه اولى', 'down payment', 'payment plan', 'installments', 'do you offer financing'],
+        'location' => ['وين الموقع', 'اين الموقع', 'الموقع وين', 'ارسل الموقع', 'لوكيشن', 'where is it', 'send the location', 'location pin'],
+        'availability' => ['متوفر', 'فيه وحدات', 'باقي وحدات', 'is it available', 'any units left', 'still available'],
+    ];
+
     private const POSITIVE = ['ممتاز', 'حلو', 'رائع', 'شكرا', 'مناسب', 'يعجبني', 'تمام', 'great', 'good', 'thanks', 'thank you', 'perfect', 'love it', 'excellent'];
 
     private const NEGATIVE = ['سيء', 'مزعج', 'كفايه', 'ازعاج', 'ما عجبني', 'زعلان', 'bad', 'annoying', 'angry', 'terrible', 'not happy', 'disappointed', 'waste of time'];
@@ -160,6 +168,13 @@ final class RulesExtractor
                     $facts[] = new Fact(Vocabulary::BUDGET, $value, 70);
                     break;
                 }
+            }
+        }
+
+        // Questions accumulate: everything they asked about.
+        foreach ($lex['inquiry'] as $value => $phrases) {
+            if ($this->has($text, $phrases)) {
+                $facts[] = new Fact(Vocabulary::INQUIRY, $value, 70);
             }
         }
 
@@ -266,6 +281,7 @@ final class RulesExtractor
             'payment' => self::compile(self::PAYMENT),
             'purpose' => self::compile(self::PURPOSE),
             'reservation' => self::compile(self::RESERVATION),
+            'inquiry' => self::compile(self::INQUIRY),
             'rooms' => array_combine(array_map([Text::class, 'normalise'], array_keys(self::ROOM_WORDS)), array_values(self::ROOM_WORDS)),
             'stop' => array_map([Text::class, 'normalise'], self::DISTRICT_STOP),
             'positive' => array_map([Text::class, 'normalise'], self::POSITIVE),

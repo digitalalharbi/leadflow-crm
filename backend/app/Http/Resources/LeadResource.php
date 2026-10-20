@@ -31,6 +31,11 @@ class LeadResource extends JsonResource
 
             'status' => $this->status?->value,
             'temperature' => $this->temperature?->value,
+            'interest_level' => $this->interest_level,
+            'interest_score' => (int) $this->interest_score,
+            'interest_override' => $this->interest_override,
+            // Why: each signal and what it is worth, strongest first.
+            'interest_signals' => collect($this->interest_signals ?? [])->sortByDesc(fn ($s) => abs($s['points'] ?? 0))->values()->all(),
             // Hot, and the one to call first. Not a fourth temperature.
             'is_priority' => (bool) $this->is_priority,
             // Whether the journey is still talking to them, or it is a person's

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Leads\InterestEngine;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
@@ -22,6 +23,7 @@ class LeadMessage extends Model
         // What the customer writes is read once it is saved — after commit, off the request.
         static::created(function (self $message) {
             if (($message->direction instanceof MessageDirection ? $message->direction : MessageDirection::tryFrom((string) $message->direction)) === MessageDirection::Inbound && filled($message->body)) {
+                InterestEngine::touch($message->lead_id, 'reply');
                 ExtractConversationFacts::dispatch($message->lead_id)->afterCommit();
             }
         });

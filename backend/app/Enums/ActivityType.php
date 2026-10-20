@@ -34,6 +34,8 @@ enum ActivityType: string
     case Merged = 'merged';
     case EmailReceived = 'email_received';
     case EmailBounced = 'email_bounced';
+    /** A person said whether the lead is interested, over what the numbers say. */
+    case InterestChanged = 'interest_changed';
 
     public static function values(): array
     {

@@ -45,6 +45,9 @@ jobs:
       E2E_BASE_URL: http://127.0.0.1:5173
       # Servers are started explicitly below, so Playwright must not try.
       E2E_NO_SERVER: '1'
+      # Queued work (conversation reading, notifications, recovery) has no worker in this job;
+      # it runs inline, exactly as in the local e2e API. Without it those specs wait for ever.
+      QUEUE_CONNECTION: sync
 
     steps:
       - uses: actions/checkout@v4

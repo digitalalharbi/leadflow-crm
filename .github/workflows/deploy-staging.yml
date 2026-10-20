@@ -1,5 +1,10 @@
 name: Deploy staging
 
+# Deploying is not testing. CI (ci.yml) runs on every push to develop and decides
+# whether the code is healthy; this workflow only ships a commit that CI has passed,
+# and only when a staging server has been set up. With no server it says so and ends —
+# "not configured" is a state to fix, not a failure of the code, so it does not turn
+# develop red. A deploy that is attempted and fails does.
 on:
   push:
     branches: [develop]
@@ -10,64 +15,80 @@ concurrency:
   group: deploy-staging
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
-  backend-tests:
-    uses: ./.github/workflows/backend-tests.yml
-
-  frontend-tests:
-    uses: ./.github/workflows/frontend-tests.yml
-
-  e2e-tests:
-    uses: ./.github/workflows/e2e-tests.yml
-
-  deploy:
-    name: Deploy to staging VPS
-    needs: [backend-tests, frontend-tests, e2e-tests]
+  # Is there somewhere to deploy to? Secrets cannot be tested in an `if:`, so this reads them
+  # into the environment and reports the names that are missing — never their values.
+  config:
+    name: Staging configured?
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment:
-      name: staging
-      url: https://${{ vars.STAGING_DOMAIN || 'staging.example.com' }}
-
+    timeout-minutes: 2
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Require the deployment secrets
+      - id: check
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          DEPLOY_PATH_SECRET: ${{ secrets.STAGING_PATH }}
+          STAGING_PATH: ${{ secrets.STAGING_PATH }}
+          STAGING_DOMAIN: ${{ vars.STAGING_DOMAIN }}
         run: |
-          # A deploy that cannot run must fail, not pass quietly. Skipping here
-          # produced a green "Deploy staging" on a run that shipped nothing, and
-          # a release was tagged against it before anyone noticed.
           MISSING=""
-          for name in VPS_HOST VPS_USER VPS_SSH_KEY DEPLOY_PATH_SECRET; do
+          for name in VPS_HOST VPS_USER VPS_SSH_KEY STAGING_PATH STAGING_DOMAIN; do
             [ -n "${!name}" ] || MISSING="$MISSING $name"
           done
 
-          if [ -n "$MISSING" ]; then
-            LABEL="$(echo "$MISSING" | sed 's/DEPLOY_PATH_SECRET/STAGING_PATH/')"
-            {
-              echo "## Deployment is not configured"
-              echo ""
-              echo "Missing repository secrets:**$LABEL**"
-              echo ""
-              echo "Every test passed — this is a configuration gap, not a code failure."
-              echo "Staging still runs the previous build."
-              echo ""
-              echo "Run \`./scripts/check-deploy-readiness.sh\` for the exact commands,"
-              echo "or see \`EXTERNAL_SETUP.md\` section 2."
-            } >> "$GITHUB_STEP_SUMMARY"
-
-            echo "::error title=Deployment not configured::Missing secrets:$LABEL — see the job summary."
-            exit 1
+          if [ -z "$MISSING" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-          echo "### Deploying to staging" >> "$GITHUB_STEP_SUMMARY"
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+          {
+            echo "### STAGING NOT CONFIGURED"
+            echo ""
+            echo "Nothing was deployed. Missing:**$MISSING**"
+            echo ""
+            echo "This is not a code failure: CI decides that. Run \`./scripts/check-deploy-readiness.sh\`"
+            echo "for the exact commands, or see \`docs/GITHUB_FLOW.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Staging not configured::Missing:$MISSING — nothing deployed."
+
+  deploy:
+    name: Deploy to staging VPS
+    needs: [config]
+    if: needs.config.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: staging
+      url: https://${{ vars.STAGING_DOMAIN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ship only what CI passed. Waiting for CI, not re-running it: CI is the authority.
+      - name: CI must have passed for this commit
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/ci/ci-is-green.sh "${{ github.sha }}" 2700 | tee -a "$GITHUB_OUTPUT"
+
+      - name: Not deployed — CI is not green
+        if: steps.ci.outputs.green != 'true'
+        run: |
+          {
+            echo "### NOT DEPLOYED — CI is not green for this commit (${{ steps.ci.outputs.green }})"
+            echo "Fix CI first; this workflow ships only what CI has passed."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning title=Not deployed::CI is not green for this commit (${{ steps.ci.outputs.green }})."
 
       - name: Set up the SSH key
+        if: steps.ci.outputs.green == 'true'
         run: |
           mkdir -p ~/.ssh
           # Written from a secret and never echoed.
@@ -76,6 +97,7 @@ jobs:
           ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy
+        if: steps.ci.outputs.green == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -91,6 +113,7 @@ jobs:
              cd \"\$STAGING_PATH\" && ./scripts/deploy-staging.sh"
 
       - name: Verify staging is serving the new build
+        if: steps.ci.outputs.green == 'true'
         env:
           STAGING_DOMAIN: ${{ vars.STAGING_DOMAIN }}
         run: |

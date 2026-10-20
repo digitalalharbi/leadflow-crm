@@ -22,6 +22,7 @@ import {
 import type { Lead, LeadStatus, LeadTemperature } from '@/types/api'
 import { ConversationCard } from '@/components/lead/ConversationCard'
 import { DuplicatesBanner } from '@/components/lead/DuplicatesBanner'
+import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
 import { LeadFiles } from '@/components/leads/LeadFiles'
@@ -614,6 +615,8 @@ export function LeadDetailPage() {
         how engaged they are, and what they told us.
       */}
       {can.seeAllLeads(user) && <DuplicatesBanner leadId={lead.id} onMerged={() => void queryClient.invalidateQueries({ queryKey: ['lead', id] })} />}
+
+      {data.handoff && <div className="mb-4"><HandoffBriefCard brief={data.handoff} onAct={actOnNext} /></div>}
 
       <IntelligenceStrip intelligence={data.intelligence} />
 

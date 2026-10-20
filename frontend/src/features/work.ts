@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from '@/lib/api'
-import type { LeadIntelligence } from '@/features/leads'
+import type { HandoffBrief, LeadIntelligence } from '@/features/leads'
 import type { LeadListItem } from '@/types/api'
 
 /**
@@ -71,6 +71,7 @@ export interface NextInQueue {
   /** Why this lead is first: the three things that ranked it, in words. */
   rank?: { score: number; reason: string }
   intelligence?: LeadIntelligence
+  handoff?: HandoffBrief | null
 }
 
 /** `skip` carries the leads passed over in this sitting, so "skip" actually

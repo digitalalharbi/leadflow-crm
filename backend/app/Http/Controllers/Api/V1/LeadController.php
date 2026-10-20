@@ -7,6 +7,7 @@ use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Conversation\ConversationIntelligence;
 use App\Domain\Leads\DuplicateFinder;
+use App\Domain\Leads\HandoffBrief;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\LeadMerger;
@@ -173,7 +174,9 @@ class LeadController extends Controller
             ),
             // What to do next, decided by the same rules the work queue uses, so
             // the lead screen and the queue cannot give two answers.
-            'next_action' => $this->nextAction($request, $lead),
+            'next_action' => $next = $this->nextAction($request, $lead),
+            // When a person has been handed the lead: the brief, so nothing has to be reconstructed.
+            'handoff' => $lead->automation_state === Lead::AUTOMATION_HANDED_OFF ? app(HandoffBrief::class)->for($lead, $next) : null,
             'signals' => WhyNow::signals($lead),
             // The rep's name comes from a join, not an eager load: an eager load is
             // skipped when there are no calls, which would make a quiet lead cost

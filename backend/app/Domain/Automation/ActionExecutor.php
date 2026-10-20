@@ -75,7 +75,7 @@ class ActionExecutor
                 return $held;
             }
 
-            return match ($type) {
+            $result = match ($type) {
                 'assign' => $this->assign($lead, $action),
                 'change_stage' => $this->changeStage($lead, $action),
                 'adjust_score' => $this->adjustScore($lead, $action),
@@ -97,6 +97,9 @@ class ActionExecutor
                 'request_appointment' => $this->sendWhatsapp($lead, ['purpose' => 'appointment'] + $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
+
+            // A channel that failed is not the end: the other channel, then a person.
+            return app(Recovery::class)->attempt($lead, $action, $result, fn (Lead $l, array $a) => $this->execute($l, $a)) ?? $result;
         } catch (\Throwable $e) {
             // The message, never the trace: a rule's failure is shown in the UI.
             return ['ok' => false, 'description' => "فشل الإجراء '{$type}': ".$e->getMessage()];
@@ -722,6 +725,9 @@ class ActionExecutor
             'handed_off_at' => now(),
         ])->save();
 
+        // The messages still waiting would now talk over the rep.
+        $frozen = app(Handoff::class)->freeze($lead);
+
         $words = Lead::handOffWords($reason);
         $this->activities->log($lead, ActivityType::HandedOff, null, "سُلِّم العميل للمندوب: {$words}.", $this->signature($action));
 
@@ -731,7 +737,7 @@ class ActionExecutor
             $this->notify($lead, ['audience' => 'owner', 'message' => "{$lead->full_name}: {$words} — دورك الآن.", 'rule_name' => $action['rule_name'] ?? null]);
         }
 
-        return ['ok' => true, 'description' => "سُلِّم للمندوب ({$words}).", 'handed_off' => true, 'after' => $words];
+        return ['ok' => true, 'description' => "سُلِّم للمندوب ({$words}).".($frozen > 0 ? " جُمِّدت {$frozen} رسائل آلية منتظرة." : ''), 'handed_off' => true, 'after' => $words];
     }
 
     /** Hot, warm or cold — the classification a rep sorts by. */

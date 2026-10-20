@@ -58,7 +58,8 @@ class Guardrails
 
         // 2 — the same message, or the same brochure, twice.
         if ($type === 'share_file') {
-            if ($this->brochureAlreadyShared($lead, $action)) {
+            // (A recovery re-sends what the first channel failed to deliver: the share exists, the file did not arrive.)
+            if (! isset($action['_recovery']) && $this->brochureAlreadyShared($lead, $action)) {
                 return $this->block('brochure_repeat', 'سبق إرسال هذا الملف للعميل — لا يُكرَّر آليًا.');
             }
         } elseif ($template !== null && $this->alreadySent($lead, $channel, array_filter([$template, $metaTemplate]))) {

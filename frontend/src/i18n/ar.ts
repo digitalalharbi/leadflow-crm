@@ -100,6 +100,11 @@ export default {
     notifications: 'الإشعارات',
     profile: 'الملف الشخصي',
   },
+  handoff: {
+    title: 'سُلِّم لك',
+    score: 'التقييم',
+    qualification: 'التأهيل',
+  },
   conversation: {
     title: 'ماذا قال العميل',
     analyze: 'حلّل المحادثة الآن',
@@ -412,7 +417,7 @@ export default {
     mode: { auto: 'تلقائي', recommend: 'توصية', monitor: 'مراقبة' },
     modeHint: { auto: 'ينفّذ فورًا دون انتظار', recommend: 'يقترح على المندوب ليقرر', monitor: 'يسجّل فقط دون تنفيذ' },
     outcome: { applied: 'نُفِّذت', skipped: 'تُجووزت', failed: 'فشلت' },
-    result: { completed: 'اكتمل', waiting: 'ينتظر', needs_human: 'يحتاج تدخلًا', failed: 'فشل', skipped: 'تُجووز' },
+    result: { completed: 'اكتمل', recovered: 'استُرد بقناة أخرى', waiting: 'ينتظر', needs_human: 'يحتاج تدخلًا', failed: 'فشل', skipped: 'تُجووز' },
     history: {
       filter: 'تصفية حسب النتيجة',
       all: 'الكل',

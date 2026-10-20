@@ -363,6 +363,26 @@ class ARuleCanReachTheCustomerTest extends TestCase
      * Outside the window it is prepared and reported, not attempted — an
      * attempt would be refused and recorded as a failed contact.
      */
+    /**
+     * The same limit, for a lead that has already been written to: the brochure
+     * not being able to follow is reported and the lead is not handed over for it.
+     */
+    public function test_a_brochure_that_cannot_follow_a_welcome_is_reported_and_nobody_is_called_in(): void
+    {
+        $this->file();
+        $lead = $this->lead();
+        $this->asTenant($this->t['tenant'], fn () => LeadMessage::create([
+            'lead_id' => $lead->id, 'direction' => MessageDirection::Outbound, 'channel' => MessageChannel::Whatsapp,
+            'provider' => 'mock', 'message_type' => 'text', 'body' => 'مرحبًا', 'status' => 'sent',
+        ]));
+
+        $result = $this->fire($lead, ['type' => 'share_file']);
+
+        $this->assertFalse($result['ok'], 'reported as it always was');
+        $this->assertStringContainsString('24', $result['description']);
+        $this->assertNull($this->asTenant($this->t['tenant'], fn () => $lead->fresh()->needs_human_reason));
+    }
+
     public function test_a_file_is_not_sent_to_somebody_who_has_not_written_to_us(): void
     {
         $this->file();
@@ -370,8 +390,10 @@ class ARuleCanReachTheCustomerTest extends TestCase
 
         $result = $this->fire($lead, ['type' => 'share_file']);
 
-        $this->assertFalse($result['ok']);
-        $this->assertStringContainsString('24', $result['description']);
+        // WhatsApp cannot carry it and there is no email to try, and nothing has reached this lead
+        // yet — so a person is asked to, rather than the lead being left unread.
+        $this->assertSame('needs_human', $result['result']);
+        $this->assertStringContainsString('واتساب', $result['description']);
         // The link survives, ready for a rep or a template.
         $this->assertSame(1, FileShare::withoutGlobalScopes()->where('lead_id', $lead->id)->count());
         $this->assertSame(0, LeadMessage::withoutGlobalScopes()->where('lead_id', $lead->id)->count());

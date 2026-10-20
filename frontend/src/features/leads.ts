@@ -79,6 +79,24 @@ export interface ConversationFacts {
   }
 }
 
+/** What a rep needs in the first ten seconds after automation hands them a lead. */
+export interface HandoffBrief {
+  reason: { code: string | null; words: string }
+  since: string | null
+  summary: {
+    project: string | null; city: string | null; platform: string | null; campaign: string | null
+    budget: { min?: number; max?: number } | null; timeline: string | null; property: string | null
+    score: number; temperature: string | null; priority: boolean
+  }
+  why_now: { signals: string[]; said: string | null }
+  qualification: { status: string | null; done: number; total: number; answered: { label: string; value: string }[]; missing: string[] }
+  objections: string[]
+  mood: { intent: string | null; urgency: string | null; sentiment: string | null }
+  engine: 'claude' | 'rules' | null
+  last_conversation: { who: 'customer' | 'rep' | 'automation'; channel: string; text: string; at: string | null }[]
+  next_action: { action: string; urgency: string; reason: string } | null
+}
+
 export function analyzeConversation(leadId: string) {
   return apiPost<{ conversation: ConversationFacts }>(`/leads/${leadId}/conversation/analyze`, {})
 }
@@ -86,6 +104,8 @@ export function analyzeConversation(leadId: string) {
 export interface LeadDetailResponse {
   lead: Lead
   conversation?: ConversationFacts
+  /** Present while a person holds a lead automation handed over. */
+  handoff?: HandoffBrief | null
   intelligence?: LeadIntelligence
   activities: LeadActivity[]
   notes: LeadNote[]

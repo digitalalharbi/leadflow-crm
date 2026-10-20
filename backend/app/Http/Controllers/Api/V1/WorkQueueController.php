@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\HandoffBrief;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\OutcomeRecorder;
@@ -101,6 +102,9 @@ class WorkQueueController extends Controller
             'action' => $top['action'],
             'rank' => ['score' => $top['rank']['score'], 'reason' => $top['rank']['reason']],
             'intelligence' => $top['lead']->getRelation('intelligence'),
+            'handoff' => $top['lead']->automation_state === Lead::AUTOMATION_HANDED_OFF
+                ? app(HandoffBrief::class)->for($top['lead']->loadMissing('project:id,name'), $top['action'])
+                : null,
             'remaining' => $ranked->count(),
             /*
              * The few behind this one, and the last few things that happened to

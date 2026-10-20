@@ -89,10 +89,11 @@ class AutomatedLeadJourneyTest extends TestCase
             $runs = AutomationRun::where('lead_id', $lead->id)->get();
             $this->assertNotEmpty($runs, 'The automation left no trace.');
 
-            $applied = $runs->firstWhere('outcome', 'applied');
-            $this->assertNotNull($applied, 'The matching rule did not apply.');
+            $applied = $runs->where('outcome', 'applied');
+            $this->assertNotEmpty($applied, 'The matching rule did not apply.');
 
-            $descriptions = collect($applied->applied_actions)->pluck('description')->implode(' | ');
+            // Every rule that applied to this lead left its sentences; the assignment and the follow-up are among them.
+            $descriptions = $applied->flatMap(fn ($run) => collect($run->applied_actions)->pluck('description'))->implode(' | ');
             // The trace is prose a manager reads, so it is in their language.
             $this->assertStringContainsString('أُسند إلى', $descriptions);
             $this->assertStringContainsString('حُدِّدت متابعة', $descriptions);

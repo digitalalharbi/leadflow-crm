@@ -2,6 +2,7 @@
 
 namespace App\Services\Whatsapp;
 
+use App\Domain\Automation\Recovery;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -251,6 +252,11 @@ class InboundWhatsappProcessor
         }
 
         $message->advanceStatus($mapped, $at);
+
+        // An automated message that did not arrive: the other channel, else a person.
+        if ($mapped === MessageStatus::Failed) {
+            app(Recovery::class)->afterDeliveryFailure($message->refresh());
+        }
 
         return 'statuses';
     }

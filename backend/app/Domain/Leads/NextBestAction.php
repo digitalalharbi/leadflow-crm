@@ -98,6 +98,8 @@ class NextBestAction
                     'اجتاز أسئلة التأهيل — اتصل واحجز موعدًا.', 0),
                 'no_reply' => $this->result('call_now', 'high',
                     'لم يرد على الرسائل الآلية — جرّب الاتصال.'),
+                'delivery_failed' => $this->result('call_now', 'high',
+                    'تعذّر إيصال الرسائل الآلية عبر واتساب والبريد — اتصل به مباشرة.'),
                 default => null,
             };
 

@@ -27,7 +27,10 @@ class AutomationActionLog extends Model
 
     public const NEEDS_HUMAN = 'needs_human';
 
-    public const RESULTS = [self::COMPLETED, self::WAITING, self::FAILED, self::SKIPPED, self::NEEDS_HUMAN];
+    /** The first channel failed and the other one reached the customer. */
+    public const RECOVERED = 'recovered';
+
+    public const RESULTS = [self::COMPLETED, self::WAITING, self::FAILED, self::SKIPPED, self::NEEDS_HUMAN, self::RECOVERED];
 
     protected $fillable = [
         'lead_id', 'automation_rule_id', 'scheduled_action_id', 'rule_name', 'trigger', 'action_type',

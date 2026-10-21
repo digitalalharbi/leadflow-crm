@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Mail\MailerRegistry;
 use App\Domain\Notifications\AlertKinds;
 use App\Domain\Notifications\NotificationPrefs;
 use App\Http\Controllers\Controller;
@@ -39,14 +40,15 @@ class NotificationPreferenceController extends Controller
     private function present(Request $request): array
     {
         $user = $request->user()->fresh();
+        $door = app(MailerRegistry::class)->current();
 
         return NotificationPrefs::for($user) + [
             'categories' => AlertKinds::CATEGORIES,
             'modes' => AlertKinds::MODES,
             'digest_kinds' => AlertKinds::DIGESTS,
             'email' => $user->email,
-            // Honest about the server: with the log mailer nothing leaves it, and the screen says so.
-            'mail_configured' => config('mail.default') !== 'log',
+            // Honest about the door: when the product's mail provider only writes it down, or has no keys, nothing leaves, and the screen says so.
+            'mail_configured' => $door->delivers() && $door->isConfigured(),
         ];
     }
 }

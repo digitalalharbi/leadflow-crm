@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tracking;
 
+use App\Domain\Analytics\LeadFunnel;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use Illuminate\Support\Carbon;
@@ -36,10 +37,15 @@ class LinkStats
                 max(occurred_at) as last_at")
             ->groupBy('tracking_link_id')->get()->keyBy('tracking_link_id');
 
+        $stage = LeadFunnel::stages();
+
         $leads = Lead::query()->reorder()->whereIn('first_touch_link_id', $linkIds)->when($since, fn ($q) => $q->where('created_at', '>=', $since))
             ->selectRaw("first_touch_link_id,
                 count(*) as leads,
                 count(*) filter (where qualification_status = 'qualified' or status in ('qualified','appointment','negotiation','won')) as qualified,
+                count(*) filter (where {$stage['interested']}) as interested,
+                count(*) filter (where {$stage['visit']}) as visits_done,
+                count(*) filter (where {$stage['reservation']}) as reservations,
                 count(*) filter (where status = 'won') as won,
                 coalesce(sum(deal_value_minor) filter (where status = 'won'), 0) as revenue")
             ->groupBy('first_touch_link_id')->get()->keyBy('first_touch_link_id');
@@ -58,6 +64,10 @@ class LinkStats
                 'call_clicks' => (int) ($e->calls ?? 0),
                 'leads' => (int) ($l->leads ?? 0),
                 'qualified' => (int) ($l->qualified ?? 0),
+                'interested' => (int) ($l->interested ?? 0),
+                // Appointments that happened — not the site visits of `visits` above.
+                'visits_done' => (int) ($l->visits_done ?? 0),
+                'reservations' => (int) ($l->reservations ?? 0),
                 'won' => (int) ($l->won ?? 0),
                 'revenue' => round(((int) ($l->revenue ?? 0)) / 100, 2),
                 'conversion' => $clicks > 0 ? round(((int) ($l->leads ?? 0)) / $clicks * 100, 1) : null,

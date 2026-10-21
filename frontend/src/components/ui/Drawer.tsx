@@ -10,12 +10,12 @@ interface DrawerProps {
   description?: ReactNode
   children: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** For tests and for the pages that need to find their own panel. */
   testId?: string
 }
 
-const sizes = { sm: 'sm:max-w-sm', md: 'sm:max-w-md', lg: 'sm:max-w-xl' }
+const sizes = { sm: 'sm:max-w-sm', md: 'sm:max-w-md', lg: 'sm:max-w-xl', xl: 'sm:max-w-4xl' }
 
 /**
  * A panel that comes in from the side, for detail and settings.

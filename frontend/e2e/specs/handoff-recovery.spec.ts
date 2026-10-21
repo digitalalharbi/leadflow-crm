@@ -37,9 +37,32 @@ test.describe('Sales hand-off', () => {
     await expect(brief.getByTestId('handoff-reason')).toContainText(/\S/)
     await expect(brief.getByTestId('handoff-qualification')).toBeVisible()
     await expect(brief.getByTestId('handoff-objections')).toContainText('السعر')
-    // The last of the conversation, short, and the next thing to do.
-    await expect(brief.getByTestId('handoff-conversation')).toContainText('فيلا')
+    // The band answers the five questions without opening anything: why now, how qualified, how interested, who spoke last.
+    await expect(brief.getByTestId('handoff-why')).toContainText(/\S/)
+    await expect(brief.getByTestId('handoff-interest-badge')).toBeVisible()
+    await expect(brief.getByTestId('handoff-last')).toContainText('العميل')
     await expect(brief.getByTestId('handoff-next')).toBeVisible()
+
+    // The rest is one press away: the last of the conversation, short.
+    await expect(brief.getByTestId('handoff-conversation')).toHaveCount(0)
+    await brief.getByTestId('handoff-toggle').click()
+    await expect(brief.getByTestId('handoff-conversation')).toContainText('فيلا')
+  })
+
+  test('on a laptop the brief is a compact band and the next step is on the first screen', async ({ page }) => {
+    const id = await arrivedAndAnswered('966509990003', 'مهتم، ابي فيلا وابي أزور الموقع بس السعر غالي')
+
+    await page.setViewportSize({ width: 1366, height: 768 })
+    await authenticateAs(page, ALPHA.admin.email)
+    await page.goto(`/leads/${id}`)
+
+    const brief = page.getByTestId('handoff-brief')
+    await expect(brief).toBeVisible()
+    const box = (await brief.boundingBox())!
+    expect(box.height, 'the collapsed brief takes no more than a band').toBeLessThanOrEqual(200)
+    // The one step to take first is inside the first screen, not below the fold.
+    const next = (await brief.getByTestId('handoff-next').boundingBox())!
+    expect(next.y + next.height).toBeLessThanOrEqual(768)
   })
 
   test('the work queue opens the same brief on the lead it asks you to work', async ({ page }) => {

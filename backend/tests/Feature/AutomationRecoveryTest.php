@@ -306,6 +306,11 @@ class AutomationRecoveryTest extends TestCase
         $this->assertSame(['automation', 'customer'], array_column($brief['last_conversation'], 'who'));
         $this->assertNotNull($brief['next_action']);
         $this->assertContains('replied', $brief['why_now']['signals']);
+
+        // How interested, and who spoke last: the two things the band shows without opening anything.
+        $this->assertArrayHasKey('level', $brief['interest']);
+        $this->assertSame('customer', $brief['last_activity']['who']);
+        $this->assertNotNull($brief['last_activity']['at']);
     }
 
     public function test_a_lead_automation_still_has_carries_no_brief_and_the_queue_brings_it_for_the_lead_to_work(): void

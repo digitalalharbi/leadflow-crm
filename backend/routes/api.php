@@ -375,6 +375,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/report-shares', [ReportShareController::class, 'index']);
             Route::post('/report-shares', [ReportShareController::class, 'store']);
             Route::patch('/report-shares/{uuid}', [ReportShareController::class, 'update']);
+            Route::get('/report-shares/{uuid}/preview', [ReportShareController::class, 'preview']);
+            Route::get('/report-shares/{uuid}/analytics', [ReportShareController::class, 'analytics']);
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);
             Route::post('/report-shares/{uuid}/regenerate', [ReportShareController::class, 'regenerate']);
             Route::delete('/report-shares/{uuid}', [ReportShareController::class, 'destroy']);

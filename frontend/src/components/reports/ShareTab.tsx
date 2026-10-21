@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, Eye, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, GripVertical, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui'
 import {
-  createShare, deleteShare, fetchShares, MONEY_SECTIONS, REPORT_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, updateShare,
-  type ReportSection, type ReportShare, type ReportTemplate, type ShareStatus,
+  createShare, deleteShare, fetchShareAnalytics, fetchSharePreview, fetchShares, MONEY_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, updateShare,
+  type LayoutItem, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
 } from '@/features/reportShares'
+import { AreaTrend } from '@/components/visual'
+import { ReportView } from '@/pages/SharedReport'
 import { fetchPartners } from '@/features/partners'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
@@ -25,6 +27,8 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
   const [editing, setEditing] = useState<ReportShare | 'new' | null>(startOpen ? 'new' : null)
+  const [analytics, setAnalytics] = useState<ReportShare | null>(null)
+  const [preview, setPreview] = useState<ReportShare | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['report-shares'], queryFn: fetchShares })
 
@@ -85,6 +89,8 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
               <div className="flex flex-wrap gap-1.5">
                 <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked'} data-testid="share-copy">{t('share.copy')}</Button>
                 <Button size="sm" variant="secondary" onClick={() => setEditing(share)} data-testid="share-edit">{t('share.edit')}</Button>
+                <Button size="sm" variant="outline" icon={<Eye className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-preview">{t('share.preview')}</Button>
+                <Button size="sm" variant="outline" icon={<BarChart3 className="size-3.5" aria-hidden />} onClick={() => setAnalytics(share)} data-testid="share-analytics">{t('share.analytics')}</Button>
                 <Button size="sm" variant="outline" icon={<RefreshCw className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'regenerate', id: share.id })} data-testid="share-regenerate">{t('share.regenerate')}</Button>
                 {share.status !== 'revoked' && (
                   <Button size="sm" variant="outline" icon={<ShieldOff className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'revoke', id: share.id })} data-testid="share-revoke">{t('share.revoke')}</Button>
@@ -95,6 +101,9 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
           ))}
         </ul>
       )}
+
+      <ShareAnalyticsDrawer share={analytics} onClose={() => setAnalytics(null)} />
+      <SharePreviewDrawer share={preview} onClose={() => setPreview(null)} />
 
       <ShareBuilder
         key={typeof editing === 'object' && editing ? editing.id : 'new'}
@@ -115,7 +124,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
 function ShareBuilder({ open, share, templates, onClose, onSaved }: {
   open: boolean
   share: ReportShare | null
-  templates: { key: ReportTemplate; sections: Record<ReportSection, boolean> }[]
+  templates: { key: ReportTemplate; sections: Record<ReportSection, boolean>; layout: LayoutItem[] }[]
   onClose: () => void
   onSaved: (share: ReportShare) => void
 }) {
@@ -125,7 +134,10 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
 
   const [name, setName] = useState(share?.name ?? '')
   const [template, setTemplate] = useState<ReportTemplate>(share?.template ?? 'executive')
-  const [sections, setSections] = useState<Record<ReportSection, boolean>>(share?.sections ?? templates.find((x) => x.key === 'executive')!.sections)
+  const [layout, setLayout] = useState<LayoutItem[]>(share?.layout ?? templates.find((x) => x.key === 'executive')!.layout)
+  const [compare, setCompare] = useState(share?.compare ?? false)
+  const [refreshSeconds, setRefreshSeconds] = useState(String(share?.refresh_seconds ?? 60))
+  const [dragging, setDragging] = useState<number | null>(null)
   const [days, setDays] = useState(String(share?.days ?? 30))
   const [password, setPassword] = useState('')
   const [removePassword, setRemovePassword] = useState(false)
@@ -135,15 +147,28 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
 
   const pick = (key: ReportTemplate) => {
     setTemplate(key)
-    setSections(templates.find((x) => x.key === key)!.sections)
+    setLayout(templates.find((x) => x.key === key)!.layout)
   }
+
+  const move = (from: number, to: number) => setLayout((prev) => {
+    if (to < 0 || to >= prev.length || from === to) return prev
+    const next = [...prev]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+
+    return next
+  })
+  const change = (key: ReportSection, patch: Partial<LayoutItem>) => setLayout((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)))
 
   const save = useMutation({
     mutationFn: () => {
       const payload = {
         name,
         template,
-        sections,
+        layout,
+        sections: Object.fromEntries(layout.map((row) => [row.key, row.on])),
+        compare,
+        refresh_seconds: Number(refreshSeconds) || 60,
         days: Number(days) || 30,
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : null,
         partner_id: template === 'partner' ? partnerId || null : null,
@@ -156,7 +181,7 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
-  const money = REPORT_SECTIONS.filter((s) => sections[s] && MONEY_SECTIONS.includes(s))
+  const money = layout.filter((row) => row.on && MONEY_SECTIONS.includes(row.key))
 
   return (
     <Drawer
@@ -202,27 +227,74 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
 
         <fieldset className="space-y-2">
           <legend className="t-small mb-1 font-medium">{t('share.step.sections')}</legend>
-          <ul className="space-y-1" data-testid="share-sections">
-            {REPORT_SECTIONS.map((section) => (
-              <li key={section}>
-                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--color-surface-muted)]">
-                  <span className="t-small flex items-center gap-1.5">
-                    {t(`share.section.${section}`)}
-                    {MONEY_SECTIONS.includes(section) && <Badge tone="warning">{t('share.money')}</Badge>}
-                  </span>
+          <p className="t-caption">{t('share.layoutHint')}</p>
+          <ol className="space-y-1" data-testid="share-sections">
+            {layout.map((row, index) => (
+              <li
+                key={row.key}
+                draggable
+                data-testid={`share-row-${row.key}`}
+                onDragStart={() => setDragging(index)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { if (dragging !== null) move(dragging, index); setDragging(null) }}
+                onDragEnd={() => setDragging(null)}
+                className={cn('flex flex-wrap items-center gap-2 rounded-lg border px-2 py-1.5', row.on ? 'border-[var(--color-line)] bg-[var(--color-surface)]' : 'border-transparent bg-[var(--color-surface-muted)] opacity-70', dragging === index && 'opacity-50')}
+              >
+                <GripVertical className="size-4 shrink-0 cursor-grab text-[var(--color-ink-subtle)]" aria-hidden />
+                <span className="t-small flex min-w-0 flex-1 items-center gap-1.5">
+                  {t(`share.section.${row.key}`)}
+                  {MONEY_SECTIONS.includes(row.key) && <Badge tone="warning">{t('share.money')}</Badge>}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Button size="icon" variant="ghost" aria-label={t('share.moveUp')} disabled={index === 0} data-testid={`share-up-${row.key}`} icon={<ArrowUp className="size-4" />} onClick={() => move(index, index - 1)} />
+                  <Button size="icon" variant="ghost" aria-label={t('share.moveDown')} disabled={index === layout.length - 1} data-testid={`share-down-${row.key}`} icon={<ArrowDown className="size-4" />} onClick={() => move(index, index + 1)} />
+                </span>
+                <select
+                  aria-label={t('share.visibility')}
+                  value={row.visible_to}
+                  data-testid={`share-visibility-${row.key}`}
+                  onChange={(e) => change(row.key, { visible_to: e.target.value as SectionVisibility })}
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-1 text-[0.8125rem]"
+                >
+                  <option value="public">{t('share.visibleTo.public')}</option>
+                  <option value="team">{t('share.visibleTo.team')}</option>
+                </select>
+                <select
+                  aria-label={t('share.scope')}
+                  value={row.days ?? ''}
+                  data-testid={`share-scope-${row.key}`}
+                  onChange={(e) => change(row.key, { days: e.target.value === '' ? null : Number(e.target.value) })}
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-1 text-[0.8125rem]"
+                >
+                  <option value="">{t('share.scopeReport')}</option>
+                  {[7, 30, 90, 365].map((d) => <option key={d} value={d}>{t('share.lastDays', { count: d })}</option>)}
+                </select>
+                <label className="flex cursor-pointer items-center gap-1.5">
+                  {row.on ? <Eye className="size-4 text-[var(--brand)]" aria-hidden /> : <EyeOff className="size-4 text-[var(--color-ink-subtle)]" aria-hidden />}
                   <input
                     type="checkbox"
                     role="switch"
-                    checked={sections[section]}
-                    data-testid={`share-section-${section}`}
-                    onChange={(e) => setSections((prev) => ({ ...prev, [section]: e.target.checked }))}
+                    checked={row.on}
+                    aria-label={t(`share.section.${row.key}`)}
+                    data-testid={`share-section-${row.key}`}
+                    onChange={(e) => change(row.key, { on: e.target.checked })}
                     className="size-4 accent-[var(--brand)]"
                   />
                 </label>
               </li>
             ))}
-          </ul>
+          </ol>
           {money.length > 0 && <p className="t-caption text-[var(--color-warning)]" data-testid="share-money-warning">{t('share.moneyWarning')}</p>}
+        </fieldset>
+
+        <fieldset className="grid gap-3 sm:grid-cols-2">
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--color-surface-muted)]">
+            <span className="t-small">{t('share.compare')}<span className="t-caption block">{t('share.compareHint')}</span></span>
+            <input type="checkbox" role="switch" checked={compare} data-testid="share-compare" onChange={(e) => setCompare(e.target.checked)} className="size-4 accent-[var(--brand)]" />
+          </label>
+          <Select label={t('share.refresh')} value={refreshSeconds} data-testid="share-refresh" onChange={(e) => setRefreshSeconds(e.target.value)}>
+            {[30, 60, 300, 900].map((s) => <option key={s} value={s}>{t(`share.refreshEvery.${s}`)}</option>)}
+          </Select>
         </fieldset>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -250,6 +322,50 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
           )}
         </div>
       </div>
+    </Drawer>
+  )
+}
+
+
+/** Who opened a link, and when: the views over time, how many different people, and the last few. */
+function ShareAnalyticsDrawer({ share, onClose }: { share: ReportShare | null; onClose: () => void }) {
+  const { t, i18n } = useTranslation()
+  const { data, isLoading } = useQuery({ queryKey: ['share-analytics', share?.id], queryFn: () => fetchShareAnalytics(share!.id), enabled: share !== null })
+  const day = new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { day: 'numeric', month: 'short' })
+
+  return (
+    <Drawer open={share !== null} onClose={onClose} title={t('share.analyticsTitle', { name: share?.name ?? '' })} size="md" testId="share-analytics-drawer">
+      {isLoading || !data ? <Skeleton className="h-48" /> : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {([['total', data.total], ['unique', data.unique]] as const).map(([key, value]) => (
+              <div key={key} className="rounded-xl bg-[var(--color-surface-muted)] p-2"><p className="t-metric" dir="ltr" data-testid={`analytics-${key}`}>{value}</p><p className="t-caption">{t(`share.analyticsStat.${key}`)}</p></div>
+            ))}
+            <div className="rounded-xl bg-[var(--color-surface-muted)] p-2"><p className="t-small font-semibold" data-testid="analytics-last">{data.last_viewed_at ? formatLastSeen(data.last_viewed_at, i18n.language) : '—'}</p><p className="t-caption">{t('share.analyticsStat.last')}</p></div>
+          </div>
+          <AreaTrend height={120} axes valueLabel={t('share.analyticsStat.total')} points={data.daily.map((p) => ({ label: day.format(new Date(p.date)), value: p.views }))} />
+          <ul className="space-y-1" data-testid="analytics-recent">
+            {data.recent.map((r, i) => (
+              <li key={i} className="flex items-center justify-between rounded-lg bg-[var(--color-surface-muted)] px-3 py-1.5 text-[0.875rem]">
+                <span>{formatLastSeen(r.at, i18n.language)}</span><span className="t-caption">{t(`share.device.${r.device}`, { defaultValue: r.device })}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Drawer>
+  )
+}
+
+
+/** The report as the team sees it — every section that is on, the team-only ones too. */
+function SharePreviewDrawer({ share, onClose }: { share: ReportShare | null; onClose: () => void }) {
+  const { t } = useTranslation()
+  const { data, isLoading } = useQuery({ queryKey: ['share-preview', share?.id], queryFn: () => fetchSharePreview(share!.id), enabled: share !== null })
+
+  return (
+    <Drawer open={share !== null} onClose={onClose} title={t('share.previewTitle', { name: share?.name ?? '' })} description={t('share.previewHint')} size="xl" testId="share-preview-drawer">
+      {isLoading || !data ? <Skeleton className="h-64" /> : <ReportView data={{ ...data, workspace: data.workspace ?? { name: null, color: null, logo_url: null } }} />}
     </Drawer>
   )
 }

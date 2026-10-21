@@ -15,7 +15,7 @@ class ReportShare extends Model
 {
     use BelongsToTenant, HasUuid;
 
-    protected $fillable = ['name', 'template', 'sections', 'days', 'project_id', 'partner_id', 'expires_at', 'created_by'];
+    protected $fillable = ['name', 'template', 'sections', 'layout', 'compare', 'refresh_seconds', 'days', 'project_id', 'partner_id', 'expires_at', 'created_by'];
 
     protected $hidden = ['token_hash', 'token_enc', 'password_hash'];
 
@@ -23,6 +23,9 @@ class ReportShare extends Model
     {
         return [
             'sections' => 'array',
+            'layout' => 'array',
+            'compare' => 'boolean',
+            'refresh_seconds' => 'integer',
             'days' => 'integer',
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',

@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
+use App\Domain\Reports\LiveReport;
 use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
 use App\Models\Project;
 use App\Models\ReportShare;
+use App\Models\ReportShareView;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The links a workspace hands out to its live reports, and what each is allowed to show.
@@ -28,9 +32,11 @@ class ReportShareController extends Controller
 
         return ApiResponse::success([
             'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
-            'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key)])->values(),
+            'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key), 'layout' => ReportTemplates::layoutFor($key)])->values(),
             'sections' => ReportTemplates::SECTIONS,
             'money' => ReportTemplates::MONEY,
+            // The sections this person may not put in a report: they cannot see what they are built from.
+            'unavailable' => array_values(array_filter(ReportTemplates::SECTIONS, fn (string $s) => ! Permissions::sees($request->user(), "report.section.{$s}"))),
         ]);
     }
 
@@ -39,10 +45,16 @@ class ReportShareController extends Controller
         $this->authorize('create', ReportShare::class);
 
         $data = $this->validated($request);
+        [$layout, $sections] = $this->shape($data, $data['template'], null);
+        $this->assertMaySee($request, $sections);
+
         $share = new ReportShare([
             'name' => $data['name'],
             'template' => $data['template'],
-            'sections' => isset($data['sections']) ? ReportTemplates::normalise($data['sections']) : ReportTemplates::sectionsFor($data['template']),
+            'sections' => $sections,
+            'layout' => $layout,
+            'compare' => (bool) ($data['compare'] ?? false),
+            'refresh_seconds' => $data['refresh_seconds'] ?? 60,
             'days' => $data['days'] ?? 30,
             'project_id' => $this->projectId($data),
             'partner_id' => $this->partnerId($data),
@@ -72,8 +84,17 @@ class ReportShareController extends Controller
             'days' => $data['days'] ?? null,
         ], fn ($v) => $v !== null));
 
-        if (isset($data['sections'])) {
-            $share->sections = ReportTemplates::normalise($data['sections']);
+        if (isset($data['layout']) || isset($data['sections'])) {
+            [$layout, $sections] = $this->shape($data, $share->template, $share);
+            $this->assertMaySee($request, $sections, array_filter($share->sections ?? []));
+            $share->layout = $layout;
+            $share->sections = $sections;
+        }
+
+        foreach (['compare', 'refresh_seconds'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $share->{$field} = $data[$field];
+            }
         }
 
         if (array_key_exists('project_id', $data)) {
@@ -125,6 +146,34 @@ class ReportShareController extends Controller
         return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
     }
 
+    /** The report as the team sees it: every section that is on, including the ones kept for the team. */
+    public function preview(Request $request, string $uuid)
+    {
+        $share = ReportShare::where('uuid', $uuid)->with('partner')->firstOrFail();
+        $this->authorize('view', $share);
+
+        return ApiResponse::success(app(LiveReport::class)->build($share->setRelation('tenant', $request->user()->tenant), 'team'));
+    }
+
+    /** Who opened a link and when: the views over time, how many different visitors, and the last few. */
+    public function analytics(Request $request, string $uuid)
+    {
+        $share = ReportShare::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('view', $share);
+
+        $views = ReportShareView::query()->where('report_share_id', $share->id);
+        $since = now()->subDays(29)->startOfDay();
+        $daily = (clone $views)->where('viewed_at', '>=', $since)->selectRaw('viewed_at::date as day, count(*) as n')->groupBy('day')->pluck('n', 'day');
+
+        return ApiResponse::success([
+            'total' => (int) $share->view_count,
+            'unique' => (int) (clone $views)->distinct()->count('viewer_hash'),
+            'last_viewed_at' => $share->last_viewed_at?->toIso8601String(),
+            'daily' => collect(range(0, 29))->map(fn (int $i) => $since->copy()->addDays($i)->toDateString())->map(fn (string $d) => ['date' => $d, 'views' => (int) ($daily[$d] ?? 0)])->all(),
+            'recent' => (clone $views)->latest('viewed_at')->limit(8)->get(['viewed_at', 'device'])->map(fn ($v) => ['at' => $v->viewed_at->toIso8601String(), 'device' => $v->device])->all(),
+        ]);
+    }
+
     public function destroy(Request $request, string $uuid)
     {
         $share = ReportShare::where('uuid', $uuid)->firstOrFail();
@@ -146,12 +195,56 @@ class ReportShareController extends Controller
             'template' => [$req, Rule::in(array_keys(ReportTemplates::TEMPLATES))],
             'sections' => ['sometimes', 'array'],
             'sections.*' => ['boolean'],
+            'layout' => ['sometimes', 'array', 'max:40'],
+            'layout.*.key' => ['required', 'string', 'max:32'],
+            'layout.*.on' => ['required', 'boolean'],
+            'layout.*.visible_to' => ['sometimes', Rule::in(ReportTemplates::VISIBILITY)],
+            'layout.*.days' => ['sometimes', 'nullable', Rule::in(ReportTemplates::PERIODS)],
+            'compare' => ['sometimes', 'boolean'],
+            'refresh_seconds' => ['sometimes', 'integer', Rule::in([30, 60, 300, 900])],
             'days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'project_id' => ['sometimes', 'nullable', 'uuid'],
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
             'password' => ['sometimes', 'nullable', 'string', 'min:4', 'max:100'],
             'expires_at' => ['sometimes', 'nullable', 'date', 'after:now'],
         ]);
+    }
+
+    /**
+     * The layout and the on/off map of a report, from whichever the caller sent: a layout is kept as
+     * given (cleaned), a plain map applies its switches to the template's order — or to the layout
+     * the report already has.
+     *
+     * @return array{0:list<array<string,mixed>>,1:array<string,bool>}
+     */
+    private function shape(array $data, string $template, ?ReportShare $current): array
+    {
+        if (isset($data['layout'])) {
+            $layout = ReportTemplates::normaliseLayout($data['layout'], $template);
+        } elseif (isset($data['sections'])) {
+            $base = $current ? ReportTemplates::layoutOf($current) : ReportTemplates::layoutFor($template);
+            $layout = array_map(fn (array $row) => ['on' => (bool) ($data['sections'][$row['key']] ?? false)] + $row, $base);
+        } else {
+            $layout = ReportTemplates::layoutFor($template);
+        }
+
+        return [$layout, collect($layout)->mapWithKeys(fn (array $row) => [$row['key'] => $row['on']])->all()];
+    }
+
+    /**
+     * Nobody puts a section in a report that is built from what they may not see: a person who
+     * cannot see spend cannot hand out a cost section. Sections already on are left alone.
+     *
+     * @param  array<string,bool>  $sections
+     * @param  array<string,bool>  $already
+     */
+    private function assertMaySee(Request $request, array $sections, array $already = []): void
+    {
+        foreach (array_keys(array_filter($sections)) as $section) {
+            if (! isset($already[$section]) && ! Permissions::sees($request->user(), "report.section.{$section}")) {
+                throw ValidationException::withMessages(['sections' => ["You cannot add the {$section} section."]]);
+            }
+        }
     }
 
     private function partnerId(array $data): ?int
@@ -186,6 +279,9 @@ class ReportShareController extends Controller
             'template' => $share->template,
             // What it really shows: for a partner's report, less than was switched on.
             'sections' => ReportTemplates::effective($share->sections, $share->partner_id ? $share->partner : null),
+            'layout' => ReportTemplates::layoutOf($share),
+            'compare' => (bool) $share->compare,
+            'refresh_seconds' => (int) ($share->refresh_seconds ?: 60),
             'partner' => $share->partner_id ? ['id' => $share->partner?->uuid, 'name' => $share->partner?->name, 'show_revenue' => (bool) $share->partner?->show_revenue] : null,
             'days' => $share->days,
             'project' => $share->relationLoaded('project') && $share->project ? ['id' => $share->project->uuid, 'name' => $share->project->name] : null,

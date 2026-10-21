@@ -81,8 +81,8 @@ test.describe('Partners and QR codes', () => {
     await page.goto('/tracking')
     await expect(page.getByTestId('link-list')).toContainText('رابط وسيط الدخول')
     await expect(page.getByTestId('tk-revenue')).toHaveCount(0)
-    // Analyses are not theirs: only the links tab.
-    await expect(page.getByTestId('tracking-tabs').getByRole('tab')).toHaveCount(1)
+    // Analyses are not theirs: their links, and the codes printed from them — never health or attribution.
+    await expect(page.getByTestId('tracking-tabs').getByRole('tab')).toHaveText(['الروابط', 'مركز QR'])
   })
 
   test('a partner’s shared report carries their leads and never the company’s money', async ({ browser }) => {

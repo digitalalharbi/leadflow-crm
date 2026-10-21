@@ -18,6 +18,11 @@ class ReportSharePolicy
         return $this->viewAny($user);
     }
 
+    public function view(User $user, ReportShare $share): bool
+    {
+        return $user->belongsToTenant($share->tenant_id) && $this->viewAny($user);
+    }
+
     public function update(User $user, ReportShare $share): bool
     {
         return $user->belongsToTenant($share->tenant_id) && $this->viewAny($user);

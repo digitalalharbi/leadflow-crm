@@ -87,3 +87,15 @@ describe('foldSlivers', () => {
     expect(foldSlivers(segs, others)).toBe(segs)
   })
 })
+
+describe('heatShade', () => {
+  it('is pale for little and heavy for most, and never leaves the scale', async () => {
+    const { heatShade } = await import('./HeatGrid')
+
+    expect(heatShade(0)).toBe(8)
+    expect(heatShade(100)).toBe(88)
+    expect(heatShade(-20)).toBe(8)
+    expect(heatShade(250)).toBe(88)
+    expect(heatShade(50)).toBeGreaterThan(heatShade(10))
+  })
+})

@@ -295,7 +295,7 @@ export function LeadDetailPage() {
       </Link>
 
       {/* Header: who, how serious, where they are, and the actions a rep reaches for first. */}
-      <Card className="mb-4">
+      <Card className="mb-2">
         <CardBody className="space-y-4">
           <div className="flex min-w-0 items-start gap-4">
             {/*
@@ -378,223 +378,6 @@ export function LeadDetailPage() {
               </dl>
             </div>
           </div>
-
-          {/*
-            Every act a rep performs on a lead, one press away and without
-            leaving it: the six on the left are the conversation (call, WhatsApp,
-            email, a file, a visit, a follow-up); the round icons are the rarer
-            ones. Nothing done dozens of times a day needs scrolling to.
-          */}
-          <div className="flex flex-wrap items-center gap-2" data-testid="lead-quick-actions">
-            {lead.phone && (
-              <a
-                href={`tel:${lead.phone}`}
-                onClick={(event) => {
-                  /*
-                   * Held until the product has answered. Whether this call is
-                   * placed by telephony or dialled by the rep is decided on the
-                   * server, and following the link first would dial in both
-                   * cases. The link stays a real `tel:` anchor so a long-press
-                   * still copies the number.
-                   */
-                  event.preventDefault()
-                  contactMutation.mutate('call')
-                }}
-              >
-                <Button variant="outline" icon={<Phone className="size-4" />} data-testid="action-call">
-                  {t('leads.call')}
-                </Button>
-              </a>
-            )}
-
-            {waHref && (
-              <a href={waHref} target="_blank" rel="noreferrer" onClick={() => contactMutation.mutate('whatsapp')}>
-                <Button
-                  variant="outline"
-                  icon={<MessageCircle className="size-4" />}
-                  className="border-[color-mix(in_srgb,var(--color-status-won)_35%,transparent)] text-[var(--color-status-won)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)]"
-                  data-testid="action-whatsapp"
-                >
-                  {t('leads.whatsapp')}
-                </Button>
-              </a>
-            )}
-
-            <Button variant="outline" icon={<Mail className="size-4" />} onClick={() => openChannel('email')} data-testid="action-email">
-              {t('leadView.email')}
-            </Button>
-
-            <Button variant="outline" icon={<FileText className="size-4" />} onClick={() => scrollToId('lead-files')} data-testid="action-file">
-              {t('leadView.file')}
-            </Button>
-
-            <Button variant="outline" icon={<CalendarCheck className="size-4" />} onClick={() => setAppointmentOpen(true)} data-testid="action-appointment">
-              {t('leadView.appointment')}
-            </Button>
-
-            <Button
-              variant="outline"
-              icon={<CalendarPlus className="size-4" />}
-              onClick={() => setFollowUpOpen(true)}
-              data-testid="action-follow-up"
-            >
-              {t('leads.setFollowUp')}
-            </Button>
-
-            <Button variant="outline" icon={<Pencil className="size-4" />} onClick={() => setEditOpen(true)} data-testid="action-edit">
-              {t('leadView.edit')}
-            </Button>
-
-            {/*
-              Accept is the rep saying "this one is real and worth working":
-              it qualifies the lead, which makes it a priority and tells the ad
-              platform this campaign brought a real buyer. Reject asks why, the
-              same way a loss does, so the campaign report learns from it.
-            */}
-            {!['qualified', 'appointment', 'negotiation', 'won', 'lost'].includes(lead.status) && (
-              <Button
-                variant="outline"
-                icon={<ThumbsUp className="size-4" />}
-                className="text-[var(--color-status-won)]"
-                loading={statusMutation.isPending}
-                onClick={() => statusMutation.mutate('qualified')}
-                data-testid="action-accept"
-              >
-                {t('leadView.accept')}
-              </Button>
-            )}
-            {!['won', 'lost'].includes(lead.status) && (
-              <Button
-                variant="outline"
-                icon={<ThumbsDown className="size-4" />}
-                className="text-[var(--color-status-lost)]"
-                onClick={() => setLostOpen(true)}
-                data-testid="action-reject"
-              >
-                {t('leadView.reject')}
-              </Button>
-            )}
-
-            <span className="mx-0.5 hidden h-6 w-px bg-[var(--color-chrome-fill)] sm:block" aria-hidden />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('qualification.action')}
-              title={t('qualification.action')}
-              onClick={() => setQualifyOpen(true)}
-              data-testid="action-qualify"
-              icon={<ClipboardCheck className="size-4" />}
-            />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('leads.addNote')}
-              title={t('leads.addNote')}
-              onClick={() => setNoteOpen(true)}
-              data-testid="action-note"
-              icon={<StickyNote className="size-4" />}
-            />
-
-            {/* Temperature: three options, so a dropdown beats a separate page. */}
-            <Dropdown
-              trigger={({ toggle }) => (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('leads.temperature')}
-                  title={t('leads.temperature')}
-                  onClick={toggle}
-                  loading={temperatureMutation.isPending}
-                  data-testid="action-temperature"
-                  icon={<Flame className="size-4" />}
-                />
-              )}
-            >
-              {({ close }) => (
-                <>
-                  {(['hot', 'warm', 'cold'] as const).map((temp) => (
-                    <DropdownItem
-                      key={temp}
-                      icon={
-                        lead.temperature === temp ? (
-                          <Check className="size-4" aria-hidden />
-                        ) : (
-                          <span className="size-4" aria-hidden />
-                        )
-                      }
-                      onClick={() => {
-                        temperatureMutation.mutate(temp)
-                        close()
-                      }}
-                    >
-                      {t(`temperature.${temp}`)}
-                    </DropdownItem>
-                  ))}
-                </>
-              )}
-            </Dropdown>
-
-            {can.assignLeads(user) && (
-              <Dropdown
-                trigger={({ toggle }) => (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('leads.assign')}
-                    title={t('leads.assign')}
-                    onClick={toggle}
-                    loading={assignMutation.isPending}
-                    data-testid="action-assign"
-                    icon={<UserCheck className="size-4" />}
-                  />
-                )}
-              >
-                {({ close }) => (
-                  <div className="max-h-64 overflow-y-auto">
-                    <DropdownItem
-                      icon={
-                        lead.assignee ? (
-                          <span className="size-4" aria-hidden />
-                        ) : (
-                          <Check className="size-4" aria-hidden />
-                        )
-                      }
-                      onClick={() => {
-                        assignMutation.mutate('')
-                        close()
-                      }}
-                    >
-                      {t('common.unassigned')}
-                    </DropdownItem>
-                    {users.map((candidate) => (
-                      <DropdownItem
-                        key={candidate.id}
-                        icon={
-                          lead.assignee?.id === candidate.id ? (
-                            <Check className="size-4" aria-hidden />
-                          ) : (
-                            <span className="size-4" aria-hidden />
-                          )
-                        }
-                        onClick={() => {
-                          assignMutation.mutate(candidate.id)
-                          close()
-                        }}
-                      >
-                        {candidate.name}
-                      </DropdownItem>
-                    ))}
-                  </div>
-                )}
-              </Dropdown>
-            )}
-
-            {can.manageTenant(user) && (
-              <Button variant="ghost" size="icon" aria-label={t('common.delete')} title={t('common.delete')} onClick={() => setDeleteOpen(true)} icon={<Trash2 className="size-4" />} />
-            )}
-          </div>
         </CardBody>
 
         {/* The path, and the control that moves the lead along it. */}
@@ -608,6 +391,232 @@ export function LeadDetailPage() {
           />
         </div>
       </Card>
+
+      {/*
+        The acts a rep reaches for, kept in view: this bar sticks under the header while the page
+        scrolls, so the thread below can be as long as it likes and the next press is never off screen.
+      */}
+      <div
+        className="sticky top-[5.25rem] z-20 mb-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-card)]"
+        data-testid="lead-actions-bar"
+      >
+        {/*
+          Every act a rep performs on a lead, one press away and without
+          leaving it: the six on the left are the conversation (call, WhatsApp,
+          email, a file, a visit, a follow-up); the round icons are the rarer
+          ones. Nothing done dozens of times a day needs scrolling to.
+        */}
+        <div className="flex flex-wrap items-center gap-2" data-testid="lead-quick-actions">
+          {lead.phone && (
+            <a
+              href={`tel:${lead.phone}`}
+              onClick={(event) => {
+                /*
+                 * Held until the product has answered. Whether this call is
+                 * placed by telephony or dialled by the rep is decided on the
+                 * server, and following the link first would dial in both
+                 * cases. The link stays a real `tel:` anchor so a long-press
+                 * still copies the number.
+                 */
+                event.preventDefault()
+                contactMutation.mutate('call')
+              }}
+            >
+              <Button variant="outline" icon={<Phone className="size-4" />} data-testid="action-call">
+                {t('leads.call')}
+              </Button>
+            </a>
+          )}
+
+          {waHref && (
+            <a href={waHref} target="_blank" rel="noreferrer" onClick={() => contactMutation.mutate('whatsapp')}>
+              <Button
+                variant="outline"
+                icon={<MessageCircle className="size-4" />}
+                className="border-[color-mix(in_srgb,var(--color-status-won)_35%,transparent)] text-[var(--color-status-won)] hover:bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)]"
+                data-testid="action-whatsapp"
+              >
+                {t('leads.whatsapp')}
+              </Button>
+            </a>
+          )}
+
+          <Button variant="outline" icon={<Mail className="size-4" />} onClick={() => openChannel('email')} data-testid="action-email">
+            {t('leadView.email')}
+          </Button>
+
+          <Button variant="outline" icon={<FileText className="size-4" />} onClick={() => scrollToId('lead-files')} data-testid="action-file">
+            {t('leadView.file')}
+          </Button>
+
+          <Button variant="outline" icon={<CalendarCheck className="size-4" />} onClick={() => setAppointmentOpen(true)} data-testid="action-appointment">
+            {t('leadView.appointment')}
+          </Button>
+
+          <Button
+            variant="outline"
+            icon={<CalendarPlus className="size-4" />}
+            onClick={() => setFollowUpOpen(true)}
+            data-testid="action-follow-up"
+          >
+            {t('leads.setFollowUp')}
+          </Button>
+
+          <Button variant="outline" icon={<Pencil className="size-4" />} onClick={() => setEditOpen(true)} data-testid="action-edit">
+            {t('leadView.edit')}
+          </Button>
+
+          {/*
+            Accept is the rep saying "this one is real and worth working":
+            it qualifies the lead, which makes it a priority and tells the ad
+            platform this campaign brought a real buyer. Reject asks why, the
+            same way a loss does, so the campaign report learns from it.
+          */}
+          {!['qualified', 'appointment', 'negotiation', 'won', 'lost'].includes(lead.status) && (
+            <Button
+              variant="outline"
+              icon={<ThumbsUp className="size-4" />}
+              className="text-[var(--color-status-won)]"
+              loading={statusMutation.isPending}
+              onClick={() => statusMutation.mutate('qualified')}
+              data-testid="action-accept"
+            >
+              {t('leadView.accept')}
+            </Button>
+          )}
+          {!['won', 'lost'].includes(lead.status) && (
+            <Button
+              variant="outline"
+              icon={<ThumbsDown className="size-4" />}
+              className="text-[var(--color-status-lost)]"
+              onClick={() => setLostOpen(true)}
+              data-testid="action-reject"
+            >
+              {t('leadView.reject')}
+            </Button>
+          )}
+
+          <span className="mx-0.5 hidden h-6 w-px bg-[var(--color-chrome-fill)] sm:block" aria-hidden />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('qualification.action')}
+            title={t('qualification.action')}
+            onClick={() => setQualifyOpen(true)}
+            data-testid="action-qualify"
+            icon={<ClipboardCheck className="size-4" />}
+          />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('leads.addNote')}
+            title={t('leads.addNote')}
+            onClick={() => setNoteOpen(true)}
+            data-testid="action-note"
+            icon={<StickyNote className="size-4" />}
+          />
+
+          {/* Temperature: three options, so a dropdown beats a separate page. */}
+          <Dropdown
+            trigger={({ toggle }) => (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('leads.temperature')}
+                title={t('leads.temperature')}
+                onClick={toggle}
+                loading={temperatureMutation.isPending}
+                data-testid="action-temperature"
+                icon={<Flame className="size-4" />}
+              />
+            )}
+          >
+            {({ close }) => (
+              <>
+                {(['hot', 'warm', 'cold'] as const).map((temp) => (
+                  <DropdownItem
+                    key={temp}
+                    icon={
+                      lead.temperature === temp ? (
+                        <Check className="size-4" aria-hidden />
+                      ) : (
+                        <span className="size-4" aria-hidden />
+                      )
+                    }
+                    onClick={() => {
+                      temperatureMutation.mutate(temp)
+                      close()
+                    }}
+                  >
+                    {t(`temperature.${temp}`)}
+                  </DropdownItem>
+                ))}
+              </>
+            )}
+          </Dropdown>
+
+          {can.assignLeads(user) && (
+            <Dropdown
+              trigger={({ toggle }) => (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('leads.assign')}
+                  title={t('leads.assign')}
+                  onClick={toggle}
+                  loading={assignMutation.isPending}
+                  data-testid="action-assign"
+                  icon={<UserCheck className="size-4" />}
+                />
+              )}
+            >
+              {({ close }) => (
+                <div className="max-h-64 overflow-y-auto">
+                  <DropdownItem
+                    icon={
+                      lead.assignee ? (
+                        <span className="size-4" aria-hidden />
+                      ) : (
+                        <Check className="size-4" aria-hidden />
+                      )
+                    }
+                    onClick={() => {
+                      assignMutation.mutate('')
+                      close()
+                    }}
+                  >
+                    {t('common.unassigned')}
+                  </DropdownItem>
+                  {users.map((candidate) => (
+                    <DropdownItem
+                      key={candidate.id}
+                      icon={
+                        lead.assignee?.id === candidate.id ? (
+                          <Check className="size-4" aria-hidden />
+                        ) : (
+                          <span className="size-4" aria-hidden />
+                        )
+                      }
+                      onClick={() => {
+                        assignMutation.mutate(candidate.id)
+                        close()
+                      }}
+                    >
+                      {candidate.name}
+                    </DropdownItem>
+                  ))}
+                </div>
+              )}
+            </Dropdown>
+          )}
+
+          {can.manageTenant(user) && (
+            <Button variant="ghost" size="icon" aria-label={t('common.delete')} title={t('common.delete')} onClick={() => setDeleteOpen(true)} icon={<Trash2 className="size-4" />} />
+          )}
+        </div>
+      </div>
 
       {/*
         One screen for one customer. The wide column is the conversation and

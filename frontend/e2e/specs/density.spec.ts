@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { ALPHA } from '../fixtures/data'
-import { signInAs } from '../fixtures/pages'
+import { ALPHA, LEADS } from '../fixtures/data'
+import { openLeadByName, signInAs } from '../fixtures/pages'
 import { resetFixtures } from '../fixtures/seed'
 
 /**
@@ -192,6 +192,25 @@ test.describe('A laptop screen', () => {
     // Arabic is RTL, so the inline end is the left edge.
     expect(box?.x).toBe(0)
     expect(Math.round(box?.height ?? 0)).toBe(viewport?.height)
+  })
+
+  /**
+   * A lead's page is long — the thread, the history, the files. The acts a rep reaches for stay in
+   * view while it scrolls, so nobody scrolls back up to call.
+   */
+  test('a lead’s actions stay in view while the page scrolls', async ({ page }) => {
+    await openLeadByName(page, LEADS.chat)
+
+    const bar = page.getByTestId('lead-actions-bar')
+    await expect(bar).toBeVisible()
+    await page.mouse.wheel(0, 900)
+    await page.waitForTimeout(300)
+
+    const top = (await bar.boundingBox())!.y
+    // Under the header (about 5rem), not scrolled off the top.
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(top).toBeLessThan(200)
+    await expect(bar.getByTestId('action-whatsapp')).toBeVisible()
   })
 
   /** Arabic reads right to left, including the chrome the layout is built on. */

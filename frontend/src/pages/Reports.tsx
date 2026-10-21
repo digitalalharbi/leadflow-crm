@@ -9,6 +9,7 @@ import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/f
 import { fetchDrivers, type Drivers } from '@/features/drivers'
 import { MarketingSalesTab } from '@/components/reports/MarketingSalesTab'
 import { WeeklyReportsTab } from '@/components/reports/WeeklyReportsTab'
+import { ShareTab } from '@/components/reports/ShareTab'
 import { QualityTab } from '@/components/reports/QualityTab'
 import { SpendModal } from '@/components/reports/SpendModal'
 import { InsightStrip } from '@/components/reports/InsightStrip'
@@ -27,7 +28,7 @@ import {
 import type { CampaignQualityRow, DashboardData, Project, Ref, ReportRow } from '@/types/api'
 import { cn } from '@/lib/cn'
 
-const TABS = ['overview', 'marketing', 'quality', 'campaigns', 'platforms', 'team', 'lost', 'drivers', 'weekly'] as const
+const TABS = ['overview', 'marketing', 'quality', 'campaigns', 'platforms', 'team', 'lost', 'drivers', 'weekly', 'share'] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -168,7 +169,7 @@ export function ReportsPage() {
           ))}
         </div>
 
-        <div className="grid gap-2 bg-[var(--color-surface-muted)] p-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className={cn('grid gap-2 bg-[var(--color-surface-muted)] p-3 sm:grid-cols-2 lg:grid-cols-5', tab === 'share' && 'hidden')}>
           <Input
             type="date"
             value={dateFrom}
@@ -306,6 +307,7 @@ export function ReportsPage() {
       {tab === 'quality' && <QualityTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} />}
 
       {tab === 'weekly' && <WeeklyReportsTab />}
+      {tab === 'share' && <ShareTab />}
     </>
   )
 }

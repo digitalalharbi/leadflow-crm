@@ -1,4 +1,4 @@
-import { Clock3, Hourglass, MapPin, Sparkles, Target, Wallet, History } from 'lucide-react'
+import { Clock3, Hourglass, MapPin, Target, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { InterestBadge } from '@/components/visual/InterestBadge'
@@ -41,39 +41,41 @@ export function InterestStrip({ data }: { data: NextInQueue }) {
     profile?.district,
   ].filter(Boolean).join(' · ')
 
-  const last = data.timeline[0]
   const waiting = profile?.waiting_since ? formatLastSeen(profile.waiting_since, i18n.language) : null
 
+  /*
+   * Four chips, not six: why this lead is first is the card's reason line just above, and what
+   * happened last is the history beside it. Repeating them here would only make the card taller
+   * than a laptop screen, which is the one place a rep reads it.
+   */
   const facts: Array<{ key: string; icon: LucideIcon; label: string; text: string | null }> = [
     { key: 'project', icon: MapPin, label: t('work.profile.project'), text: [profile?.project, profile?.property].filter(Boolean).join(' · ') || null },
     { key: 'budget', icon: Wallet, label: t('work.profile.budget'), text: budget },
     { key: 'intent', icon: Target, label: t('work.profile.intent'), text: intent || null },
-    { key: 'why', icon: Sparkles, label: t('work.profile.whyNow'), text: data.rank?.reason || data.signals?.slice(0, 2).map((s) => t(`work.signal.${s}`)).join(' · ') || null },
     { key: 'waiting', icon: Hourglass, label: t('work.profile.waiting'), text: waiting },
-    { key: 'last', icon: History, label: t('work.profile.last'), text: last ? `${t(`activity.${last.type}`, { defaultValue: last.type })}${last.at ? ` · ${formatLastSeen(last.at, i18n.language)}` : ''}` : null },
   ]
 
   const left = sla ? Math.abs(sla.minutes_left) : 0
   const percent = sla ? Math.max(0, Math.min(100, Math.round((Math.max(0, sla.minutes_left) / Math.max(1, sla.target_minutes)) * 100))) : 0
 
   return (
-    <div className="space-y-1.5" data-testid="work-interest">
-      <div className="grid gap-2 rounded-xl bg-[var(--color-surface)]/70 p-2 sm:grid-cols-[auto_1fr]">
-        <div className="flex items-center gap-2.5 px-1">
+    <div className="space-y-1" data-testid="work-interest">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-[var(--color-surface)]/70 p-1.5">
+        <div className="flex items-center gap-2">
           {sla ? (
             <RingProgress
               value={sla.state === 'breached' ? 100 : percent}
-              size={52}
+              size={44}
               thickness={5}
               tone={TONE[sla.state]}
               label={t(`work.sla.${sla.state}`)}
               testId="work-sla-ring"
             >
-              <span className="text-[0.875rem] font-extrabold tabular-nums" dir="ltr">{sla.state === 'done' ? '✓' : left}</span>
+              <span className="text-[0.8125rem] font-extrabold tabular-nums" dir="ltr">{sla.state === 'done' ? '✓' : left}</span>
             </RingProgress>
           ) : (
-            <span className="grid size-[52px] place-items-center rounded-full bg-[var(--color-surface-muted)]">
-              <Clock3 className="size-5 text-[var(--color-ink-subtle)]" aria-hidden />
+            <span className="grid size-[44px] place-items-center rounded-full bg-[var(--color-surface-muted)]">
+              <Clock3 className="size-4 text-[var(--color-ink-subtle)]" aria-hidden />
             </span>
           )}
           <div className="space-y-0.5 leading-tight">
@@ -95,14 +97,12 @@ export function InterestStrip({ data }: { data: NextInQueue }) {
           </div>
         </div>
 
-        <dl className="grid grid-cols-2 gap-1.5 sm:grid-cols-3" data-testid="work-facts">
+        <dl className="flex min-w-0 flex-1 flex-wrap gap-1" data-testid="work-facts">
           {facts.filter((fact) => fact.text).map(({ key, icon: Icon, label, text }) => (
-            <div key={key} className="flex min-w-0 items-start gap-1.5 rounded-lg bg-[var(--color-surface-muted)] px-2 py-1" data-testid={`work-fact-${key}`}>
-              <Icon className="mt-0.5 size-3.5 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
-              <div className="min-w-0 leading-tight">
-                <dt className="t-caption">{label}</dt>
-                <dd className="truncate text-[0.875rem] font-semibold">{text}</dd>
-              </div>
+            <div key={key} title={label} className="flex max-w-full items-center gap-1 rounded-lg bg-[var(--color-surface-muted)] px-2 py-1" data-testid={`work-fact-${key}`}>
+              <Icon className="size-3.5 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
+              <dt className="sr-only">{label}</dt>
+              <dd className="truncate text-[0.875rem] font-semibold">{text}</dd>
             </div>
           ))}
         </dl>

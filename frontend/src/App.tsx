@@ -31,6 +31,7 @@ const ProjectDetailPage = lazy(() => import('@/pages/ProjectDetail').then((m) =>
 const AgentsPage = lazy(() => import('@/pages/Agents').then((m) => ({ default: m.AgentsPage })))
 const CreativesPage = lazy(() => import('@/pages/Creatives').then((m) => ({ default: m.CreativesPage })))
 const CampaignsPage = lazy(() => import('@/pages/Campaigns').then((m) => ({ default: m.CampaignsPage })))
+const SharedReportPage = lazy(() => import('@/pages/SharedReport').then((m) => ({ default: m.SharedReportPage })))
 const VisitsPage = lazy(() => import('@/pages/Visits').then((m) => ({ default: m.VisitsPage })))
 const TrackingPage = lazy(() => import('@/pages/Tracking').then((m) => ({ default: m.TrackingPage })))
 const CampaignDetailPage = lazy(() => import('@/pages/CampaignDetail').then((m) => ({ default: m.CampaignDetailPage })))
@@ -107,6 +108,8 @@ export function App() {
     <>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* A live report behind a link: no session, no app chrome. */}
+        <Route path="/reports/share/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
 
         <Route
           element={

@@ -30,6 +30,7 @@ test.describe('Interested queue — اعمل الآن', () => {
       artisan(['tinker', '--execute', `
         \\App\\Models\\Lead::withoutGlobalScopes()->where('uuid', '${id}')->update([
           'status' => 'contacted', 'assigned_to' => \\App\\Models\\User::withoutGlobalScopes()->where('email', '${ALPHA.admin.email}')->value('id'),
+          'automation_state' => null, 'handed_off_at' => null, 'needs_human_reason' => null,
           'interest_level_changed_at' => now()->subMinutes(${minutesAgo}), 'last_customer_message_at' => now()->subMinutes(${minutesAgo}), 'last_contact_at' => null,
         ]);
         \\App\\Models\\Lead::withoutGlobalScopes()->where('uuid', '<>', '${id}')->update(['status' => 'lost']);
@@ -58,7 +59,20 @@ test.describe('Interested queue — اعمل الآن', () => {
     await expect(page.getByTestId('work-fact-budget')).toContainText('900')
     await expect(page.getByTestId('work-fact-intent')).toContainText('النرجس')
     await expect(page.getByTestId('work-fact-waiting')).toBeVisible()
-    await expect(page.getByTestId('work-fact-why')).toBeVisible()
+    // Why now is the card's reason line, and what happened last is the history beside it.
+    await expect(page.getByTestId('work-reason')).toBeVisible()
+  })
+
+  test('the card of an interested lead, with every fact on it, still fits a 1366×768 laptop without scrolling', async ({ page }) => {
+    await reservationRequest(45)
+    await page.setViewportSize({ width: 1366, height: 768 })
+    await authenticateAs(page, ALPHA.admin.email)
+    await page.goto('/work')
+    await expect(page.getByTestId('work-fact-budget')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+
+    const { scrollHeight, clientHeight } = await page.evaluate(() => ({ scrollHeight: document.documentElement.scrollHeight, clientHeight: document.documentElement.clientHeight }))
+    expect(scrollHeight).toBeLessThanOrEqual(clientHeight + 1)
   })
 
   test('one press reserves a unit and the lead moves on', async ({ page }) => {

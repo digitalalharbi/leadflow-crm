@@ -39,14 +39,14 @@ export function IconRail() {
       data-testid="icon-rail"
     >
       {groups.map((group, index) => (
-        <nav key={index} className="flex flex-col items-center gap-1 rounded-[var(--radius-panel)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-card)]">
+        <nav key={index} className="rail-group flex flex-col items-center gap-1 rounded-[var(--radius-panel)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-card)]">
           {group.map((item) => (
             <RailLink key={item.to} item={item} />
           ))}
         </nav>
       ))}
 
-      <div className="flex flex-col items-center gap-1 rounded-[var(--radius-panel)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-card)]">
+      <div className="rail-group flex flex-col items-center gap-1 rounded-[var(--radius-panel)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-card)]">
         {settings && <RailLink item={settings} />}
         <button
           type="button"

@@ -456,3 +456,46 @@ export function RecommendationsSection({ ctx }: { ctx: Ctx }) {
     </CardBody></Card>
   )
 }
+
+/** A partner's statement: what they are owed, what has been paid, what is left — and the payments behind it. */
+export function StatementSection({ ctx }: { ctx: Ctx }) {
+  const { t, i18n } = useTranslation()
+  const d = ctx.data.statement
+
+  if (!d) return null
+
+  const paidShare = d.commission.due ? Math.min(100, Math.round((d.commission.paid / d.commission.due) * 100)) : 0
+  const day = new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { dateStyle: 'medium' })
+
+  return (
+    <Card data-testid="shared-statement"><CardBody>
+      <h2 className="t-card-title mb-1">{t('partners.statement.shared')} · {d.partner}</h2>
+      <p className="t-caption mb-3" data-testid="shared-statement-terms">
+        {d.terms.agreed ? (d.terms.type === 'fixed' ? t('partners.statement.termsFixed', { amount: ctx.money(d.terms.fixed) }) : t('partners.statement.termsPercent', { percent: d.terms.percent })) : t('partners.noCommission')}
+      </p>
+      <div className="flex flex-wrap items-center gap-5">
+        <RingProgress size={96} thickness={10} value={paidShare} tone="good" label={t('partners.statement.paidShare')}>
+          <span className="text-[1rem] font-bold tabular-nums" dir="ltr">{paidShare}%</span>
+        </RingProgress>
+        <div className="grid flex-1 grid-cols-3 gap-2 text-center">
+          {([['due', d.commission.due], ['paid', d.commission.paid], ['balance', d.commission.balance]] as const).map(([key, value]) => (
+            <div key={key} className="rounded-xl bg-[var(--color-surface-muted)] p-2" data-testid={`shared-statement-${key}`}>
+              <p className="t-metric" dir="ltr">{value === null ? '—' : ctx.money(value)}</p>
+              <p className="t-caption">{t(`partners.statement.${key}`)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      {d.payments.length > 0 && (
+        <ul className="mt-3 space-y-1" data-testid="shared-statement-payments">
+          {d.payments.map((p, i) => (
+            <li key={i} className="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-surface-muted)] px-3 py-1.5 text-[0.9375rem]">
+              <span className="tabular-nums" dir="ltr">{ctx.money(p.amount)}</span>
+              <span className="t-caption min-w-0 flex-1 truncate">{[day.format(new Date(p.paid_on)), p.reference].filter(Boolean).join(' · ')}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CardBody></Card>
+  )
+}

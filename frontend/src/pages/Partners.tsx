@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { HandCoins, Link2, Pencil, Plus } from 'lucide-react'
+import { FileText, HandCoins, Link2, Pencil, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, EmptyState, ErrorState, PageHeader, Select, Skeleton } from '@/components/ui'
 import { RingProgress } from '@/components/visual'
 import { LinkDrawer } from '@/components/tracking/LinkDrawer'
 import { PartnerDrawer } from '@/components/partners/PartnerDrawer'
+import { PartnerStatementDrawer } from '@/components/partners/PartnerStatementDrawer'
 import { fetchPartners, PARTNER_TYPES, type Partner, type PartnerType } from '@/features/partners'
 import { formatLastSeen, formatMoneyCompact, formatNumber } from '@/lib/format'
 import { can, useAuth } from '@/stores/auth'
@@ -26,6 +27,7 @@ export function PartnersPage() {
   const [days, setDays] = useState(90)
   const [editing, setEditing] = useState<Partner | 'new' | null>(null)
   const [linkFor, setLinkFor] = useState<Partner | null>(null)
+  const [statementFor, setStatementFor] = useState<Partner | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['partners', days], queryFn: () => fetchPartners(days) })
   const partners = (data?.partners ?? []).filter((p) => !type || p.type === type)
@@ -92,18 +94,31 @@ export function PartnersPage() {
                 </dl>
 
                 {seesRevenue && (
-                  <div className="flex items-center justify-between gap-2 text-[0.9375rem]" data-testid="partner-money">
-                    <span className="tabular-nums" dir="ltr">{t('partners.revenue')}: <strong>{money(s.revenue)}</strong></span>
-                    <span className="tabular-nums" dir="ltr">
-                      {partner.commission_percent !== null ? `${partner.commission_percent}% = ` : ''}
-                      <strong data-testid="partner-commission-value">{s.commission === null || s.commission === undefined ? t('partners.noCommission') : money(s.commission)}</strong>
-                    </span>
+                  <div className="space-y-1.5" data-testid="partner-money">
+                    <div className="flex items-center justify-between gap-2 text-[0.9375rem]">
+                      <span className="tabular-nums" dir="ltr">{t('partners.revenue')}: <strong>{money(s.revenue)}</strong></span>
+                      <span className="tabular-nums" dir="ltr">
+                        {partner.commission_type === 'fixed' ? (partner.commission_fixed !== null ? `${money(partner.commission_fixed)} × ${s.won} = ` : '') : partner.commission_percent !== null ? `${partner.commission_percent}% = ` : ''}
+                        <strong data-testid="partner-commission-value">{s.commission === null || s.commission === undefined ? t('partners.noCommission') : money(s.commission)}</strong>
+                      </span>
+                    </div>
+                    {partner.ledger && partner.ledger.due !== null && (
+                      <dl className="grid grid-cols-3 gap-1 text-center" data-testid="partner-ledger">
+                        {([['due', partner.ledger.due], ['paid', partner.ledger.paid], ['balance', partner.ledger.balance]] as const).map(([key, value]) => (
+                          <div key={key} className="rounded-lg bg-[var(--color-surface-muted)] px-0.5 py-1" data-testid={`partner-ledger-${key}`}>
+                            <dd className="text-[0.9375rem] font-extrabold tabular-nums" dir="ltr">{money(value)}</dd>
+                            <dt className="text-[0.75rem] text-[var(--color-ink-subtle)]">{t(`partners.statement.${key}`)}</dt>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                   </div>
                 )}
 
                 <div className="flex flex-wrap items-center gap-1.5">
                   {canEdit && <Button size="sm" variant="secondary" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(partner)} data-testid="edit-partner">{t('common.edit')}</Button>}
                   <Button size="sm" variant="outline" icon={<Link2 className="size-3.5" />} onClick={() => setLinkFor(partner)} data-testid="partner-new-link">{t('partners.newLink')}</Button>
+                  {seesRevenue && canEdit && <Button size="sm" variant="outline" icon={<FileText className="size-3.5" />} onClick={() => setStatementFor(partner)} data-testid="partner-statement-open">{t('partners.statement.open')}</Button>}
                   <span className="t-caption ms-auto">{s.last_lead_at ? t('partners.lastLead', { when: formatLastSeen(s.last_lead_at, i18n.language) }) : t('partners.noLeads')} · {t('partners.links', { count: s.links })}</span>
                 </div>
               </li>
@@ -112,6 +127,7 @@ export function PartnersPage() {
         </ul>
       )}
 
+      <PartnerStatementDrawer partner={statementFor} onClose={() => setStatementFor(null)} />
       <PartnerDrawer open={editing !== null} partner={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />
       <LinkDrawer
         open={linkFor !== null}

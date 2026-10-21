@@ -14,8 +14,8 @@ use Illuminate\Support\Carbon;
  * What each partner has brought, down the same funnel as everything else — and what it is owed.
  *
  * Credit follows the link that first touched the lead (`leads.partner_id`). The commission is the
- * revenue of the partner's won leads times the partner's percentage, and is null — not zero —
- * until a percentage has been agreed.
+ * revenue of the partner's won leads times the partner's percentage (or a fixed amount per won
+ * deal), and is null — not zero — until terms have been agreed.
  */
 class PartnerStats
 {
@@ -50,14 +50,14 @@ class PartnerStats
         $clicksByPartner = $links->groupBy('partner_id')->map(fn ($group) => (int) $group->sum(fn ($l) => (int) ($clicks[$l->id] ?? 0)));
         $linkCount = $links->groupBy('partner_id')->map->count();
 
-        $percent = Partner::query()->whereIn('id', $partnerIds)->pluck('commission_percent', 'id');
+        $partners = Partner::query()->whereIn('id', $partnerIds)->get()->keyBy('id');
 
         $out = [];
 
         foreach ($partnerIds as $id) {
             $r = $leads->get($id);
             $revenueMinor = (int) ($r->revenue_minor ?? 0);
-            $pct = $percent[$id] ?? null;
+            $due = isset($partners[$id]) ? CommissionLedger::due($partners[$id], (int) ($r->won ?? 0), $revenueMinor) : null;
 
             $out[$id] = [
                 'links' => (int) ($linkCount[$id] ?? 0),
@@ -69,7 +69,8 @@ class PartnerStats
                 'reservations' => (int) ($r->reservations ?? 0),
                 'won' => (int) ($r->won ?? 0),
                 'revenue' => round($revenueMinor / 100, 2),
-                'commission' => $pct !== null ? round($revenueMinor / 100 * (float) $pct / 100, 2) : null,
+                // What the partner's terms make of this period's deals; the ledger has the all-time balance.
+                'commission' => $due !== null ? round($due / 100, 2) : null,
                 'last_lead_at' => $r?->last_lead_at ? Carbon::parse($r->last_lead_at)->toIso8601String() : null,
             ];
         }

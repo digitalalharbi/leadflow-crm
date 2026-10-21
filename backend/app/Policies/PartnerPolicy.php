@@ -12,6 +12,11 @@ class PartnerPolicy
         return ! $user->isSuperAdmin() && ($user->isAdmin() || $user->isManager());
     }
 
+    public function view(User $user, Partner $partner): bool
+    {
+        return $user->belongsToTenant($partner->tenant_id) && $this->viewAny($user);
+    }
+
     public function create(User $user): bool
     {
         return $this->viewAny($user);

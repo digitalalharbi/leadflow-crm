@@ -7,6 +7,7 @@ use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Conversions\ConversionHealth;
 use App\Domain\Insights\Recommendations;
 use App\Domain\Leads\InterestSlaStats;
+use App\Domain\Partners\CommissionLedger;
 use App\Domain\Tracking\AttributionReport;
 use App\Enums\QualificationStatus;
 use App\Models\Appointment;
@@ -84,6 +85,7 @@ class LiveReport
                 'team' => $out + ['team' => $this->team($window['from'], $window['to'], $share->project_id)],
                 'automation' => $out + ['automation' => $this->automation($window)],
                 'tracking_health' => $out + ['tracking_health' => $this->trackingHealth()],
+                'statement' => $out + ['statement' => $this->statement($share, $window)],
                 'insights', 'recommendations' => $this->findings($out, $share, $section, $window, $money, $currency, $audience),
                 default => $out,
             };
@@ -395,6 +397,31 @@ class LiveReport
             'sent' => (int) ($p['counts']['sent'] ?? 0), 'failed' => (int) ($p['counts']['failed'] ?? 0),
             'last_sent_at' => $p['last_sent_at'],
         ])->values()->all();
+    }
+
+    /**
+     * A partner's statement: what they brought down the funnel, the terms they work on, what they are
+     * owed and have been paid. Revenue and the value of each deal only if the partner may see revenue;
+     * never the company's cost, other partners or the team.
+     *
+     * @return array<string,mixed>
+     */
+    private function statement(ReportShare $share, array $window): array
+    {
+        $partner = $share->partner;
+        $steps = LeadFunnel::counts($this->leads($share, $window))['steps'];
+        $ledger = (new CommissionLedger)->for([$partner->id])[$partner->id];
+        $terms = CommissionLedger::terms($partner);
+        $shows = (bool) $partner->show_revenue;
+
+        return [
+            'partner' => $partner->name,
+            'terms' => ['type' => $terms['type'], 'percent' => $terms['percent'], 'fixed' => $terms['fixed'], 'agreed' => $terms['agreed']],
+            'funnel' => ['leads' => $steps['leads'], 'qualified' => $steps['qualified'], 'visits' => $steps['visit'], 'reservations' => $steps['reservation'], 'won' => $steps['won']],
+            'commission' => ['due' => $ledger['due'], 'paid' => $ledger['paid'], 'balance' => $ledger['balance']],
+            'deals' => array_map(fn (array $d) => ['won_at' => $d['won_at'], 'commission' => $d['commission']] + ($shows ? ['value' => $d['value']] : []), array_slice((new CommissionLedger)->deals($partner), 0, 20)),
+            'payments' => $partner->payments()->orderByDesc('paid_on')->orderByDesc('id')->limit(12)->get()->map(fn ($p) => ['paid_on' => $p->paid_on?->toDateString(), 'amount' => round($p->amount_minor / 100, 2), 'reference' => $p->reference])->all(),
+        ] + ($shows ? ['revenue' => $ledger['revenue']] : []);
     }
 
     /**

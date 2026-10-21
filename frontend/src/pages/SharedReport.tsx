@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, Input, Skeleton } from '@/components/ui'
 import {
   AttributionSection, AutomationSection, CampaignsSection, FunnelSection, InsightsSection, InterestedSection, KpiCards, PlatformsSection,
-  QualificationSection, RecommendationsSection, ReservationsSection, TeamSection, TrackingHealthSection, TrendSection, useReportCtx, VisitsSection,
+  QualificationSection, RecommendationsSection, ReservationsSection, StatementSection, TeamSection, TrackingHealthSection, TrendSection, useReportCtx, VisitsSection,
 } from '@/components/reports/ReportSections'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { fetchSharedReport, type SharedReportData } from '@/features/reportShares'
@@ -105,7 +105,7 @@ function Shell({ children, workspace }: { children: React.ReactNode; workspace?:
 }
 
 /** The sections that read best side by side take half a row; everything else a whole one. */
-const HALF = new Set(['interested', 'qualification', 'visits', 'reservations', 'automation', 'platforms', 'team', 'funnel'])
+const HALF = new Set(['statement', 'interested', 'qualification', 'visits', 'reservations', 'automation', 'platforms', 'team', 'funnel'])
 
 export function ReportView({ data, refreshing = false }: { data: SharedReportData; refreshing?: boolean }) {
   const { t, i18n } = useTranslation()
@@ -130,6 +130,7 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
       case 'tracking_health': return <TrackingHealthSection ctx={ctx} />
       case 'insights': return <InsightsSection ctx={ctx} />
       case 'recommendations': return <RecommendationsSection ctx={ctx} />
+      case 'statement': return <StatementSection ctx={ctx} />
       default: return null
     }
   }

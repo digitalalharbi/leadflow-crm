@@ -229,7 +229,7 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
           <legend className="t-small mb-1 font-medium">{t('share.step.sections')}</legend>
           <p className="t-caption">{t('share.layoutHint')}</p>
           <ol className="space-y-1" data-testid="share-sections">
-            {layout.map((row, index) => (
+            {layout.map((row, index) => row.key === 'statement' && template !== 'partner' ? null : (
               <li
                 key={row.key}
                 draggable

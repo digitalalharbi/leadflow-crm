@@ -324,6 +324,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/partners', [PartnerController::class, 'index']);
             Route::post('/partners', [PartnerController::class, 'store']);
             Route::patch('/partners/{uuid}', [PartnerController::class, 'update'])->whereUuid('uuid');
+            Route::get('/partners/{uuid}/statement', [PartnerController::class, 'statement'])->whereUuid('uuid');
+            Route::post('/partners/{uuid}/commission-payments', [PartnerController::class, 'pay'])->whereUuid('uuid');
+            Route::delete('/partners/{uuid}/commission-payments/{payment}', [PartnerController::class, 'voidPayment'])->whereUuid('uuid');
+            Route::post('/partners/{uuid}/statement-link', [PartnerController::class, 'statementLink'])->whereUuid('uuid');
             Route::delete('/partners/{uuid}', [PartnerController::class, 'destroy'])->whereUuid('uuid');
             Route::patch('/tracking/links/{uuid}', [TrackingLinkController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/links/{uuid}', [TrackingLinkController::class, 'destroy'])->whereUuid('uuid');

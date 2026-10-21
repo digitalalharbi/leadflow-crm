@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AttributionController;
+use App\Http\Controllers\Api\V1\AuditTrailController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
@@ -178,7 +179,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
             Route::get('/dashboard/manager', [CommandCenterController::class, 'manager']);
             Route::get('/dashboard/journey', [JourneyController::class, 'show']);
+            Route::get('/dashboard/ops', [InsightController::class, 'ops']);
             Route::get('/insights', [InsightController::class, 'index']);
+            Route::get('/audit', AuditTrailController::class);
             Route::post('/anomalies/{uuid}/dismiss', [InsightController::class, 'dismiss'])->whereUuid('uuid');
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);

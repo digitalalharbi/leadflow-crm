@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\Lead;
+use App\Models\Partner;
 use App\Models\Project;
+use App\Models\Property;
 use App\Models\User;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
@@ -36,13 +40,17 @@ class SearchController extends Controller
 
         // Two characters matches half the database and tells nobody anything.
         if (mb_strlen($term) < 2) {
-            return ApiResponse::success(['leads' => [], 'projects' => [], 'people' => []]);
+            return ApiResponse::success(['leads' => [], 'projects' => [], 'people' => [], 'properties' => [], 'campaigns' => [], 'partners' => []]);
         }
 
         return ApiResponse::success([
             'leads' => $this->leads($request, $term),
             'projects' => $this->projects($term),
             'people' => $this->people($request, $term),
+            // Only what this role may open: a rep is not offered the campaigns, a client is not offered the partners.
+            'properties' => Permissions::has($request->user(), 'properties.view') ? $this->properties($term) : [],
+            'campaigns' => Permissions::has($request->user(), 'campaigns.view') ? $this->campaigns($term) : [],
+            'partners' => Permissions::has($request->user(), 'partners.view') ? $this->partners($term) : [],
         ]);
     }
 
@@ -67,6 +75,27 @@ class SearchController extends Controller
                 'assignee' => $lead->assignee?->name,
             ])
             ->all();
+    }
+
+    private function properties(string $term): array
+    {
+        return Property::query()->with('project:id,uuid,name')
+            ->where(fn ($q) => $q->where('code', 'ilike', '%'.$term.'%')->orWhere('title', 'ilike', '%'.$term.'%'))
+            ->limit(self::PER_GROUP)->get()
+            ->map(fn (Property $p) => ['id' => $p->uuid, 'code' => $p->code, 'title' => $p->title, 'project' => $p->project?->name, 'project_id' => $p->project?->uuid, 'status' => $p->status])
+            ->all();
+    }
+
+    private function campaigns(string $term): array
+    {
+        return Campaign::query()->where('name', 'ilike', '%'.$term.'%')->limit(self::PER_GROUP)->get()
+            ->map(fn (Campaign $c) => ['id' => $c->uuid, 'name' => $c->name, 'platform' => $c->platform])->all();
+    }
+
+    private function partners(string $term): array
+    {
+        return Partner::query()->where(fn ($q) => $q->where('name', 'ilike', '%'.$term.'%')->orWhere('company', 'ilike', '%'.$term.'%'))->limit(self::PER_GROUP)->get()
+            ->map(fn (Partner $p) => ['id' => $p->uuid, 'name' => $p->name, 'type' => $p->type])->all();
     }
 
     private function projects(string $term): array

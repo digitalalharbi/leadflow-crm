@@ -19,12 +19,12 @@ const STATUS_TONE: Record<ShareStatus, 'success' | 'warning' | 'danger'> = { act
  * Live reports behind a link: the links a workspace has handed out, who has opened them, and the
  * way to make another in three steps — which report, what it shows, who may open it.
  */
-export function ShareTab() {
+export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
-  const [editing, setEditing] = useState<ReportShare | 'new' | null>(null)
+  const [editing, setEditing] = useState<ReportShare | 'new' | null>(startOpen ? 'new' : null)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['report-shares'], queryFn: fetchShares })
 

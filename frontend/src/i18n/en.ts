@@ -41,6 +41,7 @@ export default {
     companies: 'Companies',
     dashboard: 'Dashboard',
     work: 'Work now',
+    audit: 'History',
     partners: 'Partners',
     visits: 'Visits',
     automation: 'Automation', leads: 'Leads', pipeline: 'Pipeline', campaigns: 'Campaigns', agents: 'Agents', followUps: 'Follow-ups',
@@ -72,6 +73,28 @@ export default {
     appointment: { requested: 'Asked to visit', interested: 'May visit' },
     sentiment: { positive: 'Positive', neutral: 'Neutral', negative: 'Negative' },
     objection: { price_high: 'Price too high', location: 'Location', financing: 'Financing', timing: 'Not now', trust: 'Trust', competitor: 'Competitor', family_decision: 'Family decision' },
+  },
+  ops: {
+    title: 'Today at a glance', ok: 'Healthy',
+    answer: { leads_today: 'Leads today', interested: 'Interested', hot: 'Hot', needs_follow_up: 'Need follow-up', sla_late: 'Past their window', visits_today: 'Visits today', reservations_pending: 'Reservations pending', won_today: 'Won today', revenue_today: 'Revenue today' },
+    health: { automation: 'Automation', tracking: 'Tracking', campaigns: 'Campaigns', backlog: 'Sales backlog' },
+  },
+  audit: {
+    title: 'History', subtitle: 'Who did what, from what to what, and when — a person or automation',
+    emptyTitle: 'Nothing recorded', emptyBody: 'Nothing changed in this period.',
+    category: { all: 'All', assignment: 'Assignment', status: 'Stage', reservation: 'Reservations', visit: 'Visits', deal: 'Deals', automation: 'Automation', reports: 'Reports', permissions: 'Permissions', campaigns: 'Campaigns', other: 'Other' },
+    source: { user: 'Person', automation: 'Automation', system: 'System' },
+    action: {
+      'lead.assigned': 'Lead assigned', 'lead.handed_off': 'Handed to a rep', 'lead.status_changed': 'Stage changed', 'lead.won': 'Won', 'lead.lost': 'Lost',
+      'lead.merged': 'Leads merged', 'lead.interest_changed': 'Interest changed', 'lead.reservation_created': 'Unit held', 'lead.reservation_updated': 'Reservation changed', 'lead.visit_updated': 'Visit changed', 'lead.appointment_created': 'Visit booked',
+      'lead.deal_value_changed': 'Deal value changed', 'lead.deleted': 'Lead deleted',
+      'automation_rule.created': 'New automation rule', 'automation_rule.updated': 'Rule edited', 'automation_rule.deleted': 'Rule deleted', 'automation_rule.duplicated': 'Rule duplicated', 'automation_rule.installed': 'Template installed',
+      'report_share.created': 'New report link', 'report_share.updated': 'Report link edited', 'report_share.revoked': 'Report link revoked', 'report_share.regenerated': 'Report link replaced', 'report_share.deleted': 'Report link deleted',
+      'user.created': 'New user', 'user.role_changed': 'Role changed', 'user.projects_changed': 'Allowed projects changed', 'user.partner_changed': 'Linked to a partner', 'user.deactivated': 'Account deactivated', 'user.deleted': 'User deleted',
+      'campaign_spend.saved': 'Spend entered', 'campaign_spend.deleted': 'Spend deleted', 'campaign.rules_changed': 'Client rules changed', 'campaign.proposal_approved': 'Campaign change approved', 'campaign.proposal_rejected': 'Campaign change rejected',
+      'tracking_link.created': 'New tracking link', 'tracking_link.updated': 'Tracking link edited', 'tracking_link.deleted': 'Tracking link deleted',
+      'partner.created': 'New partner', 'partner.updated': 'Partner edited', 'partner.deleted': 'Partner deleted', 'anomaly.dismissed': 'Anomaly seen',
+    },
   },
   insights: {
     title: 'Look at first', dismiss: 'Seen',
@@ -1087,8 +1110,9 @@ export default {
   search: {
     open: 'Search',
     title: 'Quick search',
-    placeholder: 'Name, phone number, project…',
+    placeholder: 'Name, phone, project, unit, campaign, partner… or what you want to do',
     nothing: 'No results.',
+    action: { 'create-lead': 'Create a lead', 'find-client': 'Find a client', 'open-project': 'Open a project', 'book-visit': 'Book a visit', 'create-report': 'Create a report', 'open-automation': 'Open automation' },
   },
   commandCenter: {
     recommendedHint: 'In the order «Work now» would take them',

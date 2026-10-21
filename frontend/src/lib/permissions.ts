@@ -13,7 +13,7 @@ export type PermissionAction = (typeof ACTIONS)[number]
 
 export const RESOURCES = [
   'dashboard', 'leads', 'visits', 'reservations', 'properties', 'projects', 'companies', 'campaigns', 'tracking',
-  'analytics', 'partners', 'reports_share', 'automation', 'integrations', 'users', 'settings', 'contacts', 'spend', 'revenue',
+  'analytics', 'partners', 'reports_share', 'automation', 'integrations', 'users', 'settings', 'audit', 'contacts', 'spend', 'revenue',
 ] as const
 export type PermissionResource = (typeof RESOURCES)[number]
 
@@ -28,7 +28,7 @@ const MANAGER = [
   'tracking.view', 'tracking.create', 'tracking.edit', 'tracking.disable', 'analytics.view', 'analytics.export',
   'partners.view', 'partners.create', 'partners.edit', 'partners.disable',
   'reports_share.view', 'reports_share.create', 'reports_share.edit', 'reports_share.share', 'reports_share.disable',
-  'automation.view', 'automation.create', 'automation.edit', 'automation.disable', 'users.view', 'settings.view',
+  'automation.view', 'automation.create', 'automation.edit', 'automation.disable', 'users.view', 'settings.view', 'audit.view',
   'contacts.view', 'spend.view', 'revenue.view',
 ]
 

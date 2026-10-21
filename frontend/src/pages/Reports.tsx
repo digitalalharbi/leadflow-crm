@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, CalendarCheck, Download, Flame, PhoneCall, ShieldAlert, Target, Trophy, Users } from 'lucide-react'
@@ -43,7 +43,9 @@ export function ReportsPage() {
   const { t } = useTranslation()
   const translateError = useApiError()
 
-  const [tab, setTab] = useState<Tab>('overview')
+  const [params] = useSearchParams()
+  // `?tab=share&new=1` is where the command palette's "create a report" lands: the builder is already open.
+  const [tab, setTab] = useState<Tab>(() => (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'overview')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -307,7 +309,7 @@ export function ReportsPage() {
       {tab === 'quality' && <QualityTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} />}
 
       {tab === 'weekly' && <WeeklyReportsTab />}
-      {tab === 'share' && <ShareTab />}
+      {tab === 'share' && <ShareTab startOpen={params.get('new') === '1'} />}
     </>
   )
 }

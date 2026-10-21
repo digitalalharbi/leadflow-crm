@@ -1,6 +1,6 @@
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings,
-  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar, HandCoins,
+  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar, HandCoins, ScrollText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -92,6 +92,7 @@ export function useNavigation(): Navigation {
       // Rules act on everybody's leads, so the same authority as the API.
       ...item('/automation', 'nav.automation', Workflow, 'automation.view'),
       ...item('/reports', 'nav.reports', BarChart3, 'analytics.view'),
+      ...item('/audit', 'nav.audit', ScrollText, 'audit.view'),
     ],
     [
       ...item('/integrations', 'nav.integrations', Plug, 'integrations.view'),

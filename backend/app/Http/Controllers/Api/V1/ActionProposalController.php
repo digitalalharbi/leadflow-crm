@@ -13,6 +13,7 @@ use App\Models\AdAccount;
 use App\Models\AdSet;
 use App\Models\Campaign;
 use App\Models\Lead;
+use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -123,14 +124,31 @@ class ActionProposalController extends Controller
     {
         $this->authorize('export', Lead::class);
 
-        return $this->decide(fn ($p) => $this->gateway->approve($p, $request->user(), $request->input('note')), $uuid);
+        $response = $this->decide(fn ($p) => $this->gateway->approve($p, $request->user(), $request->input('note')), $uuid);
+        $this->decided('campaign.proposal_approved', $request, $uuid, $response);
+
+        return $response;
     }
 
     public function reject(Request $request, string $uuid)
     {
         $this->authorize('export', Lead::class);
 
-        return $this->decide(fn ($p) => $this->gateway->reject($p, $request->user(), $request->input('note')), $uuid);
+        $response = $this->decide(fn ($p) => $this->gateway->reject($p, $request->user(), $request->input('note')), $uuid);
+        $this->decided('campaign.proposal_rejected', $request, $uuid, $response);
+
+        return $response;
+    }
+
+    /** A change to an ad account is only ever made by a person saying yes: who said it, to what, and when. */
+    private function decided(string $action, Request $request, string $uuid, $response): void
+    {
+        if ($response->getStatusCode() >= 400) {
+            return;
+        }
+
+        $proposal = ActionProposal::query()->where('uuid', $uuid)->first();
+        app(AuditLogger::class)->log($action, $request->user(), $proposal, ['action' => $proposal?->action, 'platform' => $proposal?->platform, 'note' => $request->input('note')]);
     }
 
     private function decide(callable $do, string $uuid)

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Building2, Contact2, Search, User2 } from 'lucide-react'
+import { Building2, CalendarPlus, Contact2, FilePlus2, Handshake, Home, Megaphone, Search, User2, UserPlus, Workflow } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { search } from '@/features/search'
 import { useDebounced } from '@/hooks/useDebounced'
 import { Modal } from '@/components/ui'
+import { can, useAuth } from '@/stores/auth'
 import { cn } from '@/lib/cn'
 
 /**
@@ -23,6 +24,7 @@ import { cn } from '@/lib/cn'
 export function CommandPalette() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const user = useAuth((s) => s.user)
 
   const [open, setOpen] = useState(false)
   const [term, setTerm] = useState('')
@@ -38,7 +40,7 @@ export function CommandPalette() {
   })
 
   /** Flattened, because arrow keys move through what is on screen, not groups. */
-  const rows = useMemo(() => {
+  const found = useMemo(() => {
     if (!data) return []
 
     return [
@@ -56,6 +58,27 @@ export function CommandPalette() {
         label: project.name,
         hint: undefined,
       })),
+      ...(data.properties ?? []).map((property) => ({
+        key: `property-${property.id}`,
+        to: property.project_id ? `/projects/${property.project_id}` : '/projects',
+        icon: <Home className="size-4" aria-hidden />,
+        label: [property.code, property.title].filter(Boolean).join(' · '),
+        hint: property.project ?? undefined,
+      })),
+      ...(data.campaigns ?? []).map((campaign) => ({
+        key: `campaign-${campaign.id}`,
+        to: `/campaigns/${campaign.id}`,
+        icon: <Megaphone className="size-4" aria-hidden />,
+        label: campaign.name,
+        hint: campaign.platform,
+      })),
+      ...(data.partners ?? []).map((partner) => ({
+        key: `partner-${partner.id}`,
+        to: '/partners',
+        icon: <Handshake className="size-4" aria-hidden />,
+        label: partner.name,
+        hint: partner.type,
+      })),
       ...data.people.map((person) => ({
         key: `person-${person.id}`,
         to: `/users`,
@@ -65,6 +88,37 @@ export function CommandPalette() {
       })),
     ]
   }, [data])
+
+  /*
+   * Things to do, not things to find: shown before anything is typed and filtered as it is. Each is
+   * offered only to a role that may do it — the same permission the API asks for.
+   */
+  const actions = useMemo(() => {
+    const all = [
+      { key: 'create-lead', to: '/leads?new=1', icon: <UserPlus className="size-4" aria-hidden />, perm: 'leads.create' },
+      { key: 'find-client', to: '/leads', icon: <Contact2 className="size-4" aria-hidden />, perm: 'leads.view' },
+      { key: 'open-project', to: '/projects', icon: <Building2 className="size-4" aria-hidden />, perm: 'projects.view' },
+      { key: 'book-visit', to: '/visits', icon: <CalendarPlus className="size-4" aria-hidden />, perm: 'visits.create' },
+      { key: 'create-report', to: '/reports?tab=share&new=1', icon: <FilePlus2 className="size-4" aria-hidden />, perm: 'reports_share.create' },
+      { key: 'open-automation', to: '/automation', icon: <Workflow className="size-4" aria-hidden />, perm: 'automation.view' },
+    ]
+    const needle = term.trim().toLowerCase()
+
+    return all
+      .filter((a) => can.has(user, a.perm))
+      .map((a) => ({ ...a, label: t(`search.action.${a.key}`) }))
+      .filter((a) => needle.length === 0 || a.label.toLowerCase().includes(needle))
+  }, [user, term, t])
+
+  const rows = useMemo(
+    () => {
+      const doing = actions.map((a) => ({ key: `action-${a.key}`, to: a.to, icon: a.icon, label: a.label, hint: undefined as string | undefined }))
+
+      // Typing is finding: what was found comes first, so Enter opens it; with nothing typed, the things to do.
+      return term.trim().length >= 2 ? [...found, ...doing] : doing
+    },
+    [actions, found, term],
+  )
 
   // Opening is global; everything else only matters while it is open.
   useEffect(() => {

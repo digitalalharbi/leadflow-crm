@@ -28,6 +28,12 @@ const ROUTES = [
   '/integrations',
   '/users',
   '/settings',
+  '/visits',
+  '/partners',
+  '/tracking',
+  '/campaigns',
+  '/audit',
+  '/agents',
 ]
 
 test.describe('A laptop screen', () => {

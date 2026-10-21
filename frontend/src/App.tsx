@@ -32,6 +32,7 @@ const AgentsPage = lazy(() => import('@/pages/Agents').then((m) => ({ default: m
 const CreativesPage = lazy(() => import('@/pages/Creatives').then((m) => ({ default: m.CreativesPage })))
 const CampaignsPage = lazy(() => import('@/pages/Campaigns').then((m) => ({ default: m.CampaignsPage })))
 const SharedReportPage = lazy(() => import('@/pages/SharedReport').then((m) => ({ default: m.SharedReportPage })))
+const AuditPage = lazy(() => import('@/pages/Audit').then((m) => ({ default: m.AuditPage })))
 const PartnersPage = lazy(() => import('@/pages/Partners').then((m) => ({ default: m.PartnersPage })))
 const VisitsPage = lazy(() => import('@/pages/Visits').then((m) => ({ default: m.VisitsPage })))
 const TrackingPage = lazy(() => import('@/pages/Tracking').then((m) => ({ default: m.TrackingPage })))
@@ -152,6 +153,7 @@ export function App() {
                   <Route path="/pipeline" element={<RequirePermission any={['leads.view']}><PipelinePage /></RequirePermission>} />
                   <Route path="/campaigns" element={<RequirePermission any={['campaigns.view']}><CampaignsPage /></RequirePermission>} />
                   <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><TrackingPage /></RequirePermission>} />
+                  <Route path="/audit" element={<RequirePermission any={['audit.view']}><AuditPage /></RequirePermission>} />
                   <Route path="/partners" element={<RequirePermission any={['partners.view']}><PartnersPage /></RequirePermission>} />
                   <Route path="/visits" element={<RequirePermission any={['visits.view', 'reservations.view']}><VisitsPage /></RequirePermission>} />
                   <Route path="/agents" element={<RequirePermission any={['campaigns.view']}><AgentsPage /></RequirePermission>} />

@@ -55,11 +55,18 @@ test.describe('البحث السريع — command palette', () => {
   })
 
   test('one character searches nothing', async ({ page }) => {
+    const searches: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('/api/v1/search')) searches.push(request.url())
+    })
+
     await page.getByTestId('open-command-palette').click()
     await page.getByTestId('command-palette-input').fill('ع')
+    await page.waitForTimeout(600)
 
-    // Two characters matches half the database and tells nobody anything.
-    await expect(page.getByTestId('command-palette-results')).toHaveCount(0)
+    // Two characters matches half the database and tells nobody anything: no search is sent.
+    // (The list may still offer the things to do that match — those are not found, they are offered.)
+    expect(searches).toEqual([])
   })
 
   test('a rep is not offered the team through it', async ({ page }) => {

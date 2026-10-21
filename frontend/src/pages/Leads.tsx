@@ -31,7 +31,8 @@ export function LeadsPage() {
   const translateError = useApiError()
   const [searchParams] = useSearchParams()
 
-  const [createOpen, setCreateOpen] = useState(false)
+  // `?new=1` is how the command palette's "create a lead" lands here: the form is already open.
+  const [createOpen, setCreateOpen] = useState(() => searchParams.get('new') === '1')
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
 

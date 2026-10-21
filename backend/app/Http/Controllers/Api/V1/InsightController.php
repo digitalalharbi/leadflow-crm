@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Analytics\OpsPulse;
 use App\Domain\Insights\InsightEngine;
 use App\Http\Controllers\Controller;
 use App\Models\Anomaly;
@@ -13,6 +14,12 @@ use Illuminate\Http\Request;
 class InsightController extends Controller
 {
     public function __construct(private InsightEngine $engine, private AuditLogger $audit) {}
+
+    /** The operations home: nine answers for today and four lights for the machinery. */
+    public function ops(Request $request, OpsPulse $pulse)
+    {
+        return ApiResponse::success($pulse->for($request->user()));
+    }
 
     public function index(Request $request)
     {

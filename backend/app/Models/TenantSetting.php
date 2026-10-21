@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Automation\Thresholds;
 use App\Models\Concerns\TenantOwnedSingleton;
+use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,6 +15,21 @@ class TenantSetting extends Model
     protected static function booted(): void
     {
         static::saved(fn () => Thresholds::flush());
+
+        /*
+         * Whose settings `TenantSetting::query()->first()` means. The model has no global scope on
+         * purpose (the login screen reads it before anyone is signed in, when no tenant is bound), so
+         * code that asks for "the workspace's settings" with a tenant bound used to get whichever
+         * workspace's row came first — its thresholds, its quiet hours, its AI key. With a tenant
+         * bound the question now has one answer; with none bound nothing changes.
+         */
+        static::addGlobalScope('bound-tenant', function ($query) {
+            $id = app(TenantContext::class)->id();
+
+            if ($id !== null) {
+                $query->where($query->getModel()->getTable().'.tenant_id', $id);
+            }
+        });
     }
 
     protected $fillable = [
@@ -37,6 +53,7 @@ class TenantSetting extends Model
     {
         return [
             'work_days' => 'array',
+            'anomaly_settings' => 'array',
             'score_priority_threshold' => 'integer',
             'high_value_from' => 'integer',
             'stalled_after_days' => 'integer',

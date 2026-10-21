@@ -2901,6 +2901,18 @@ export default {
       no_links: 'This campaign has no tracking link.', conversions_failing: 'Some conversions could not be sent back to the platform.',
     },
   },
+  anomalySettings: {
+    title: 'Smart alert sensitivity', hint: 'For each alert: switch it on or off and set the line it fires at. The default is what ran before it could be set.',
+    scope: 'Scope', workspace: 'The whole workspace', projectHint: 'What you change here is this project’s alone, and its numbers are judged by its own lines. A line you leave alone is inherited from the workspace.',
+    on: 'On', off: 'Off', reset: 'Back to the default', currency: 'SAR',
+    kind: { lead_spike: 'Lead spike', lead_drop: 'Lead drop', cpl_spike: 'Cost per lead spike', qualified_rate_drop: 'Qualified-rate drop', no_response_spike: 'Leads with no contact', tracking_drop: 'Tracking gap', backlog_growth: 'Sales backlog', spend_no_qualified: 'Spend without qualified' },
+    line: { lead_spike: '', lead_drop: 'Lead drop', cpl_spike: 'Cost rise', qualified_rate_drop: 'Qualified drop', no_response_spike: 'No-contact share', tracking_drop: 'Events drop', backlog_growth: 'Backlog growth', spend_no_qualified: 'Spend line' },
+    about: {
+      lead_spike: 'Yesterday’s leads were far above the usual.', lead_drop: 'Yesterday’s leads fell by this much or more against the usual.', cpl_spike: 'Yesterday’s cost per lead rose by this much against the usual.',
+      qualified_rate_drop: 'The share who qualified this week fell by this much against the weeks before.', no_response_spike: 'This share of the last 3 days’ leads has had no contact.',
+      tracking_drop: 'Tracking events recorded yesterday fell by this much against the usual: a gap in what is being recorded.', backlog_growth: 'The sales backlog grew by this much against the usual.', spend_no_qualified: 'This much was spent in 3 days on a campaign with no qualified lead.',
+    },
+  },
   roles: {
     marketing_manager: 'Marketing manager',
     sales_manager: 'Sales manager',
@@ -2950,6 +2962,7 @@ export default {
     },
     leads: 'Leads',
     scoring: 'Qualification & scoring',
+    alerts: 'Smart alerts',
     generalHint: 'Language, currency, timezone and how leads are assigned',
     scoringHint: 'What makes a lead hot, and how long before it counts as neglected',
     firstContactTarget: 'First-contact target (minutes)',

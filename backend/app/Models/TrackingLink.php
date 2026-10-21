@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
+use App\Models\Scopes\ProjectScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class TrackingLink extends Model
 {
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new ProjectScope);
+    }
+
     use BelongsToTenant, HasUuid, SoftDeletes;
 
     public const CHANNELS = ['meta', 'tiktok', 'snapchat', 'google', 'x', 'linkedin', 'whatsapp', 'landing_page', 'portal', 'email', 'sms', 'influencer', 'broker', 'qr', 'other'];

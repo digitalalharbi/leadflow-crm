@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\Project;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
@@ -24,6 +26,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->where('tenant_id', $request->user()->tenant_id)
+            ->with('projects:projects.id,projects.uuid')
             ->withCount('assignedLeads as leads_count')
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->input('role')))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s
@@ -78,6 +81,8 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'role' => ['required', Rule::in(Role::tenantRoles())],
             'phone' => ['nullable', 'string', 'max:32'],
+            'project_ids' => ['sometimes', 'array', 'max:200'],
+            'project_ids.*' => ['uuid'],
         ]);
 
         $user = User::create([
@@ -90,9 +95,11 @@ class UserController extends Controller
             'is_active' => true,
         ]);
 
+        $this->giveProjects($request, $user, $data['project_ids'] ?? null);
+
         $this->audit->log('user.created', $request->user(), $user, ['role' => $data['role']]);
 
-        return ApiResponse::created(['user' => new UserResource($user)]);
+        return ApiResponse::created(['user' => new UserResource($user->load('projects:projects.id,projects.uuid'))]);
     }
 
     public function update(Request $request, string $uuid)
@@ -127,6 +134,9 @@ class UserController extends Controller
             'role' => ['sometimes', Rule::in(Role::tenantRoles())],
             'is_active' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'string', 'min:8'],
+            // The projects a project-scoped role (project manager, client, broker) is limited to.
+            'project_ids' => ['sometimes', 'array', 'max:200'],
+            'project_ids.*' => ['uuid'],
 
             /*
              * Away until, rather than away.
@@ -169,8 +179,8 @@ class UserController extends Controller
             'speaks.*' => ['string', 'regex:/^[A-Za-z]{2,3}([-_][A-Za-z]{2,4})?$/'],
         ]);
 
-        // Only an admin changes roles or activation, and never their own.
-        if ((isset($data['role']) || isset($data['is_active'])) && ! $request->user()->isAdmin()) {
+        // Only an admin changes roles, activation or project scope, and never their own role.
+        if ((isset($data['role']) || isset($data['is_active']) || array_key_exists('project_ids', $data)) && ! $request->user()->isAdmin()) {
             throw ValidationException::withMessages(['role' => ['Only an admin can change roles.']]);
         }
 
@@ -200,7 +210,14 @@ class UserController extends Controller
             $data['email'] = strtolower($data['email']);
         }
 
+        $projectIds = $data['project_ids'] ?? null;
+        unset($data['project_ids']);
+
         $user->update($data);
+
+        if ($projectIds !== null) {
+            $this->giveProjects($request, $user, $projectIds);
+        }
 
         // A deactivated account loses every live session immediately.
         if (array_key_exists('is_active', $data) && ! $data['is_active']) {
@@ -212,7 +229,7 @@ class UserController extends Controller
             $this->audit->log('user.role_changed', $request->user(), $user, ['role' => $data['role']]);
         }
 
-        return ApiResponse::success(['user' => new UserResource($user->fresh())]);
+        return ApiResponse::success(['user' => new UserResource($user->fresh()->load('projects:projects.id,projects.uuid'))]);
     }
 
     public function destroy(Request $request, string $uuid)
@@ -229,5 +246,32 @@ class UserController extends Controller
         $this->audit->log('user.deleted', $request->user(), $user);
 
         return ApiResponse::success(null, 'User removed.');
+    }
+
+    /** The projects somebody is given — only this workspace's, and every change on the record. */
+    private function giveProjects(Request $request, User $user, ?array $uuids): void
+    {
+        if ($uuids === null) {
+            return;
+        }
+
+        $before = $user->projects()->pluck('projects.uuid')->all();
+        $ids = Project::withoutGlobalScopes()->where('tenant_id', $user->tenant_id)->whereIn('uuid', $uuids)->pluck('id')->all();
+
+        $user->projects()->sync($ids);
+
+        $after = $user->projects()->pluck('projects.uuid')->all();
+
+        if ($before !== $after) {
+            $this->audit->log('user.projects_changed', $request->user(), $user, ['before' => $before, 'after' => $after]);
+        }
+    }
+
+    /** Every role, and what each may do: the matrix the interface and the API both read. */
+    public function roles(Request $request)
+    {
+        $this->authorize('viewAny', User::class);
+
+        return ApiResponse::success(['roles' => Permissions::matrix(), 'resources' => config('permissions.resources'), 'actions' => config('permissions.actions')]);
     }
 }

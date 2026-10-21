@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Middleware\EnforcePermissions;
 use App\Http\Middleware\EnsureTenantIsActive;
 use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\HideRestrictedFields;
 use App\Http\Middleware\ResolveCompanyContext;
+use App\Http\Middleware\ResolveProjectScope;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Support\ApiExceptionRenderer;
 use Illuminate\Foundation\Application;
@@ -82,6 +85,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => ResolveTenantContext::class,
             'company' => ResolveCompanyContext::class,
             'tenant.active' => EnsureTenantIsActive::class,
+            'project.scope' => ResolveProjectScope::class,
+            'permission' => EnforcePermissions::class,
+            'hide.fields' => HideRestrictedFields::class,
         ]);
 
         // Trusting every proxy would make X-Forwarded-For caller-controlled, which

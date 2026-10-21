@@ -10,6 +10,7 @@ import { platformColor } from '@/components/charts'
 import { useCampaignRevenue, type CampaignRevenueData, type CampaignRow, type RevenueStep } from '@/features/campaigns'
 import { formatCompact, formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { can, useAuth } from '@/stores/auth'
 
 const ROLE_RAMP = ['var(--brand)', 'var(--color-info)', 'var(--color-warning)', 'var(--color-success)', 'var(--color-temp-hot)', 'var(--color-status-appointment)']
 
@@ -76,6 +77,7 @@ function useMoney(currency: string) {
 function Kpis({ data }: { data: CampaignRevenueData }) {
   const { t, i18n } = useTranslation()
   const money = useMoney(data.currency)
+  const user = useAuth((state) => state.user)
   const c = data.comparison
   const num = (v: number | null | undefined) => formatNumber(v ?? 0, i18n.language)
 
@@ -93,9 +95,12 @@ function Kpis({ data }: { data: CampaignRevenueData }) {
     { key: 'cpl', icon: BadgeDollarSign, value: money(data.totals.cpl), cost: true },
   ]
 
+  // What a person may not see is not drawn as a dash: the card is not there.
+  const visible = cards.filter((card) => (['spend', 'cpl', 'cac', 'roas'].includes(card.key) ? can.has(user, 'spend.view') : card.key === 'revenue' ? can.has(user, 'revenue.view') : true))
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="revenue-kpis">
-      {cards.map(({ key, icon, tone, value, cost, sub }) => {
+      {visible.map(({ key, icon, tone, value, cost, sub }) => {
         const entry = c[key]
 
         return (

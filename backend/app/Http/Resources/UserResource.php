@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Domain\Access\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,9 @@ class UserResource extends JsonResource
             'covers_cities' => $this->covers_cities ?? [],
             'assignment_weight' => (int) ($this->assignment_weight ?? 1),
             'handles' => $this->handles ?? [],
+            // The projects a project-scoped role was given; empty for everybody else.
+            'project_ids' => $this->whenLoaded('projects', fn () => $this->projects->pluck('uuid')->all(), []),
+            'permissions' => $this->when($request->user()?->role?->managesTenant() === true, fn () => Permissions::forUser($this->resource)),
             // Empty means every language, the same way empty coverage means
             // every city. Distinct from `locale`, which is this person's own
             // choice of interface language and says nothing about who they can

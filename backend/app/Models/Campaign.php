@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\CompanyScope;
+use App\Models\Scopes\ProjectScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +22,8 @@ class Campaign extends Model
 
     protected static function booted(): void
     {
+        static::addGlobalScope(new ProjectScope);
+
         // Reached through its project, like leads: one rule for which company it belongs to.
         static::addGlobalScope(new CompanyScope);
     }

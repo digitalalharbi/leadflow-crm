@@ -17,6 +17,7 @@ use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\CompanyScope;
 use App\Models\Scopes\ExcludesTestLeads;
+use App\Models\Scopes\ProjectScope;
 use App\Services\Leads\PhoneLanguage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -48,6 +49,8 @@ class Lead extends Model
      */
     protected static function booted(): void
     {
+        static::addGlobalScope(new ProjectScope);
+
         /*
          * A score that moved is a trigger: "score reached 80 → priority" is the
          * most common rule anybody writes. Quiet saves stay quiet, and the

@@ -57,47 +57,49 @@ export function useNavigation(): Navigation {
     return { primary: items, groups: [items], settings: null, all: items }
   }
 
-  const seesAll = can.seeAllLeads(user)
-  const reports = can.viewReports(user)
-  const integrations = can.manageIntegrations(user)
+  /*
+   * Each destination needs one permission — the same one the API asks for on the data behind it.
+   * A role that cannot open a screen is not offered it, and typing its address sends them home
+   * (see RequirePermission); the API refuses the data either way.
+   */
+  const has = (permission: string) => can.has(user, permission)
+  const item = (to: string, labelKey: string, Icon: LucideIcon, permission: string, extra: Partial<NavItem> = {}): NavItem[] =>
+    has(permission) ? [{ to, labelKey, Icon, ...extra }] : []
 
   const groups: NavItem[][] = [
     [
-      { to: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard },
+      ...item('/', 'nav.dashboard', LayoutDashboard, 'dashboard.view'),
       // Directly under the dashboard: a rep who opens the list first starts by
       // choosing; this screen is the one that tells them.
-      { to: '/work', labelKey: 'nav.work', Icon: Target },
-      { to: '/leads', labelKey: 'nav.leads', Icon: Contact2 },
-      { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3 },
+      ...item('/work', 'nav.work', Target, 'leads.execute'),
+      ...item('/leads', 'nav.leads', Contact2, 'leads.view'),
+      ...item('/pipeline', 'nav.pipeline', Columns3, 'leads.view'),
       // The two steps between interested and sold.
-      { to: '/visits', labelKey: 'nav.visits', Icon: CalendarCheck },
-      // Money and ad accounts: the people who may read reports.
-      ...(reports ? [{ to: '/campaigns', labelKey: 'nav.campaigns', Icon: Megaphone }] : []),
-      ...(reports ? [{ to: '/tracking', labelKey: 'nav.tracking', Icon: Radar }] : []),
-      ...(reports ? [{ to: '/agents', labelKey: 'nav.agents', Icon: Bot }] : []),
-      {
-        to: '/follow-ups',
-        labelKey: 'nav.followUps',
-        Icon: CalendarClock,
-        badge: (counts?.overdue ?? 0) + (counts?.today ?? 0),
-      },
+      ...(has('visits.view') || has('reservations.view') ? [{ to: '/visits', labelKey: 'nav.visits', Icon: CalendarCheck }] : []),
+      // Money and ad accounts: the people who may read them.
+      ...item('/campaigns', 'nav.campaigns', Megaphone, 'campaigns.view'),
+      ...item('/tracking', 'nav.tracking', Radar, 'tracking.view'),
+      ...item('/agents', 'nav.agents', Bot, 'campaigns.view'),
+      // Overdue count sits next to "Follow-ups" — it is the number that should
+      // pull a rep back into the app.
+      ...item('/follow-ups', 'nav.followUps', CalendarClock, 'leads.execute', { badge: (counts?.overdue ?? 0) + (counts?.today ?? 0) }),
     ],
     [
       // The holding's structure; managers and admins only.
-      ...(seesAll ? [{ to: '/companies', labelKey: 'nav.companies', Icon: Network }] : []),
-      { to: '/projects', labelKey: 'nav.projects', Icon: Building2 },
+      ...item('/companies', 'nav.companies', Network, 'companies.view'),
+      ...item('/projects', 'nav.projects', Building2, 'projects.view'),
       // Rules act on everybody's leads, so the same authority as the API.
-      ...(seesAll ? [{ to: '/automation', labelKey: 'nav.automation', Icon: Workflow }] : []),
-      ...(reports ? [{ to: '/reports', labelKey: 'nav.reports', Icon: BarChart3 }] : []),
+      ...item('/automation', 'nav.automation', Workflow, 'automation.view'),
+      ...item('/reports', 'nav.reports', BarChart3, 'analytics.view'),
     ],
     [
-      ...(integrations ? [{ to: '/integrations', labelKey: 'nav.integrations', Icon: Plug }] : []),
-      ...(seesAll ? [{ to: '/users', labelKey: 'nav.users', Icon: Users2 }] : []),
+      ...item('/integrations', 'nav.integrations', Plug, 'integrations.view'),
+      ...item('/users', 'nav.users', Users2, 'users.view'),
     ],
   ].filter((group) => group.length > 0)
 
-  const settings: NavItem = { to: '/settings', labelKey: 'nav.settings', Icon: Settings }
-  const all = [...groups.flat(), settings]
+  const settings: NavItem | null = has('settings.view') ? { to: '/settings', labelKey: 'nav.settings', Icon: Settings } : null
+  const all = settings ? [...groups.flat(), settings] : groups.flat()
 
   return {
     primary: PRIMARY.map((to) => all.find((item) => item.to === to)).filter((item): item is NavItem => Boolean(item)),

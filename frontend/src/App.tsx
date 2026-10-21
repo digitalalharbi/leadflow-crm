@@ -1,7 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '@/stores/auth'
+import { can, useAuth } from '@/stores/auth'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { AppShell } from '@/components/layout/AppShell'
 import { LoginPage } from '@/pages/Login'
@@ -66,6 +66,21 @@ function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   return isSuperAdmin ? <>{children}</> : <Navigate to="/" replace />
 }
 
+/**
+ * A screen a role has not been given is not a blank page or a wall of 403s: it is not there. The
+ * navigation already leaves it out; this covers the address typed by hand, and sends the person
+ * to the first thing they do have. (The API refuses the data either way.)
+ */
+function RequirePermission({ any, children }: { any: string[]; children: React.ReactNode }) {
+  const user = useAuth((s) => s.user)
+
+  if (can.any(user, any)) return <>{children}</>
+
+  const home = ['dashboard.view', 'leads.view', 'visits.view'].find((p) => can.has(user, p))
+
+  return <Navigate to={home === 'leads.view' ? '/leads' : home === 'visits.view' ? '/visits' : home ? '/' : '/settings/profile'} replace />
+}
+
 /** Blocks a route until the session is known, so no flash of the login screen. */
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const status = useAuth((s) => s.status)
@@ -128,27 +143,27 @@ export function App() {
             element={
               <Suspense fallback={<PageFallback />}>
                 <Routes>
-                  <Route path="/work" element={<WorkPage />} />
-                  <Route path="/data-quality" element={<DataQualityPage />} />
-                  <Route path="/automation" element={<AutomationPage />} />
-                  <Route path="/leads" element={<LeadsPage />} />
-                  <Route path="/leads/:id" element={<LeadDetailPage />} />
-                  <Route path="/pipeline" element={<PipelinePage />} />
-                  <Route path="/campaigns" element={<CampaignsPage />} />
-                  <Route path="/tracking" element={<TrackingPage />} />
-                  <Route path="/visits" element={<VisitsPage />} />
-                  <Route path="/agents" element={<AgentsPage />} />
-                  <Route path="/creatives" element={<CreativesPage />} />
-                  <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
-                  <Route path="/follow-ups" element={<FollowUpsPage />} />
-                  <Route path="/companies" element={<CompaniesPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                  <Route path="/reports" element={<ReportsPage />} />
-                  <Route path="/integrations" element={<IntegrationsPage />} />
+                  <Route path="/work" element={<RequirePermission any={['leads.execute']}><WorkPage /></RequirePermission>} />
+                  <Route path="/data-quality" element={<RequirePermission any={['leads.view']}><DataQualityPage /></RequirePermission>} />
+                  <Route path="/automation" element={<RequirePermission any={['automation.view']}><AutomationPage /></RequirePermission>} />
+                  <Route path="/leads" element={<RequirePermission any={['leads.view']}><LeadsPage /></RequirePermission>} />
+                  <Route path="/leads/:id" element={<RequirePermission any={['leads.view']}><LeadDetailPage /></RequirePermission>} />
+                  <Route path="/pipeline" element={<RequirePermission any={['leads.view']}><PipelinePage /></RequirePermission>} />
+                  <Route path="/campaigns" element={<RequirePermission any={['campaigns.view']}><CampaignsPage /></RequirePermission>} />
+                  <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><TrackingPage /></RequirePermission>} />
+                  <Route path="/visits" element={<RequirePermission any={['visits.view', 'reservations.view']}><VisitsPage /></RequirePermission>} />
+                  <Route path="/agents" element={<RequirePermission any={['campaigns.view']}><AgentsPage /></RequirePermission>} />
+                  <Route path="/creatives" element={<RequirePermission any={['campaigns.view']}><CreativesPage /></RequirePermission>} />
+                  <Route path="/campaigns/:id" element={<RequirePermission any={['campaigns.view']}><CampaignDetailPage /></RequirePermission>} />
+                  <Route path="/follow-ups" element={<RequirePermission any={['leads.view']}><FollowUpsPage /></RequirePermission>} />
+                  <Route path="/companies" element={<RequirePermission any={['companies.view']}><CompaniesPage /></RequirePermission>} />
+                  <Route path="/projects" element={<RequirePermission any={['projects.view']}><ProjectsPage /></RequirePermission>} />
+                  <Route path="/projects/:id" element={<RequirePermission any={['projects.view']}><ProjectDetailPage /></RequirePermission>} />
+                  <Route path="/reports" element={<RequirePermission any={['analytics.view']}><ReportsPage /></RequirePermission>} />
+                  <Route path="/integrations" element={<RequirePermission any={['integrations.view']}><IntegrationsPage /></RequirePermission>} />
                   <Route path="/readiness" element={<ReadinessPage />} />
-                  <Route path="/users" element={<UsersPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/users" element={<RequirePermission any={['users.view']}><UsersPage /></RequirePermission>} />
+                  <Route path="/settings" element={<RequirePermission any={['settings.view']}><SettingsPage /></RequirePermission>} />
                   <Route path="/settings/profile" element={<ProfilePage />} />
 
                   {/*

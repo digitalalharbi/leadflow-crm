@@ -179,7 +179,7 @@ export function DashboardPage() {
           <OnboardingChecklist />
 
           {/* The manager's own screen: figures, SLA, team, sources, funnel and trend. */}
-          {can.seeAllLeads(user) && <ManagerCommandCenter />}
+          {can.viewReports(user) && <ManagerCommandCenter />}
 
           {/* What has to happen today, and what is already late. */}
           <TodayStrip data={data} today={today} />

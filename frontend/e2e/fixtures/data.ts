@@ -16,6 +16,12 @@ export const ALPHA = {
   manager: { email: 'manager@e2e.test', name: 'مدير مبيعات الريادة' },
   rep1: { email: 'rep1@e2e.test', name: 'مندوب أول' },
   rep2: { email: 'rep2@e2e.test', name: 'مندوب ثاني' },
+  marketing: { email: 'marketing@e2e.test', name: 'مدير التسويق' },
+  salesManager: { email: 'salesmgr@e2e.test', name: 'مدير المبيعات' },
+  finance: { email: 'finance@e2e.test', name: 'المالية' },
+  projectManager: { email: 'projectmgr@e2e.test', name: 'مدير المشروع' },
+  client: { email: 'client@e2e.test', name: 'عميل المشروع' },
+  broker: { email: 'broker@e2e.test', name: 'الوسيط' },
   projects: ['مشروع الاختبار الأول', 'مشروع الاختبار الثاني', 'مشروع الاختبار الثالث'],
 } as const
 

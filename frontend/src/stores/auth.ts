@@ -1,9 +1,21 @@
 import { create } from 'zustand'
 import { apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { disconnectEcho } from '@/lib/echo'
+import { hasAny, hasPermission } from '@/lib/permissions'
 import type { Branding, User } from '@/types/api'
 
-interface LoginResponse {
+interface Access {
+  permissions: string[]
+  hidden_data: NonNullable<User['hidden_data']>
+  project_scope: string[] | null
+}
+
+/** The session's access travels beside the user in the response; the rest of the app reads it off the user. */
+function withAccess(user: User, access: Partial<Access>): User {
+  return { ...user, permissions: access.permissions ?? user.permissions, hidden_data: access.hidden_data ?? user.hidden_data, project_scope: access.project_scope === undefined ? user.project_scope : access.project_scope }
+}
+
+interface LoginResponse extends Partial<Access> {
   token: string
   user: User
   branding: Branding | null
@@ -48,7 +60,7 @@ export const useAuth = create<AuthState>((set) => ({
     tokenStorage.set(data.token)
 
     set({
-      user: data.user,
+      user: withAccess(data.user, data),
       branding: data.branding,
       isSuperAdmin: data.is_super_admin,
       workspaceLanguage: data.workspace_language,
@@ -85,7 +97,7 @@ export const useAuth = create<AuthState>((set) => ({
     set({ status: 'loading' })
 
     try {
-      const data = await apiGet<{
+      const data = await apiGet<Partial<Access> & {
         user: User
         branding: Branding | null
         is_super_admin: boolean
@@ -94,7 +106,7 @@ export const useAuth = create<AuthState>((set) => ({
       }>('/auth/me')
 
       set({
-        user: data.user,
+        user: withAccess(data.user, data),
         branding: data.branding,
         isSuperAdmin: data.is_super_admin,
         workspaceLanguage: data.workspace_language,
@@ -125,11 +137,15 @@ export const useAuth = create<AuthState>((set) => ({
 
 /** Role helpers used across the UI to hide what a user cannot do. */
 export const can = {
-  manageTenant: (user: User | null) => user?.role === 'admin',
-  seeAllLeads: (user: User | null) => user?.role === 'admin' || user?.role === 'manager',
-  assignLeads: (user: User | null) => user?.role === 'admin' || user?.role === 'manager',
-  manageProjects: (user: User | null) => user?.role === 'admin' || user?.role === 'manager',
-  manageUsers: (user: User | null) => user?.role === 'admin',
+  /** Any permission by name — `can.has(user, 'campaigns.edit')`. The helpers below are the common ones. */
+  has: hasPermission,
+  any: hasAny,
+  manageTenant: (user: User | null) => hasPermission(user, 'settings.edit'),
+  /** Reads leads beyond their own (everyone but a sales rep; project scope narrows the rest on the server). */
+  seeAllLeads: (user: User | null) => (user?.permissions ? user.role !== 'sales' && hasPermission(user, 'leads.view') : user?.role === 'admin' || user?.role === 'manager'),
+  assignLeads: (user: User | null) => hasPermission(user, 'leads.execute') && user?.role !== 'sales',
+  manageProjects: (user: User | null) => hasPermission(user, 'projects.edit'),
+  manageUsers: (user: User | null) => hasPermission(user, 'users.edit'),
   /*
    * May say how somebody's share of the leads is worked out — their cities,
    * their languages, their weight. A narrower authority than editing the
@@ -141,6 +157,6 @@ export const can = {
    */
   routeWork: (user: User | null, target: User) =>
     user?.role === 'admin' || (user?.role === 'manager' && user.id !== target.id),
-  viewReports: (user: User | null) => user?.role === 'admin' || user?.role === 'manager',
-  manageIntegrations: (user: User | null) => user?.role === 'admin',
+  viewReports: (user: User | null) => hasPermission(user, 'analytics.view'),
+  manageIntegrations: (user: User | null) => hasPermission(user, 'integrations.edit'),
 }

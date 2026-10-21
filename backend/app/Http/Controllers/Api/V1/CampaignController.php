@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Campaigns\AdPlatform;
 use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Domain\Campaigns\CampaignMetrics;
+use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Domain\Campaigns\PlatformVerification;
 use App\Domain\Campaigns\QualityBreakdown;
@@ -50,6 +51,21 @@ class CampaignController extends Controller
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
         ]);
+    }
+
+    /** From the money spent to the money earned: funnel, table, heatmap, trend, mix, comparison, rankings. */
+    public function revenue(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        [$from, $to] = $this->window($request);
+        $projectId = $request->filled('project_id') ? Project::query()->where('uuid', $request->input('project_id'))->value('id') : null;
+        abort_if($request->filled('project_id') && $projectId === null, 404, 'Resource not found.');
+
+        return ApiResponse::success((new CampaignRevenue($request->user()))->build(
+            $from, $to, $projectId,
+            in_array($request->input('platform'), AdPlatform::values(), true) ? $request->input('platform') : null,
+        ) + ['currency' => $this->context->get()?->settings?->currency ?? 'SAR']);
     }
 
     public function show(Request $request, string $uuid)

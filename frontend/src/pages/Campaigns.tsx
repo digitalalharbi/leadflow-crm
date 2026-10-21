@@ -6,11 +6,12 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, CardBody, EmptyState, ErrorState, PageHeader, Select, Skeleton } from '@/components/ui'
+import { Button, Card, CardBody, EmptyState, ErrorState, PageHeader, Select, Skeleton, Tabs } from '@/components/ui'
 import { AreaTrend, KpiCard, PipelineFunnel, RankBars, RingProgress } from '@/components/visual'
 import { TONE_COLOR, TONE_TINT } from '@/components/visual/tones'
 import { platformColor } from '@/components/charts'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
+import { RevenuePanel } from '@/components/campaigns/RevenuePanel'
 import { ProposalInbox } from '@/components/campaigns/ProposalInbox'
 import { AgentsPanel } from '@/components/campaigns/AgentsPanel'
 import { ClientRulesDrawer } from '@/components/campaigns/ClientRulesDrawer'
@@ -46,6 +47,7 @@ export function CampaignsPage() {
   const [days, setDays] = useState(30)
   const [platform, setPlatform] = useState('')
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [tab, setTab] = useState<'overview' | 'revenue'>('overview')
 
   const { data, isLoading, isError, error, refetch } = useCampaigns(days, platform)
   const platforms = useCampaignPlatforms()
@@ -115,7 +117,17 @@ export function CampaignsPage() {
         ))}
       </div>
 
-      {isError ? (
+      <Tabs
+        testId="campaigns-tabs"
+        value={tab}
+        onChange={setTab}
+        className="mb-3"
+        items={[{ key: 'overview', label: t('revenue.tab.overview') }, { key: 'revenue', label: t('revenue.tab.revenue') }]}
+      />
+
+      {tab === 'revenue' ? (
+        <RevenuePanel days={days} platform={platform} />
+      ) : isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
       ) : isLoading || !data ? (
         <div className="space-y-3" aria-busy="true">

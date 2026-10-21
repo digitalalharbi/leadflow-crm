@@ -73,6 +73,21 @@ export default {
     sentiment: { positive: 'Positive', neutral: 'Neutral', negative: 'Negative' },
     objection: { price_high: 'Price too high', location: 'Location', financing: 'Financing', timing: 'Not now', trust: 'Trust', competitor: 'Competitor', family_decision: 'Family decision' },
   },
+  insights: {
+    title: 'Look at first', dismiss: 'Seen',
+    anomaly: {
+      lead_spike: 'Spike in leads', lead_drop: 'Drop in leads', cpl_spike: 'Cost per lead jumped', qualified_rate_drop: 'Qualified rate fell',
+      no_response_spike: 'Leads going unanswered', tracking_drop: 'Tracking events dried up', spend_no_qualified: 'Spend, nobody qualified', backlog_growth: 'Sales backlog growing',
+    },
+    card: {
+      holds_expiring_one: '1 reservation lapses within 24h', holds_expiring_other: '{{count}} reservations lapse within 24h',
+      interested_waiting_one: '1 interested lead awaits a reply', interested_waiting_other: '{{count}} interested leads await a reply',
+      visit_gap_other: '{{count}} interested, no visit in a week',
+      no_shows_other: '{{count}} no-shows this week',
+      funnel_leak: '{{lost}}% lost between “{{from}}” and “{{to}}”',
+      best_campaign: '{{name}} — {{roas}}x return', wasted_spend: '{{name}} spends, nobody qualifies', top_partner: '{{name}} leads: {{won}} won',
+    },
+  },
   alerts: {
     title: 'Alerts & summaries',
     subtitle: 'How you want to hear about what matters — email: {{email}}',
@@ -80,7 +95,7 @@ export default {
     mode: { instant: 'At once', daily: 'Daily', weekly: 'Weekly', off: 'Off' },
     category: {
       hot_lead: 'Hot lead', visit_requested: 'Visit requested', reservation_intent: 'Reservation intent', sla_breach: 'Reply window missed',
-      automation_failure: 'Automation failure', high_value: 'High-value lead', tracking_failure: 'Tracking failure', budget_anomaly: 'Spend anomaly',
+      automation_failure: 'Automation failure', high_value: 'High-value lead', tracking_failure: 'Tracking failure', budget_anomaly: 'Number anomaly',
     },
     digests: 'Summaries',
     digest: { daily_sales: 'Daily sales summary', weekly_marketing: 'Weekly marketing summary', weekly_executive: 'Weekly executive summary' },

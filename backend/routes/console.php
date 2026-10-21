@@ -104,6 +104,9 @@ Schedule::command('leadflow:refresh-interest')->hourly()->withoutOverlapping();
 // The email summaries: eight o'clock where each workspace is; sales daily, marketing and executive on Sundays.
 Schedule::command('leadflow:send-digests')->hourly()->withoutOverlapping();
 
+// Numbers outside their normal range (leads, cost, qualified rate, tracking, backlog): once a day each, to the managers.
+Schedule::command('leadflow:detect-anomalies')->hourly()->withoutOverlapping();
+
 // A connected platform that stopped delivering or stopped being told about sales: tell the managers.
 Schedule::command('leadflow:watch-tracking')->hourly()->withoutOverlapping();
 

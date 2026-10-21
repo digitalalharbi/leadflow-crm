@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardBody } from '@/components/ui'
 import { AreaTrend, ComparisonCard, Donut, HeatGrid, KpiCard, PipelineFunnel, RankBars, RingProgress, StatusPill, type StatusKey } from '@/components/visual'
 import { platformColor } from '@/components/charts'
-import type { Finding, KpiKey, SharedReportData } from '@/features/reportShares'
+import type { KpiKey, SharedReportData } from '@/features/reportShares'
 import { formatCompact, formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { findingText } from '@/lib/findings'
 
 /**
  * The sections of a live report, one component each, every one a picture before it is a number:
@@ -412,10 +413,7 @@ export function TrackingHealthSection({ ctx }: { ctx: Ctx }) {
   )
 }
 
-/** One finding, worded from the catalogue in the reader's language. */
-function say(t: ReturnType<typeof useTranslation>['t'], kind: 'finding' | 'impact' | 'action', f: Finding) {
-  return t(`findings.${f.key}.${kind}`, { ...Object.fromEntries(Object.entries(f.values).map(([k, v]) => [k, v ?? '—'])), defaultValue: '' })
-}
+const say = findingText
 
 export function InsightsSection({ ctx }: { ctx: Ctx }) {
   const { t } = useTranslation()

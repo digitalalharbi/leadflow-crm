@@ -10,6 +10,7 @@ import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
 import { InsightCards } from '@/components/dashboard/InsightCards'
+import { RecommendationCards } from '@/components/dashboard/RecommendationCards'
 import { OpsPulse } from '@/components/dashboard/OpsPulse'
 import { Gate } from '@/components/access/Gate'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
@@ -186,6 +187,7 @@ export function DashboardPage() {
 
           {/* What moved outside its normal range, and the few things to look at first. */}
           <Gate element="dashboard.widget.insights"><InsightCards /></Gate>
+          {can.viewReports(user) && <Gate element="dashboard.widget.recommendations"><RecommendationCards /></Gate>}
 
           {/* The manager's own screen: figures, SLA, team, sources, funnel and trend. */}
           {can.viewReports(user) && <Gate element="dashboard.widget.manager"><ManagerCommandCenter /></Gate>}

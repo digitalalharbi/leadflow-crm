@@ -109,8 +109,52 @@ export const fetchLink = (id: string) => apiGet<LinkDetail>(`/tracking/links/${i
 export const createLink = (input: LinkInput) => apiPost<{ link: TrackingLink }>('/tracking/links', input)
 export const updateLink = (id: string, input: Partial<LinkInput>) => apiPatch<{ link: TrackingLink }>(`/tracking/links/${id}`, input)
 export const deleteLink = (id: string) => apiDelete(`/tracking/links/${id}`)
-export const fetchAttribution = (model: AttributionModel, dimension: Dimension, days: number, projectId?: string) =>
-  apiGet<AttributionData>('/tracking/attribution', { model, dimension, days, project_id: projectId })
+/** The slice of leads the credit question is asked of. Every key is optional; together they narrow. */
+export interface AttributionFilters {
+  project_id?: string
+  campaign_id?: string
+  platform?: string
+  ad_id?: string
+  creative_id?: string
+  partner_id?: string
+  rep_id?: string
+}
+
+export const fetchAttribution = (model: AttributionModel, dimension: Dimension, days: number, filters: AttributionFilters = {}) =>
+  apiGet<AttributionData>('/tracking/attribution', { model, dimension, days, ...clean(filters) })
+
+const clean = (filters: AttributionFilters) => Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as Record<string, string>
+
+export const COMPARE_METRICS = ['revenue', 'interested', 'visits', 'reservations'] as const
+export type CompareMetric = (typeof COMPARE_METRICS)[number]
+
+export interface AttributionCompare {
+  dimension: Dimension
+  models: AttributionModel[]
+  rows: {
+    key: string
+    label: string | null
+    by_model: Record<AttributionModel, { leads: number; interested: number; visits: number; reservations: number; won: number; revenue: number }>
+    /** How far apart the models are on this bucket, in percent of the largest figure: an argument, not a fact. */
+    swing: { reservations: number; revenue: number }
+  }[]
+  totals: Record<AttributionModel, { leads: number; interested: number; visits: number; reservations: number; won: number; revenue: number }>
+  unattributed_percent: number | null
+}
+
+export const fetchAttributionCompare = (dimension: Dimension, days: number, filters: AttributionFilters = {}) =>
+  apiGet<AttributionCompare>('/tracking/attribution/compare', { dimension, days, ...clean(filters) })
+
+export interface AttributionOptions {
+  campaigns: { id: string; name: string }[]
+  ads: { id: string; name: string }[]
+  creatives: { id: string; name: string }[]
+  partners: { id: string; name: string }[]
+  reps: { id: string; name: string }[]
+  platforms: string[]
+}
+
+export const fetchAttributionOptions = () => apiGet<AttributionOptions>('/tracking/attribution/options')
 
 export type HealthStatus = 'healthy' | 'attention' | 'risk' | 'idle'
 

@@ -2521,6 +2521,8 @@ export default {
     stat: { clicks: 'Clicks', visitors: 'Visitors', leads: 'Leads', won: 'Won', revenue: 'Revenue' },
     channels: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google: 'Google', x: 'X', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', landing_page: 'Landing page', portal: 'Property portal', email: 'Email', sms: 'SMS', influencer: 'Influencer', broker: 'Broker', qr: 'QR', other: 'Other' },
     event: { visit: 'Visit', click: 'Click', form_start: 'Form started', form_submit: 'Form sent', whatsapp_click: 'WhatsApp tap', call_click: 'Call tap', brochure_open: 'Brochure opened', project_view: 'Project viewed', property_view: 'Unit viewed', appointment_request: 'Visit requested', site_visit: 'Visited the site', reservation: 'Reservation', won: 'Won' },
+    filter: { project: 'All projects', campaign: 'All campaigns', platform: 'All platforms', ad: 'All ads', creative: 'All creatives', partner: 'All partners', rep: 'All reps', clear_one: 'Clear 1 filter', clear_other: 'Clear {{count}} filters' },
+    compare: { title: 'Who gets the credit? All four models together', hint: 'Each cell: the source’s share of the total under that model. A row whose cells spread apart is one whose credit is an argument.', metric: 'Metric', swing: 'Spread {{percent}}%', m: { revenue: 'Revenue', interested: 'Interested', visits: 'Visits', reservations: 'Reservations' } },
     model: 'Attribution model', dimension: 'Group by',
     models: { first: 'First touch', last: 'Last touch', linear: 'Linear', position: 'Position' },
     dimensions: { channel: 'Channel', link: 'Link', campaign: 'Campaign', ad: 'Ad', creative: 'Creative', project: 'Project', rep: 'Sales rep', partner: 'Partner', landing_page: 'Landing page', branch: 'Branch', source: 'Source' },
@@ -2764,7 +2766,7 @@ export default {
         audit: 'Change history',
       },
       dashboard: {
-        widget: {holding:'Holding overview',journey:'Customer journey',board:'Today board',ops_pulse:'Operations pulse',insights:'Insights',manager:'Manager centre',today:'To do today'},
+        widget: {holding:'Holding overview',journey:'Customer journey',board:'Today board',ops_pulse:'Operations pulse',insights:'Insights',recommendations:'Recommendations',manager:'Manager centre',today:'To do today'},
         kpi: {leads_today:'Leads today',qualified:'Qualified',overdue:'Overdue follow-ups',stalled:'Stalled',response:'Response time',appointment_rate:'Visit rate',conversion:'Close rate',period:'Leads in period',revenue:'Revenue'},
         chart: {funnel:'Sales funnel',velocity:'Velocity',campaign_quality:'Campaign quality',platforms:'Platforms',lead_quality:'Lead quality',response_time:'Response time',revenue_by_quality:'Revenue by quality'}},
       campaigns: {
@@ -2837,7 +2839,7 @@ export default {
       impact: 'Higher quality per lead.', action: 'Give them a bigger share of links and QR codes.',
     },
     rep_loses_after_visit: {
-      finding: '{{name}} answers fast ({{response}} min) but loses after the visit: {{rate}}% closed against {{avg}}%.',
+      finding: '{{name}} answers fast ({{response}} min) but loses after the visit: {{rate}}% reserve against {{avg}}% for the team.',
       impact: 'Visits that cost time, then slip away.', action: 'Review their after-visit follow-up with them.',
     },
     budget_share_gap: {
@@ -2913,6 +2915,14 @@ export default {
       tracking_drop: 'Tracking events recorded yesterday fell by this much against the usual: a gap in what is being recorded.', backlog_growth: 'The sales backlog grew by this much against the usual.', spend_no_qualified: 'This much was spent in 3 days on a campaign with no qualified lead.',
     },
   },
+  salesIntel: {
+    team: { close: 'Close rate', contact: 'Contact rate', sla: 'Answered in {{minutes}} min', leads: 'Team leads' },
+    rankTitle: 'A fair ranking', rankHint: 'The number: sales above what the team’s own close rate would have made of the same number of leads. Below it: their leads and their share of the team’s.',
+    gridTitle: 'Each rep’s rates', gridHint: 'The pale cell is the weakest step in a rep’s row. “—” means no data.', small: 'Few leads',
+    rate: { contact_rate: 'Contact', interested_rate: 'Interested', visit_rate: 'Visit', reservation_rate: 'Reservation', close_rate: 'Close', sla_compliance: 'On time', follow_up_completion: 'Follow-ups' },
+    response: 'Response time', minutes_one: '1 min', minutes_other: '{{count}} min', won: 'Won', revenue: 'Revenue', visits: 'Visits',
+  },
+  recommendations: { title: 'What to do next', open: 'Open' },
   roles: {
     marketing_manager: 'Marketing manager',
     sales_manager: 'Sales manager',

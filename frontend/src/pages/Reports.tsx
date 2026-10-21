@@ -9,6 +9,7 @@ import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/f
 import { fetchDrivers, type Drivers } from '@/features/drivers'
 import { MarketingSalesTab } from '@/components/reports/MarketingSalesTab'
 import { WeeklyReportsTab } from '@/components/reports/WeeklyReportsTab'
+import { SalesIntelligence } from '@/components/reports/SalesIntelligence'
 import { ShareTab } from '@/components/reports/ShareTab'
 import { QualityTab } from '@/components/reports/QualityTab'
 import { SpendModal } from '@/components/reports/SpendModal'
@@ -285,7 +286,7 @@ export function ReportsPage() {
         </ChartCard>
       )}
 
-      {tab === 'team' && <TeamTab query={team} performance={performance} translateError={translateError} />}
+      {tab === 'team' && <TeamTab query={team} performance={performance} translateError={translateError} dateFrom={dateFrom} projectId={projectId} />}
 
       {tab === 'lost' && (
         <ChartCard
@@ -526,10 +527,14 @@ function TeamTab({
   query,
   performance,
   translateError,
+  dateFrom,
+  projectId,
 }: {
   query: ReturnType<typeof useQuery>
   performance: ReturnType<typeof useQuery>
   translateError: (error: unknown) => string
+  dateFrom?: string
+  projectId?: string
 }) {
   const { t, i18n } = useTranslation()
 
@@ -548,6 +553,9 @@ function TeamTab({
 
   return (
     <div className="space-y-4">
+      {/* Who is doing what with the leads they were given — fairly, with the volume each carried. */}
+      <SalesIntelligence dateFrom={dateFrom} projectId={projectId} />
+
       {/*
         Above the table, because comparing people is what this tab is for and a
         table is the hardest shape to compare in: reading "is نورة ahead of

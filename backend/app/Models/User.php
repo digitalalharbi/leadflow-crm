@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Access\AccessResolver;
 use App\Enums\Role;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +26,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, HasUuid, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'tenant_id', 'name', 'email', 'password', 'role',
+        'tenant_id', 'name', 'email', 'password', 'role', 'access_role_id',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
         'covers_cities', 'assignment_weight', 'speaks', 'handles', 'notification_prefs', 'partner_id',
     ];
@@ -235,6 +236,28 @@ class User extends Authenticatable
     public function seesAllLeads(): bool
     {
         return $this->role->seesAllLeads();
+    }
+
+    /** Governed end to end by the permission table: the specialised roles, and any role the workspace built. */
+    public function usesMatrix(): bool
+    {
+        return $this->access_role_id !== null || ($this->role?->usesMatrix() ?? false);
+    }
+
+    /** Sees only the projects they were given. A workspace-built role says so itself. */
+    public function isProjectScoped(): bool
+    {
+        $custom = AccessResolver::customRole($this);
+
+        return $custom !== null ? $custom->project_scoped : ($this->role?->isProjectScoped() ?? false);
+    }
+
+    /** From outside the company: a read-only window. */
+    public function isExternal(): bool
+    {
+        $custom = AccessResolver::customRole($this);
+
+        return $custom !== null ? $custom->external : ($this->role?->isExternal() ?? false);
     }
 
     /** Super admins belong to no tenant; everyone else must. */

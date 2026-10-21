@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { seesPage } from '@/lib/permissions'
 import { can, useAuth } from '@/stores/auth'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { AppShell } from '@/components/layout/AppShell'
@@ -18,6 +19,7 @@ import { Toaster, Skeleton } from '@/components/ui'
 const DesignSystemPage = import.meta.env.DEV
   ? lazy(() => import('@/pages/dev/DesignSystem').then((m) => ({ default: m.DesignSystemPage })))
   : () => null
+const AccessPage = lazy(() => import('@/pages/Access').then((m) => ({ default: m.AccessPage })))
 const WorkPage = lazy(() => import('@/pages/Work').then((m) => ({ default: m.WorkPage })))
 const DataQualityPage = lazy(() => import('@/pages/DataQuality').then((m) => ({ default: m.DataQualityPage })))
 const AutomationPage = lazy(() => import('@/pages/Automation').then((m) => ({ default: m.AutomationPage })))
@@ -76,11 +78,25 @@ function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
 function RequirePermission({ any, children }: { any: string[]; children: React.ReactNode }) {
   const user = useAuth((s) => s.user)
 
-  if (can.any(user, any)) return <>{children}</>
+  const { pathname } = useLocation()
 
-  const home = ['dashboard.view', 'leads.view', 'visits.view'].find((p) => can.has(user, p))
+  if (can.any(user, any) && seesPage(user, pathname)) return <>{children}</>
 
-  return <Navigate to={home === 'leads.view' ? '/leads' : home === 'visits.view' ? '/visits' : home ? '/' : '/settings/profile'} replace />
+  return <Navigate to={firstHome(user)} replace />
+}
+
+/** Where somebody lands who asked for a screen they do not have: the first one they do. */
+function firstHome(user: ReturnType<typeof useAuth.getState>['user']): string {
+  const home = ([['dashboard.view', '/'], ['leads.view', '/leads'], ['visits.view', '/visits']] as const).find(([p, path]) => can.has(user, p) && seesPage(user, path))
+
+  return home?.[1] ?? '/settings/profile'
+}
+
+/** The dashboard, unless the workspace has switched it off for this person. */
+function HomeRoute() {
+  const user = useAuth((s) => s.user)
+
+  return seesPage(user, '/') ? <DashboardPage /> : <Navigate to={firstHome(user)} replace />
 }
 
 /** Blocks a route until the session is known, so no flash of the login screen. */
@@ -137,7 +153,7 @@ export function App() {
         >
           <Route
             index
-            element={isSuperAdmin ? <Navigate to="/platform" replace /> : <DashboardPage />}
+            element={isSuperAdmin ? <Navigate to="/platform" replace /> : <HomeRoute />}
           />
 
           <Route
@@ -166,6 +182,7 @@ export function App() {
                   <Route path="/reports" element={<RequirePermission any={['analytics.view']}><ReportsPage /></RequirePermission>} />
                   <Route path="/integrations" element={<RequirePermission any={['integrations.view']}><IntegrationsPage /></RequirePermission>} />
                   <Route path="/readiness" element={<ReadinessPage />} />
+                  <Route path="/access" element={<RequirePermission any={['users.edit']}><AccessPage /></RequirePermission>} />
                   <Route path="/users" element={<RequirePermission any={['users.view']}><UsersPage /></RequirePermission>} />
                   <Route path="/settings" element={<RequirePermission any={['settings.view']}><SettingsPage /></RequirePermission>} />
                   <Route path="/settings/profile" element={<ProfilePage />} />

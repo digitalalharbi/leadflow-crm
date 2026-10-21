@@ -18,7 +18,7 @@ class ResolveProjectScope
         $this->context->clear();
         $user = $request->user();
 
-        if ($user !== null && $user->role?->isProjectScoped()) {
+        if ($user !== null && $user->isProjectScoped()) {
             // No projects given means nothing to see, not everything: an empty list is a real restriction.
             $this->context->restrictTo($user->projects()->pluck('projects.id')->map(fn ($id) => (int) $id)->all());
         }

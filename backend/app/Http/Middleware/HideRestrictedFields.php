@@ -3,9 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Domain\Access\Permissions;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,7 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
  * number; one without `spend.view` never receives what the ads cost; one without `revenue.view`
  * never receives what the sales brought. Done once, on the way out, by key name — so a new
  * endpoint that happens to include a phone number cannot leak it to a client viewer by being new.
- * Only the specialised roles are scrubbed.
+ * The specialised roles are scrubbed by what their table withholds; a long-standing role only by
+ * what its workspace took away.
  */
 class HideRestrictedFields
 {
@@ -36,15 +39,37 @@ class HideRestrictedFields
         }
 
         $hidden = Permissions::hiddenData($user);
+        $keys = array_merge([], ...array_map(fn (string $kind) => self::KEYS[$kind], $hidden), ...$this->elementKeys($request, $user));
 
-        if ($hidden === []) {
+        if ($keys === []) {
             return $response;
         }
 
-        $drop = array_flip(array_merge(...array_map(fn (string $kind) => self::KEYS[$kind], $hidden)));
-        $response->setData($this->scrub($response->getData(true), $drop));
+        $response->setData($this->scrub($response->getData(true), array_flip($keys)));
 
         return $response;
+    }
+
+    /**
+     * The keys of the elements this person has switched off, for the path asked — hiding a field in
+     * the interface is the API's act too.
+     *
+     * @return list<list<string>>
+     */
+    private function elementKeys(Request $request, User $user): array
+    {
+        $path = trim(preg_replace('#^api/v1/#', '', $request->path()), '/');
+        $out = [];
+
+        foreach (Permissions::hiddenElements($user) as $key) {
+            $scrub = Permissions::element($key)['scrub'] ?? null;
+
+            if ($scrub && Str::is($scrub['paths'] ?? [], $path)) {
+                $out[] = $scrub['keys'];
+            }
+        }
+
+        return $out;
     }
 
     /** @param  array<string,int>  $drop */

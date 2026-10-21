@@ -32,7 +32,7 @@ export function RolesMatrix({ open, onClose }: { open: boolean; onClose: () => v
               {data.roles.map((role) => (
                 <tr key={role.role} className="border-t border-[var(--color-line)]" data-testid={`role-row-${role.role}`}>
                   <th scope="row" className="sticky start-0 bg-[var(--color-surface)] p-1.5 text-start align-top">
-                    <span className="block font-semibold">{t(`roles.${role.role}`)}</span>
+                    <span className="block font-semibold">{role.custom ? role.label : t(`roles.${role.role}`)}</span>
                     <span className="flex flex-wrap gap-1">
                       {role.scoped && <Badge tone="info"><FolderLock className="size-3" aria-hidden />{t('roles.scoped')}</Badge>}
                       {role.external && <Badge tone="warning"><UserRoundX className="size-3" aria-hidden />{t('roles.external')}</Badge>}

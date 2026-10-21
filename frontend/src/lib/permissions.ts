@@ -49,8 +49,32 @@ export function hasPermission(user: User | null | undefined, permission: string)
   return permissionsOf(user).includes(permission)
 }
 
+/**
+ * May this person see this piece of the interface — a page, a KPI, a chart, a field, a report
+ * section? Anything the workspace has switched off, or built from data they may not have, is not
+ * rendered at all (not blurred, not greyed): the API has already left its data out.
+ */
+export function sees(user: User | null | undefined, element: string): boolean {
+  if (!user) return false
+
+  return !(user.hidden_elements ?? []).includes(element)
+}
+
 export function hasAny(user: User | null | undefined, permissions: string[]): boolean {
   const held = permissionsOf(user)
 
   return permissions.some((p) => held.includes(p))
+}
+
+/** The pages a workspace can switch off, by the first part of their address. */
+const PAGE_ELEMENTS: Record<string, string> = {
+  '': 'page.dashboard', leads: 'page.leads', visits: 'page.visits', campaigns: 'page.campaigns', tracking: 'page.tracking',
+  partners: 'page.partners', reports: 'page.reports', automation: 'page.automation', audit: 'page.audit',
+}
+
+/** May this person open the page at `path`? Pages nobody can switch off are always allowed here (permissions decide those). */
+export function seesPage(user: User | null | undefined, path: string): boolean {
+  const element = PAGE_ELEMENTS[path.split('/').filter(Boolean)[0] ?? '']
+
+  return element === undefined || sees(user, element)
 }

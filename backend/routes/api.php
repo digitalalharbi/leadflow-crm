@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\SharedReportController;
+use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
@@ -357,6 +358,12 @@ Route::prefix('v1')->group(function () {
             // Users
             Route::get('/users/assignable', [UserController::class, 'assignable']);
             Route::get('/roles', [UserController::class, 'roles']);
+            Route::get('/access', [AccessController::class, 'show']);
+            Route::post('/access/roles', [AccessController::class, 'storeRole']);
+            Route::patch('/access/roles/{key}', [AccessController::class, 'updateRole']);
+            Route::delete('/access/roles/{uuid}', [AccessController::class, 'destroyRole']);
+            Route::put('/access/rules', [AccessController::class, 'putRules']);
+            Route::get('/access/users/{uuid}', [AccessController::class, 'effective']);
             Route::get('/users', [UserController::class, 'index']);
             Route::post('/users', [UserController::class, 'store']);
             Route::patch('/users/{uuid}', [UserController::class, 'update']);

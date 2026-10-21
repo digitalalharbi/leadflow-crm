@@ -6,6 +6,9 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Gate } from '@/components/access/Gate'
+import { sees } from '@/lib/permissions'
+import { useAuth } from '@/stores/auth'
 import { Button, Card, CardBody, EmptyState, ErrorState, PageHeader, Select, Skeleton, Tabs } from '@/components/ui'
 import { AreaTrend, KpiCard, PipelineFunnel, RankBars, RingProgress } from '@/components/visual'
 import { TONE_COLOR, TONE_TINT } from '@/components/visual/tones'
@@ -42,6 +45,7 @@ const INSIGHT_ICON: Record<InsightKey, LucideIcon> = {
 export function CampaignsPage() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
+  const user = useAuth((s) => s.user)
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
   const [days, setDays] = useState(30)
@@ -122,10 +126,10 @@ export function CampaignsPage() {
         value={tab}
         onChange={setTab}
         className="mb-3"
-        items={[{ key: 'overview', label: t('revenue.tab.overview') }, { key: 'revenue', label: t('revenue.tab.revenue') }]}
+        items={[{ key: 'overview', label: t('revenue.tab.overview') }, ...(sees(user, 'campaigns.section.revenue') ? [{ key: 'revenue' as const, label: t('revenue.tab.revenue') }] : [])]}
       />
 
-      {tab === 'revenue' ? (
+      {tab === 'revenue' && sees(user, 'campaigns.section.revenue') ? (
         <RevenuePanel days={days} platform={platform} />
       ) : isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
@@ -164,7 +168,7 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
   return (
     <div className="space-y-3" data-testid="campaigns-overview">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <KpiCard label={t('campaigns.spend')} icon={CircleDollarSign} value={money(totals.spend)} valueTestId="ck-spend" />
+        <Gate element="campaigns.field.spend"><KpiCard label={t('campaigns.spend')} icon={CircleDollarSign} value={money(totals.spend)} valueTestId="ck-spend" /></Gate>
         <KpiCard label={t('campaigns.leads')} icon={Users} tone="neutral" value={formatNumber(totals.leads, i18n.language)} valueTestId="ck-leads" />
         <KpiCard
           label={t('campaigns.qualifiedRate')}
@@ -178,15 +182,19 @@ function Overview({ data, money }: { data: CampaignsData; money: (v: number | nu
             </span>
           }
         />
-        <KpiCard label={t('campaigns.cpl')} icon={BadgeDollarSign} tone="neutral" value={money(totals.cpl)} valueTestId="ck-cpl" />
-        <KpiCard label={t('campaigns.cpql')} icon={Target} tone="brand" value={money(totals.cpql)} valueTestId="ck-cpql" />
-        <KpiCard
-          label={t('campaigns.roas')}
-          icon={TrendingUp}
-          tone="good"
-          valueTestId="ck-roas"
-          value={totals.roas === null ? '—' : <span dir="ltr">{totals.roas}x</span>}
-        />
+        <Gate element="campaigns.field.cost_per">
+          <KpiCard label={t('campaigns.cpl')} icon={BadgeDollarSign} tone="neutral" value={money(totals.cpl)} valueTestId="ck-cpl" />
+          <KpiCard label={t('campaigns.cpql')} icon={Target} tone="brand" value={money(totals.cpql)} valueTestId="ck-cpql" />
+        </Gate>
+        <Gate element="campaigns.field.roas">
+          <KpiCard
+            label={t('campaigns.roas')}
+            icon={TrendingUp}
+            tone="good"
+            valueTestId="ck-roas"
+            value={totals.roas === null ? '—' : <span dir="ltr">{totals.roas}x</span>}
+          />
+        </Gate>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-12">

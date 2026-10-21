@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Automation\JourneyInstaller;
 use App\Domain\Automation\Thresholds;
 use App\Enums\Role;
@@ -20,6 +21,7 @@ abstract class TestCase extends BaseTestCase
 
         // Static caches must not outlive the app they were read in.
         Thresholds::flush();
+        AccessResolver::flush();
 
         // Each test starts with no tenant bound; middleware or the helper sets it.
         app(TenantContext::class)->clear();

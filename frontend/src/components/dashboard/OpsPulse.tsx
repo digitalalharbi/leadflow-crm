@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchOps, type Light, type OpsPulseData } from '@/features/ops'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { Skeleton } from '@/components/ui'
 
 const LIGHT: Record<Light, string> = { ok: 'var(--color-success)', watch: 'var(--color-warning)', bad: 'var(--color-danger)' }
 
@@ -40,7 +41,19 @@ export function OpsPulse() {
   const { t, i18n } = useTranslation()
   const { data } = useQuery({ queryKey: ['ops-pulse'], queryFn: fetchOps, refetchInterval: 60_000, staleTime: 30_000 })
 
-  if (!data) return null
+  // The space is held while the numbers load: a chart below must not jump under a resting cursor.
+  if (!data) {
+    return (
+      <section className="space-y-2" data-testid="ops-pulse-loading" aria-busy="true">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 xl:grid-cols-9">
+          {TILES.map((tile) => <Skeleton key={tile.key} className="h-[82px] rounded-xl" />)}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {HEALTH.map((h) => <Skeleton key={h.key} className="h-8 w-28 rounded-full" />)}
+        </div>
+      </section>
+    )
+  }
 
   const num = (v: number) => formatNumber(v, i18n.language)
 

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ALPHA } from '../fixtures/data'
 import { signInAs } from '../fixtures/pages'
+import { resetFixtures } from '../fixtures/seed'
 
 /**
  * The product fits the screen it is used on.
@@ -30,6 +31,9 @@ const ROUTES = [
 ]
 
 test.describe('A laptop screen', () => {
+  // Measured against the known fixtures: a spec that ran before this one may have left a handed-over lead on top of the queue.
+  test.beforeAll(() => resetFixtures())
+
   test.beforeEach(async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
   })

@@ -384,6 +384,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/campaigns', [CampaignController::class, 'index']);
             Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);
             Route::get('/campaigns/revenue', [CampaignController::class, 'revenue']);
+            Route::get('/campaigns/operations', [CampaignController::class, 'operations']);
             Route::get('/ad-connections/{platform}', [AdConnectionController::class, 'show']);
             Route::put('/ad-connections/{platform}', [AdConnectionController::class, 'update']);
             Route::post('/ad-connections/{platform}/test', [AdConnectionController::class, 'test']);
@@ -391,6 +392,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/ad-connections/{platform}/lead-forms', [AdConnectionController::class, 'leadForms']);
             Route::post('/campaigns/sync', [CampaignController::class, 'sync']);
             Route::get('/campaigns/{uuid}', [CampaignController::class, 'show'])->whereUuid('uuid');
+            Route::post('/campaigns/{uuid}/operate', [CampaignController::class, 'operate'])->whereUuid('uuid');
+            Route::get('/campaigns/{uuid}/tracking-health', [CampaignController::class, 'trackingHealth'])->whereUuid('uuid');
 
             // Nothing reaches an ad account except through here.
             Route::get('/action-proposals', [ActionProposalController::class, 'index']);

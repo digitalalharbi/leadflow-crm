@@ -90,7 +90,7 @@ class RoutePermission
             $area === 'reports_share' && in_array($last, ['revoke', 'regenerate'], true) => 'share',
             // POST /leads makes one; POST on anything under a lead works it.
             $method === 'POST' && $area === 'leads' && ($segments[0] === 'leads' && count($segments) === 1) => 'create',
-            $method === 'POST' && in_array($last, ['sync', 'run', 'generate', 'test', 'commission', 'simulate', 'process', 'convert', 'confirm', 'cancel', 'transition', 'outcome', 'assign', 'status', 'temperature', 'interest', 'contact', 'notes', 'messages', 'emails', 'merge', 'pause', 'resume', 'stop', 'reschedule', 'share', 'send', 'duplicate'], true) => $area === 'leads' ? 'execute' : (in_array($area, ['visits', 'reservations'], true) ? 'edit' : 'execute'),
+            $method === 'POST' && in_array($last, ['sync', 'run', 'generate', 'test', 'commission', 'simulate', 'process', 'convert', 'confirm', 'cancel', 'transition', 'outcome', 'assign', 'status', 'temperature', 'interest', 'contact', 'notes', 'messages', 'emails', 'merge', 'pause', 'resume', 'stop', 'reschedule', 'share', 'send', 'duplicate', 'operate'], true) => $area === 'leads' ? 'execute' : (in_array($area, ['visits', 'reservations'], true) ? 'edit' : 'execute'),
             $method === 'POST' && $area === 'leads' => 'execute',
             $method === 'POST' => 'create',
             default => 'edit',

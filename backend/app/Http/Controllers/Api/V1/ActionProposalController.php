@@ -32,7 +32,7 @@ class ActionProposalController extends Controller
         $this->authorize('export', Lead::class);
 
         $proposals = ActionProposal::query()
-            ->with(['campaign:id,uuid,name,platform', 'adSet:id,uuid,name', 'ad:id,uuid,name', 'proposer:id,name', 'decider:id,name'])
+            ->with(['campaign:id,uuid,name,platform', 'adSet:id,uuid,name', 'ad:id,uuid,name', 'proposer:id,name', 'decider:id,name', 'log'])
             ->when($request->input('status'), fn ($q, $s) => $q->whereIn('status', (array) $s))
             ->when($request->input('campaign_id'), fn ($q, $uuid) => $q->whereHas('campaign', fn ($c) => $c->where('uuid', $uuid)))
             ->latest('id')

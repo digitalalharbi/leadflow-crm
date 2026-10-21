@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Campaigns\AdPlatform;
 use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Domain\Campaigns\CampaignMetrics;
+use App\Domain\Campaigns\CampaignOperations;
+use App\Domain\Campaigns\CampaignQuality;
 use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Domain\Campaigns\PlatformVerification;
 use App\Domain\Campaigns\QualityBreakdown;
 use App\Domain\Conversions\ConversionHealth;
 use App\Http\Controllers\Controller;
+use App\Models\ActionProposal;
 use App\Models\AdAccount;
 use App\Models\AdConnection;
 use App\Models\Campaign;
@@ -20,6 +23,7 @@ use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Campaigns, read side: the list with what each cost and brought, the platforms
@@ -51,6 +55,79 @@ class CampaignController extends Controller
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
         ]);
+    }
+
+    /**
+     * The operations table: every campaign with what it costs and what it brought, how good it is and
+     * why, what is waiting for approval on it, and what can be done to it on its platform.
+     */
+    public function operations(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        [$from, $to] = $this->window($request);
+        $metrics = new CampaignMetrics($request->user(), $from, $to);
+
+        $rows = $metrics->rows([
+            'platform' => in_array($request->input('platform'), AdPlatform::values(), true) ? $request->input('platform') : null,
+            'status' => $request->input('status'),
+            'project_id' => $request->filled('project_id') ? Project::query()->where('uuid', $request->input('project_id'))->value('id') : null,
+        ]);
+        $totals = $metrics->totals($rows);
+        $rows = CampaignQuality::attach($rows, $totals, $from, $to);
+
+        $pending = ActionProposal::query()->where('status', ActionProposal::PENDING)->whereNotNull('campaign_id')
+            ->selectRaw('campaign_id, count(*) as n')->groupBy('campaign_id')->pluck('n', 'campaign_id');
+        $ids = Campaign::query()->whereIn('uuid', array_column($rows, 'id'))->pluck('id', 'uuid');
+        $registry = app(AdPlatformRegistry::class);
+
+        return ApiResponse::success([
+            'campaigns' => array_map(function (array $row) use ($pending, $ids, $registry) {
+                $actions = $registry->get($row['platform'])->actions();
+
+                return $row + [
+                    'pending_proposals' => (int) ($pending[$ids[$row['id']] ?? 0] ?? 0),
+                    // What this platform lets us do to it; sync reads, so it is always there.
+                    'can' => array_values(array_filter([
+                        in_array('pause', $actions, true) ? 'pause' : null, in_array('resume', $actions, true) ? 'resume' : null,
+                        in_array('pause', $actions, true) && in_array('resume', $actions, true) ? 'set_status' : null,
+                        in_array('update_budget', $actions, true) ? 'set_budget' : null, 'sync',
+                    ])),
+                ];
+            }, $rows),
+            'totals' => $totals,
+            'classes' => array_count_values(array_filter(array_map(fn ($r) => $r['quality']['class'], $rows))),
+            'sandbox' => $registry->sandboxed(),
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+        ]);
+    }
+
+    /** One change to one campaign. It is proposed, not made: see CampaignOperations. */
+    public function operate(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+
+        $data = $request->validate([
+            'action' => ['required', 'string', Rule::in(CampaignOperations::ACTIONS)],
+            'reason' => ['required_unless:action,sync', 'nullable', 'string', 'max:2000'],
+            'status' => ['required_if:action,set_status', 'nullable', 'in:active,paused'],
+            'daily_budget' => ['required_if:action,set_budget', 'nullable', 'numeric', 'min:0.01', 'max:100000000'],
+        ]);
+
+        $campaign = Campaign::query()->where('uuid', $uuid)->firstOrFail();
+        $result = app(CampaignOperations::class)->operate($request->user(), $campaign, $data['action'], $data);
+
+        return $result['kind'] === 'proposal' ? ApiResponse::created($result) : ApiResponse::success($result);
+    }
+
+    /** "View tracking health" for one campaign. */
+    public function trackingHealth(Request $request, string $uuid)
+    {
+        $this->authorize('export', Lead::class);
+
+        return ApiResponse::success(app(CampaignOperations::class)->trackingHealth(Campaign::query()->where('uuid', $uuid)->firstOrFail()));
     }
 
     /** From the money spent to the money earned: funnel, table, heatmap, trend, mix, comparison, rankings. */

@@ -515,7 +515,7 @@ export function WorkPage() {
                   the next lead all follow from it.
                 */}
                 <div className="space-y-1.5 border-t border-[var(--color-border)] pt-2.5">
-                  <p className="t-caption">{t('work.outcomePrompt')}</p>
+                  <p className="sr-only">{t('work.outcomePrompt')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {OUTCOMES.map((choice, index) => (
                       <Button
@@ -533,9 +533,11 @@ export function WorkPage() {
                   </div>
                 </div>
 
+                {/* The label is the placeholder: a caption above a one-line field is a line of height a laptop does not have. */}
                 <Textarea
-                  label={t('work.noteLabel')}
-                  rows={2}
+                  aria-label={t('work.noteLabel')}
+                  placeholder={t('work.noteLabel')}
+                  rows={1}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                 />

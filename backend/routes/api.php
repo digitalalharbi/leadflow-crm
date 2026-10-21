@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
@@ -45,6 +46,7 @@ use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\ReportShareController;
 use App\Http\Controllers\Api\V1\ReservationController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SavedViewController;
@@ -86,6 +88,9 @@ Route::prefix('v1')->group(function () {
 
     // What a landing page tells us a visitor did. Public; the link token says whose it is.
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:240,1')->where('token', '[A-Za-z0-9]{6,24}');
+
+    // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
+    Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
 
     // Lead ingestion. Authenticated by the per-endpoint shared secret, not a session.
     Route::prefix('integrations/webhooks/{key}')->middleware('throttle:webhook')->group(function () {
@@ -344,6 +349,12 @@ Route::prefix('v1')->group(function () {
             // Reports
             Route::get('/reports', [ReportController::class, 'index']);
             Route::get('/reports/insights', [ReportController::class, 'insights']);
+            Route::get('/report-shares', [ReportShareController::class, 'index']);
+            Route::post('/report-shares', [ReportShareController::class, 'store']);
+            Route::patch('/report-shares/{uuid}', [ReportShareController::class, 'update']);
+            Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);
+            Route::post('/report-shares/{uuid}/regenerate', [ReportShareController::class, 'regenerate']);
+            Route::delete('/report-shares/{uuid}', [ReportShareController::class, 'destroy']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
             Route::get('/campaigns', [CampaignController::class, 'index']);
             Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);

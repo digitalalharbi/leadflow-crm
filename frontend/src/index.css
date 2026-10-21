@@ -581,6 +581,33 @@
     color: var(--brand-contrast);
   }
 
+  /*
+   * The rail lists every destination, and on a laptop-height screen that is taller than the
+   * page: the whole document then scrolled for the sake of a column of icons. Below 860px of
+   * height the rail tightens (28px targets, a pointer-only surface — it is hidden below `lg`)
+   * so every destination stays one press away without the page growing.
+   */
+  @media (min-width: 1024px) and (max-height: 860px) {
+    .rail-item {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    .rail-item > svg {
+      width: 1rem !important;
+      height: 1rem !important;
+    }
+
+    .rail-group {
+      gap: 0 !important;
+      padding: 0.1875rem !important;
+    }
+
+    [data-testid='icon-rail'] {
+      gap: 0.375rem !important;
+    }
+  }
+
   /* A tooltip on the end side of the rail: toward the content, in either direction. */
   .rail-tip {
     pointer-events: none;

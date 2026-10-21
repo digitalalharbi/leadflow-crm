@@ -6,10 +6,12 @@ use App\DataTransferObjects\IncomingLead;
 use App\Domain\Tracking\Attribution;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
+use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\Lead;
 use App\Models\Partner;
 use App\Models\Project;
+use App\Models\Reservation;
 use App\Models\TrackingLink;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -133,6 +135,69 @@ class PartnersAndQrTest extends TestCase
         $this->assertStringContainsString('attachment', $download->headers->get('Content-Disposition'));
 
         $this->actingAs($this->makeUser($this->t['tenant'], Role::Finance))->get("/api/v1/tracking/links/{$link['id']}/qr")->assertForbidden();
+    }
+
+    public function test_a_qr_code_is_also_a_png_that_scans_and_can_be_downloaded(): void
+    {
+        $link = $this->link($this->partner()['id'], ['kind' => 'qr', 'channel' => 'qr', 'placement' => 'billboard', 'name' => 'لوحة الدائري']);
+
+        $response = $this->api()->get("/api/v1/tracking/links/{$link['id']}/qr?format=png&size=800")->assertOk();
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $png = $response->getContent();
+        $this->assertSame("\x89PNG", substr($png, 0, 4));
+
+        [$w, $h] = getimagesizefromstring($png);
+        $this->assertSame($w, $h);
+        $this->assertLessThanOrEqual(800, $w);
+        $this->assertGreaterThan(400, $w, 'a whole number of pixels per module, as close to the size asked as it allows');
+
+        // The quiet zone around the code is white, and the code itself is a good deal darker than blank paper.
+        $image = imagecreatefromstring($png);
+        $this->assertSame(0xFFFFFF, imagecolorat($image, 1, 1) & 0xFFFFFF);
+        $dark = 0;
+        $samples = 0;
+
+        for ($x = 0; $x < $w; $x += 3) {
+            for ($y = 0; $y < $h; $y += 3) {
+                $samples++;
+                $dark += (imagecolorat($image, $x, $y) & 0xFFFFFF) === 0x000000 ? 1 : 0;
+            }
+        }
+
+        $this->assertGreaterThan(0.15, $dark / $samples);
+        $this->assertLessThan(0.7, $dark / $samples);
+
+        $this->assertStringContainsString('.png', $this->api()->get("/api/v1/tracking/links/{$link['id']}/qr?format=png&download=1")->headers->get('Content-Disposition'));
+
+        // An absurd size is held to the limits rather than allocating a gigabyte.
+        $big = $this->api()->get("/api/v1/tracking/links/{$link['id']}/qr?format=png&size=999999")->assertOk()->getContent();
+        $this->assertLessThanOrEqual(2048, getimagesizefromstring($big)[0]);
+
+        // Anything else asked for is the vector.
+        $this->assertSame('image/svg+xml', $this->api()->get("/api/v1/tracking/links/{$link['id']}/qr?format=gif")->headers->get('Content-Type'));
+    }
+
+    public function test_what_a_printed_code_has_brought_is_counted_down_the_whole_funnel(): void
+    {
+        $link = $this->link($this->partner()['id'], ['kind' => 'qr', 'channel' => 'qr', 'placement' => 'event']);
+
+        $this->leadVia($link);
+        $seen = $this->leadVia($link);
+        $this->asTenant($this->t['tenant'], function () use ($seen) {
+            Appointment::create(['lead_id' => $seen->id, 'scheduled_at' => now()->subDay(), 'status' => 'completed']);
+        });
+        $held = $this->leadVia($link);
+        $this->asTenant($this->t['tenant'], fn () => Reservation::create(['lead_id' => $held->id, 'status' => 'pending', 'reserved_at' => now()]));
+        $this->leadVia($link, ['status' => 'won', 'deal_value_minor' => 50_000_000]);
+
+        $stats = collect($this->api()->getJson('/api/v1/tracking/links')->assertOk()->json('data.links'))->firstWhere('id', $link['id'])['stats'];
+
+        $this->assertSame(4, $stats['leads']);
+        // Each step counts everyone who got at least that far: the won one was interested, saw it and held it.
+        $this->assertSame(3, $stats['interested']);
+        $this->assertSame(3, $stats['visits_done']);
+        $this->assertSame(2, $stats['reservations']);
+        $this->assertSame(1, $stats['won']);
     }
 
     public function test_a_broker_login_sees_only_what_their_partner_brought(): void

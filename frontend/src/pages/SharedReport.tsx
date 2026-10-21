@@ -1,20 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { cn } from '@/lib/cn'
 import { useQuery } from '@tanstack/react-query'
-import { BadgeDollarSign, Coins, Eye, KeyRound, LockKeyhole, Sparkles, Target, TrendingUp, UserCheck, Users } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { KeyRound, LockKeyhole, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, CardBody, Input, Skeleton, Table, TableWrap, Td, Th, Tr } from '@/components/ui'
-import { AreaTrend, Donut, KpiCard, PipelineFunnel, RankBars } from '@/components/visual'
-import { platformColor } from '@/components/charts'
+import { Button, Card, CardBody, Input, Skeleton } from '@/components/ui'
+import {
+  AttributionSection, AutomationSection, CampaignsSection, FunnelSection, InsightsSection, InterestedSection, KpiCards, PlatformsSection,
+  QualificationSection, RecommendationsSection, ReservationsSection, TeamSection, TrackingHealthSection, TrendSection, useReportCtx, VisitsSection,
+} from '@/components/reports/ReportSections'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { fetchSharedReport, type SharedReportData } from '@/features/reportShares'
-import { formatCompact, formatMoneyCompact, formatNumber } from '@/lib/format'
-import { cn } from '@/lib/cn'
 import type { Branding } from '@/types/api'
-
-const TREND_KEYS = ['leads', 'interested', 'visits', 'reservations', 'won', 'spend', 'revenue'] as const
-type TrendKey = (typeof TREND_KEYS)[number]
 
 /** Only the colour matters to the theme; the rest of a Branding is the signed-in app's. */
 function themeFor(color: string | null | undefined, name: string | null | undefined): Branding {
@@ -36,14 +33,19 @@ export function SharedReportPage() {
   })
   const [draft, setDraft] = useState('')
 
+  // The first answer is a view; the page asking again on its own is not another one.
+  const loaded = useRef(false)
+
   const query = useQuery({
     queryKey: ['shared-report', token, password],
-    queryFn: () => fetchSharedReport(token, password),
-    refetchInterval: (q) => (q.state.data?.kind === 'ok' ? 60_000 : false),
+    queryFn: () => fetchSharedReport(token, password, loaded.current),
+    // A link is never out of date: it asks again as often as the owner chose (a minute unless said otherwise).
+    refetchInterval: (q) => (q.state.data?.kind === 'ok' ? Math.max(15, q.state.data.data.report.refresh_seconds ?? 60) * 1000 : false),
     retry: false,
   })
 
   const result = query.data
+  useEffect(() => { if (result?.kind === 'ok') loaded.current = true }, [result])
   const brand = result?.kind === 'ok' ? result.data.workspace : result?.kind === 'password' ? result.workspace : null
   useBrandingTheme(brand ? themeFor(brand.color, brand.name) : null)
 
@@ -90,7 +92,7 @@ export function SharedReportPage() {
     )
   }
 
-  return <Report data={result.data} />
+  return <ReportView data={result.data} refreshing={query.isFetching} />
 }
 
 function Shell({ children, workspace }: { children: React.ReactNode; workspace?: string | null }) {
@@ -102,24 +104,51 @@ function Shell({ children, workspace }: { children: React.ReactNode; workspace?:
   )
 }
 
-function Report({ data }: { data: SharedReportData }) {
-  const { t, i18n } = useTranslation()
-  const on = (section: string) => (data.sections as string[]).includes(section)
-  const money = (v: number | null | undefined) => formatMoneyCompact(v ?? null, data.report.currency, i18n.language)
-  const num = (v: number | null | undefined) => formatNumber(v ?? 0, i18n.language)
-  const k = data.kpis ?? {}
+/** The sections that read best side by side take half a row; everything else a whole one. */
+const HALF = new Set(['interested', 'qualification', 'visits', 'reservations', 'automation', 'platforms', 'team', 'funnel'])
 
-  const cards: Array<{ key: string; icon: LucideIcon; value: string | null }> = [
-    { key: 'leads', icon: Users, value: 'leads' in k ? num(k.leads) : null },
-    { key: 'interested', icon: Sparkles, value: 'interested' in k ? num(k.interested) : null },
-    { key: 'visits', icon: Eye, value: 'visits' in k ? num(k.visits) : null },
-    { key: 'reservations', icon: KeyRound, value: 'reservations' in k ? num(k.reservations) : null },
-    { key: 'won', icon: UserCheck, value: 'won' in k ? num(k.won) : null },
-    { key: 'revenue', icon: Coins, value: 'revenue' in k ? money(k.revenue) : null },
-    { key: 'cpl', icon: BadgeDollarSign, value: 'cpl' in k ? money(k.cpl) : null },
-    { key: 'cac', icon: Target, value: 'cac' in k ? money(k.cac) : null },
-    { key: 'roas', icon: TrendingUp, value: 'roas' in k ? (k.roas === null ? '—' : `${k.roas}x`) : null },
-  ]
+export function ReportView({ data, refreshing = false }: { data: SharedReportData; refreshing?: boolean }) {
+  const { t, i18n } = useTranslation()
+  const ctx = useReportCtx(data)
+
+  const render = (section: string) => {
+    switch (section) {
+      case 'kpi_volume':
+      case 'kpi_cost':
+      case 'kpi_revenue': return <KpiCards ctx={ctx} section={section} />
+      case 'funnel': return <FunnelSection ctx={ctx} />
+      case 'interested': return <InterestedSection ctx={ctx} />
+      case 'qualification': return <QualificationSection ctx={ctx} />
+      case 'visits': return <VisitsSection ctx={ctx} />
+      case 'reservations': return <ReservationsSection ctx={ctx} />
+      case 'trend': return <TrendSection ctx={ctx} />
+      case 'platforms': return <PlatformsSection ctx={ctx} />
+      case 'campaigns': return <CampaignsSection ctx={ctx} />
+      case 'attribution': return <AttributionSection ctx={ctx} />
+      case 'team': return <TeamSection ctx={ctx} />
+      case 'automation': return <AutomationSection ctx={ctx} />
+      case 'tracking_health': return <TrackingHealthSection ctx={ctx} />
+      case 'insights': return <InsightsSection ctx={ctx} />
+      case 'recommendations': return <RecommendationsSection ctx={ctx} />
+      default: return null
+    }
+  }
+
+  // Sections in order; the figures that sit next to each other become one block.
+  const blocks = data.sections.reduce<({ kind: 'kpi'; sections: string[] } | { kind: 'section'; section: string })[]>((out, section) => {
+    const last = out[out.length - 1]
+
+    if (section.startsWith('kpi_')) {
+      if (last?.kind === 'kpi') last.sections.push(section)
+      else out.push({ kind: 'kpi', sections: [section] })
+    } else if (render(section)) {
+      out.push({ kind: 'section', section })
+    }
+
+    return out
+  }, [])
+
+  const when = new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.report.generated_at))
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-3 px-4 py-6" data-testid="shared-report">
@@ -128,99 +157,32 @@ function Report({ data }: { data: SharedReportData }) {
           <p className="t-caption">{data.workspace.name}</p>
           <h1 className="text-[1.5rem] font-extrabold" data-testid="shared-title">{data.report.name}</h1>
         </div>
-        <p className="t-caption tabular-nums" data-testid="shared-period">{data.report.from} → {data.report.to} · {t('share.public.live')}</p>
+        <div className="text-end">
+          <p className="t-caption tabular-nums" data-testid="shared-period">{data.report.from} → {data.report.to} · {t('share.public.live')}</p>
+          {data.report.previous && <p className="t-caption tabular-nums" data-testid="shared-previous-period">{t('reportView.comparedWith', { from: data.report.previous.from, to: data.report.previous.to })}</p>}
+        </div>
       </header>
 
-      {data.kpis && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="shared-kpis">
-          {cards.filter((c) => c.value !== null).map(({ key, icon, value }) => (
-            <KpiCard key={key} testId={`sk-${key}`} valueTestId={`sk-${key}-value`} label={t(`revenue.kpi.${key}`)} icon={icon} tone={key === 'revenue' || key === 'won' || key === 'roas' ? 'good' : 'neutral'} value={<span dir="ltr">{value}</span>} />
-          ))}
-        </div>
-      )}
-
-      <div className="grid items-start gap-3 lg:grid-cols-12">
-        {data.funnel && (
-          <Card className="lg:col-span-5" data-testid="shared-funnel"><CardBody>
-            <h2 className="t-card-title mb-3">{t('revenue.funnel')}</h2>
-            <PipelineFunnel steps={data.funnel.map((s) => ({ key: s.key, label: t(`revenue.step.${s.key}`), count: s.count, costPer: s.cost != null ? money(s.cost) : null }))} />
-          </CardBody></Card>
-        )}
-        {data.trend && <SharedTrend data={data} className={data.funnel ? 'lg:col-span-7' : 'lg:col-span-12'} money={money} />}
+      {/* Sections in the order the owner chose; the ones that read well together share a row. */}
+      <div className="grid items-start gap-3 lg:grid-cols-2">
+        {blocks.map((block) => block.kind === 'kpi' ? (
+          // Consecutive figures flow as one grid, whatever mix of volume, cost and revenue they are.
+          <div key={block.sections[0]} data-section={block.sections.join(' ')} data-testid="shared-kpis" className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3 lg:col-span-2">
+            {block.sections.map((section) => <KpiCards key={section} ctx={ctx} section={section as 'kpi_volume'} />)}
+          </div>
+        ) : (
+          <div key={block.section} data-section={block.section} className={cn('min-w-0', !HALF.has(block.section) && 'lg:col-span-2')}>{render(block.section)}</div>
+        ))}
       </div>
 
-      {data.platforms && (
-        <Card data-testid="shared-platforms"><CardBody>
-          <h2 className="t-card-title mb-3">{t('revenue.leadsByPlatform')}</h2>
-          <Donut size={120} thickness={14} legend="side" centerLabel={t('revenue.kpi.leads')}
-            segments={data.platforms.map((p) => ({ key: p.key, label: t(`platforms.${p.key}`, { defaultValue: p.key }), value: p.leads, color: platformColor(p.key) }))} />
-        </CardBody></Card>
-      )}
-
-      {data.team && (
-        <Card data-testid="shared-team"><CardBody>
-          <h2 className="t-card-title mb-3">{t('manager.team')}</h2>
-          <RankBars limit={8} items={data.team.map((m) => ({ key: m.name, label: m.name, value: m.won, note: <span className="tabular-nums" dir="ltr">{m.leads} · {m.won}</span> }))} />
-        </CardBody></Card>
-      )}
-
-      {data.campaigns && (
-        <Card data-testid="shared-campaigns"><CardBody className="p-0">
-          <TableWrap>
-            <Table>
-              <thead><tr>
-                <Th>{t('revenue.table.campaign')}</Th><Th>{t('revenue.kpi.leads')}</Th><Th>{t('revenue.kpi.interested')}</Th><Th>{t('revenue.kpi.visits')}</Th><Th>{t('revenue.kpi.reservations')}</Th><Th>{t('revenue.kpi.won')}</Th>
-                {data.campaigns.some((c) => 'spend' in c) && <Th>{t('revenue.kpi.spend')}</Th>}
-                {data.campaigns.some((c) => 'revenue' in c) && <Th>{t('revenue.kpi.revenue')}</Th>}
-              </tr></thead>
-              <tbody>
-                {data.campaigns.map((c) => (
-                  <Tr key={c.name}>
-                    <Td className="max-w-[14rem] truncate font-medium">{c.name}</Td>
-                    <Td className="tabular-nums">{num(c.leads)}</Td><Td className="tabular-nums">{num(c.interested)}</Td><Td className="tabular-nums">{num(c.visits)}</Td><Td className="tabular-nums">{num(c.reservations)}</Td><Td className="tabular-nums">{num(c.won)}</Td>
-                    {'spend' in c && <Td className="tabular-nums" dir="ltr">{money(c.spend)}</Td>}
-                    {'revenue' in c && <Td className="tabular-nums" dir="ltr">{money(c.revenue)}</Td>}
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrap>
-        </CardBody></Card>
-      )}
-
-      {!on('kpi_volume') && !data.kpis && !data.funnel && !data.trend && !data.platforms && !data.team && !data.campaigns && (
+      {data.sections.length === 0 && (
         <Card><CardBody className="py-10 text-center t-caption">{t('share.public.empty')}</CardBody></Card>
       )}
 
-      <p className="t-caption text-center" data-testid="shared-generated">{t('share.public.generated', { when: new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.report.generated_at)) })}</p>
+      <p className="t-caption flex items-center justify-center gap-1.5 text-center" data-testid="shared-generated">
+        <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} aria-hidden />
+        {t('share.public.generated', { when })}
+      </p>
     </main>
-  )
-}
-
-function SharedTrend({ data, className, money }: { data: SharedReportData; className?: string; money: (v: number | null | undefined) => string }) {
-  const { t, i18n } = useTranslation()
-  const available = TREND_KEYS.filter((key) => data.trend!.some((p) => key in p))
-  const [key, setKey] = useState<TrendKey>(available[0] ?? 'leads')
-  const isMoney = key === 'spend' || key === 'revenue'
-  const day = new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { day: 'numeric', month: 'short' })
-  const total = data.trend!.reduce((sum, p) => sum + ((p[key] as number | undefined) ?? 0), 0)
-
-  return (
-    <Card className={className} data-testid="shared-trend"><CardBody>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="t-card-title">{t('revenue.trend')}</h2>
-        <div role="group" className="flex flex-wrap gap-1">
-          {available.map((k) => (
-            <button key={k} type="button" aria-pressed={key === k} data-testid={`shared-trend-${k}`} onClick={() => setKey(k)}
-              className={cn('pressable rounded-full px-2.5 py-0.5 text-[0.875rem] font-semibold', key === k ? 'bg-[var(--brand)] text-[var(--brand-ink)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
-              {t(`revenue.kpi.${k}`)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="mb-2 text-[1.375rem] font-bold tabular-nums" dir="ltr">{isMoney ? money(total) : formatCompact(total, i18n.language)}</p>
-      <AreaTrend height={150} axes valueLabel={t(`revenue.kpi.${key}`)} formatValue={(v) => (isMoney ? money(v) : formatNumber(v, i18n.language))}
-        points={data.trend!.map((p) => ({ label: day.format(new Date(p.date)), value: (p[key] as number | undefined) ?? 0 }))} />
-    </CardBody></Card>
   )
 }

@@ -54,6 +54,10 @@ export default {
     title: 'Handed to you',
     score: 'Score',
     qualification: 'Qualification',
+    whyNow: 'Why now', interest: 'Interest', lastActivity: 'Last activity', nothingYet: 'No conversation yet',
+    details: 'Details', hideDetails: 'Hide',
+    who: { customer: 'Customer', rep: 'You', automation: 'Automation' },
+    sla: { ok: 'On time', due_soon: 'Reply soon', breached: 'Past the window', done: 'Answered' },
   },
   conversation: {
     transaction: { buy: 'Buy', rent: 'Rent' },
@@ -151,6 +155,7 @@ export default {
     layoutHint: 'Order the sections by dragging or with the arrows, switch on what you want, and choose who sees it and for which period.', moveUp: 'Up', moveDown: 'Down', visibility: 'Who sees it', scope: 'Period', scopeReport: 'As the report',
     visibleTo: { public: 'Anyone with the link', team: 'Team only' },
     compare: 'Compare with the previous period', compareHint: 'Beside every figure, the period before it.', refresh: 'Refresh an open page', refreshEvery: { 30: 'Every 30 seconds', 60: 'Every minute', 300: 'Every 5 minutes', 900: 'Every 15 minutes' },
+    preview: 'Preview', previewTitle: 'Preview of “{{name}}”', previewHint: 'As the team sees it: every section that is on, including the team-only ones.',
     analytics: 'Views', analyticsTitle: 'Views of “{{name}}”', analyticsStat: { total: 'Views', unique: 'Different visitors', last: 'Last opened' }, device: { desktop: 'Desktop', mobile: 'Mobile', tablet: 'Tablet', other: 'Other' },
     money: 'Money', moneyWarning: 'Anyone with this link will see money figures.',
     name: 'Report name', period: 'Period', lastDays_one: 'Last day', lastDays_other: 'Last {{count}} days',
@@ -2482,7 +2487,7 @@ export default {
     live: 'Live', off: 'Off', status: 'Status', recent: 'Latest events', name: 'Link name', channel: 'Channel', project: 'Project', kind: 'Kind',
     destination: 'Destination',
     emptyTitle: 'No tracking links yet', emptyBody: 'Make a link for every ad, billboard and broker, so each customer is credited to what brought them.',
-    tabs: { links: 'Links', health: 'Health', attribution: 'Attribution' },
+    tabs: { links: 'Links', qr: 'QR center', health: 'Health', attribution: 'Attribution' },
     platforms: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google_ads: 'Google', x: 'X', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', landing_page: 'Landing pages' },
     health: {
       connected: 'Connected', receiving: 'Receiving events', atRisk: 'At risk', window: 'Period', success: 'Share accepted', events: 'events', never: 'Nothing yet',
@@ -2850,6 +2855,14 @@ export default {
       finding: '{{percent}}% of leads have no known source.',
       impact: 'We cannot tell which campaign to reward.', action: 'Add tracking links for every source.',
     },
+  },
+  qrCenter: {
+    emptyTitle: 'No QR codes yet', emptyBody: 'Make a “QR code” link for a billboard, an event or a rep, and it appears here with its numbers.',
+    all: 'All', printedOn: 'Printed on', noneHere: 'No codes in this group',
+    stat: { scans: 'Scans', leads: 'Leads', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', revenue: 'Revenue' },
+    print: 'Print', printReady: 'Print-ready', size: 'Size',
+    sizes: { sticker: 'Sticker', flyer: 'Flyer', poster: 'Poster' },
+    sizeHint: { sticker: 'A6 · on a door or a desk', flyer: 'A5 · at events', poster: 'A4 · on a wall' },
   },
   roles: {
     marketing_manager: 'Marketing manager',

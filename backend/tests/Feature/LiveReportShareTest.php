@@ -212,7 +212,7 @@ class LiveReportShareTest extends TestCase
     {
         $this->assertSame(['kpi_volume', 'funnel', 'trend'], array_keys(array_filter(ReportTemplates::sectionsFor('client'))));
         $this->assertSame(ReportTemplates::SECTIONS, array_keys(array_filter(ReportTemplates::sectionsFor('management'))));
-        $this->assertEqualsCanonicalizing(['executive', 'marketing', 'sales', 'client', 'partner', 'management'], array_keys(ReportTemplates::TEMPLATES));
+        $this->assertEqualsCanonicalizing(['executive', 'marketing', 'sales', 'client', 'investor', 'partner', 'management'], array_keys(ReportTemplates::TEMPLATES));
     }
 
     public function test_a_malformed_or_unknown_token_is_a_plain_404(): void

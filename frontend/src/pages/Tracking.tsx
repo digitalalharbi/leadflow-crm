@@ -9,13 +9,14 @@ import { AttributionPanel } from '@/components/tracking/AttributionPanel'
 import { HealthPanel } from '@/components/tracking/HealthPanel'
 import { LinkCard } from '@/components/tracking/LinkCard'
 import { LinkDrawer } from '@/components/tracking/LinkDrawer'
+import { QrCenter } from '@/components/tracking/QrCenter'
 import { QrDialog } from '@/components/tracking/QrDialog'
 import { fetchLinks, type TrackingLink } from '@/features/tracking'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 
-const TABS = ['links', 'health', 'attribution'] as const
+const TABS = ['links', 'qr', 'health', 'attribution'] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -33,7 +34,7 @@ export function TrackingPage() {
   const canSee = can.has(user, 'tracking.view')
   // How platforms are doing and who gets the credit are analyses: they take the reports permission.
   const analytics = can.viewReports(user)
-  const tabs = TABS.filter((key) => key === 'links' || analytics)
+  const tabs = TABS.filter((key) => key === 'links' || key === 'qr' || analytics)
 
   const [tab, setTab] = useState<Tab>('links')
   const [days, setDays] = useState(30)
@@ -100,6 +101,8 @@ export function TrackingPage() {
             )}
           </>
         )}
+
+        {tab === 'qr' && (isLoading ? <Skeleton className="h-48" /> : <QrCenter links={links} onOpen={(id) => { setOpenId(id); setDrawer(true) }} />)}
 
         {tab === 'health' && <HealthPanel onGo={setTab} />}
         {tab === 'attribution' && <AttributionPanel days={days} />}

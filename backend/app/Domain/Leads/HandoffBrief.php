@@ -63,8 +63,22 @@ class HandoffBrief
             'mood' => ['intent' => $conversation['facts']['intent']['value'] ?? null, 'urgency' => $conversation['facts']['urgency']['value'] ?? null, 'sentiment' => $conversation['facts']['sentiment'] ?? null],
             'engine' => $conversation['engine'],
             'last_conversation' => $this->lastWords($lead),
+            'interest' => ['level' => $lead->interest_level, 'sla' => ($sla = InterestSla::for($lead)) ? ['state' => $sla['state'], 'minutes_left' => $sla['minutes_left']] : null],
+            'last_activity' => $this->lastActivity($lead),
             'next_action' => $next === null ? null : ['action' => $next['action'], 'urgency' => $next['urgency'], 'reason' => $next['reason']],
         ];
+    }
+
+    /** Who spoke last, and when: the latest message either way, or the last time somebody reached them. @return array{who:string,at:?string}|null */
+    private function lastActivity(Lead $lead): ?array
+    {
+        $m = LeadMessage::withoutGlobalScopes()->where('lead_id', $lead->id)->latest('id')->first(['direction', 'user_id', 'created_at']);
+
+        if ($m !== null) {
+            return ['who' => $m->direction->value === 'inbound' ? 'customer' : ($m->user_id ? 'rep' : 'automation'), 'at' => $m->created_at?->toIso8601String()];
+        }
+
+        return $lead->last_contact_at ? ['who' => 'rep', 'at' => $lead->last_contact_at->toIso8601String()] : null;
     }
 
     /** The last five lines, oldest first, each short. */

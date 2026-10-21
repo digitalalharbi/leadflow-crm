@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Tracking\LinkStats;
+use App\Domain\Tracking\QrCode;
 use App\Domain\Tracking\TrackingLinks;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TrackingLinkResource;
@@ -17,10 +18,6 @@ use App\Models\TrackingLink;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -98,15 +95,14 @@ class TrackingLinkController extends Controller
         $link = TrackingLink::where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $link);
 
-        $svg = (new Writer(new ImageRenderer(
-            new RendererStyle(320, 2),
-            new SvgImageBackEnd,
-        )))->writeString($link->url());
+        $format = $request->query('format') === 'png' ? 'png' : 'svg';
+        $file = 'qr-'.(Str::slug($link->name ?: $link->token) ?: $link->token).'.'.$format;
+        $body = $format === 'png' ? QrCode::png($link->url(), (int) $request->query('size', 1024)) : QrCode::svg($link->url(), 320);
 
-        return response($svg, 200, array_filter([
-            'Content-Type' => 'image/svg+xml',
+        return response($body, 200, array_filter([
+            'Content-Type' => $format === 'png' ? 'image/png' : 'image/svg+xml',
             'Cache-Control' => 'private, max-age=300',
-            'Content-Disposition' => $request->boolean('download') ? 'attachment; filename="qr-'.Str::slug($link->name ?: $link->token).'.svg"' : null,
+            'Content-Disposition' => $request->boolean('download') ? 'attachment; filename="'.$file.'"' : null,
         ]));
     }
 

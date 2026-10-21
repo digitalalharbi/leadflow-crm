@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Domain\Reports\LiveReport;
 use App\Http\Controllers\Controller;
 use App\Models\ReportShare;
+use App\Models\ReportShareView;
 use App\Models\Tenant;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
@@ -42,9 +43,34 @@ class SharedReportController extends Controller
 
         $data = $this->context->withTenant($tenant, fn () => $this->report->build($share->setRelation('tenant', $tenant)));
 
-        // Counted without touching `updated_at`: opening a report is not editing it.
-        ReportShare::withoutGlobalScopes()->whereKey($share->id)->update(['view_count' => $share->view_count + 1, 'last_viewed_at' => now()]);
+        // An open page asking again for fresh numbers is the same view, not another one.
+        if (! $request->hasHeader('X-Share-Refresh')) {
+            $this->countView($request, $share);
+        }
 
         return ApiResponse::success($data + ['workspace' => $brand]);
+    }
+
+    /**
+     * One more opening: counted without touching `updated_at` (opening a report is not editing it),
+     * and written down with a hash that tells visitors apart without naming anybody.
+     */
+    private function countView(Request $request, ReportShare $share): void
+    {
+        ReportShare::withoutGlobalScopes()->whereKey($share->id)->update(['view_count' => $share->view_count + 1, 'last_viewed_at' => now()]);
+
+        $agent = strtolower((string) $request->userAgent());
+        ReportShareView::withoutGlobalScopes()->create([
+            'tenant_id' => $share->tenant_id,
+            'report_share_id' => $share->id,
+            'viewer_hash' => hash('sha256', $request->ip().'|'.$agent.'|'.$share->id),
+            'device' => match (true) {
+                str_contains($agent, 'ipad') || str_contains($agent, 'tablet') => 'tablet',
+                str_contains($agent, 'mobile') || str_contains($agent, 'android') || str_contains($agent, 'iphone') => 'mobile',
+                $agent !== '' => 'desktop',
+                default => 'other',
+            },
+            'viewed_at' => now(),
+        ]);
     }
 }

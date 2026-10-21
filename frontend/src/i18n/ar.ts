@@ -109,6 +109,10 @@ export default {
     title: 'سُلِّم لك',
     score: 'التقييم',
     qualification: 'التأهيل',
+    whyNow: 'لماذا الآن', interest: 'الاهتمام', lastActivity: 'آخر نشاط', nothingYet: 'لا محادثة بعد',
+    details: 'التفاصيل', hideDetails: 'إخفاء',
+    who: { customer: 'العميل', rep: 'أنت', automation: 'الأتمتة' },
+    sla: { ok: 'في الوقت', due_soon: 'ردّ قريبًا', breached: 'تجاوز المهلة', done: 'تم الرد' },
   },
   conversation: {
     transaction: { buy: 'شراء', rent: 'إيجار' },
@@ -206,6 +210,7 @@ export default {
     layoutHint: 'رتّب الأقسام بالسحب أو بالأسهم، وفعّل ما تريد، وحدّد من يراه وأي فترة.', moveUp: 'أعلى', moveDown: 'أسفل', visibility: 'من يراه', scope: 'الفترة', scopeReport: 'كما في التقرير',
     visibleTo: { public: 'كل من لديه الرابط', team: 'الفريق فقط' },
     compare: 'قارن بالفترة السابقة', compareHint: 'بجانب كل رقم الفترة التي قبلها.', refresh: 'تحديث الصفحة المفتوحة', refreshEvery: { 30: 'كل ٣٠ ثانية', 60: 'كل دقيقة', 300: 'كل ٥ دقائق', 900: 'كل ١٥ دقيقة' },
+    preview: 'معاينة', previewTitle: 'معاينة «{{name}}»', previewHint: 'كما يراه الفريق: كل قسم مفعّل، حتى ما هو للفريق فقط.',
     analytics: 'المشاهدات', analyticsTitle: 'مشاهدات «{{name}}»', analyticsStat: { total: 'مشاهدة', unique: 'زائر مختلف', last: 'آخر فتح' }, device: { desktop: 'حاسوب', mobile: 'جوال', tablet: 'لوحي', other: 'آخر' },
     money: 'مال', moneyWarning: 'هذا الرابط سيعرض أرقامًا مالية لكل من يملكه.',
     name: 'اسم التقرير', period: 'الفترة', lastDays_one: 'آخر يوم', lastDays_two: 'آخر يومين', lastDays_few: 'آخر {{count}} أيام', lastDays_many: 'آخر {{count}} يومًا', lastDays_other: 'آخر {{count}} يوم',
@@ -2741,7 +2746,7 @@ export default {
     live: 'يعمل', off: 'متوقف', status: 'الحالة', recent: 'آخر الأحداث', name: 'اسم الرابط', channel: 'القناة', project: 'المشروع', kind: 'النوع',
     destination: 'وجهة الرابط',
     emptyTitle: 'لا روابط تتبع بعد', emptyBody: 'أنشئ رابطًا لكل إعلان أو لوحة أو وسيط، ليُنسب كل عميل إلى ما جاء به.',
-    tabs: { links: 'الروابط', health: 'الصحة', attribution: 'الإسناد' },
+    tabs: { links: 'الروابط', qr: 'مركز QR', health: 'الصحة', attribution: 'الإسناد' },
     platforms: { meta: 'ميتا', tiktok: 'تيك توك', snapchat: 'سناب شات', google_ads: 'جوجل', x: 'X', linkedin: 'لينكدإن', whatsapp: 'واتساب', landing_page: 'صفحات الهبوط' },
     health: {
       connected: 'متصل', receiving: 'يستقبل أحداثًا', atRisk: 'في خطر', window: 'الفترة', success: 'نسبة ما قُبل', events: 'حدث', never: 'لم يصل شيء',
@@ -3175,6 +3180,14 @@ export default {
       finding: '{{percent}}٪ من العملاء بلا مصدر معروف.',
       impact: 'لا نعرف أي حملة نكافئ.', action: 'أضف روابط تتبع لكل مصدر.',
     },
+  },
+  qrCenter: {
+    emptyTitle: 'لا رموز QR بعد', emptyBody: 'أنشئ رابطًا من نوع «رمز QR» للوحة أو فعالية أو مندوب، وسيظهر هنا بأرقامه.',
+    all: 'الكل', printedOn: 'مطبوع على', noneHere: 'لا رموز في هذا التصنيف',
+    stat: { scans: 'مسح', leads: 'عملاء', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', revenue: 'الإيراد' },
+    print: 'طباعة', printReady: 'جاهز للطباعة', size: 'الحجم',
+    sizes: { sticker: 'ملصق', flyer: 'نشرة', poster: 'لوحة' },
+    sizeHint: { sticker: 'A6 · على باب أو طاولة', flyer: 'A5 · في الفعاليات', poster: 'A4 · على الجدار' },
   },
   roles: {
     admin: 'مدير النظام',

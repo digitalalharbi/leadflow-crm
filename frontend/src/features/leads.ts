@@ -113,6 +113,10 @@ export interface HandoffBrief {
   engine: 'claude' | 'rules' | null
   last_conversation: { who: 'customer' | 'rep' | 'automation'; channel: string; text: string; at: string | null }[]
   next_action: { action: string; urgency: string; reason: string } | null
+  /** How interested they are, and how long they may still wait. */
+  interest?: { level: string; sla: { state: 'ok' | 'due_soon' | 'breached' | 'done'; minutes_left: number } | null } | null
+  /** Who spoke last, and when. */
+  last_activity?: { who: 'customer' | 'rep' | 'automation'; at: string | null } | null
 }
 
 export function analyzeConversation(leadId: string) {

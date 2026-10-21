@@ -16,6 +16,10 @@ export interface LinkStats {
   revenue: number
   conversion: number | null
   last_event_at: string | null
+  /** Of the people this link brought: how many were interested, saw a unit, held one. Absent on an older server. */
+  interested?: number
+  visits_done?: number
+  reservations?: number
 }
 
 export interface TrackingLink {
@@ -164,4 +168,46 @@ export async function fetchLinkQr(id: string): Promise<string> {
   const response = await http.get(`/tracking/links/${id}/qr`, { responseType: 'text', transformResponse: (data) => data })
 
   return response.data as string
+}
+
+export type QrFormat = 'svg' | 'png'
+
+/** The code as a file the person saves: fetched with their session, then handed to the browser. */
+export async function downloadLinkQr(id: string, format: QrFormat, name: string): Promise<void> {
+  const { http } = await import('@/lib/api')
+  const response = await http.get(`/tracking/links/${id}/qr`, { params: { format, size: format === 'png' ? 1024 : undefined, download: 1 }, responseType: 'blob' })
+  const url = URL.createObjectURL(response.data as Blob)
+  const anchor = document.createElement('a')
+
+  anchor.href = url
+  anchor.download = `qr-${name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'link'}.${format}`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+export const PRINT_SIZES = ['sticker', 'flyer', 'poster'] as const
+export type PrintSize = (typeof PRINT_SIZES)[number]
+
+const PAGE: Record<PrintSize, { page: string; qr: string; title: string }> = {
+  sticker: { page: 'A6', qr: '70mm', title: '16pt' },
+  flyer: { page: 'A5', qr: '110mm', title: '22pt' },
+  poster: { page: 'A4', qr: '150mm', title: '30pt' },
+}
+
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)
+
+/** A page ready for the printer: the code at a size that scans from where it hangs, the name, and the short link under it. */
+export function printableQr(svg: string, opts: { title: string; subtitle?: string; url: string; size: PrintSize; dir: 'rtl' | 'ltr' }): string {
+  const p = PAGE[opts.size]
+
+  return `<!doctype html><html dir="${opts.dir}"><head><meta charset="utf-8"><title>${escapeHtml(opts.title)}</title><style>
+@page { size: ${p.page}; margin: 10mm }
+html, body { margin: 0; height: 100% }
+body { font-family: system-ui, sans-serif; display: grid; place-items: center; text-align: center }
+main { display: grid; gap: 6mm; justify-items: center }
+h1 { margin: 0; font-size: ${p.title} }
+p { margin: 0; color: #444; font-size: 11pt }
+.qr svg { width: ${p.qr}; height: ${p.qr} }
+.url { direction: ltr; font-family: ui-monospace, monospace; font-size: 10pt }
+</style></head><body><main><h1>${escapeHtml(opts.title)}</h1>${opts.subtitle ? `<p>${escapeHtml(opts.subtitle)}</p>` : ''}<div class="qr">${svg}</div><p class="url">${escapeHtml(opts.url)}</p></main></body></html>`
 }

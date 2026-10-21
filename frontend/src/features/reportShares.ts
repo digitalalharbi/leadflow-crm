@@ -1,6 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost, http } from '@/lib/api'
 
-export const REPORT_TEMPLATES = ['executive', 'marketing', 'sales', 'client', 'management'] as const
+export const REPORT_TEMPLATES = ['executive', 'marketing', 'sales', 'client', 'partner', 'management'] as const
 export type ReportTemplate = (typeof REPORT_TEMPLATES)[number]
 
 export const REPORT_SECTIONS = ['kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'trend', 'platforms', 'campaigns', 'team'] as const
@@ -18,6 +18,8 @@ export interface ReportShare {
   sections: Record<ReportSection, boolean>
   days: number
   project: { id: string; name: string } | null
+  /** For a partner's report: whose leads it is, and whether they may see revenue. */
+  partner?: { id: string; name: string; show_revenue: boolean } | null
   url: string
   status: ShareStatus
   has_password: boolean
@@ -45,6 +47,7 @@ export interface ShareInput {
   sections?: Partial<Record<ReportSection, boolean>>
   days?: number
   project_id?: string | null
+  partner_id?: string | null
   password?: string | null
   expires_at?: string | null
 }

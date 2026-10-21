@@ -1,6 +1,6 @@
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings,
-  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar,
+  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar, HandCoins,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -79,6 +79,7 @@ export function useNavigation(): Navigation {
       // Money and ad accounts: the people who may read them.
       ...item('/campaigns', 'nav.campaigns', Megaphone, 'campaigns.view'),
       ...item('/tracking', 'nav.tracking', Radar, 'tracking.view'),
+      ...item('/partners', 'nav.partners', HandCoins, 'partners.view'),
       ...item('/agents', 'nav.agents', Bot, 'campaigns.view'),
       // Overdue count sits next to "Follow-ups" — it is the number that should
       // pull a rep back into the app.

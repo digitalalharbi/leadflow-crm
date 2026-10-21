@@ -9,6 +9,7 @@ use App\Http\Resources\TrackingLinkResource;
 use App\Models\Ad;
 use App\Models\Campaign;
 use App\Models\Creative;
+use App\Models\Partner;
 use App\Models\Project;
 use App\Models\Property;
 use App\Models\TrackingEvent;
@@ -16,8 +17,13 @@ use App\Models\TrackingLink;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -29,7 +35,7 @@ use Illuminate\Validation\Rule;
  */
 class TrackingLinkController extends Controller
 {
-    private const WITH = ['project:id,uuid,name', 'property:id,uuid,code', 'campaign:id,uuid,name', 'ad:id,uuid,name', 'creative:id,uuid,name', 'rep:id,uuid,name'];
+    private const WITH = ['partner:id,uuid,name,type', 'project:id,uuid,name', 'property:id,uuid,code', 'campaign:id,uuid,name', 'ad:id,uuid,name', 'creative:id,uuid,name', 'rep:id,uuid,name'];
 
     public function __construct(private TrackingLinks $links, private LinkStats $stats, private AuditLogger $audit) {}
 
@@ -82,6 +88,28 @@ class TrackingLinkController extends Controller
         ]);
     }
 
+    /**
+     * The link as a QR code, drawn as SVG: it prints at any size without going soft, and needs no
+     * image library on the server. What it encodes is the short public link, so a code on a
+     * billboard keeps working however the destination is edited later.
+     */
+    public function qr(Request $request, string $uuid)
+    {
+        $link = TrackingLink::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('view', $link);
+
+        $svg = (new Writer(new ImageRenderer(
+            new RendererStyle(320, 2),
+            new SvgImageBackEnd,
+        )))->writeString($link->url());
+
+        return response($svg, 200, array_filter([
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'private, max-age=300',
+            'Content-Disposition' => $request->boolean('download') ? 'attachment; filename="qr-'.Str::slug($link->name ?: $link->token).'.svg"' : null,
+        ]));
+    }
+
     public function store(Request $request)
     {
         $this->authorize('create', TrackingLink::class);
@@ -131,6 +159,8 @@ class TrackingLinkController extends Controller
             'ad_id' => ['nullable', 'uuid'],
             'creative_id' => ['nullable', 'uuid'],
             'user_id' => ['nullable', 'uuid'],
+            'partner_id' => ['nullable', 'uuid'],
+            'placement' => ['nullable', Rule::in(TrackingLink::PLACEMENTS)],
             'landing_page' => ['nullable', 'string', 'max:160'],
             'branch' => ['nullable', 'string', 'max:120'],
             'destination_url' => ['nullable', 'string', 'max:2000', 'regex:#^(https?://|tel:|mailto:)#i'],
@@ -144,7 +174,7 @@ class TrackingLinkController extends Controller
         ]);
 
         // uuid → id, each looked up inside the workspace: another workspace's id is simply not there.
-        foreach (['project_id' => Project::class, 'property_id' => Property::class, 'campaign_id' => Campaign::class, 'ad_id' => Ad::class, 'creative_id' => Creative::class, 'user_id' => User::class] as $key => $model) {
+        foreach (['project_id' => Project::class, 'property_id' => Property::class, 'campaign_id' => Campaign::class, 'ad_id' => Ad::class, 'creative_id' => Creative::class, 'user_id' => User::class, 'partner_id' => Partner::class] as $key => $model) {
             if (array_key_exists($key, $data)) {
                 $data[$key] = blank($data[$key]) ? null : $model::where('uuid', $data[$key])->value('id');
                 abort_if($data[$key] === null && filled($request->input($key)), 404, 'Resource not found.');

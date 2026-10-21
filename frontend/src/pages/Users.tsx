@@ -15,6 +15,7 @@ import {
 } from '@/components/ui'
 import { RolesMatrix } from '@/components/users/RolesMatrix'
 import { fetchRoles } from '@/features/roles'
+import { fetchPartners } from '@/features/partners'
 import type { User } from '@/types/api'
 
 export function UsersPage() {
@@ -32,6 +33,7 @@ export function UsersPage() {
   const [speaks, setSpeaks] = useState<string[]>([])
   const [handles, setHandles] = useState<('buy' | 'rent')[]>([])
   const [projectIds, setProjectIds] = useState<string[]>([])
+  const [partnerId, setPartnerId] = useState('')
   const [matrixOpen, setMatrixOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
@@ -69,6 +71,7 @@ export function UsersPage() {
   // Every role the workspace offers, from the server — a role added there appears here without a release.
   const roles = useQuery({ queryKey: ['roles'], queryFn: fetchRoles, enabled: canManage, staleTime: 5 * 60_000 })
   const projects = useQuery({ queryKey: ['users-projects'], queryFn: () => apiGet<{ projects: { id: string; name: string }[] }>('/projects'), enabled: canManage })
+  const partners = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: canManage && form.role === 'broker_viewer', select: (d) => d.partners })
   const scoped = roles.data?.roles.find((role) => role.role === form.role)?.scoped ?? false
 
   /*
@@ -104,6 +107,7 @@ export function UsersPage() {
         phone: form.phone || null,
         // The projects a scoped role is limited to; sent for everybody so that moving someone out of a scoped role clears them.
         project_ids: scoped ? projectIds : [],
+        partner_id: form.role === 'broker_viewer' ? partnerId || null : null,
       }
 
       if (form.password) payload.password = form.password
@@ -153,6 +157,7 @@ export function UsersPage() {
     setWeight('1')
     setSpeaks([])
     setProjectIds([])
+    setPartnerId('')
     setFieldErrors({})
     setOpen(true)
   }
@@ -165,6 +170,7 @@ export function UsersPage() {
     setSpeaks(user.speaks ?? [])
     setHandles(user.handles ?? [])
     setProjectIds(user.project_ids ?? [])
+    setPartnerId(user.partner?.id ?? '')
     setFieldErrors({})
     setOpen(true)
   }
@@ -362,6 +368,14 @@ export function UsersPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
             />
           </div>
+
+          {/* A broker login belongs to one partner: it sees their leads and their links, and nobody else's. */}
+          {form.role === 'broker_viewer' && (
+            <Select label={t('roles.partner')} hint={t('roles.partnerHint')} value={partnerId} data-testid="user-partner" onChange={(e) => setPartnerId(e.target.value)}>
+              <option value="">—</option>
+              {(partners.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+          )}
 
           {/* A project manager, a client or a broker sees only these — and nothing at all until they are given one. */}
           {scoped && (

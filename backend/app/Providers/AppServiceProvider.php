@@ -21,6 +21,7 @@ use App\Models\Import;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\MessageTemplate;
+use App\Models\Partner;
 use App\Models\Project;
 use App\Models\Tenant;
 use App\Models\TrackingLink;
@@ -32,6 +33,7 @@ use App\Policies\ImportPolicy;
 use App\Policies\IntegrationPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\MessageTemplatePolicy;
+use App\Policies\PartnerPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\TenantSettingsPolicy;
 use App\Policies\TrackingLinkPolicy;
@@ -117,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(AutomationRule::class, AutomationRulePolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
+        Gate::policy(Partner::class, PartnerPolicy::class);
         Gate::policy(TrackingLink::class, TrackingLinkPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Company::class, CompanyPolicy::class);

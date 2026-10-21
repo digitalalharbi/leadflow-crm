@@ -26,6 +26,7 @@ class UserResource extends JsonResource
             'assignment_weight' => (int) ($this->assignment_weight ?? 1),
             'handles' => $this->handles ?? [],
             // The projects a project-scoped role was given; empty for everybody else.
+            'partner' => $this->whenLoaded('partner', fn () => $this->partner ? ['id' => $this->partner->uuid, 'name' => $this->partner->name] : null, null),
             'project_ids' => $this->whenLoaded('projects', fn () => $this->projects->pluck('uuid')->all(), []),
             'permissions' => $this->when($request->user()?->role?->managesTenant() === true, fn () => Permissions::forUser($this->resource)),
             // Empty means every language, the same way empty coverage means

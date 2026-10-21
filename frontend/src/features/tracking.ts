@@ -31,7 +31,9 @@ export interface TrackingLink {
   ad?: { id: string; name: string } | null
   creative?: { id: string; name: string } | null
   rep?: { id: string; name: string } | null
-  partner_id: number | null
+  partner?: { id: string; name: string; type: string } | null
+  /** What a QR code is printed on. */
+  placement?: Placement | null
   landing_page: string | null
   branch: string | null
   destination_url: string | null
@@ -42,10 +44,15 @@ export interface TrackingLink {
   stats: LinkStats
 }
 
+export const PLACEMENTS = ['project', 'property', 'event', 'billboard', 'rep', 'broker', 'other'] as const
+export type Placement = (typeof PLACEMENTS)[number]
+
 export interface LinkInput {
   name: string
   kind?: 'link' | 'qr'
   channel?: Channel
+  partner_id?: string | null
+  placement?: Placement | null
   project_id?: string | null
   campaign_id?: string | null
   destination_url?: string | null
@@ -150,3 +157,11 @@ export interface TrackingHealthData {
 }
 
 export const fetchTrackingHealth = (days: number) => apiGet<TrackingHealthData>('/tracking/health', { days })
+
+/** The link as a QR code (SVG). Fetched with the session, so it is a blob rather than an <img src>. */
+export async function fetchLinkQr(id: string): Promise<string> {
+  const { http } = await import('@/lib/api')
+  const response = await http.get(`/tracking/links/${id}/qr`, { responseType: 'text', transformResponse: (data) => data })
+
+  return response.data as string
+}

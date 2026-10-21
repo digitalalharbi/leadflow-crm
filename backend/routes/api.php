@@ -183,6 +183,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard/manager', [CommandCenterController::class, 'manager']);
             Route::get('/dashboard/journey', [JourneyController::class, 'show']);
             Route::get('/dashboard/ops', [InsightController::class, 'ops']);
+            Route::get('/dashboard/home', [InsightController::class, 'home']);
             Route::get('/insights', [InsightController::class, 'index']);
             Route::get('/insights/recommendations', [InsightController::class, 'recommendations']);
             Route::get('/audit', AuditTrailController::class);

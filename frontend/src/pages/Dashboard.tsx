@@ -11,6 +11,7 @@ import { can, useAuth } from '@/stores/auth'
 import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
 import { InsightCards } from '@/components/dashboard/InsightCards'
 import { RecommendationCards } from '@/components/dashboard/RecommendationCards'
+import { OperationsHome } from '@/components/dashboard/OperationsHome'
 import { OpsPulse } from '@/components/dashboard/OpsPulse'
 import { Gate } from '@/components/access/Gate'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
@@ -163,6 +164,10 @@ export function DashboardPage() {
           {/* Holding → company → project, when the workspace has companies at all. */}
           <Gate element="dashboard.widget.holding"><HoldingOverview /></Gate>
 
+          {/* The operations centre: today in nine numbers, then what needs a person and how everything is doing. */}
+          <Gate element="dashboard.widget.ops_pulse"><OpsPulse /></Gate>
+          <Gate element="dashboard.widget.operations_home"><OperationsHome /></Gate>
+
 
           {/* The whole promise in one row: arrived → automated → reached → followed up → waiting for the team → outcome. */}
           <Gate element="dashboard.widget.journey"><JourneyStrip days={range === 'all' ? 90 : Number(range)} /></Gate>
@@ -183,7 +188,7 @@ export function DashboardPage() {
           <OnboardingChecklist />
 
           {/* How today is going, and whether the machinery is healthy. */}
-          <Gate element="dashboard.widget.ops_pulse"><OpsPulse /></Gate>
+          
 
           {/* What moved outside its normal range, and the few things to look at first. */}
           <Gate element="dashboard.widget.insights"><InsightCards /></Gate>

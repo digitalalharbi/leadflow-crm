@@ -136,7 +136,7 @@ export default {
   },
   ops: {
     title: 'اليوم في لمحة', ok: 'سليم',
-    answer: { leads_today: 'عملاء اليوم', interested: 'مهتمون', hot: 'ساخنون', needs_follow_up: 'يحتاجون متابعة', sla_late: 'تجاوزوا المهلة', visits_today: 'زيارات اليوم', reservations_pending: 'حجوزات معلّقة', won_today: 'صفقات اليوم', revenue_today: 'إيراد اليوم' },
+    answer: { leads_today: 'عملاء اليوم', interested: 'مهتمون', hot: 'ساخنون', needs_follow_up: 'يحتاجون متابعة', needs_human: 'يحتاجون شخصًا', sla_late: 'خطر المهلة', visits_today: 'زيارات اليوم', reservations_pending: 'حجوزات معلّقة', won_today: 'صفقات اليوم', revenue_today: 'إيراد اليوم' },
     health: { automation: 'الأتمتة', tracking: 'التتبع', campaigns: 'الحملات', backlog: 'تراكم المبيعات' },
   },
   audit: {
@@ -3091,7 +3091,7 @@ export default {
         audit: 'سجل التغييرات',
       },
       dashboard: {
-        widget: {holding:'نظرة الشركة القابضة',journey:'رحلة العميل',board:'لوحة اليوم',ops_pulse:'نبض التشغيل',insights:'الرؤى',recommendations:'التوصيات',manager:'مركز المدير',today:'ما يجب فعله اليوم'},
+        widget: {holding:'نظرة الشركة القابضة',journey:'رحلة العميل',board:'لوحة اليوم',ops_pulse:'نبض التشغيل',operations_home:'مركز التشغيل',insights:'الرؤى',recommendations:'التوصيات',manager:'مركز المدير',today:'ما يجب فعله اليوم'},
         kpi: {leads_today:'عملاء اليوم',qualified:'المؤهلون',overdue:'متابعات متأخرة',stalled:'متوقفون',response:'زمن الاستجابة',appointment_rate:'معدل الزيارات',conversion:'معدل الإغلاق',period:'عملاء الفترة',revenue:'الإيراد'},
         chart: {funnel:'قمع المبيعات',velocity:'سرعة الحركة',campaign_quality:'جودة الحملات',platforms:'المنصات',lead_quality:'جودة العملاء',response_time:'زمن الاستجابة',revenue_by_quality:'الإيراد حسب الجودة'}},
       campaigns: {
@@ -3248,6 +3248,12 @@ export default {
     response: 'زمن الاستجابة', minutes_one: 'دقيقة', minutes_other: '{{count}} دقيقة', won: 'صفقات', revenue: 'الإيراد', visits: 'زيارات',
   },
   recommendations: { title: 'ماذا نفعل الآن', open: 'افتح' },
+  opsHome: {
+    title: 'مركز التشغيل', attention: 'يحتاج انتباهك', attentionClear: 'لا شيء ينتظر أحدًا الآن.', campaigns: 'صحة الحملات', noCampaigns: 'لا حملات بعد.',
+    tracking: 'صحة التتبع', noTracking: 'لا منصة مربوطة بعد.', automation: 'صحة الأتمتة', handled: 'تولّتها الأتمتة', automationLine: '{{failed}} فشل خلال ٢٤ ساعة · {{human}} ينتظرون شخصًا',
+    revenue: 'اتجاه الإيراد', ranking: 'ترتيب المبيعات', rankingHint: 'صفقات فوق المتوقع من عدد عملاء كل مندوب.',
+    topSource: 'أفضل مصدر', topCampaign: 'أفضل حملة', topPartner: 'أفضل شريك',
+  },
   roles: {
     admin: 'مدير النظام',
     manager: 'مدير مبيعات',

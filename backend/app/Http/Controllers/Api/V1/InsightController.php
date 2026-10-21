@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Analytics\OperationsHome;
 use App\Domain\Analytics\OpsPulse;
 use App\Domain\Insights\InsightEngine;
 use App\Domain\Insights\Recommendations;
@@ -22,6 +23,12 @@ class InsightController extends Controller
     public function ops(Request $request, OpsPulse $pulse)
     {
         return ApiResponse::success($pulse->for($request->user()));
+    }
+
+    /** The operations home's second half: campaign, tracking and automation health, the sales ranking, the revenue trend, the best source, campaign and partner. */
+    public function home(Request $request, OperationsHome $home)
+    {
+        return ApiResponse::success($home->for($request->user()));
     }
 
     public function index(Request $request)

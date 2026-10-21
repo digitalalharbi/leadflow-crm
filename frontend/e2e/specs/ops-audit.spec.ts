@@ -13,15 +13,16 @@ test.describe('Operations home, history and the command palette', () => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/')
 
-    for (const key of ['leads_today', 'interested', 'hot', 'needs_follow_up', 'sla_late', 'visits_today', 'reservations_pending', 'won_today', 'revenue_today']) {
+    for (const key of ['leads_today', 'interested', 'hot', 'needs_human', 'visits_today', 'reservations_pending', 'won_today', 'revenue_today', 'sla_late']) {
       await expect(page.getByTestId(`ops-${key}`)).toBeVisible()
     }
     for (const key of ['automation', 'tracking', 'campaigns', 'backlog']) {
       await expect(page.getByTestId(`health-${key}`)).toBeVisible()
     }
 
-    await page.getByTestId('ops-needs_follow_up').click()
-    await expect(page).toHaveURL(/\/work/)
+    // Who automation handed over and nobody has picked up opens exactly that list.
+    await page.getByTestId('ops-needs_human').click()
+    await expect(page).toHaveURL(/\/leads\?view=needs_human/)
   })
 
   test('a rep sees their own nine answers and no health lights', async ({ page }) => {

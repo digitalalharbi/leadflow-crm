@@ -81,7 +81,7 @@ export default {
   },
   ops: {
     title: 'Today at a glance', ok: 'Healthy',
-    answer: { leads_today: 'Leads today', interested: 'Interested', hot: 'Hot', needs_follow_up: 'Need follow-up', sla_late: 'Past their window', visits_today: 'Visits today', reservations_pending: 'Reservations pending', won_today: 'Won today', revenue_today: 'Revenue today' },
+    answer: { leads_today: 'Leads today', interested: 'Interested', hot: 'Hot', needs_follow_up: 'Need follow-up', needs_human: 'Need a person', sla_late: 'SLA risk', visits_today: 'Visits today', reservations_pending: 'Reservations pending', won_today: 'Won today', revenue_today: 'Revenue today' },
     health: { automation: 'Automation', tracking: 'Tracking', campaigns: 'Campaigns', backlog: 'Sales backlog' },
   },
   audit: {
@@ -2766,7 +2766,7 @@ export default {
         audit: 'Change history',
       },
       dashboard: {
-        widget: {holding:'Holding overview',journey:'Customer journey',board:'Today board',ops_pulse:'Operations pulse',insights:'Insights',recommendations:'Recommendations',manager:'Manager centre',today:'To do today'},
+        widget: {holding:'Holding overview',journey:'Customer journey',board:'Today board',ops_pulse:'Operations pulse',operations_home:'Operations centre',insights:'Insights',recommendations:'Recommendations',manager:'Manager centre',today:'To do today'},
         kpi: {leads_today:'Leads today',qualified:'Qualified',overdue:'Overdue follow-ups',stalled:'Stalled',response:'Response time',appointment_rate:'Visit rate',conversion:'Close rate',period:'Leads in period',revenue:'Revenue'},
         chart: {funnel:'Sales funnel',velocity:'Velocity',campaign_quality:'Campaign quality',platforms:'Platforms',lead_quality:'Lead quality',response_time:'Response time',revenue_by_quality:'Revenue by quality'}},
       campaigns: {
@@ -2923,6 +2923,12 @@ export default {
     response: 'Response time', minutes_one: '1 min', minutes_other: '{{count}} min', won: 'Won', revenue: 'Revenue', visits: 'Visits',
   },
   recommendations: { title: 'What to do next', open: 'Open' },
+  opsHome: {
+    title: 'Operations centre', attention: 'Needs your attention', attentionClear: 'Nothing is waiting on anyone right now.', campaigns: 'Campaign health', noCampaigns: 'No campaigns yet.',
+    tracking: 'Tracking health', noTracking: 'No platform connected yet.', automation: 'Automation health', handled: 'Handled by automation', automationLine: '{{failed}} failed in 24 h · {{human}} waiting for a person',
+    revenue: 'Revenue trend', ranking: 'Sales ranking', rankingHint: 'Sales above what each rep’s number of leads would have made.',
+    topSource: 'Top source', topCampaign: 'Top campaign', topPartner: 'Top partner',
+  },
   roles: {
     marketing_manager: 'Marketing manager',
     sales_manager: 'Sales manager',

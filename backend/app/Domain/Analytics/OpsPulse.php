@@ -4,6 +4,7 @@ namespace App\Domain\Analytics;
 
 use App\Domain\Leads\InterestEngine;
 use App\Domain\Leads\InterestSla;
+use App\Domain\Leads\LeadViews;
 use App\Domain\Tracking\TrackingHealth;
 use App\Models\Anomaly;
 use App\Models\Appointment;
@@ -48,6 +49,8 @@ class OpsPulse
             'hot' => $leads()->whereNotIn('leads.status', $open)->where(fn ($q) => $q->where('leads.temperature', 'hot')->orWhereIn('leads.interest_level', ['hot', 'visit_ready', 'reservation_ready']))->count(),
             'needs_follow_up' => $followUps + $uncontacted,
             'sla_late' => $late,
+            // Automation handed it over and nobody has picked it up.
+            'needs_human' => $leads()->whereRaw(LeadViews::sql(TenantSetting::query()->value('timezone') ?? 'UTC')['needs_human'])->count(),
             'visits_today' => Appointment::query()->whereIn('status', Appointment::BOOKED)->whereBetween('scheduled_at', [$today, now()->endOfDay()])->when(! $user->seesAllLeads(), fn ($q) => $q->where('assigned_to', $user->id))->count(),
             'reservations_pending' => Reservation::query()->where('status', 'pending')->when(! $user->seesAllLeads(), fn ($q) => $q->whereHas('lead', fn ($l) => $l->where('assigned_to', $user->id)))->count(),
             'won_today' => (clone $won)->count(),

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { platformColor } from '@/components/charts'
 import { Gate } from '@/components/access/Gate'
 import { AreaTrend, Delta, Donut, RankBars, RingProgress, StatusPill, type StatusKey } from '@/components/visual'
-import { Card, CardBody } from '@/components/ui'
+import { Card, CardBody, Skeleton } from '@/components/ui'
 import { useCommandCenter } from '@/features/commandCenter'
 import { QUALITY_CLASSES, type QualityClass } from '@/features/campaignOps'
 import { useOperationsHome } from '@/features/ops'
@@ -29,7 +29,19 @@ export function OperationsHome() {
   const command = useCommandCenter()
   const Arrow = i18n.dir() === 'rtl' ? ArrowLeft : ArrowRight
 
-  if (!data) return null
+  // Two rows of cards are coming: hold their height so nothing below moves when they arrive.
+  if (!data) {
+    return (
+      <section className="space-y-3" data-testid="operations-home-loading" aria-busy="true">
+        <div className="grid gap-3 lg:grid-cols-12">
+          <Skeleton className="h-[380px] lg:col-span-4" /><Skeleton className="h-[380px] lg:col-span-4" /><Skeleton className="h-[380px] lg:col-span-4" />
+        </div>
+        <div className="grid gap-3 lg:grid-cols-12">
+          <Skeleton className="h-[266px] lg:col-span-5" /><Skeleton className="h-[266px] lg:col-span-4" /><Skeleton className="h-[266px] lg:col-span-3" />
+        </div>
+      </section>
+    )
+  }
 
   const money = (v: number) => formatMoneyCompact(v, 'SAR', i18n.language)
   const num = (v: number) => formatNumber(v, i18n.language)

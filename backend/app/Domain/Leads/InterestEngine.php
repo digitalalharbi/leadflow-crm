@@ -3,6 +3,7 @@
 namespace App\Domain\Leads;
 
 use App\Domain\Conversation\Vocabulary;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Enums\LeadStatus;
 use App\Events\LeadSignal;
 use App\Models\Appointment;
@@ -211,6 +212,8 @@ class InterestEngine
 
             if ($before !== $result['level']) {
                 LeadSignal::dispatch($lead->refresh(), 'lead.interest_changed', ['from' => $before, 'to' => $result['level'], 'reason' => $reason]);
+                // The ones worth telling a person about: hot, and asked to reserve.
+                ImportantAlerts::interestChanged($lead, $result['level']);
 
                 return true;
             }

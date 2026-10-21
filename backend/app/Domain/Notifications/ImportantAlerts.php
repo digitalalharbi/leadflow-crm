@@ -27,6 +27,11 @@ class ImportantAlerts
                 self::appointmentRequested($lead);
             }
 
+            // The score put them in the hottest band: somebody should call now.
+            if ($lead->wasChanged('temperature') && $lead->temperature?->value === 'hot' && ! $lead->status?->isClosed()) {
+                self::hotLead($lead);
+            }
+
             if (($lead->wasRecentlyCreated || $lead->wasChanged(['budget_max', 'project_id'])) && ! $lead->status?->isClosed()) {
                 self::highValue($lead);
             }
@@ -34,6 +39,68 @@ class ImportantAlerts
             // An alert never breaks the save that caused it.
             Log::warning('important_alert_failed', ['lead' => $lead->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /** What the interest engine concluded: a lead reached "hot" or asked to reserve. Once per lead each. */
+    public static function interestChanged(Lead $lead, string $to): void
+    {
+        try {
+            if ($lead->status?->isClosed()) {
+                return;
+            }
+
+            match ($to) {
+                'hot' => self::hotLead($lead),
+                'reservation_ready' => self::reservationIntent($lead),
+                default => null,
+            };
+        } catch (\Throwable $e) {
+            Log::warning('important_alert_failed', ['lead' => $lead->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public static function hotLead(Lead $lead): void
+    {
+        if (! AlertGate::once("hot_lead:{$lead->id}")) {
+            return;
+        }
+
+        self::send(self::recipients($lead), new ImportantNotification(
+            'hot_lead', 'عميل ساخن', "{$lead->full_name} أصبح ساخنًا — اتصل به الآن.", $lead->uuid, null, 'critical',
+        ));
+    }
+
+    public static function reservationIntent(Lead $lead): void
+    {
+        if (! AlertGate::once("reservation_intent:{$lead->id}")) {
+            return;
+        }
+
+        self::send(self::recipients($lead), new ImportantNotification(
+            'reservation_intent', 'عميل يريد الحجز', "{$lead->full_name} يريد حجز وحدة — أكمل معه الآن.", $lead->uuid, null, 'critical',
+        ));
+    }
+
+    /** A connected platform that has stopped delivering or reporting: once per platform per day, to the managers. */
+    public static function trackingFailure(string $platform, string $label, string $why): void
+    {
+        if (! AlertGate::once("tracking_failure:{$platform}:".now()->toDateString())) {
+            return;
+        }
+
+        self::send(self::managers(), new ImportantNotification(
+            'tracking_failure', "عطل في التتبع — {$label}", $why, null, '/tracking', 'critical',
+        ));
+    }
+
+    /** Something about spend or results moved far outside its normal range. One per kind of anomaly per day. */
+    public static function budgetAnomaly(string $key, string $title, string $body, ?string $link = '/campaigns'): void
+    {
+        if (! AlertGate::once("budget_anomaly:{$key}:".now()->toDateString())) {
+            return;
+        }
+
+        self::send(self::managers(), new ImportantNotification('budget_anomaly', $title, $body, null, $link, 'warning'));
     }
 
     public static function appointmentRequested(Lead $lead): void

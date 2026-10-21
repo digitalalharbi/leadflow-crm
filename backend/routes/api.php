@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\LeadEmailController;
 use App\Http\Controllers\Api\V1\LeadMessageController;
 use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\PipelineController;
 use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
@@ -155,6 +156,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
+        Route::patch('/auth/notification-preferences', [NotificationPreferenceController::class, 'update']);
 
         /*
         | Tenant workspace. `tenant.active` blocks suspended / expired accounts.

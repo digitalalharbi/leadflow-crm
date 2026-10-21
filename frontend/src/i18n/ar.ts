@@ -127,6 +127,19 @@ export default {
     sentiment: { positive: 'إيجابي', neutral: 'محايد', negative: 'سلبي' },
     objection: { price_high: 'السعر مرتفع', location: 'الموقع', financing: 'التمويل', timing: 'ليس الآن', trust: 'الثقة', competitor: 'منافس', family_decision: 'قرار العائلة' },
   },
+  alerts: {
+    title: 'التنبيهات والملخصات',
+    subtitle: 'كيف تريد أن تصلك الأمور المهمة — البريد: {{email}}',
+    mailOff: 'إرسال البريد غير مفعّل على الخادم بعد، فتصلك التنبيهات داخل التطبيق فقط إلى أن يُضبط البريد.',
+    mode: { instant: 'فورًا', daily: 'يوميًا', weekly: 'أسبوعيًا', off: 'إيقاف' },
+    category: {
+      hot_lead: 'عميل ساخن', visit_requested: 'طلب زيارة', reservation_intent: 'رغبة في الحجز', sla_breach: 'تجاوز مهلة الرد',
+      automation_failure: 'فشل الأتمتة', high_value: 'عميل عالي القيمة', tracking_failure: 'عطل في التتبع', budget_anomaly: 'شذوذ في الإنفاق',
+    },
+    digests: 'الملخصات',
+    digest: { daily_sales: 'ملخص المبيعات اليومي', weekly_marketing: 'ملخص التسويق الأسبوعي', weekly_executive: 'الملخص التنفيذي الأسبوعي' },
+    digestHint: { daily_sales: 'كل صباح الثامنة — ما ينتظرك اليوم', weekly_marketing: 'كل أحد — الإنفاق والعائد وأفضل الحملات', weekly_executive: 'كل أحد — المسار والإيراد وما يحتاج انتباهًا' },
+  },
   share: {
     intro: 'تقارير حية تفتح برابط — دون تسجيل دخول. الأرقام دائمًا محدّثة.',
     new: 'رابط تقرير جديد', edit: 'تعديل', copy: 'نسخ الرابط', copied: 'نُسخ الرابط.',

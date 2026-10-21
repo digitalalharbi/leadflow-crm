@@ -6,6 +6,7 @@ import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { Button, Card, CardBody, CardHeader, Input, PageHeader } from '@/components/ui'
+import { NotificationPrefsCard } from '@/components/profile/NotificationPrefsCard'
 
 export function ProfilePage() {
   const { t } = useTranslation()
@@ -114,6 +115,8 @@ export function ProfilePage() {
             </div>
           </CardBody>
         </Card>
+
+        <NotificationPrefsCard />
 
         <Card>
           <CardHeader title={t('auth.changePassword')} />

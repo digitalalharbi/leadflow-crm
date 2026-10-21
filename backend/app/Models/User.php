@@ -27,7 +27,7 @@ class User extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
-        'covers_cities', 'assignment_weight', 'speaks', 'handles',
+        'covers_cities', 'assignment_weight', 'speaks', 'handles', 'notification_prefs',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -44,6 +44,7 @@ class User extends Authenticatable
             'speaks' => 'array',
             'assignment_weight' => 'integer',
             'handles' => 'array',
+            'notification_prefs' => 'array',
             'role' => Role::class,
         ];
     }

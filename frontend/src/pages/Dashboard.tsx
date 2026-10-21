@@ -164,13 +164,8 @@ export function DashboardPage() {
           {/* Holding → company → project, when the workspace has companies at all. */}
           <Gate element="dashboard.widget.holding"><HoldingOverview /></Gate>
 
-          {/* The operations centre: today in nine numbers, then what needs a person and how everything is doing. */}
+          {/* The numbers first: today in nine answers, then the period's figures — on the first screen, whatever loads below. */}
           <Gate element="dashboard.widget.ops_pulse"><OpsPulse /></Gate>
-          <Gate element="dashboard.widget.operations_home"><OperationsHome /></Gate>
-
-
-          {/* The whole promise in one row: arrived → automated → reached → followed up → waiting for the team → outcome. */}
-          <Gate element="dashboard.widget.journey"><JourneyStrip days={range === 'all' ? 90 : Number(range)} /></Gate>
 
           {/*
             The reference arrangement: what needs a person (the green card), the
@@ -179,6 +174,12 @@ export function DashboardPage() {
             places the tests and the links expect it.
           */}
           <Gate element="dashboard.widget.board"><DashboardBoard data={data} trend={trend} /></Gate>
+
+          {/* The operations centre: what needs a person and how everything is doing — ahead of the journey strip. */}
+          <Gate element="dashboard.widget.operations_home"><OperationsHome /></Gate>
+
+          {/* The whole promise in one row: arrived → automated → reached → followed up → waiting for the team → outcome. */}
+          <Gate element="dashboard.widget.journey"><JourneyStrip days={range === 'all' ? 90 : Number(range)} /></Gate>
 
           {/*
             A brand-new workspace has nothing to show, so the first thing an

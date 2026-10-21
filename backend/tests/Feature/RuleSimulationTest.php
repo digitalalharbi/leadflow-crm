@@ -112,7 +112,10 @@ class RuleSimulationTest extends TestCase
 
         $this->assertSame(3, $sim['leads_affected']);
         $this->assertSame(1, $sim['messages']['whatsapp']);
-        $this->assertSame(['project_paused' => 1, 'human_takeover' => 1], $sim['messages']['held']);
+        // Which guardrail held how many — the order the leads came back in is not part of the answer.
+        $held = $sim['messages']['held'];
+        ksort($held);
+        $this->assertSame(['human_takeover' => 1, 'project_paused' => 1], $held);
     }
 
     public function test_each_trigger_looks_at_its_own_kind_of_event(): void

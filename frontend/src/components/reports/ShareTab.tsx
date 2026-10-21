@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, GripVertical, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, Copy, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui'
 import {
@@ -8,6 +8,8 @@ import {
   type LayoutItem, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
 } from '@/features/reportShares'
 import { AreaTrend } from '@/components/visual'
+import { emailReport } from '@/features/emailDeliveries'
+import { Modal, Textarea } from '@/components/ui'
 import { ReportView } from '@/pages/SharedReport'
 import { fetchPartners } from '@/features/partners'
 import { useApiError } from '@/hooks/useApiError'
@@ -29,6 +31,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
   const [editing, setEditing] = useState<ReportShare | 'new' | null>(startOpen ? 'new' : null)
   const [analytics, setAnalytics] = useState<ReportShare | null>(null)
   const [preview, setPreview] = useState<ReportShare | null>(null)
+  const [mailing, setMailing] = useState<ReportShare | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['report-shares'], queryFn: fetchShares })
 
@@ -90,6 +93,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
                 <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked'} data-testid="share-copy">{t('share.copy')}</Button>
                 <Button size="sm" variant="secondary" onClick={() => setEditing(share)} data-testid="share-edit">{t('share.edit')}</Button>
                 <Button size="sm" variant="outline" icon={<Eye className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-preview">{t('share.preview')}</Button>
+                {share.status === 'active' && <Button size="sm" variant="outline" icon={<Mail className="size-3.5" aria-hidden />} onClick={() => setMailing(share)} data-testid="share-email">{t('emailDelivery.send')}</Button>}
                 <Button size="sm" variant="outline" icon={<BarChart3 className="size-3.5" aria-hidden />} onClick={() => setAnalytics(share)} data-testid="share-analytics">{t('share.analytics')}</Button>
                 <Button size="sm" variant="outline" icon={<RefreshCw className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'regenerate', id: share.id })} data-testid="share-regenerate">{t('share.regenerate')}</Button>
                 {share.status !== 'revoked' && (
@@ -104,6 +108,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
 
       <ShareAnalyticsDrawer share={analytics} onClose={() => setAnalytics(null)} />
       <SharePreviewDrawer share={preview} onClose={() => setPreview(null)} />
+      <ShareEmailDialog share={mailing} onClose={() => setMailing(null)} />
 
       <ShareBuilder
         key={typeof editing === 'object' && editing ? editing.id : 'new'}
@@ -367,5 +372,45 @@ function SharePreviewDrawer({ share, onClose }: { share: ReportShare | null; onC
     <Drawer open={share !== null} onClose={onClose} title={t('share.previewTitle', { name: share?.name ?? '' })} description={t('share.previewHint')} size="xl" testId="share-preview-drawer">
       {isLoading || !data ? <Skeleton className="h-64" /> : <ReportView data={{ ...data, workspace: data.workspace ?? { name: null, color: null, logo_url: null } }} />}
     </Drawer>
+  )
+}
+
+
+/** Email the link to a report to a few people. The email carries the link — never the numbers or the password. */
+function ShareEmailDialog({ share, onClose }: { share: ReportShare | null; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const queryClient = useQueryClient()
+  const [recipients, setRecipients] = useState('')
+  const [message, setMessage] = useState('')
+  const list = recipients.split(/[\s,;،]+/).map((r) => r.trim()).filter(Boolean)
+
+  const send = useMutation({
+    mutationFn: () => emailReport(share!.id, { recipients: list, message: message || undefined }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['email-deliveries'] })
+      const loggedOnly = result.deliveries.every((d) => d.provider === 'log')
+      toast(loggedOnly ? t('emailDelivery.notDelivered') : t('emailDelivery.queued', { count: result.deliveries.length }), loggedOnly ? 'info' : 'success')
+      setRecipients('')
+      setMessage('')
+      onClose()
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  return (
+    <Modal
+      open={share !== null}
+      onClose={onClose}
+      title={share ? t('emailDelivery.sendTitle', { name: share.name }) : ''}
+      size="sm"
+      footer={<Button disabled={list.length === 0 || list.length > 20} loading={send.isPending} onClick={() => send.mutate()} data-testid="share-email-send">{t('emailDelivery.sendNow')}</Button>}
+    >
+      <div className="space-y-3" data-testid="share-email-dialog">
+        <Textarea label={t('emailDelivery.recipients')} hint={t('emailDelivery.recipientsHint')} dir="ltr" rows={3} value={recipients} onChange={(e) => setRecipients(e.target.value)} data-testid="share-email-recipients" />
+        <Textarea label={t('emailDelivery.message')} rows={2} value={message} onChange={(e) => setMessage(e.target.value)} />
+      </div>
+    </Modal>
   )
 }

@@ -8,6 +8,7 @@ import type { Thresholds } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { SetupCheck } from '@/components/onboarding/SetupCheck'
 import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel'
+import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
@@ -27,7 +28,7 @@ interface SettingsResponse {
   custom_fields: CustomField[]
 }
 
-type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'delivery' | 'subscription'
 
 
 /**
@@ -62,7 +63,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'delivery', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -156,6 +157,8 @@ export function SettingsPage() {
           )}
 
           {tab === 'alerts' && canManage && <AnomalySettingsPanel />}
+
+          {tab === 'delivery' && canManage && <EmailDeliveryPanel />}
 
           {tab === 'subscription' && (
             <Card>

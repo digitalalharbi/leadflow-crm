@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BellRing, CalendarCheck, Coins, Flame, KeyRound, Sparkles, TimerOff, UserCheck, Users, Workflow, Megaphone, Radar, Inbox } from 'lucide-react'
+import { Bot, CalendarCheck, Coins, Flame, KeyRound, Sparkles, TimerOff, UserCheck, Users, Workflow, Megaphone, Radar, Inbox } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { fetchOps, type Light, type OpsPulseData } from '@/features/ops'
@@ -16,12 +16,13 @@ const TILES: { key: Answer; icon: LucideIcon; to: string; alarming?: boolean }[]
   { key: 'leads_today', icon: Users, to: '/leads?date_from=today' },
   { key: 'interested', icon: Sparkles, to: '/leads?view=interested' },
   { key: 'hot', icon: Flame, to: '/leads?temperature=hot' },
-  { key: 'needs_follow_up', icon: BellRing, to: '/work', alarming: true },
-  { key: 'sla_late', icon: TimerOff, to: '/work', alarming: true },
+  // Who automation handed over and nobody has picked up; then who is past their reply window.
+  { key: 'needs_human', icon: Bot, to: '/leads?view=needs_human', alarming: true },
   { key: 'visits_today', icon: CalendarCheck, to: '/visits' },
   { key: 'reservations_pending', icon: KeyRound, to: '/visits' },
   { key: 'won_today', icon: UserCheck, to: '/leads?status=won' },
   { key: 'revenue_today', icon: Coins, to: '/reports' },
+  { key: 'sla_late', icon: TimerOff, to: '/work', alarming: true },
 ]
 
 const HEALTH: { key: 'automation' | 'tracking' | 'campaigns' | 'backlog'; icon: LucideIcon; to: string }[] = [

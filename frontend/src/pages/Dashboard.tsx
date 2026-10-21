@@ -9,6 +9,7 @@ import { apiGet } from '@/lib/api'
 import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
+import { InsightCards } from '@/components/dashboard/InsightCards'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
 import { ManagerCommandCenter } from '@/components/dashboard/ManagerCommandCenter'
@@ -177,6 +178,9 @@ export function DashboardPage() {
             itself off the page for good once the five steps are done.
           */}
           <OnboardingChecklist />
+
+          {/* What moved outside its normal range, and the few things to look at first. */}
+          <InsightCards />
 
           {/* The manager's own screen: figures, SLA, team, sources, funnel and trend. */}
           {can.viewReports(user) && <ManagerCommandCenter />}

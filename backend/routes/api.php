@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
+use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\JourneyController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
@@ -177,6 +178,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard/command', [CommandCenterController::class, 'index']);
             Route::get('/dashboard/manager', [CommandCenterController::class, 'manager']);
             Route::get('/dashboard/journey', [JourneyController::class, 'show']);
+            Route::get('/insights', [InsightController::class, 'index']);
+            Route::post('/anomalies/{uuid}/dismiss', [InsightController::class, 'dismiss'])->whereUuid('uuid');
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);

@@ -128,6 +128,21 @@ export default {
     sentiment: { positive: 'إيجابي', neutral: 'محايد', negative: 'سلبي' },
     objection: { price_high: 'السعر مرتفع', location: 'الموقع', financing: 'التمويل', timing: 'ليس الآن', trust: 'الثقة', competitor: 'منافس', family_decision: 'قرار العائلة' },
   },
+  insights: {
+    title: 'ماذا تنظر أولًا', dismiss: 'تم الاطلاع',
+    anomaly: {
+      lead_spike: 'قفزة في العملاء', lead_drop: 'هبوط في العملاء', cpl_spike: 'ارتفاع تكلفة العميل', qualified_rate_drop: 'انخفاض نسبة التأهيل',
+      no_response_spike: 'عملاء بلا تواصل', tracking_drop: 'انخفاض أحداث التتبع', spend_no_qualified: 'إنفاق بلا مؤهلين', backlog_growth: 'تراكم في المبيعات',
+    },
+    card: {
+      holds_expiring_one: 'حجز واحد ينتهي خلال ٢٤ ساعة', holds_expiring_two: 'حجزان ينتهيان خلال ٢٤ ساعة', holds_expiring_few: '{{count}} حجوزات تنتهي خلال ٢٤ ساعة', holds_expiring_many: '{{count}} حجزًا ينتهي خلال ٢٤ ساعة', holds_expiring_other: '{{count}} حجز ينتهي خلال ٢٤ ساعة',
+      interested_waiting_one: 'عميل مهتم ينتظر ردًّا', interested_waiting_two: 'عميلان مهتمان ينتظران ردًّا', interested_waiting_few: '{{count}} مهتمين ينتظرون ردًّا', interested_waiting_many: '{{count}} مهتمًا ينتظرون ردًّا', interested_waiting_other: '{{count}} مهتم ينتظرون ردًّا',
+      visit_gap_few: '{{count}} مهتمين بلا زيارة منذ أسبوع', visit_gap_many: '{{count}} مهتمًا بلا زيارة منذ أسبوع', visit_gap_other: '{{count}} مهتم بلا زيارة منذ أسبوع',
+      no_shows_two: 'عميلان لم يحضرا هذا الأسبوع', no_shows_few: '{{count}} لم يحضروا هذا الأسبوع', no_shows_many: '{{count}} لم يحضروا هذا الأسبوع', no_shows_other: '{{count}} لم يحضروا هذا الأسبوع',
+      funnel_leak: '{{lost}}% يضيعون بين «{{from}}» و«{{to}}»',
+      best_campaign: '{{name}} — عائد {{roas}}x', wasted_spend: '{{name}} تنفق بلا تأهيل', top_partner: '{{name}} الأعلى: {{won}} صفقة',
+    },
+  },
   alerts: {
     title: 'التنبيهات والملخصات',
     subtitle: 'كيف تريد أن تصلك الأمور المهمة — البريد: {{email}}',
@@ -135,7 +150,7 @@ export default {
     mode: { instant: 'فورًا', daily: 'يوميًا', weekly: 'أسبوعيًا', off: 'إيقاف' },
     category: {
       hot_lead: 'عميل ساخن', visit_requested: 'طلب زيارة', reservation_intent: 'رغبة في الحجز', sla_breach: 'تجاوز مهلة الرد',
-      automation_failure: 'فشل الأتمتة', high_value: 'عميل عالي القيمة', tracking_failure: 'عطل في التتبع', budget_anomaly: 'شذوذ في الإنفاق',
+      automation_failure: 'فشل الأتمتة', high_value: 'عميل عالي القيمة', tracking_failure: 'عطل في التتبع', budget_anomaly: 'شذوذ في الأرقام',
     },
     digests: 'الملخصات',
     digest: { daily_sales: 'ملخص المبيعات اليومي', weekly_marketing: 'ملخص التسويق الأسبوعي', weekly_executive: 'الملخص التنفيذي الأسبوعي' },

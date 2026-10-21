@@ -51,9 +51,12 @@ class Baseline
         return $base['n'] >= 7 && $value - $base['mean'] >= $minimumGap && $value >= $base['mean'] * 2 && $value >= $base['mean'] + 3 * $base['std'];
     }
 
-    /** A count well below its normal: under 40% of it, two deviations down, from a baseline big enough to mean something. */
-    public static function isDrop(float $value, array $base, float $minimumMean = 5): bool
+    /**
+     * A count well below its normal: under `$ratio` of it (40% unless said otherwise), two deviations
+     * down, from a baseline big enough to mean something.
+     */
+    public static function isDrop(float $value, array $base, float $minimumMean = 5, float $ratio = 0.4): bool
     {
-        return $base['n'] >= 7 && $base['mean'] >= $minimumMean && $value <= $base['mean'] * 0.4 && $value <= $base['mean'] - 2 * $base['std'];
+        return $base['n'] >= 7 && $base['mean'] >= $minimumMean && $value <= $base['mean'] * $ratio && $value <= $base['mean'] - 2 * $base['std'];
     }
 }

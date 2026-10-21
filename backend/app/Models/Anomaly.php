@@ -11,7 +11,7 @@ class Anomaly extends Model
 {
     use BelongsToTenant, HasUuid;
 
-    protected $fillable = ['kind', 'subject', 'severity', 'detected_on', 'observed', 'expected', 'context', 'alerted_at', 'dismissed_at'];
+    protected $fillable = ['project_id', 'kind', 'subject', 'severity', 'detected_on', 'observed', 'expected', 'context', 'alerted_at', 'dismissed_at'];
 
     protected function casts(): array
     {

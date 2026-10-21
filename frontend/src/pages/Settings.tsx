@@ -7,6 +7,7 @@ import { can, useAuth } from '@/stores/auth'
 import type { Thresholds } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { SetupCheck } from '@/components/onboarding/SetupCheck'
+import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
@@ -26,7 +27,7 @@ interface SettingsResponse {
   custom_fields: CustomField[]
 }
 
-type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'subscription'
 
 
 /**
@@ -61,7 +62,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['general', 'branding', 'leads', 'scoring', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -153,6 +154,8 @@ export function SettingsPage() {
               <CustomFieldsPanel fields={data.custom_fields} />
             </div>
           )}
+
+          {tab === 'alerts' && canManage && <AnomalySettingsPanel />}
 
           {tab === 'subscription' && (
             <Card>

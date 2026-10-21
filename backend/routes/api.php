@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
+use App\Http\Controllers\Api\V1\AnomalySettingsController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AttributionController;
 use App\Http\Controllers\Api\V1\AuditTrailController;
@@ -184,6 +185,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/insights', [InsightController::class, 'index']);
             Route::get('/audit', AuditTrailController::class);
             Route::post('/anomalies/{uuid}/dismiss', [InsightController::class, 'dismiss'])->whereUuid('uuid');
+            Route::get('/anomaly-settings', [AnomalySettingsController::class, 'show']);
+            Route::patch('/anomaly-settings', [AnomalySettingsController::class, 'update']);
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);

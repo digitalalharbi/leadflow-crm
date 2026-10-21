@@ -7,10 +7,12 @@ use App\Domain\Campaigns\CampaignMetrics;
 use App\Domain\Leads\InterestSla;
 use App\Domain\Notifications\ImportantAlerts;
 use App\Models\Anomaly;
+use App\Models\Campaign;
 use App\Models\CampaignSpend;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
+use App\Models\Project;
 use App\Models\TenantSetting;
 use App\Models\TrackingEvent;
 use App\Support\TenantContext;
@@ -38,93 +40,139 @@ class AnomalyDetector
         'no_response_spike' => '/work', 'tracking_drop' => '/tracking', 'spend_no_qualified' => '/campaigns', 'backlog_growth' => '/work',
     ];
 
-    /** @return list<Anomaly> the findings of this pass — new and already known alike */
+    /**
+     * The findings of this pass — new and already known alike.
+     *
+     * The workspace is judged by the workspace's lines. A project that asked for lines of its own is
+     * judged separately, by them, over its own leads and campaigns (and its campaigns are left out of
+     * the workspace pass, so nothing is judged twice by two different standards).
+     *
+     * @return list<Anomaly>
+     */
     public function run(?CarbonImmutable $today = null): array
     {
         $today ??= CarbonImmutable::today();
+        $settings = TenantSetting::query()->first();
         $found = [];
 
-        foreach ([
-            fn () => $this->leadVolume($today),
-            fn () => $this->costPerLead($today),
-            fn () => $this->qualifiedRate($today),
-            fn () => $this->noResponse($today),
-            fn () => $this->trackingEvents($today),
-            fn () => $this->spendWithNothingQualified($today),
-            fn () => $this->backlog($today),
-        ] as $check) {
-            foreach ($check() as $finding) {
-                $found[] = $this->keep($finding, $today);
+        $own = Project::query()->whereNotNull('anomaly_settings')->get()->filter(fn (Project $p) => AnomalySettings::for($settings, $p)->overrides())->values();
+
+        foreach ($this->pass($today, AnomalySettings::for($settings), null, $own->pluck('uuid')->all()) as $finding) {
+            $found[] = $this->keep($finding, $today);
+        }
+
+        foreach ($own as $project) {
+            foreach ($this->pass($today, AnomalySettings::for($settings, $project), $project, []) as $finding) {
+                $found[] = $this->keep($finding + ['project' => $project], $today);
             }
         }
 
         return $found;
     }
 
+    /**
+     * One judgement of one scope: every alert that is on, by the lines in force.
+     *
+     * @param  list<string>  $leaveOut  project uuids whose campaigns another pass will judge
+     * @return list<array<string,mixed>>
+     */
+    private function pass(CarbonImmutable $today, AnomalySettings $cfg, ?Project $project, array $leaveOut): array
+    {
+        $id = $project?->id;
+        $out = [];
+
+        foreach ([
+            ['lead_spike', fn () => $this->leadVolume($today, $cfg, $id, 'spike')],
+            ['lead_drop', fn () => $this->leadVolume($today, $cfg, $id, 'drop')],
+            ['cpl_spike', fn () => $this->costPerLead($today, $cfg, $id)],
+            ['qualified_rate_drop', fn () => $this->qualifiedRate($today, $cfg, $id)],
+            ['no_response_spike', fn () => $this->noResponse($today, $cfg, $id)],
+            // What is recorded is not kept per project: this one is the workspace's alone.
+            ['tracking_drop', fn () => $project === null ? $this->trackingEvents($today, $cfg) : []],
+            ['spend_no_qualified', fn () => $this->spendWithNothingQualified($today, $cfg, $id, $leaveOut)],
+            ['backlog_growth', fn () => $this->backlog($today, $cfg, $id)],
+        ] as [$kind, $check]) {
+            if (! $cfg->enabled($kind)) {
+                continue;
+            }
+
+            foreach ($check() as $finding) {
+                $out[] = $finding;
+            }
+        }
+
+        return array_map(fn (array $f) => $project !== null && $f['subject'] === '' ? ['subject' => $project->name] + $f : $f, $out);
+    }
+
     // ---------------------------------------------------------------- the checks
 
     /** @return list<array<string,mixed>> */
-    private function leadVolume(CarbonImmutable $today): array
+    private function leadVolume(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId, string $direction): array
     {
         $yesterday = $today->subDay();
-        $series = $this->leadsPerDay($yesterday->subDays(14), $yesterday);
+        $series = $this->leadsPerDay($yesterday->subDays(14), $yesterday, $projectId);
         $value = (float) ($series[$yesterday->toDateString()] ?? 0);
         $base = Baseline::of(Baseline::fromFirstActivity(collect(range(15, 2))->map(fn (int $ago) => (float) ($series[$today->subDays($ago)->toDateString()] ?? 0))->all()));
 
-        if (Baseline::isSpike($value, $base)) {
+        if ($direction === 'spike' && Baseline::isSpike($value, $base)) {
             return [$this->finding('lead_spike', '', $value, $base['mean'], $value >= $base['mean'] * 3 ? 'critical' : 'warning')];
         }
 
-        if (Baseline::isDrop($value, $base)) {
-            return [$this->finding('lead_drop', '', $value, $base['mean'], $value <= $base['mean'] * 0.2 ? 'critical' : 'warning')];
+        // A drop of `drop_pct`% or more: the lead line the workspace set (60% by default, as it always was).
+        $ratio = 1 - $cfg->value('lead_drop') / 100;
+
+        if ($direction === 'drop' && Baseline::isDrop($value, $base, 5, $ratio)) {
+            return [$this->finding('lead_drop', '', $value, $base['mean'], $value <= $base['mean'] * $ratio * 0.5 ? 'critical' : 'warning')];
         }
 
         return [];
     }
 
     /** @return list<array<string,mixed>> */
-    private function costPerLead(CarbonImmutable $today): array
+    private function costPerLead(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId): array
     {
         $yesterday = $today->subDay();
-        $leads = $this->leadsPerDay($yesterday->subDays(14), $yesterday);
-        $spend = $this->spendPerDay($yesterday->subDays(14), $yesterday);
+        $leads = $this->leadsPerDay($yesterday->subDays(14), $yesterday, $projectId);
+        $spend = $this->spendPerDay($yesterday->subDays(14), $yesterday, $projectId);
 
         $cpl = fn (CarbonImmutable $d) => ($leads[$d->toDateString()] ?? 0) >= 1 && ($spend[$d->toDateString()] ?? 0) > 0 ? $spend[$d->toDateString()] / $leads[$d->toDateString()] : null;
         $series = collect(range(2, 15))->map(fn (int $ago) => $cpl($today->subDays($ago)))->filter(fn ($v) => $v !== null)->values()->all();
         $value = $cpl($yesterday);
         $base = Baseline::of($series);
+        $rise = $cfg->value('cpl_spike') / 100;
 
-        if ($value !== null && ($leads[$yesterday->toDateString()] ?? 0) >= 3 && $base['n'] >= 7 && $value >= $base['mean'] * 1.6) {
-            return [$this->finding('cpl_spike', '', round($value, 2), round($base['mean'], 2), $value >= $base['mean'] * 2.5 ? 'critical' : 'warning')];
+        if ($value !== null && ($leads[$yesterday->toDateString()] ?? 0) >= 3 && $base['n'] >= 7 && $value >= $base['mean'] * (1 + $rise)) {
+            return [$this->finding('cpl_spike', '', round($value, 2), round($base['mean'], 2), $value >= $base['mean'] * (1 + $rise * 2.5) ? 'critical' : 'warning')];
         }
 
         return [];
     }
 
     /** @return list<array<string,mixed>> */
-    private function qualifiedRate(CarbonImmutable $today): array
+    private function qualifiedRate(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId): array
     {
-        $rate = function (CarbonImmutable $from, CarbonImmutable $to) {
-            $c = LeadFunnel::counts(Lead::query()->reorder()->whereBetween('leads.created_at', [$from->startOfDay(), $to->endOfDay()]));
+        $rate = function (CarbonImmutable $from, CarbonImmutable $to) use ($projectId) {
+            $c = LeadFunnel::counts(Lead::query()->reorder()->whereBetween('leads.created_at', [$from->startOfDay(), $to->endOfDay()])->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId)));
 
             return [$c['steps']['leads'], $c['steps']['leads'] > 0 ? $c['steps']['qualified'] / $c['steps']['leads'] * 100 : null];
         };
 
         [$recentN, $recent] = $rate($today->subDays(7), $today->subDay());
         [$baseN, $base] = $rate($today->subDays(28), $today->subDays(8));
+        $ratio = 1 - $cfg->value('qualified_rate_drop') / 100;
 
-        if ($recent !== null && $base !== null && $recentN >= 30 && $baseN >= 60 && $base >= 10 && $recent <= $base * 0.7) {
-            return [$this->finding('qualified_rate_drop', '', round($recent, 1), round($base, 1), $recent <= $base * 0.5 ? 'critical' : 'warning', ['leads' => $recentN])];
+        if ($recent !== null && $base !== null && $recentN >= 30 && $baseN >= 60 && $base >= 10 && $recent <= $base * $ratio) {
+            return [$this->finding('qualified_rate_drop', '', round($recent, 1), round($base, 1), $recent <= $base * max(0.05, $ratio - 0.2) ? 'critical' : 'warning', ['leads' => $recentN])];
         }
 
         return [];
     }
 
     /** @return list<array<string,mixed>> */
-    private function noResponse(CarbonImmutable $today): array
+    private function noResponse(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId): array
     {
-        $share = function (CarbonImmutable $from, CarbonImmutable $to) {
-            $row = Lead::query()->reorder()->whereBetween('leads.created_at', [$from->startOfDay(), $to->endOfDay()])
+        $share = function (CarbonImmutable $from, CarbonImmutable $to) use ($projectId) {
+            $row = Lead::query()->reorder()->whereBetween('leads.created_at', [$from->startOfDay(), $to->endOfDay()])->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))
                 ->selectRaw("count(*) as total, count(*) filter (where first_contact_at is null and status = 'new') as silent")->first();
 
             return [(int) $row->total, (int) $row->total > 0 ? (int) $row->silent / (int) $row->total * 100 : null];
@@ -132,16 +180,17 @@ class AnomalyDetector
 
         [$recentN, $recent] = $share($today->subDays(3), $today->subDay());
         [$baseN, $base] = $share($today->subDays(17), $today->subDays(4));
+        $line = $cfg->value('no_response_spike');
 
-        if ($recent !== null && $base !== null && $recentN >= 8 && $baseN >= 20 && $recent >= 30 && $recent >= max(10, $base) * 2) {
-            return [$this->finding('no_response_spike', '', round($recent, 1), round($base, 1), $recent >= 60 ? 'critical' : 'warning', ['leads' => $recentN])];
+        if ($recent !== null && $base !== null && $recentN >= 8 && $baseN >= 20 && $recent >= $line && $recent >= max(10, $base) * 2) {
+            return [$this->finding('no_response_spike', '', round($recent, 1), round($base, 1), $recent >= min(100, $line * 2) ? 'critical' : 'warning', ['leads' => $recentN])];
         }
 
         return [];
     }
 
     /** @return list<array<string,mixed>> */
-    private function trackingEvents(CarbonImmutable $today): array
+    private function trackingEvents(CarbonImmutable $today, AnomalySettings $cfg): array
     {
         $yesterday = $today->subDay();
         $rows = TrackingEvent::query()->whereBetween('occurred_at', [$yesterday->subDays(14)->startOfDay(), $yesterday->endOfDay()])
@@ -149,26 +198,35 @@ class AnomalyDetector
 
         $value = (float) ($rows[$yesterday->toDateString()] ?? 0);
         $base = Baseline::of(Baseline::fromFirstActivity(collect(range(15, 2))->map(fn (int $ago) => (float) ($rows[$today->subDays($ago)->toDateString()] ?? 0))->all()));
+        $ratio = 1 - $cfg->value('tracking_drop') / 100;
 
-        if (Baseline::isDrop($value, $base, 20)) {
-            return [$this->finding('tracking_drop', '', $value, $base['mean'], $value <= $base['mean'] * 0.15 ? 'critical' : 'warning')];
+        if (Baseline::isDrop($value, $base, 20, $ratio)) {
+            return [$this->finding('tracking_drop', '', $value, $base['mean'], $value <= $base['mean'] * $ratio * 0.375 ? 'critical' : 'warning')];
         }
 
         return [];
     }
 
-    /** @return list<array<string,mixed>> */
-    private function spendWithNothingQualified(CarbonImmutable $today): array
+    /**
+     * @param  list<string>  $leaveOut  project uuids another pass judges by their own lines
+     * @return list<array<string,mixed>>
+     */
+    private function spendWithNothingQualified(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId, array $leaveOut): array
     {
         $metrics = new CampaignMetrics(null, $today->subDays(7)->startOfDay(), $today->subDay()->endOfDay());
         $out = [];
+        $line = $cfg->value('spend_no_qualified');
 
-        foreach ($metrics->rows() as $row) {
+        foreach ($metrics->rows($projectId ? ['project_id' => $projectId] : []) as $row) {
+            if ($projectId === null && ($row['project']['id'] ?? null) !== null && in_array($row['project']['id'], $leaveOut, true)) {
+                continue;
+            }
+
             $recentSpend = collect($row['daily'])->filter(fn ($d) => $d['date'] >= $today->subDays(3)->toDateString())->sum('spend');
 
             // Spending now, with five or more leads in a week and not one of them qualified.
-            if ($recentSpend >= 300 && $row['leads'] >= 5 && $row['qualified'] === 0) {
-                $out[] = $this->finding('spend_no_qualified', (string) $row['name'], round((float) $recentSpend, 2), 0.0, (float) $recentSpend >= 2000 ? 'critical' : 'warning', ['leads' => $row['leads']]);
+            if ($recentSpend >= $line && $row['leads'] >= 5 && $row['qualified'] === 0) {
+                $out[] = $this->finding('spend_no_qualified', (string) $row['name'], round((float) $recentSpend, 2), 0.0, (float) $recentSpend >= $line * 6.67 ? 'critical' : 'warning', ['leads' => $row['leads']]);
             }
         }
 
@@ -176,24 +234,27 @@ class AnomalyDetector
     }
 
     /** @return list<array<string,mixed>> */
-    private function backlog(CarbonImmutable $today): array
+    private function backlog(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId): array
     {
         $target = (int) (TenantSetting::query()->value('first_contact_target_minutes') ?? 30);
+        $mine = fn ($q) => $q->when($projectId, fn ($w) => $w->where('leads.project_id', $projectId));
 
-        $uncontacted = Lead::query()->reorder()->whereNull('first_contact_at')->where('status', 'new')->where('created_at', '<=', now()->subMinutes($target))->count();
-        $overdue = FollowUp::query()->pending()->where('due_at', '<', now())->count();
-        $late = Lead::query()->reorder()->whereIn('interest_level', array_keys(InterestSla::KEYS))->whereNotIn('status', ['won', 'lost', 'invalid', 'no_response'])->limit(500)
+        $uncontacted = $mine(Lead::query()->reorder())->whereNull('first_contact_at')->where('status', 'new')->where('leads.created_at', '<=', now()->subMinutes($target))->count();
+        $overdue = FollowUp::query()->pending()->where('due_at', '<', now())->when($projectId, fn ($q) => $q->whereHas('lead', fn ($l) => $l->where('leads.project_id', $projectId)))->count();
+        $late = $mine(Lead::query()->reorder())->whereIn('interest_level', array_keys(InterestSla::KEYS))->whereNotIn('status', ['won', 'lost', 'invalid', 'no_response'])->limit(500)
             ->get(['id', 'tenant_id', 'project_id', 'status', 'interest_level', 'interest_level_changed_at', 'interest_at', 'last_customer_message_at', 'last_contact_at', 'created_at'])
             ->filter(fn (Lead $l) => (InterestSla::for($l)['state'] ?? null) === 'breached')->count();
 
         $value = (float) ($uncontacted + $overdue + $late);
-        $this->remember($today, 'backlog', $value);
+        $key = $projectId ? "backlog:{$projectId}" : 'backlog';
+        $this->remember($today, $key, $value);
 
-        $history = DB::table('daily_figures')->where('key', 'backlog')->where('tenant_id', app(TenantContext::class)->id())
+        $history = DB::table('daily_figures')->where('key', $key)->where('tenant_id', app(TenantContext::class)->id())
             ->whereBetween('on_date', [$today->subDays(8)->toDateString(), $today->subDay()->toDateString()])->pluck('value')->map(fn ($v) => (float) $v)->all();
         $base = Baseline::of($history);
+        $rise = $cfg->value('backlog_growth') / 100;
 
-        if ($base['n'] >= 3 && $value >= $base['mean'] * 1.5 && $value - $base['mean'] >= 10) {
+        if ($base['n'] >= 3 && $value >= $base['mean'] * (1 + $rise) && $value - $base['mean'] >= 10) {
             return [$this->finding('backlog_growth', '', $value, round($base['mean'], 2), $value >= $base['mean'] * 2.5 ? 'critical' : 'warning', ['uncontacted' => $uncontacted, 'overdue' => $overdue, 'late' => $late])];
         }
 
@@ -203,17 +264,20 @@ class AnomalyDetector
     // ---------------------------------------------------------------- plumbing
 
     /** @return array<string,int> date → leads */
-    private function leadsPerDay(CarbonImmutable $from, CarbonImmutable $to): array
+    private function leadsPerDay(CarbonImmutable $from, CarbonImmutable $to, ?int $projectId = null): array
     {
-        return Lead::query()->reorder()->whereBetween('leads.created_at', [$from->startOfDay(), $to->endOfDay()])
+        return Lead::query()->reorder()->whereBetween('leads.created_at', [$from->startOfDay(), $to->endOfDay()])->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))
             ->selectRaw('leads.created_at::date as d, count(*) as n')->groupBy('d')->pluck('n', 'd')->map(fn ($n) => (int) $n)->all();
     }
 
     /** @return array<string,float> date → money spent that day (platform snapshots plus entered spend) */
-    private function spendPerDay(CarbonImmutable $from, CarbonImmutable $to): array
+    private function spendPerDay(CarbonImmutable $from, CarbonImmutable $to, ?int $projectId = null): array
     {
-        $platform = MetricSnapshot::query()->whereBetween('date', [$from->toDateString(), $to->toDateString()])->selectRaw('date, sum(spend_minor) as s')->groupBy('date')->pluck('s', 'date');
-        $manual = CampaignSpend::query()->whereBetween('spend_date', [$from->toDateString(), $to->toDateString()])->selectRaw('spend_date, sum(amount_minor) as s')->groupBy('spend_date')->pluck('s', 'spend_date');
+        $platform = MetricSnapshot::query()->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->when($projectId, fn ($q) => $q->whereIn('campaign_id', Campaign::query()->where('project_id', $projectId)->select('id')))
+            ->selectRaw('date, sum(spend_minor) as s')->groupBy('date')->pluck('s', 'date');
+        // Entered spend is kept by campaign name, not by project: a project's own judgement leaves it out.
+        $manual = $projectId ? collect() : CampaignSpend::query()->whereBetween('spend_date', [$from->toDateString(), $to->toDateString()])->selectRaw('spend_date, sum(amount_minor) as s')->groupBy('spend_date')->pluck('s', 'spend_date');
 
         $out = [];
         foreach ($platform as $d => $s) {
@@ -246,7 +310,7 @@ class AnomalyDetector
         $anomaly = Anomaly::firstOrNew(['kind' => $f['kind'], 'subject' => $f['subject'], 'detected_on' => $today->toDateString()]);
         $isNew = ! $anomaly->exists;
 
-        $anomaly->fill(['severity' => $f['severity'], 'observed' => $f['observed'], 'expected' => $f['expected'], 'context' => $f['context']])->save();
+        $anomaly->fill(['severity' => $f['severity'], 'observed' => $f['observed'], 'expected' => $f['expected'], 'context' => $f['context'], 'project_id' => ($f['project'] ?? null)?->id])->save();
 
         if ($isNew && $anomaly->alerted_at === null) {
             ImportantAlerts::budgetAnomaly("{$f['kind']}:{$f['subject']}", ...$this->words($f));

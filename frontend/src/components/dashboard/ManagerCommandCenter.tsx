@@ -66,7 +66,16 @@ export function ManagerCommandCenter() {
             <Card className="lg:col-span-4" data-testid="manager-funnel">
               <CardBody>
                 <h3 className="t-card-title mb-3">{t('manager.funnel')}</h3>
-                <PipelineFunnel steps={data.funnel.map((step) => ({ key: step.key, label: t(`campaigns.stage.${step.key}`), count: step.count }))} />
+                {/* Lead → Qualified → Interested → Visit → Reservation → Won: each lead counted at every step it reached. */}
+                <PipelineFunnel
+                  testId="manager-re-funnel"
+                  steps={data.re_funnel
+                    ? (['leads', 'qualified', 'interested', 'visit', 'reservation', 'won'] as const).map((key) => ({ key, label: t(`manager.reFunnel.${key}`), count: data.re_funnel!.steps[key] }))
+                    : data.funnel.map((step) => ({ key: step.key, label: t(`campaigns.stage.${step.key}`), count: step.count }))}
+                />
+                {data.re_funnel && data.re_funnel.booked > 0 && (
+                  <p className="t-caption mt-2" data-testid="manager-visits-booked">{t('manager.visitsBooked', { count: data.re_funnel.booked })}</p>
+                )}
               </CardBody>
             </Card>
 

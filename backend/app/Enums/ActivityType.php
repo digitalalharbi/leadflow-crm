@@ -38,6 +38,10 @@ enum ActivityType: string
     case InterestChanged = 'interest_changed';
     /** A rep put a unit on hold for the lead. */
     case ReservationCreated = 'reservation_created';
+    /** A visit was asked for, confirmed, moved, done, missed or cancelled. */
+    case VisitUpdated = 'visit_updated';
+    /** A reservation was confirmed, cancelled, expired or turned into a sale. */
+    case ReservationUpdated = 'reservation_updated';
 
     public static function values(): array
     {

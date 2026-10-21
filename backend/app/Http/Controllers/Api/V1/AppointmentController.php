@@ -2,18 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\Tracking\EventRecorder;
-use App\Domain\Tracking\EventType;
-use App\Enums\ActivityType;
-use App\Enums\LeadStatus;
-use App\Events\LeadSignal;
-use App\Events\LeadStageChanged;
+use App\Domain\Visits\VisitWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\Lead;
-use App\Services\Leads\ActivityLogger;
+use App\Models\Property;
 use App\Support\ApiResponse;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -27,22 +23,29 @@ use Illuminate\Validation\Rule;
  */
 class AppointmentController extends Controller
 {
-    public function __construct(private ActivityLogger $activities) {}
+    public function __construct(private VisitWorkflow $visits) {}
 
     public function index(Request $request)
     {
         $this->authorize('viewAny', Lead::class);
 
         $appointments = Appointment::query()
-            ->with(['lead:id,uuid,full_name,phone,status', 'assignee:id,uuid,name'])
+            ->with(['lead:id,uuid,full_name,phone,status', 'assignee:id,uuid,name', 'project:id,uuid,name', 'property:id,uuid,title'])
             ->when($request->filled('lead_id'), fn ($q) => $q->whereHas('lead',
                 fn ($l) => $l->where('uuid', $request->input('lead_id'))))
             ->when($request->input('bucket') === 'upcoming', fn ($q) => $q->upcoming())
             ->when($request->input('bucket') === 'awaiting_outcome', fn ($q) => $q->awaitingOutcome())
+            ->when($request->input('bucket') === 'requested', fn ($q) => $q->requested())
+            // Done, and nobody has said what came of it.
+            ->when($request->input('bucket') === 'needs_result', fn ($q) => $q->where(fn ($w) => $w->where('status', Appointment::COMPLETED)->whereNull('outcome')))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
             // A rep sees their own meetings unless they are allowed all leads.
             ->when(! $request->user()->seesAllLeads(),
                 fn ($q) => $q->where('assigned_to', $request->user()->id))
+            // A request has no time yet: it goes first, oldest ask on top.
+            ->orderByRaw('scheduled_at is null desc')
             ->orderBy('scheduled_at')
+            ->orderBy('requested_at')
             ->paginate(min((int) $request->input('per_page', 25), 100));
 
         return ApiResponse::paginated($appointments, AppointmentResource::class);
@@ -52,35 +55,30 @@ class AppointmentController extends Controller
     {
         $data = $request->validate([
             'lead_id' => ['required', 'string'],
-            'scheduled_at' => ['required', 'date', 'after:now'],
+            // Left out, the visit is a request: somebody wants to come, nobody has said when.
+            'scheduled_at' => ['nullable', 'date', 'after:now'],
             'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:480'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'property_id' => ['nullable', 'string'],
         ]);
 
         $lead = Lead::where('uuid', $data['lead_id'])->firstOrFail();
         $this->authorize('update', $lead);
 
-        $appointment = Appointment::create([
-            'lead_id' => $lead->id,
-            'assigned_to' => $lead->assigned_to ?? $request->user()->id,
-            'created_by' => $request->user()->id,
-            'scheduled_at' => $data['scheduled_at'],
+        $extra = array_filter([
             'duration_minutes' => $data['duration_minutes'] ?? 60,
             'location' => $data['location'] ?? null,
             'notes' => $data['notes'] ?? null,
-        ]);
+            'property_id' => ! empty($data['property_id']) ? Property::where('uuid', $data['property_id'])->value('id') : null,
+        ], fn ($value) => $value !== null);
 
-        $this->activities->log($lead, ActivityType::AppointmentCreated, $request->user(),
-            'موعد في '.$appointment->scheduled_at->toDayDateTimeString(),
-            ['appointment_id' => $appointment->uuid]);
-
-        app(EventRecorder::class)->outcome($lead, EventType::AppointmentRequest, ['appointment' => $appointment->uuid, 'at' => $appointment->scheduled_at->toIso8601String()], $appointment->uuid);
-
-        $this->advanceToAppointment($lead, $request);
+        $appointment = empty($data['scheduled_at'])
+            ? $this->visits->request($lead, $request->user(), 'rep', $extra)
+            : $this->visits->book($lead, $request->user(), Carbon::parse($data['scheduled_at']), $extra);
 
         return ApiResponse::created([
-            'appointment' => new AppointmentResource($appointment->fresh()->load('lead', 'assignee')),
+            'appointment' => new AppointmentResource($appointment->fresh()->load('lead', 'assignee', 'project', 'property')),
         ]);
     }
 
@@ -90,58 +88,75 @@ class AppointmentController extends Controller
         $this->authorize('update', $appointment->lead);
 
         $data = $request->validate([
-            'status' => ['sometimes', Rule::in(['scheduled', 'completed', 'cancelled', 'no_show'])],
+            'status' => ['sometimes', Rule::in([...Appointment::STATUSES, 'scheduled'])],
             'scheduled_at' => ['sometimes', 'date'],
             'duration_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'outcome_note' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ]);
 
-        $appointment->update($data);
+        $to = $data['status'] ?? null;
+        $to = $to === 'scheduled' ? Appointment::CONFIRMED : $to;
+        unset($data['status']);
 
         /*
-         * Set after the mass update and deliberately not fillable: when a
-         * meeting completed is the server's fact, not the caller's. Leaving it
-         * mass-assignable would let a client backdate it and quietly corrupt
-         * every response-time figure built on top.
+         * A new time on a visit that is already booked is a reschedule, whatever the caller called
+         * it: the count and the story must say the visit moved.
          */
-        if (($data['status'] ?? null) === 'completed' && ! $appointment->completed_at) {
-            $appointment->forceFill(['completed_at' => now()])->save();
-            // The visit happened: the trail says so, once per appointment.
-            app(EventRecorder::class)->outcome($appointment->lead, EventType::SiteVisit, ['appointment' => $appointment->uuid], $appointment->uuid);
+        $moved = isset($data['scheduled_at']) && in_array($appointment->status, Appointment::BOOKED, true)
+            && Carbon::parse($data['scheduled_at'])->ne($appointment->scheduled_at);
+
+        if ($moved && ($to === null || $to === Appointment::CONFIRMED)) {
+            $to = Appointment::RESCHEDULED;
         }
 
+        $plain = array_diff_key($data, ['scheduled_at' => 1]);
+
+        if ($to !== null && $to !== $appointment->status && ! ($to === Appointment::CONFIRMED && $appointment->status === 'scheduled')) {
+            $appointment = $this->visits->transition($appointment, $to, $request->user(), $data);
+            $plain = array_diff_key($plain, ['location' => 1, 'outcome_note' => 1]);
+        } elseif (isset($data['scheduled_at'])) {
+            $plain['scheduled_at'] = $data['scheduled_at'];
+        }
+
+        $plain && $appointment->update($plain);
+
         return ApiResponse::success([
-            'appointment' => new AppointmentResource($appointment->fresh()->load('lead', 'assignee')),
+            'appointment' => new AppointmentResource($appointment->fresh()->load('lead', 'assignee', 'project', 'property')),
         ]);
     }
 
-    /**
-     * Booking a meeting is progress, so the stage follows — but only forwards.
-     * A lead already won must not be dragged back because someone scheduled a
-     * handover call.
-     */
-    private function advanceToAppointment(Lead $lead, Request $request): void
+    /** The one move a screen button means: confirm, reschedule, cancel, mark done, mark missed. */
+    public function transition(Request $request, string $uuid)
     {
-        // A booked visit is a signal of its own, whether or not the stage moves.
-        LeadSignal::dispatch($lead, 'lead.appointment_created', [], $request->user());
+        $appointment = Appointment::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $appointment->lead);
 
-        $from = $lead->status;
+        $data = $request->validate([
+            'to' => ['required', Rule::in(Appointment::STATUSES)],
+            'scheduled_at' => ['nullable', 'date', 'after:now'],
+            'reason' => ['nullable', 'string', 'max:2000'],
+            'location' => ['nullable', 'string', 'max:255'],
+        ]);
 
-        // Forwards only, by pipeline position. That one comparison also covers
-        // the states that are exits rather than stages — a lead marked invalid
-        // sits past this point and must not be resurrected by someone booking
-        // a call.
-        if ($from->position() >= LeadStatus::Appointment->position()) {
-            return;
-        }
+        $appointment = $this->visits->transition($appointment, $data['to'], $request->user(), $data);
 
-        $lead->forceFill(['status' => LeadStatus::Appointment])->save();
+        return ApiResponse::success(['appointment' => new AppointmentResource($appointment->load('lead', 'assignee', 'project', 'property'))]);
+    }
 
-        $this->activities->log($lead, ActivityType::StatusChanged, $request->user(),
-            "من {$from->value} إلى appointment", ['from' => $from->value, 'to' => 'appointment']);
+    /** What came of the visit: interested, follow-up, reservation or lost. */
+    public function outcome(Request $request, string $uuid)
+    {
+        $appointment = Appointment::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $appointment->lead);
 
-        LeadStageChanged::dispatch($lead, $from, LeadStatus::Appointment, $request->user(),
-            ['by' => 'appointment_booked']);
+        $data = $request->validate([
+            'outcome' => ['required', Rule::in(Appointment::OUTCOMES)],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $appointment = $this->visits->outcome($appointment, $data['outcome'], $request->user(), $data['note'] ?? null);
+
+        return ApiResponse::success(['appointment' => new AppointmentResource($appointment->load('lead', 'assignee', 'project', 'property'))]);
     }
 }

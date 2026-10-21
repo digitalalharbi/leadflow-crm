@@ -511,7 +511,7 @@ class FollowUpPlanner
 
     private function hasAppointment(Lead $lead): bool
     {
-        return Appointment::withoutGlobalScopes()->where('lead_id', $lead->id)->where('status', 'scheduled')->exists();
+        return Appointment::withoutGlobalScopes()->where('lead_id', $lead->id)->whereIn('status', Appointment::LIVE)->exists();
     }
 
     /** Asked not to be contacted on any channel they could be reached by. */

@@ -84,6 +84,8 @@ class ManagerCenter
                 ['key' => 'warm', 'count' => (int) $now->warm],
                 ['key' => 'cold', 'count' => (int) $now->cold],
             ],
+            // Lead → Qualified → Interested → Visit → Reservation → Won, for the leads that arrived in the period.
+            're_funnel' => LeadFunnel::counts(Lead::query()->visibleTo($user)->where('leads.created_at', '>=', $since)),
             'automation' => $this->automation($user, $since, $days),
             'sources' => $this->sources($user, $since),
             'interest' => collect($interest = $this->interest($user))->except('by_rep')->all(),

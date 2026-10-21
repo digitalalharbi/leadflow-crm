@@ -104,8 +104,10 @@ class InterestEngine
         $add('asked_for_visit', $visitAsked ? 20 : 0);
 
         $appointments = Appointment::withoutGlobalScopes()->where('lead_id', $lead->id)->whereNotIn('status', ['cancelled'])->get(['status', 'scheduled_at']);
-        $visitBooked = $appointments->contains(fn ($a) => in_array($a->status, ['scheduled', 'confirmed', 'requested', 'rescheduled'], true) && $a->scheduled_at?->isFuture());
-        $add('visit_booked', $appointments->isNotEmpty() ? 25 : 0);
+        $visitBooked = $appointments->contains(fn ($a) => in_array($a->status, Appointment::BOOKED, true) && $a->scheduled_at?->isFuture());
+        // Booked means a time was agreed: a request nobody has answered yet is the "asked for a visit" line above,
+        // and somebody who did not come has not booked anything.
+        $add('visit_booked', $appointments->contains(fn ($a) => in_array($a->status, [...Appointment::BOOKED, Appointment::COMPLETED], true)) ? 25 : 0);
         $add('visited', $appointments->contains(fn ($a) => $a->status === 'completed') ? 10 : 0);
 
         $reservationOpen = Reservation::withoutGlobalScopes()->where('lead_id', $lead->id)->whereIn('status', ['pending', 'confirmed'])->exists();

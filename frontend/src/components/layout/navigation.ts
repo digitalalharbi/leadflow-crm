@@ -1,6 +1,6 @@
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings,
-  ShieldCheck, Target, Users2, CalendarClock, Contact2, Workflow, Megaphone, Bot, Radar,
+  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -69,6 +69,8 @@ export function useNavigation(): Navigation {
       { to: '/work', labelKey: 'nav.work', Icon: Target },
       { to: '/leads', labelKey: 'nav.leads', Icon: Contact2 },
       { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3 },
+      // The two steps between interested and sold.
+      { to: '/visits', labelKey: 'nav.visits', Icon: CalendarCheck },
       // Money and ad accounts: the people who may read reports.
       ...(reports ? [{ to: '/campaigns', labelKey: 'nav.campaigns', Icon: Megaphone }] : []),
       ...(reports ? [{ to: '/tracking', labelKey: 'nav.tracking', Icon: Radar }] : []),

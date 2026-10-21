@@ -675,9 +675,10 @@ export interface LeadCall {
 
 export interface LeadAppointment {
   id: string
-  scheduled_at: string
+  scheduled_at: string | null
   duration_minutes: number
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  status: 'requested' | 'confirmed' | 'rescheduled' | 'completed' | 'cancelled' | 'no_show'
+  outcome?: 'interested' | 'follow_up' | 'reservation' | 'lost' | null
   location: string | null
   notes: string | null
   outcome_note: string | null

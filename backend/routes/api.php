@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\ReservationController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\SearchController;
@@ -289,6 +290,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/appointments', [AppointmentController::class, 'index']);
             Route::post('/appointments', [AppointmentController::class, 'store']);
             Route::patch('/appointments/{uuid}', [AppointmentController::class, 'update']);
+            Route::post('/appointments/{uuid}/transition', [AppointmentController::class, 'transition']);
+            Route::post('/appointments/{uuid}/outcome', [AppointmentController::class, 'outcome']);
+            Route::get('/reservations', [ReservationController::class, 'index']);
+            Route::post('/reservations', [ReservationController::class, 'store']);
+            Route::post('/reservations/{uuid}/{action}', [ReservationController::class, 'act'])->whereUuid('uuid')->whereIn('action', ['confirm', 'cancel', 'convert']);
 
             // Projects
             Route::apiResource('projects', ProjectController::class)

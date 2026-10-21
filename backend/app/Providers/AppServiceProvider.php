@@ -115,7 +115,7 @@ class AppServiceProvider extends ServiceProvider
          * they were never written for: without this a sales manager who is granted `leads.edit`
          * would be refused by a policy that only knows "admin, manager or the lead's owner".
          */
-        Gate::before(fn ($user) => $user instanceof User && $user->role?->usesMatrix() ? true : null);
+        Gate::before(fn ($user) => $user instanceof User && $user->usesMatrix() ? true : null);
 
         Gate::policy(AutomationRule::class, AutomationRulePolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);

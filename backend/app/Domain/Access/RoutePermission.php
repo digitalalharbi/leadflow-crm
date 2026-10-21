@@ -30,7 +30,7 @@ class RoutePermission
         'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share',
         'automation' => 'automation', 'scheduled-actions' => 'automation',
         'integrations' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
-        'users' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
+        'users' => 'users', 'access' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
     ];
 
     /** @return string|null "resource.action", or null for a path no area claims; '' for an open one */

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -29,6 +30,7 @@ class UserResource extends JsonResource
             'partner' => $this->whenLoaded('partner', fn () => $this->partner ? ['id' => $this->partner->uuid, 'name' => $this->partner->name] : null, null),
             'project_ids' => $this->whenLoaded('projects', fn () => $this->projects->pluck('uuid')->all(), []),
             'permissions' => $this->when($request->user()?->role?->managesTenant() === true, fn () => Permissions::forUser($this->resource)),
+            'access_role' => AccessResolver::customRole($this->resource)?->uuid,
             // Empty means every language, the same way empty coverage means
             // every city. Distinct from `locale`, which is this person's own
             // choice of interface language and says nothing about who they can

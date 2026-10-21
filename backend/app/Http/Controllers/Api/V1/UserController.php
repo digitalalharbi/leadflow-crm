@@ -6,6 +6,7 @@ use App\Domain\Access\Permissions;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\AccessRole;
 use App\Models\Partner;
 use App\Models\Project;
 use App\Models\User;
@@ -80,12 +81,16 @@ class UserController extends Controller
                 Rule::unique('users', 'email')->where('tenant_id', $tenantId)->whereNull('deleted_at'),
             ],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', Rule::in(Role::tenantRoles())],
+            'role' => ['required_without:access_role_id', Rule::in(Role::tenantRoles())],
+            // A role the workspace built; it brings the built-in role it behaves like.
+            'access_role_id' => ['sometimes', 'nullable', 'uuid'],
             'phone' => ['nullable', 'string', 'max:32'],
             'project_ids' => ['sometimes', 'array', 'max:200'],
             'project_ids.*' => ['uuid'],
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
+
+        $this->applyAccessRole($data, $tenantId);
 
         $user = User::create([
             'tenant_id' => $tenantId,
@@ -93,6 +98,7 @@ class UserController extends Controller
             'email' => strtolower($data['email']),
             'password' => $data['password'],
             'role' => $data['role'],
+            'access_role_id' => $data['access_role_id'] ?? null,
             'phone' => $data['phone'] ?? null,
             'partner_id' => $this->partnerId($data),
             'is_active' => true,
@@ -135,6 +141,7 @@ class UserController extends Controller
             'phone' => ['nullable', 'string', 'max:32'],
             'locale' => ['nullable', 'in:ar,en'],
             'role' => ['sometimes', Rule::in(Role::tenantRoles())],
+            'access_role_id' => ['sometimes', 'nullable', 'uuid'],
             'is_active' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'string', 'min:8'],
             // The projects a project-scoped role (project manager, client, broker) is limited to.
@@ -185,7 +192,7 @@ class UserController extends Controller
         ]);
 
         // Only an admin changes roles, activation or project scope, and never their own role.
-        if ((isset($data['role']) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
+        if ((isset($data['role']) || array_key_exists('access_role_id', $data) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
             throw ValidationException::withMessages(['role' => ['Only an admin can change roles.']]);
         }
 
@@ -207,7 +214,9 @@ class UserController extends Controller
             throw ValidationException::withMessages(['is_active' => ['You cannot deactivate your own account.']]);
         }
 
-        if ($user->id === $request->user()->id && isset($data['role']) && $data['role'] !== $user->role->value) {
+        $this->applyAccessRole($data, $user->tenant_id);
+
+        if ($user->id === $request->user()->id && (isset($data['role']) && $data['role'] !== $user->role->value || array_key_exists('access_role_id', $data) && $data['access_role_id'] !== $user->access_role_id)) {
             throw ValidationException::withMessages(['role' => ['You cannot change your own role.']]);
         }
 
@@ -239,8 +248,8 @@ class UserController extends Controller
             $this->audit->log('user.deactivated', $request->user(), $user);
         }
 
-        if (isset($data['role'])) {
-            $this->audit->log('user.role_changed', $request->user(), $user, ['role' => $data['role']]);
+        if (isset($data['role']) || array_key_exists('access_role_id', $data)) {
+            $this->audit->log('user.role_changed', $request->user(), $user, ['role' => $data['role'] ?? $user->role->value, 'access_role_id' => $data['access_role_id'] ?? null]);
         }
 
         return ApiResponse::success(['user' => new UserResource($user->fresh()->load(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name']))]);
@@ -268,6 +277,32 @@ class UserController extends Controller
         return filled($data['partner_id'] ?? null) ? Partner::where('uuid', $data['partner_id'])->value('id') : null;
     }
 
+    /**
+     * A role the workspace built brings the built-in role it behaves like; choosing a built-in
+     * role clears it. Resolved here so the rest of the request only sees `role` and `access_role_id`.
+     *
+     * @param  array<string,mixed>  $data
+     */
+    private function applyAccessRole(array &$data, int $tenantId): void
+    {
+        if (array_key_exists('access_role_id', $data) && $data['access_role_id'] !== null) {
+            $custom = AccessRole::where('tenant_id', $tenantId)->where('uuid', $data['access_role_id'])->first();
+
+            if ($custom === null) {
+                throw ValidationException::withMessages(['access_role_id' => ['Unknown role.']]);
+            }
+
+            $data['role'] = $custom->base_role;
+            $data['access_role_id'] = $custom->id;
+
+            return;
+        }
+
+        if (isset($data['role']) || array_key_exists('access_role_id', $data)) {
+            $data['access_role_id'] = null;
+        }
+    }
+
     /** The projects somebody is given — only this workspace's, and every change on the record. */
     private function giveProjects(Request $request, User $user, ?array $uuids): void
     {
@@ -292,6 +327,11 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        return ApiResponse::success(['roles' => Permissions::matrix(), 'resources' => config('permissions.resources'), 'actions' => config('permissions.actions')]);
+        $built = AccessRole::where('tenant_id', $request->user()->tenant_id)->orderBy('name')->get()->map(fn (AccessRole $r) => [
+            'role' => $r->key, 'id' => $r->uuid, 'custom' => true, 'label' => $r->name, 'description' => $r->description,
+            'scoped' => $r->project_scoped, 'external' => $r->external, 'base_role' => $r->base_role, 'grants' => $r->grants ?? [],
+        ]);
+
+        return ApiResponse::success(['roles' => array_merge(Permissions::matrix(), $built->all()), 'resources' => config('permissions.resources'), 'actions' => config('permissions.actions')]);
     }
 }

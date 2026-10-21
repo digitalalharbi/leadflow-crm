@@ -69,6 +69,10 @@ export interface User {
   permissions?: string[]
   /** Kinds of data the API will not send them: contacts, spend, revenue. */
   hidden_data?: ('contacts' | 'spend' | 'revenue')[]
+  /** Pieces of the interface switched off for this person (keys like `dashboard.kpi.revenue`). Absent: none. */
+  hidden_elements?: string[]
+  /** The role the workspace built for them (its id), when it is not a built-in one. */
+  access_role?: string | null
   /** The projects a project-scoped role was given (uuids); null for everyone else. */
   project_scope?: string[] | null
   /** On a user in the team list: the projects that person was given. */

@@ -11,6 +11,7 @@ import { can, useAuth } from '@/stores/auth'
 import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
 import { InsightCards } from '@/components/dashboard/InsightCards'
 import { OpsPulse } from '@/components/dashboard/OpsPulse'
+import { Gate } from '@/components/access/Gate'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
 import { ManagerCommandCenter } from '@/components/dashboard/ManagerCommandCenter'
@@ -159,11 +160,11 @@ export function DashboardPage() {
       ) : (
         <div className="space-y-3">
           {/* Holding → company → project, when the workspace has companies at all. */}
-          <HoldingOverview />
+          <Gate element="dashboard.widget.holding"><HoldingOverview /></Gate>
 
 
           {/* The whole promise in one row: arrived → automated → reached → followed up → waiting for the team → outcome. */}
-          <JourneyStrip days={range === 'all' ? 90 : Number(range)} />
+          <Gate element="dashboard.widget.journey"><JourneyStrip days={range === 'all' ? 90 : Number(range)} /></Gate>
 
           {/*
             The reference arrangement: what needs a person (the green card), the
@@ -171,7 +172,7 @@ export function DashboardPage() {
             with. Everything on it is the same data as before, in the same
             places the tests and the links expect it.
           */}
-          <DashboardBoard data={data} trend={trend} />
+          <Gate element="dashboard.widget.board"><DashboardBoard data={data} trend={trend} /></Gate>
 
           {/*
             A brand-new workspace has nothing to show, so the first thing an
@@ -181,16 +182,16 @@ export function DashboardPage() {
           <OnboardingChecklist />
 
           {/* How today is going, and whether the machinery is healthy. */}
-          <OpsPulse />
+          <Gate element="dashboard.widget.ops_pulse"><OpsPulse /></Gate>
 
           {/* What moved outside its normal range, and the few things to look at first. */}
-          <InsightCards />
+          <Gate element="dashboard.widget.insights"><InsightCards /></Gate>
 
           {/* The manager's own screen: figures, SLA, team, sources, funnel and trend. */}
-          {can.viewReports(user) && <ManagerCommandCenter />}
+          {can.viewReports(user) && <Gate element="dashboard.widget.manager"><ManagerCommandCenter /></Gate>}
 
           {/* What has to happen today, and what is already late. */}
-          <TodayStrip data={data} today={today} />
+          <Gate element="dashboard.widget.today"><TodayStrip data={data} today={today} /></Gate>
 
           {/*
             The six analytics cards stack to roughly sixteen screens on a phone
@@ -222,7 +223,7 @@ export function DashboardPage() {
 
           <div className={cn('space-y-3', !analyticsOpen && 'hidden')}>
           <section className="grid gap-3 lg:grid-cols-2">
-            <ChartCard
+            <Gate element="dashboard.chart.funnel"><ChartCard
               title={t('dashboard.funnelTitle')}
               description={t('dashboard.funnelHint')}
               height={290}
@@ -231,7 +232,7 @@ export function DashboardPage() {
               testId="funnel-card"
             >
               <ConversionFunnel stages={data.funnel} />
-            </ChartCard>
+            </ChartCard></Gate>
 
             {/*
               Beside the funnel, because it is the question the funnel provokes.
@@ -239,7 +240,7 @@ export function DashboardPage() {
               ones that did waited three weeks for a first call — and that is
               the half somebody can act on this afternoon.
             */}
-            <ChartCard
+            <Gate element="dashboard.chart.velocity"><ChartCard
               title={t('charts.velocity.title')}
               description={t('charts.velocity.hint')}
               height={290}
@@ -260,10 +261,10 @@ export function DashboardPage() {
               }}
             >
               <VelocityChart steps={data.velocity ?? []} />
-            </ChartCard>
+            </ChartCard></Gate>
 
             {canViewReports && (
-              <ChartCard
+              <Gate element="dashboard.chart.campaign_quality"><ChartCard
                 title={t('campaignQuality.title')}
                 description={t('campaignQuality.subtitle')}
                 height={290}
@@ -278,12 +279,12 @@ export function DashboardPage() {
                 testId="campaign-card"
               >
                 <CampaignQualityChart rows={campaigns?.rows ?? []} />
-              </ChartCard>
+              </ChartCard></Gate>
             )}
           </section>
 
           {canViewReports && (
-            <ChartCard
+            <Gate element="dashboard.chart.campaign_quality"><ChartCard
               title={t('campaignQuality.matrixTitle')}
               description={t('campaignQuality.matrixHint')}
               height={270}
@@ -293,12 +294,12 @@ export function DashboardPage() {
               testId="matrix-card"
             >
               <CampaignMatrix rows={campaigns?.rows ?? []} />
-            </ChartCard>
+            </ChartCard></Gate>
           )}
 
           <section className="grid gap-3 lg:grid-cols-2">
             {canViewReports && (
-              <ChartCard
+              <Gate element="dashboard.chart.platforms"><ChartCard
                 title={t('dashboard.platformsTitle')}
                 description={t('dashboard.platformsHint')}
                 height={290}
@@ -308,11 +309,11 @@ export function DashboardPage() {
                 testId="platforms-card"
               >
                 <PlatformPerformanceChart rows={campaigns?.rows ?? []} />
-              </ChartCard>
+              </ChartCard></Gate>
             )}
 
             <div className="grid gap-3">
-              <ChartCard
+              <Gate element="dashboard.chart.lead_quality"><ChartCard
                 title={t('dashboard.qualityTitle')}
                 description={t('dashboard.qualityHint')}
                 height={120}
@@ -331,9 +332,9 @@ export function DashboardPage() {
                     to: `/leads?temperature[]=${segment.key}`,
                   }))}
                 />
-              </ChartCard>
+              </ChartCard></Gate>
 
-              <ChartCard
+              <Gate element="dashboard.chart.response_time"><ChartCard
                 title={t('dashboard.responseTitle')}
                 description={t('dashboard.responseHint')}
                 height={150}
@@ -342,7 +343,7 @@ export function DashboardPage() {
                 testId="response-card"
               >
                 <ResponseTimeChart data={data.response_time} />
-              </ChartCard>
+              </ChartCard></Gate>
             </div>
           </section>
           </div>

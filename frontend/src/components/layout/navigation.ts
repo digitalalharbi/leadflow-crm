@@ -5,6 +5,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/api'
+import { seesPage } from '@/lib/permissions'
 import { can, useAuth } from '@/stores/auth'
 
 export interface NavItem {
@@ -64,7 +65,7 @@ export function useNavigation(): Navigation {
    */
   const has = (permission: string) => can.has(user, permission)
   const item = (to: string, labelKey: string, Icon: LucideIcon, permission: string, extra: Partial<NavItem> = {}): NavItem[] =>
-    has(permission) ? [{ to, labelKey, Icon, ...extra }] : []
+    has(permission) && seesPage(user, to) ? [{ to, labelKey, Icon, ...extra }] : []
 
   const groups: NavItem[][] = [
     [
@@ -75,7 +76,7 @@ export function useNavigation(): Navigation {
       ...item('/leads', 'nav.leads', Contact2, 'leads.view'),
       ...item('/pipeline', 'nav.pipeline', Columns3, 'leads.view'),
       // The two steps between interested and sold.
-      ...(has('visits.view') || has('reservations.view') ? [{ to: '/visits', labelKey: 'nav.visits', Icon: CalendarCheck }] : []),
+      ...((has('visits.view') || has('reservations.view')) && seesPage(user, '/visits') ? [{ to: '/visits', labelKey: 'nav.visits', Icon: CalendarCheck }] : []),
       // Money and ad accounts: the people who may read them.
       ...item('/campaigns', 'nav.campaigns', Megaphone, 'campaigns.view'),
       ...item('/tracking', 'nav.tracking', Radar, 'tracking.view'),
@@ -97,6 +98,8 @@ export function useNavigation(): Navigation {
     [
       ...item('/integrations', 'nav.integrations', Plug, 'integrations.view'),
       ...item('/users', 'nav.users', Users2, 'users.view'),
+      // Building roles and deciding what each sees: the admin's.
+      ...item('/access', 'nav.access', ShieldCheck, 'users.edit'),
     ],
   ].filter((group) => group.length > 0)
 

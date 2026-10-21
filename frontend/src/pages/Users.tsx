@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FolderLock, Pencil, Plus, ShieldCheck, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { ApiError, apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -10,7 +11,7 @@ import { formatNumber, formatLastSeen } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { fetchSalesTeam } from '@/features/conversations'
 import {
-  Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
+  Badge, Button, ButtonLink, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
   Select, SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import { RolesMatrix } from '@/components/users/RolesMatrix'
@@ -21,6 +22,7 @@ import type { User } from '@/types/api'
 export function UsersPage() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const currentUser = useAuth((s) => s.user)
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
@@ -71,8 +73,12 @@ export function UsersPage() {
   // Every role the workspace offers, from the server — a role added there appears here without a release.
   const roles = useQuery({ queryKey: ['roles'], queryFn: fetchRoles, enabled: canManage, staleTime: 5 * 60_000 })
   const projects = useQuery({ queryKey: ['users-projects'], queryFn: () => apiGet<{ projects: { id: string; name: string }[] }>('/projects'), enabled: canManage })
-  const partners = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: canManage && form.role === 'broker_viewer', select: (d) => d.partners })
-  const scoped = roles.data?.roles.find((role) => role.role === form.role)?.scoped ?? false
+  const roleValue = (role: { role: string; id?: string }) => (role.id ? `custom:${role.id}` : role.role)
+  const chosen = roles.data?.roles.find((role) => roleValue(role) === form.role)
+  // A role the workspace built behaves like a built-in one: that decides what the form asks next.
+  const baseRole = chosen?.base_role ?? form.role
+  const scoped = chosen?.scoped ?? false
+  const partners = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: canManage && baseRole === 'broker_viewer', select: (d) => d.partners })
 
   /*
    * Served rather than listed here: a rep can only be matched on a language the
@@ -103,11 +109,12 @@ export function UsersPage() {
       const payload: Record<string, unknown> = {
         name: form.name,
         email: form.email,
-        role: form.role,
+        // A role the workspace built travels as its id; the server brings the built-in role it behaves like.
+        ...(form.role.startsWith('custom:') ? { access_role_id: form.role.slice(7) } : { role: form.role }),
         phone: form.phone || null,
         // The projects a scoped role is limited to; sent for everybody so that moving someone out of a scoped role clears them.
         project_ids: scoped ? projectIds : [],
-        partner_id: form.role === 'broker_viewer' ? partnerId || null : null,
+        partner_id: baseRole === 'broker_viewer' ? partnerId || null : null,
       }
 
       if (form.password) payload.password = form.password
@@ -164,7 +171,7 @@ export function UsersPage() {
 
   function openEdit(user: User) {
     setEditing(user)
-    setForm({ name: user.name, email: user.email, password: '', role: user.role, phone: user.phone ?? '' })
+    setForm({ name: user.name, email: user.email, password: '', role: user.access_role ? `custom:${user.access_role}` : user.role, phone: user.phone ?? '' })
     setCities((user.covers_cities ?? []).join('، '))
     setWeight(String(user.assignment_weight ?? 1))
     setSpeaks(user.speaks ?? [])
@@ -195,6 +202,7 @@ export function UsersPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" icon={<ShieldCheck className="size-4" />} onClick={() => setMatrixOpen(true)} data-testid="open-roles-matrix">{t('roles.matrix')}</Button>
+            {can.has(currentUser, 'users.edit') && <ButtonLink variant="outline" href="/access" data-testid="open-role-builder" onClick={(event) => { event.preventDefault(); navigate('/access') }}>{t('access.manage')}</ButtonLink>}
             {canManage && <Button icon={<Plus className="size-4" />} onClick={openCreate}>{t('users.addUser')}</Button>}
           </div>
         }
@@ -248,7 +256,7 @@ export function UsersPage() {
                         <bdi dir="ltr">{user.email}</bdi>
                       </span>
                     </Td>
-                    <Td>{t(`roles.${user.role}`)}</Td>
+                    <Td>{roles.data?.roles.find((role) => role.id && role.id === user.access_role)?.label ?? t(`roles.${user.role}`)}</Td>
                     <Td className="tabular hidden md:table-cell">
                       {formatNumber(user.leads_count ?? 0, i18n.language)}
                     </Td>
@@ -356,8 +364,8 @@ export function UsersPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               disabled={editing?.id === currentUser?.id}
             >
-              {(roles.data?.roles.map((role) => role.role) ?? ['sales', 'manager', 'admin']).map((role) => (
-                <option key={role} value={role}>{t(`roles.${role}`)}</option>
+              {(roles.data?.roles ?? [{ role: 'sales' }, { role: 'manager' }, { role: 'admin' }] as { role: string; id?: string; custom?: boolean; label?: string }[]).map((role) => (
+                <option key={roleValue(role)} value={roleValue(role)}>{role.custom ? role.label : t(`roles.${role.role}`)}</option>
               ))}
             </Select>
             <Input
@@ -370,7 +378,7 @@ export function UsersPage() {
           </div>
 
           {/* A broker login belongs to one partner: it sees their leads and their links, and nobody else's. */}
-          {form.role === 'broker_viewer' && (
+          {baseRole === 'broker_viewer' && (
             <Select label={t('roles.partner')} hint={t('roles.partnerHint')} value={partnerId} data-testid="user-partner" onChange={(e) => setPartnerId(e.target.value)}>
               <option value="">—</option>
               {(partners.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

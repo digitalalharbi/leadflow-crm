@@ -1,18 +1,20 @@
 import { create } from 'zustand'
 import { apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { disconnectEcho } from '@/lib/echo'
-import { hasAny, hasPermission } from '@/lib/permissions'
+import { hasAny, hasPermission, sees } from '@/lib/permissions'
 import type { Branding, User } from '@/types/api'
 
 interface Access {
   permissions: string[]
   hidden_data: NonNullable<User['hidden_data']>
+  hidden_elements: string[]
+  access_role: string | null
   project_scope: string[] | null
 }
 
 /** The session's access travels beside the user in the response; the rest of the app reads it off the user. */
 function withAccess(user: User, access: Partial<Access>): User {
-  return { ...user, permissions: access.permissions ?? user.permissions, hidden_data: access.hidden_data ?? user.hidden_data, project_scope: access.project_scope === undefined ? user.project_scope : access.project_scope }
+  return { ...user, permissions: access.permissions ?? user.permissions, hidden_data: access.hidden_data ?? user.hidden_data, hidden_elements: access.hidden_elements ?? user.hidden_elements, access_role: access.access_role === undefined ? user.access_role : access.access_role, project_scope: access.project_scope === undefined ? user.project_scope : access.project_scope }
 }
 
 interface LoginResponse extends Partial<Access> {
@@ -140,6 +142,8 @@ export const can = {
   /** Any permission by name — `can.has(user, 'campaigns.edit')`. The helpers below are the common ones. */
   has: hasPermission,
   any: hasAny,
+  /** A piece of the interface the workspace shows this person — `can.see(user, 'dashboard.kpi.revenue')`. */
+  see: sees,
   manageTenant: (user: User | null) => hasPermission(user, 'settings.edit'),
   /** Reads leads beyond their own (everyone but a sales rep; project scope narrows the rest on the server). */
   seeAllLeads: (user: User | null) => (user?.permissions ? user.role !== 'sales' && hasPermission(user, 'leads.view') : user?.role === 'admin' || user?.role === 'manager'),

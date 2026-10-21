@@ -14,7 +14,7 @@ class AuditTrailController extends Controller
 {
     public function __invoke(Request $request, AuditTrail $trail)
     {
-        abort_unless($request->user()->isAdmin() || $request->user()->isManager() || $request->user()->role?->usesMatrix(), 403);
+        abort_unless($request->user()->isAdmin() || $request->user()->isManager() || $request->user()->usesMatrix(), 403);
 
         $f = $request->validate([
             'category' => ['nullable', Rule::in(AuditTrail::CATEGORIES)],

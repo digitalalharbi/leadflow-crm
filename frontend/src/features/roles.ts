@@ -2,7 +2,11 @@ import { apiGet } from '@/lib/api'
 import type { UserRole } from '@/types/api'
 
 export interface RoleInfo {
-  role: UserRole
+  role: UserRole | string
+  /** A role the workspace built: the id to hand a user, and the built-in role it behaves like. */
+  id?: string
+  custom?: boolean
+  base_role?: UserRole
   label: string
   description: string | null
   /** Sees only the projects it was given. */

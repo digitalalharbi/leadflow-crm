@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
@@ -97,7 +98,9 @@ class AuthController extends Controller
             // projects they are limited to (null: all of them).
             'permissions' => Permissions::forUser($user),
             'hidden_data' => Permissions::hiddenData($user),
-            'project_scope' => $user->role?->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
+            'hidden_elements' => Permissions::hiddenElements($user),
+            'access_role' => AccessResolver::customRole($user)?->uuid,
+            'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             /*
              * The language this workspace itself works in, read off its default
              * country code by the same table that reads a customer's number.
@@ -123,7 +126,9 @@ class AuthController extends Controller
             // projects they are limited to (null: all of them).
             'permissions' => Permissions::forUser($user),
             'hidden_data' => Permissions::hiddenData($user),
-            'project_scope' => $user->role?->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
+            'hidden_elements' => Permissions::hiddenElements($user),
+            'access_role' => AccessResolver::customRole($user)?->uuid,
+            'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             // The language this workspace itself works in — see login, which
             // sends the same field; the SPA re-hydrates from here on reload.
             'workspace_language' => app(PhoneLanguage::class)

@@ -24,7 +24,9 @@ class LiveReport
     /** @return array<string,mixed> */
     public function build(ReportShare $share): array
     {
-        $on = array_keys(array_filter($share->sections ?? []));
+        // A partner's report is its own leads and nothing else: see ReportTemplates::effective().
+        $partner = $share->partner_id ? $share->partner : null;
+        $on = array_keys(array_filter(ReportTemplates::effective($share->sections ?? [], $partner)));
         $has = fn (string $section) => in_array($section, $on, true);
 
         $to = CarbonImmutable::today()->endOfDay();
@@ -35,7 +37,7 @@ class LiveReport
 
         // Volumes and revenue are every lead that arrived, whatever brought it; the campaign
         // table is the part that is about campaigns. Costs divide the campaign spend by those.
-        $leads = fn () => Lead::query()->reorder()->whereBetween('leads.created_at', [$from, $to])->when($share->project_id, fn ($q) => $q->where('leads.project_id', $share->project_id));
+        $leads = fn () => Lead::query()->reorder()->whereBetween('leads.created_at', [$from, $to])->when($share->project_id, fn ($q) => $q->where('leads.project_id', $share->project_id))->when($share->partner_id, fn ($q) => $q->where('leads.partner_id', $share->partner_id));
         $counts = LeadFunnel::counts($leads())['steps'];
         $earned = round(((int) $leads()->where('leads.status', 'won')->sum('deal_value_minor')) / 100, 2);
         $totals = [

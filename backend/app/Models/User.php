@@ -27,7 +27,7 @@ class User extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
-        'covers_cities', 'assignment_weight', 'speaks', 'handles', 'notification_prefs',
+        'covers_cities', 'assignment_weight', 'speaks', 'handles', 'notification_prefs', 'partner_id',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -54,6 +54,11 @@ class User extends Authenticatable
     public function companies(): BelongsToMany
     {
         return $this->belongsToMany(Company::class);
+    }
+
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class)->withTrashed();
     }
 
     public function projects(): BelongsToMany

@@ -73,6 +73,8 @@ export interface User {
   project_scope?: string[] | null
   /** On a user in the team list: the projects that person was given. */
   project_ids?: string[]
+  /** On a broker login: the partner whose leads and links are all they see. */
+  partner?: { id: string; name: string } | null
   /** Cities this rep sells in. Empty means every city. */
   covers_cities?: string[]
   /** Which kinds of deal this rep takes (`buy`, `rent`). Empty means every kind. */

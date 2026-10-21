@@ -27,7 +27,7 @@ class RoutePermission
         'campaigns' => 'campaigns', 'campaign-spend' => 'campaigns', 'ad-connections' => 'campaigns', 'creatives' => 'campaigns',
         'creative-drafts' => 'campaigns', 'action-proposals' => 'campaigns', 'agents' => 'campaigns', 'agent-reports' => 'campaigns',
         'client-rules' => 'campaigns', 'conversions' => 'campaigns',
-        'tracking' => 'tracking', 'reports' => 'analytics', 'report-shares' => 'reports_share',
+        'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share',
         'automation' => 'automation', 'scheduled-actions' => 'automation',
         'integrations' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
         'users' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
@@ -64,6 +64,11 @@ class RoutePermission
 
         if ($segments[0] === 'leads' && ($segments[1] ?? null) === 'saved-views') {
             $area = 'leads';
+        }
+
+        // How platforms are doing and who gets the credit are analyses, not links: they take the analytics permission.
+        if ($segments[0] === 'tracking' && in_array($segments[1] ?? '', ['health', 'attribution'], true)) {
+            $area = 'analytics';
         }
 
         if ($area === null) {

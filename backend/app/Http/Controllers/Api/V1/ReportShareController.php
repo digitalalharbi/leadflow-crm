@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
+use App\Models\Partner;
 use App\Models\Project;
 use App\Models\ReportShare;
 use App\Services\AuditLogger;
@@ -26,7 +27,7 @@ class ReportShareController extends Controller
         $this->authorize('viewAny', ReportShare::class);
 
         return ApiResponse::success([
-            'shares' => ReportShare::query()->with('project:id,uuid,name')->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
+            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
             'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key)])->values(),
             'sections' => ReportTemplates::SECTIONS,
             'money' => ReportTemplates::MONEY,
@@ -44,6 +45,7 @@ class ReportShareController extends Controller
             'sections' => isset($data['sections']) ? ReportTemplates::normalise($data['sections']) : ReportTemplates::sectionsFor($data['template']),
             'days' => $data['days'] ?? 30,
             'project_id' => $this->projectId($data),
+            'partner_id' => $this->partnerId($data),
             'expires_at' => $data['expires_at'] ?? null,
             'created_by' => $request->user()->id,
         ]);
@@ -53,7 +55,7 @@ class ReportShareController extends Controller
 
         $this->audit->log('report_share.created', $request->user(), $share, ['after' => $this->trail($share)]);
 
-        return ApiResponse::created(['share' => $this->present($share->load('project'))]);
+        return ApiResponse::created(['share' => $this->present($share->load('project', 'partner'))]);
     }
 
     public function update(Request $request, string $uuid)
@@ -78,6 +80,10 @@ class ReportShareController extends Controller
             $share->project_id = $this->projectId($data);
         }
 
+        if (array_key_exists('partner_id', $data)) {
+            $share->partner_id = $this->partnerId($data);
+        }
+
         if (array_key_exists('expires_at', $data)) {
             $share->expires_at = $data['expires_at'];
         }
@@ -90,7 +96,7 @@ class ReportShareController extends Controller
         $share->save();
         $this->audit->log('report_share.updated', $request->user(), $share, ['before' => $before, 'after' => $this->trail($share)]);
 
-        return ApiResponse::success(['share' => $this->present($share->load('project'))]);
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
     }
 
     /** Shut the door: the link answers "gone" from now on, and the record stays. */
@@ -102,7 +108,7 @@ class ReportShareController extends Controller
         $share->forceFill(['revoked_at' => now()])->save();
         $this->audit->log('report_share.revoked', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
-        return ApiResponse::success(['share' => $this->present($share->load('project'))]);
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
     }
 
     /** A new link in place of the old: whoever has the old one is locked out, and a revoked report is open again. */
@@ -116,7 +122,7 @@ class ReportShareController extends Controller
         $share->save();
         $this->audit->log('report_share.regenerated', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
-        return ApiResponse::success(['share' => $this->present($share->load('project'))]);
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
     }
 
     public function destroy(Request $request, string $uuid)
@@ -142,9 +148,15 @@ class ReportShareController extends Controller
             'sections.*' => ['boolean'],
             'days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'project_id' => ['sometimes', 'nullable', 'uuid'],
+            'partner_id' => ['sometimes', 'nullable', 'uuid'],
             'password' => ['sometimes', 'nullable', 'string', 'min:4', 'max:100'],
             'expires_at' => ['sometimes', 'nullable', 'date', 'after:now'],
         ]);
+    }
+
+    private function partnerId(array $data): ?int
+    {
+        return empty($data['partner_id']) ? null : Partner::where('uuid', $data['partner_id'])->firstOrFail()->id;
     }
 
     private function projectId(array $data): ?int
@@ -161,7 +173,7 @@ class ReportShareController extends Controller
     {
         return [
             'name' => $share->name, 'template' => $share->template, 'sections' => $share->sections, 'days' => $share->days,
-            'project_id' => $share->project_id, 'expires_at' => $share->expires_at?->toIso8601String(), 'has_password' => $share->hasPassword(),
+            'project_id' => $share->project_id, 'partner_id' => $share->partner_id, 'expires_at' => $share->expires_at?->toIso8601String(), 'has_password' => $share->hasPassword(),
         ];
     }
 
@@ -172,7 +184,9 @@ class ReportShareController extends Controller
             'id' => $share->uuid,
             'name' => $share->name,
             'template' => $share->template,
-            'sections' => $share->sections,
+            // What it really shows: for a partner's report, less than was switched on.
+            'sections' => ReportTemplates::effective($share->sections, $share->partner_id ? $share->partner : null),
+            'partner' => $share->partner_id ? ['id' => $share->partner?->uuid, 'name' => $share->partner?->name, 'show_revenue' => (bool) $share->partner?->show_revenue] : null,
             'days' => $share->days,
             'project' => $share->relationLoaded('project') && $share->project ? ['id' => $share->project->uuid, 'name' => $share->project->name] : null,
             'url' => $share->url(),

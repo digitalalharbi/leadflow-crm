@@ -9,7 +9,8 @@ import { AttributionPanel } from '@/components/tracking/AttributionPanel'
 import { HealthPanel } from '@/components/tracking/HealthPanel'
 import { LinkCard } from '@/components/tracking/LinkCard'
 import { LinkDrawer } from '@/components/tracking/LinkDrawer'
-import { fetchLinks } from '@/features/tracking'
+import { QrDialog } from '@/components/tracking/QrDialog'
+import { fetchLinks, type TrackingLink } from '@/features/tracking'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -28,13 +29,17 @@ export function TrackingPage() {
   const { t, i18n } = useTranslation()
   const user = useAuth((s) => s.user)
   const toast = useUi((s) => s.toast)
-  const canEdit = can.manageProjects(user)
-  const canSee = can.viewReports(user)
+  const canEdit = can.has(user, 'tracking.create')
+  const canSee = can.has(user, 'tracking.view')
+  // How platforms are doing and who gets the credit are analyses: they take the reports permission.
+  const analytics = can.viewReports(user)
+  const tabs = TABS.filter((key) => key === 'links' || analytics)
 
   const [tab, setTab] = useState<Tab>('links')
   const [days, setDays] = useState(30)
   const [openId, setOpenId] = useState<string | null>(null)
   const [drawer, setDrawer] = useState(false)
+  const [qr, setQr] = useState<TrackingLink | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['tracking-links', days], queryFn: () => fetchLinks(days), enabled: canSee })
 
@@ -42,7 +47,7 @@ export function TrackingPage() {
   if (!canSee) return <Navigate to="/" replace />
 
   const links = data?.links ?? []
-  const sum = (key: 'clicks' | 'visitors' | 'leads' | 'won' | 'revenue') => links.reduce((n, l) => n + l.stats[key], 0)
+  const sum = (key: 'clicks' | 'visitors' | 'leads' | 'won' | 'revenue') => links.reduce((n, l) => n + (l.stats[key] ?? 0), 0)
 
   const copy = async (url: string) => {
     try {
@@ -69,7 +74,7 @@ export function TrackingPage() {
         }
       />
 
-      <Tabs testId="tracking-tabs" value={tab} onChange={setTab} items={TABS.map((key) => ({ key, label: t(`tracking.tabs.${key}`) }))} />
+      <Tabs testId="tracking-tabs" value={tab} onChange={setTab} items={tabs.map((key) => ({ key, label: t(`tracking.tabs.${key}`) }))} />
 
       <div className="mt-3 space-y-3">
         {tab === 'links' && (
@@ -79,7 +84,7 @@ export function TrackingPage() {
               <KpiCard testId="tk-visitors" valueTestId="tk-visitors-value" label={t('tracking.stat.visitors')} value={formatNumber(sum('visitors'), i18n.language)} icon={Eye} />
               <KpiCard testId="tk-leads" valueTestId="tk-leads-value" label={t('tracking.stat.leads')} value={formatNumber(sum('leads'), i18n.language)} icon={Users} />
               <KpiCard testId="tk-won" valueTestId="tk-won-value" label={t('tracking.stat.won')} value={formatNumber(sum('won'), i18n.language)} icon={Target} />
-              <KpiCard testId="tk-revenue" valueTestId="tk-revenue-value" label={t('tracking.stat.revenue')} value={formatMoneyCompact(sum('revenue'), 'SAR', i18n.language)} icon={TrendingUp} />
+              {can.has(user, 'revenue.view') && <KpiCard testId="tk-revenue" valueTestId="tk-revenue-value" label={t('tracking.stat.revenue')} value={formatMoneyCompact(sum('revenue'), 'SAR', i18n.language)} icon={TrendingUp} />}
             </div>
 
             {isLoading ? <Skeleton className="h-48" /> : isError ? (
@@ -89,7 +94,7 @@ export function TrackingPage() {
             ) : (
               <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="link-list">
                 {links.map((link) => (
-                  <LinkCard key={link.id} link={link} onOpen={() => { setOpenId(link.id); setDrawer(true) }} onCopy={() => void copy(link.url)} />
+                  <LinkCard key={link.id} link={link} onOpen={() => { setOpenId(link.id); setDrawer(true) }} onCopy={() => void copy(link.url)} onQr={() => setQr(link)} />
                 ))}
               </ul>
             )}
@@ -100,6 +105,7 @@ export function TrackingPage() {
         {tab === 'attribution' && <AttributionPanel days={days} />}
       </div>
 
+      <QrDialog link={qr} onClose={() => setQr(null)} />
       <LinkDrawer open={drawer} linkId={openId} canEdit={canEdit} onClose={() => setDrawer(false)} />
     </>
   )

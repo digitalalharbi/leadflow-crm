@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { apiGet, apiLogin } from '../fixtures/api'
+import { apiGet, apiLogin, apiPost } from '../fixtures/api'
 import { ALPHA } from '../fixtures/data'
 import { authenticateAs } from '../fixtures/pages'
 import { artisan, resetFixtures } from '../fixtures/seed'
@@ -102,10 +102,25 @@ test.describe('Roles and permissions', () => {
     }
   })
 
-  test('a broker sees the second project and not the first', async () => {
+  test('a broker sees the second project and not the first — and only what its partner brought', async () => {
+    // Linked to a partner who brought two leads of the second project.
+    const admin = await apiLogin(ALPHA.admin.email)
+
+    try {
+      const partner = (await (await apiPost(admin, '/api/v1/partners', { name: 'وسيط الدور', type: 'broker' })).json()).data.partner.id as string
+      artisan(['tinker', '--execute', `
+        $p = \\App\\Models\\Partner::withoutGlobalScopes()->where('uuid', '${partner}')->firstOrFail();
+        $project = \\App\\Models\\Project::withoutGlobalScopes()->where('name', '${ALPHA.projects[1]}')->firstOrFail();
+        \\App\\Models\\Lead::withoutGlobalScopes()->where('project_id', $project->id)->orderBy('id')->limit(2)->update(['partner_id' => $p->id]);
+        \\App\\Models\\User::withoutGlobalScopes()->where('email', '${ALPHA.broker.email}')->update(['partner_id' => $p->id]);
+      `])
+    } finally {
+      await admin.dispose()
+    }
+
     const list = await asApi<{ project: { name: string } | null }[]>(ALPHA.broker.email, '/api/v1/leads')
 
-    expect(list.length).toBeGreaterThan(0)
+    expect(list).toHaveLength(2)
     expect(new Set(list.map((lead) => lead.project?.name))).toEqual(new Set([ALPHA.projects[1]]))
   })
 

@@ -6,6 +6,7 @@ use App\Domain\Access\Permissions;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\Partner;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -26,7 +27,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->where('tenant_id', $request->user()->tenant_id)
-            ->with('projects:projects.id,projects.uuid')
+            ->with(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name'])
             ->withCount('assignedLeads as leads_count')
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->input('role')))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s
@@ -83,6 +84,7 @@ class UserController extends Controller
             'phone' => ['nullable', 'string', 'max:32'],
             'project_ids' => ['sometimes', 'array', 'max:200'],
             'project_ids.*' => ['uuid'],
+            'partner_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
 
         $user = User::create([
@@ -92,6 +94,7 @@ class UserController extends Controller
             'password' => $data['password'],
             'role' => $data['role'],
             'phone' => $data['phone'] ?? null,
+            'partner_id' => $this->partnerId($data),
             'is_active' => true,
         ]);
 
@@ -137,6 +140,8 @@ class UserController extends Controller
             // The projects a project-scoped role (project manager, client, broker) is limited to.
             'project_ids' => ['sometimes', 'array', 'max:200'],
             'project_ids.*' => ['uuid'],
+            // The partner a broker login belongs to: their leads and links, and nobody else's.
+            'partner_id' => ['sometimes', 'nullable', 'uuid'],
 
             /*
              * Away until, rather than away.
@@ -180,7 +185,7 @@ class UserController extends Controller
         ]);
 
         // Only an admin changes roles, activation or project scope, and never their own role.
-        if ((isset($data['role']) || isset($data['is_active']) || array_key_exists('project_ids', $data)) && ! $request->user()->isAdmin()) {
+        if ((isset($data['role']) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
             throw ValidationException::withMessages(['role' => ['Only an admin can change roles.']]);
         }
 
@@ -213,6 +218,15 @@ class UserController extends Controller
         $projectIds = $data['project_ids'] ?? null;
         unset($data['project_ids']);
 
+        if (array_key_exists('partner_id', $data)) {
+            $before = $user->partner_id;
+            $data['partner_id'] = $this->partnerId($data);
+
+            if ($before !== $data['partner_id']) {
+                $this->audit->log('user.partner_changed', $request->user(), $user, ['before' => $before, 'after' => $data['partner_id']]);
+            }
+        }
+
         $user->update($data);
 
         if ($projectIds !== null) {
@@ -229,7 +243,7 @@ class UserController extends Controller
             $this->audit->log('user.role_changed', $request->user(), $user, ['role' => $data['role']]);
         }
 
-        return ApiResponse::success(['user' => new UserResource($user->fresh()->load('projects:projects.id,projects.uuid'))]);
+        return ApiResponse::success(['user' => new UserResource($user->fresh()->load(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name']))]);
     }
 
     public function destroy(Request $request, string $uuid)
@@ -246,6 +260,12 @@ class UserController extends Controller
         $this->audit->log('user.deleted', $request->user(), $user);
 
         return ApiResponse::success(null, 'User removed.');
+    }
+
+    /** A partner's uuid → id, inside this workspace only. */
+    private function partnerId(array $data): ?int
+    {
+        return filled($data['partner_id'] ?? null) ? Partner::where('uuid', $data['partner_id'])->value('id') : null;
     }
 
     /** The projects somebody is given — only this workspace's, and every change on the record. */

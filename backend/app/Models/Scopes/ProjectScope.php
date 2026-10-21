@@ -21,13 +21,29 @@ class ProjectScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
-        $ids = app(ProjectContext::class)->ids();
+        $context = app(ProjectContext::class);
+        $ids = $context->ids();
+        $partner = $context->partnerId();
+        $table = $model->getTable();
+
+        // A broker sees what their own partner brought: their leads, and what hangs off them.
+        if ($partner !== null) {
+            if ($table === 'leads') {
+                $builder->where('leads.partner_id', $partner);
+            } elseif ($table === 'tracking_links') {
+                // Their own links, wherever they point: what is theirs is decided by the partner, not the project.
+                $builder->where('tracking_links.partner_id', $partner);
+
+                return;
+            } elseif (in_array($table, ['appointments', 'follow_ups', 'reservations'], true)) {
+                $builder->whereIn("{$table}.lead_id", fn ($q) => $q->select('leads.id')->from('leads')->where('leads.partner_id', $partner));
+            }
+        }
 
         if ($ids === null) {
             return;
         }
 
-        $table = $model->getTable();
         $ids = $ids ?: [-1];
 
         if ($model instanceof Project) {

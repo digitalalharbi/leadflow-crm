@@ -7,6 +7,7 @@ import {
   createShare, deleteShare, fetchShares, MONEY_SECTIONS, REPORT_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, updateShare,
   type ReportSection, type ReportShare, type ReportTemplate, type ShareStatus,
 } from '@/features/reportShares'
+import { fetchPartners } from '@/features/partners'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 import { formatLastSeen, formatDate } from '@/lib/format'
@@ -67,7 +68,7 @@ export function ShareTab() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="t-section-title truncate">{share.name}</h3>
-                  <p className="t-caption">{t(`share.template.${share.template}`)} · {t('share.lastDays', { count: share.days })}{share.project ? ` · ${share.project.name}` : ''}</p>
+                  <p className="t-caption">{t(`share.template.${share.template}`)}{share.partner ? ` · ${share.partner.name}` : ''} · {t('share.lastDays', { count: share.days })}{share.project ? ` · ${share.project.name}` : ''}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge tone={STATUS_TONE[share.status]} testId="share-status">{t(`share.status.${share.status}`)}</Badge>
@@ -129,6 +130,8 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
   const [password, setPassword] = useState('')
   const [removePassword, setRemovePassword] = useState(false)
   const [expires, setExpires] = useState(share?.expires_at?.slice(0, 10) ?? '')
+  const [partnerId, setPartnerId] = useState(share?.partner?.id ?? '')
+  const { data: partners } = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: open, select: (d) => d.partners })
 
   const pick = (key: ReportTemplate) => {
     setTemplate(key)
@@ -143,6 +146,7 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
         sections,
         days: Number(days) || 30,
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : null,
+        partner_id: template === 'partner' ? partnerId || null : null,
         ...(password ? { password } : removePassword ? { password: null } : {}),
       }
 
@@ -184,6 +188,17 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
             ))}
           </div>
         </fieldset>
+
+        {/* A partner's report: their own leads, and never the company's cost or anyone else's data. */}
+        {template === 'partner' && (
+          <div className="space-y-1" data-testid="share-partner-box">
+            <Select label={t('share.partner')} value={partnerId} data-testid="share-partner" onChange={(e) => setPartnerId(e.target.value)}>
+              <option value="">—</option>
+              {(partners ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+            <p className="t-caption">{t('share.partnerHint')}</p>
+          </div>
+        )}
 
         <fieldset className="space-y-2">
           <legend className="t-small mb-1 font-medium">{t('share.step.sections')}</legend>

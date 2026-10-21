@@ -21,6 +21,19 @@ class ProjectContext
         $this->ids = $ids;
     }
 
+    /** The partner a broker is — their leads and links, and nobody else's. Null for everyone else. */
+    protected ?int $partnerId = null;
+
+    public function restrictToPartner(?int $partnerId): void
+    {
+        $this->partnerId = $partnerId;
+    }
+
+    public function partnerId(): ?int
+    {
+        return $this->partnerId;
+    }
+
     /** @return array<int,int>|null */
     public function ids(): ?array
     {
@@ -30,5 +43,6 @@ class ProjectContext
     public function clear(): void
     {
         $this->ids = null;
+        $this->partnerId = null;
     }
 }

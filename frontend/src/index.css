@@ -588,11 +588,6 @@
    * so every destination stays one press away without the page growing.
    */
   @media (min-width: 1024px) and (max-height: 860px) {
-    .rail-item {
-      width: 1.75rem;
-      height: 1.75rem;
-    }
-
     .rail-item > svg {
       width: 1rem !important;
       height: 1rem !important;
@@ -1192,7 +1187,7 @@
   [data-testid='app-header'] { height: 3.5rem; top: 0; }
   [data-testid='app-header'] .chrome-circle { width: 2.5rem; height: 2.5rem; }
   .t-page-title { font-size: 1.5rem; }
-  /* A dozen icons must fit a 768px frame without stretching the page. */
-  .rail-item { width: 2rem; height: 2rem; }
+  /* Eighteen destinations must fit a 768px frame without stretching the page: 27px targets, a pointer-only surface (the rail is hidden below `lg`). */
+  .rail-item { width: 1.6875rem; height: 1.6875rem; }
   [data-testid='icon-rail'] { width: 3.25rem; }
 }

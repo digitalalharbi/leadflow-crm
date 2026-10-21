@@ -30,8 +30,11 @@ class TrackingLink extends Model
 
     public const KINDS = ['link', 'qr'];
 
+    /** What a QR code is printed on, so a stack of flyers and a billboard can be told apart. */
+    public const PLACEMENTS = ['project', 'property', 'event', 'billboard', 'rep', 'broker', 'other'];
+
     protected $fillable = [
-        'token', 'name', 'kind', 'channel', 'project_id', 'property_id', 'campaign_id', 'ad_id', 'creative_id', 'user_id', 'partner_id',
+        'token', 'name', 'kind', 'channel', 'project_id', 'property_id', 'campaign_id', 'ad_id', 'creative_id', 'user_id', 'partner_id', 'placement',
         'landing_page', 'branch', 'destination_url', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
         'is_active', 'expires_at', 'created_by',
     ];
@@ -69,6 +72,11 @@ class TrackingLink extends Model
     public function rep(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class)->withTrashed();
     }
 
     public function events(): HasMany

@@ -15,7 +15,7 @@ class ReportShare extends Model
 {
     use BelongsToTenant, HasUuid;
 
-    protected $fillable = ['name', 'template', 'sections', 'days', 'project_id', 'expires_at', 'created_by'];
+    protected $fillable = ['name', 'template', 'sections', 'days', 'project_id', 'partner_id', 'expires_at', 'created_by'];
 
     protected $hidden = ['token_hash', 'token_enc', 'password_hash'];
 
@@ -34,6 +34,11 @@ class ReportShare extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class)->withTrashed();
+    }
+
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class)->withTrashed();
     }
 
     public function creator(): BelongsTo

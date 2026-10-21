@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/lib/api'
 import { Button, Drawer, Input, Select, Skeleton } from '@/components/ui'
 import { fetchProjects } from '@/features/leads'
-import { CHANNELS, createLink, deleteLink, fetchLink, updateLink, type Channel, type LinkInput } from '@/features/tracking'
+import { CHANNELS, createLink, deleteLink, fetchLink, PLACEMENTS, updateLink, type Channel, type LinkInput, type Placement } from '@/features/tracking'
+import { fetchPartners } from '@/features/partners'
 import { formatRelative } from '@/lib/format'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
@@ -16,26 +17,29 @@ const BLANK: LinkInput = { name: '', channel: 'meta', kind: 'link', destination_
  * Make or open a link. New: a name, a channel, a project and where it goes — the rest is optional
  * and folded away. Existing: the numbers, the two things to copy, and the last events it recorded.
  */
-export function LinkDrawer({ open, linkId, onClose, canEdit }: { open: boolean; linkId: string | null; onClose: () => void; canEdit: boolean }) {
+export function LinkDrawer({ open, linkId, onClose, canEdit, preset }: { open: boolean; linkId: string | null; onClose: () => void; canEdit: boolean; preset?: Partial<LinkInput> }) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
   const [form, setForm] = useState<LinkInput>(BLANK)
+  // By value, not identity: a caller that builds the preset inline must not reset the form on every render.
+  const presetKey = JSON.stringify(preset ?? {})
   const [error, setError] = useState<string | null>(null)
 
   const { data: projects } = useQuery({ queryKey: ['projects-simple'], queryFn: fetchProjects, enabled: open })
+  const { data: partners } = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: open, select: (d) => d.partners })
   const { data: detail, isLoading } = useQuery({ queryKey: ['tracking-link', linkId], queryFn: () => fetchLink(linkId!), enabled: open && linkId !== null })
 
   useEffect(() => {
     if (!open) return
     setError(null)
-    if (linkId === null) setForm(BLANK)
-  }, [open, linkId])
+    if (linkId === null) setForm({ ...BLANK, ...(JSON.parse(presetKey) as Partial<LinkInput>) })
+  }, [open, linkId, presetKey])
 
   useEffect(() => {
     const l = detail?.link
-    if (l) setForm({ name: l.name, channel: l.channel, kind: l.kind, project_id: l.project?.id ?? null, destination_url: l.destination_url ?? '', utm_source: l.utm.source ?? '', utm_medium: l.utm.medium ?? '', utm_campaign: l.utm.campaign ?? '', is_active: l.is_active })
+    if (l) setForm({ name: l.name, channel: l.channel, kind: l.kind, project_id: l.project?.id ?? null, partner_id: l.partner?.id ?? null, placement: l.placement ?? null, destination_url: l.destination_url ?? '', utm_source: l.utm.source ?? '', utm_medium: l.utm.medium ?? '', utm_campaign: l.utm.campaign ?? '', is_active: l.is_active })
   }, [detail])
 
   const refresh = () => {
@@ -43,7 +47,7 @@ export function LinkDrawer({ open, linkId, onClose, canEdit }: { open: boolean; 
     void queryClient.invalidateQueries({ queryKey: ['tracking-link'] })
   }
 
-  const clean = (): LinkInput => ({ ...form, destination_url: form.destination_url || null, project_id: form.project_id || null, utm_source: form.utm_source || null, utm_medium: form.utm_medium || null, utm_campaign: form.utm_campaign || null })
+  const clean = (): LinkInput => ({ ...form, destination_url: form.destination_url || null, project_id: form.project_id || null, partner_id: form.partner_id || null, placement: form.kind === 'qr' ? form.placement || null : null, utm_source: form.utm_source || null, utm_medium: form.utm_medium || null, utm_campaign: form.utm_campaign || null })
 
   const save = useMutation({
     mutationFn: () => (linkId ? updateLink(linkId, clean()) : createLink(clean())),
@@ -123,6 +127,18 @@ export function LinkDrawer({ open, linkId, onClose, canEdit }: { open: boolean; 
               <option value="link">{t('tracking.kinds.link')}</option>
               <option value="qr">{t('tracking.kinds.qr')}</option>
             </Select>
+            {/* A broker's, an influencer's, an agent's: whoever brings the customer by this link is credited with it. */}
+            <Select label={t('tracking.partner')} data-testid="link-partner" value={form.partner_id ?? ''} disabled={!canEdit} onChange={(e) => setForm((f) => ({ ...f, partner_id: e.target.value || null }))}>
+              <option value="">—</option>
+              {(partners ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+            {/* What a QR code is printed on: a flyer for a project, a stand at an event, a billboard. */}
+            {form.kind === 'qr' && (
+              <Select label={t('tracking.placement')} data-testid="link-placement" value={form.placement ?? ''} disabled={!canEdit} onChange={(e) => setForm((f) => ({ ...f, placement: (e.target.value || null) as Placement | null }))}>
+                <option value="">—</option>
+                {PLACEMENTS.map((p) => <option key={p} value={p}>{t(`tracking.placements.${p}`)}</option>)}
+              </Select>
+            )}
             <div className="sm:col-span-2">
               <Input label={t('tracking.destination')} dir="ltr" placeholder="https://" data-testid="link-destination" {...text('destination_url')} disabled={!canEdit} />
             </div>

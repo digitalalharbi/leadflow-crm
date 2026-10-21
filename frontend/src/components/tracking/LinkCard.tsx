@@ -1,4 +1,4 @@
-import { Copy, Eye, MousePointerClick, TrendingUp, Users } from 'lucide-react'
+import { Copy, Eye, HandCoins, MousePointerClick, QrCode, TrendingUp, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { platformColor } from '@/components/charts'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn'
  * One link: what it is for, how many people it drew, how many became leads and sales.
  * The three numbers that matter are large; the URL is one press from the clipboard.
  */
-export function LinkCard({ link, onOpen, onCopy }: { link: TrackingLink; onOpen: () => void; onCopy: () => void }) {
+export function LinkCard({ link, onOpen, onCopy, onQr }: { link: TrackingLink; onOpen: () => void; onCopy: () => void; onQr?: () => void }) {
   const { t, i18n } = useTranslation()
   const Icon = CHANNEL_ICON[link.channel]
   const color = CHANNEL_PLATFORM[link.channel] ? platformColor(CHANNEL_PLATFORM[link.channel]) : 'var(--color-ink-muted)'
@@ -26,7 +26,7 @@ export function LinkCard({ link, onOpen, onCopy }: { link: TrackingLink; onOpen:
           <span className="min-w-0">
             <span className="block truncate text-[1.0625rem] font-extrabold">{link.name}</span>
             <span className="block truncate text-[0.875rem] text-[var(--color-ink-subtle)]">
-              {[t(`tracking.channels.${link.channel}`), link.project?.name, link.campaign?.name].filter(Boolean).join(' · ')}
+              {[t(`tracking.channels.${link.channel}`), link.placement ? t(`tracking.placements.${link.placement}`) : null, link.project?.name, link.campaign?.name].filter(Boolean).join(' · ')}
             </span>
           </span>
         </button>
@@ -56,6 +56,12 @@ export function LinkCard({ link, onOpen, onCopy }: { link: TrackingLink; onOpen:
           <Copy className="size-4 shrink-0" aria-hidden />
           <span className="truncate" dir="ltr">/t/{link.token}</span>
         </button>
+        {link.partner && <span className="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]" data-testid={`link-partner-${link.token}`}><HandCoins className="size-3.5" aria-hidden />{link.partner.name}</span>}
+        {onQr && (
+          <button type="button" onClick={onQr} data-testid={`qr-link-${link.token}`} aria-label={t('tracking.qr.title')} className="pressable grid size-8 shrink-0 place-items-center rounded-full bg-[var(--color-surface-muted)]">
+            <QrCode className="size-4" aria-hidden />
+          </button>
+        )}
         {s.revenue > 0 && <span className="text-[0.9375rem] font-extrabold tabular-nums" dir="ltr">{formatMoneyCompact(s.revenue, 'SAR', i18n.language)}</span>}
       </div>
     </li>

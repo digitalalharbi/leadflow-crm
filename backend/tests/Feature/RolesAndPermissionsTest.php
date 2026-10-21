@@ -9,11 +9,13 @@ use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
+use App\Models\Partner;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -204,8 +206,13 @@ class RolesAndPermissionsTest extends TestCase
 
     public function test_contacts_never_reach_a_role_without_them_whichever_endpoint_it_asks(): void
     {
+        // A broker sees what their own partner brought.
+        $partner = $this->asTenant($this->t['tenant'], fn () => Partner::create(['name' => 'وسيط', 'type' => 'broker']));
+        DB::table('leads')->update(['partner_id' => $partner->id]);
+
         foreach ([Role::Finance, Role::ClientViewer, Role::BrokerViewer, Role::MarketingManager] as $role) {
             $user = $this->user($role, [$this->a, $this->b]);
+            $user->forceFill(['partner_id' => $partner->id])->save();
 
             foreach (['/leads', "/leads/{$this->inA->uuid}"] as $path) {
                 $body = json_encode($this->actingAs($user)->getJson("/api/v1{$path}")->assertOk()->json(), JSON_UNESCAPED_UNICODE);

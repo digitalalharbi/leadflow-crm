@@ -24,7 +24,7 @@ return [
 
     'resources' => [
         'dashboard', 'leads', 'visits', 'reservations', 'properties', 'projects', 'companies', 'campaigns', 'tracking',
-        'analytics', 'reports_share', 'automation', 'integrations', 'users', 'settings', 'contacts', 'spend', 'revenue',
+        'analytics', 'partners', 'reports_share', 'automation', 'integrations', 'users', 'settings', 'contacts', 'spend', 'revenue',
     ],
 
     'roles' => [
@@ -41,6 +41,7 @@ return [
             'campaigns' => ['view', 'create', 'edit', 'execute', 'approve', 'export'],
             'tracking' => ['view', 'create', 'edit', 'disable'],
             'analytics' => ['view', 'export'],
+            'partners' => ['view', 'create', 'edit', 'disable'],
             'reports_share' => ['view', 'create', 'edit', 'share', 'disable'],
             'automation' => ['view', 'create', 'edit', 'disable'],
             'users' => ['view'],
@@ -67,6 +68,7 @@ return [
             'campaigns' => ['view', 'create', 'edit', 'execute', 'approve', 'export'],
             'tracking' => ['view', 'create', 'edit', 'disable'],
             'analytics' => ['view', 'export'],
+            'partners' => ['view', 'create', 'edit', 'disable'],
             'reports_share' => ['view', 'create', 'edit', 'share', 'disable'],
             'automation' => ['view'],
             'integrations' => ['view'],
@@ -126,6 +128,8 @@ return [
 
         'broker_viewer' => [
             'dashboard' => ['view'],
+            // Their own links and QR codes (the scope narrows it to the partner they are).
+            'tracking' => ['view'],
             'leads' => ['view'],
             'visits' => ['view'],
             'reservations' => ['view'],

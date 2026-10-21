@@ -64,6 +64,8 @@ class Attribution
             'last_touch_link_id' => $last['link']->id ?? null,
             'first_touch_at' => $first['at'] ?? null,
             'last_touch_at' => $last['at'] ?? null,
+            // The partner whose link first reached them gets the credit; if that link had none, the first one that did.
+            'partner_id' => $first['link']->partner_id ?? $touches->map(fn ($t) => $t['link']->partner_id)->filter()->first(),
             'referrer' => $incoming->referrer,
             'landing_url' => $incoming->landingUrl,
             'device' => $incoming->device,

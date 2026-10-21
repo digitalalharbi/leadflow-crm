@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Role;
 use App\Support\ProjectContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -20,6 +21,11 @@ class ResolveProjectScope
         if ($user !== null && $user->role?->isProjectScoped()) {
             // No projects given means nothing to see, not everything: an empty list is a real restriction.
             $this->context->restrictTo($user->projects()->pluck('projects.id')->map(fn ($id) => (int) $id)->all());
+        }
+
+        // A broker is limited to what their own partner brought — and to nothing until they are linked to one.
+        if ($user !== null && $user->role === Role::BrokerViewer) {
+            $this->context->restrictToPartner($user->partner_id ?? -1);
         }
 
         return $next($request);

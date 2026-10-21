@@ -322,7 +322,7 @@ export function pauseAutomationPack(projectId: string) {
 }
 
 /** Every line the product draws, as the project sees it: the value in force and where it comes from. */
-export const THRESHOLD_KEYS = ['hot_from', 'warm_from', 'priority_from', 'high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes'] as const
+export const THRESHOLD_KEYS = ['hot_from', 'warm_from', 'priority_from', 'high_value_from', 'sla_minutes', 'stalled_after_days', 'max_contacts_per_day', 'cooldown_minutes', 'sla_hot_minutes', 'sla_interested_minutes', 'sla_visit_minutes', 'sla_reservation_minutes'] as const
 export type ThresholdKey = (typeof THRESHOLD_KEYS)[number]
 
 export interface ThresholdValue {

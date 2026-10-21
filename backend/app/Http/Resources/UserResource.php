@@ -23,6 +23,7 @@ class UserResource extends JsonResource
             // Empty means every city; one means an equal share.
             'covers_cities' => $this->covers_cities ?? [],
             'assignment_weight' => (int) ($this->assignment_weight ?? 1),
+            'handles' => $this->handles ?? [],
             // Empty means every language, the same way empty coverage means
             // every city. Distinct from `locale`, which is this person's own
             // choice of interface language and says nothing about who they can

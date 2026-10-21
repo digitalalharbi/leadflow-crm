@@ -23,6 +23,8 @@ class LeadMessage extends Model
         // What the customer writes is read once it is saved — after commit, off the request.
         static::created(function (self $message) {
             if (($message->direction instanceof MessageDirection ? $message->direction : MessageDirection::tryFrom((string) $message->direction)) === MessageDirection::Inbound && filled($message->body)) {
+                // Somebody owes this customer an answer from this moment: the interest SLA clock starts again.
+                Lead::withoutGlobalScopes()->whereKey($message->lead_id)->update(['last_customer_message_at' => now()]);
                 InterestEngine::touch($message->lead_id, 'reply');
                 ExtractConversationFacts::dispatch($message->lead_id)->afterCommit();
             }

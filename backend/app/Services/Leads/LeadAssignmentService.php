@@ -57,22 +57,79 @@ class LeadAssignmentService
          * language beats sharing a city, because a rep who cannot be understood
          * is no nearer for being in the same place.
          */
-        $candidates = $this->assignable($tenant);
+        $everyone = $this->assignable($tenant);
 
-        if ($candidates->isEmpty()) {
+        if ($everyone->isEmpty()) {
             return null;
         }
 
-        $candidates = $this->whoKnowsTheProject($candidates, $lead) ?? $candidates;
-        $candidates = $this->whoSpeaksTheLanguage($candidates, $lead) ?? $candidates;
-        $candidates = $this->whoSellsThere($candidates, $lead) ?? $candidates;
+        /*
+         * Every narrowing that actually changed the set is written down, so "why did this rep
+         * get it?" has an answer that is not a guess: the rules that applied, the strategy that
+         * chose among what was left, and how many were left.
+         */
+        $rules = [];
+        $candidates = $everyone;
 
-        return match ($tenant->settings?->assignment_strategy) {
-            'round_robin' => $this->rotateAmong($tenant, $candidates),
+        foreach ([
+            'project' => fn ($c) => $this->whoKnowsTheProject($c, $lead),
+            'language' => fn ($c) => $this->whoSpeaksTheLanguage($c, $lead),
+            'region' => fn ($c) => $this->whoSellsThere($c, $lead),
+            'type' => fn ($c) => $this->whoTakesTheType($c, $lead),
+        ] as $rule => $narrow) {
+            $narrowed = $narrow($candidates);
+
+            if ($narrowed !== null) {
+                $candidates = $narrowed;
+                $rules[] = $rule;
+            }
+        }
+
+        $strategy = match ($tenant->settings?->assignment_strategy) {
+            'round_robin' => 'round_robin',
+            'performance' => 'performance',
             // Workload is the default: taking turns lets one rep's backlog grow
             // while another sits idle, and keeps feeding leads to someone away.
+            default => 'workload',
+        };
+
+        $picked = match ($strategy) {
+            'round_robin' => $this->rotateAmong($tenant, $candidates),
+            'performance' => $this->workload->pickByPerformance($tenant, $candidates),
             default => $this->workload->pick($tenant, $candidates),
         };
+
+        $this->lastWhy = $picked ? [
+            'user_id' => $picked->id,
+            'rules' => $rules,
+            'strategy' => $strategy,
+            'candidates' => $candidates->count(),
+            // Someone was away: the choice was made among those who are in.
+            'availability' => $everyone->count() < User::where('tenant_id', $tenant->id)->whereIn('role', [Role::Sales->value, Role::Manager->value])->where('is_active', true)->count(),
+        ] : null;
+
+        return $picked;
+    }
+
+    /** The reasons behind the most recent pick, until `assign()` writes them onto the lead's story. */
+    private ?array $lastWhy = null;
+
+    /**
+     * The reps who take this kind of deal. Null when the lead has not said, nobody has said what
+     * they take, or nobody left takes it — the lead still needs an owner.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoTakesTheType(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        if (blank($lead?->transaction_type)) {
+            return null;
+        }
+
+        $takers = $candidates->filter(fn (User $user) => $user->handlesType($lead->transaction_type))->values();
+
+        return $takers->isEmpty() || $takers->count() === $candidates->count() ? null : $takers;
     }
 
     /**
@@ -270,6 +327,8 @@ class LeadAssignmentService
     public function assign(Lead $lead, ?User $assignee, ?User $actor = null, bool $notify = true): Lead
     {
         $previous = $lead->assigned_to;
+        $why = $this->lastWhy;
+        $this->lastWhy = null;
 
         $lead->assigned_to = $assignee?->id;
         $lead->assigned_at = $assignee ? now() : null;
@@ -281,7 +340,8 @@ class LeadAssignmentService
                 ActivityType::Assigned,
                 $actor,
                 null,
-                ['assigned_to' => $assignee->id, 'assigned_to_name' => $assignee->name, 'from' => $previous],
+                ['assigned_to' => $assignee->id, 'assigned_to_name' => $assignee->name, 'from' => $previous]
+                + ($why && $why['user_id'] === $assignee->id ? ['why' => $why] : []),
             );
 
             if ($notify) {

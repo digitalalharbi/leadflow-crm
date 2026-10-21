@@ -20,6 +20,7 @@ use App\Models\Lead;
  *   recency     how recently they spoke                     up to 10
  *   deal value  what it is worth                            up to 8
  *   campaign    quality of the campaign that brought them   -3 … +5
+ *   interest    how far along they are (a reservation asked for outranks a warm lead)  up to 20
  *
  * The three biggest contributions are named in the result, in words, so the
  * rep sees why the queue is in the order it is.
@@ -44,9 +45,10 @@ class QueueRank
             'recency' => $this->recency($lead),
             'value' => $this->value($lead),
             'campaign' => $this->campaign($lead),
+            'interest' => InterestSla::rankPoints($lead->interest_level),
         ];
 
-        $within = $parts['score'] + $parts['intent'] + $parts['engagement'] + $parts['recency'] + $parts['value'] + $parts['campaign'];
+        $within = $parts['score'] + $parts['intent'] + $parts['engagement'] + $parts['recency'] + $parts['value'] + $parts['campaign'] + $parts['interest'];
 
         $reasons = collect($parts)
             ->map(fn (int $points, string $key) => ['key' => $key, 'points' => $points])
@@ -80,6 +82,12 @@ class QueueRank
             'recency' => 'ردّ مؤخرًا',
             'value' => 'قيمة صفقة كبيرة',
             'campaign' => 'من حملة جيدة',
+            'interest' => match ($lead->interest_level) {
+                'reservation_ready' => 'يريد الحجز',
+                'visit_ready' => 'يريد زيارة',
+                'hot' => 'عميل ساخن',
+                default => 'عميل مهتم',
+            },
             default => null,
         };
     }

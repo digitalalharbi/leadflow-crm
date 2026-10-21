@@ -65,6 +65,8 @@ export interface User {
   away_until?: string | null
   /** Cities this rep sells in. Empty means every city. */
   covers_cities?: string[]
+  /** Which kinds of deal this rep takes (`buy`, `rent`). Empty means every kind. */
+  handles?: ('buy' | 'rent')[]
   /** How many leads they take for every one an ordinary rep takes. */
   assignment_weight?: number
   /**
@@ -599,6 +601,7 @@ export interface TenantSettings {
   timezone: string
   default_country_code: string
   assignment_mode: 'manual' | 'round_robin'
+  assignment_strategy?: 'workload' | 'round_robin' | 'performance'
   score_warm_threshold: number
   score_hot_threshold: number
   first_contact_target_minutes: number
@@ -620,6 +623,10 @@ export interface TenantSettings {
   score_priority_threshold: number | null
   high_value_from: number | null
   stalled_after_days: number | null
+  sla_hot_minutes: number | null
+  sla_interested_minutes: number | null
+  sla_visit_minutes: number | null
+  sla_reservation_minutes: number | null
 }
 
 export interface LostReason {

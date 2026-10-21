@@ -105,7 +105,7 @@ class UserController extends Controller
          * is a different and smaller thing — so a request that only touches the
          * second is judged by the second.
          */
-        $routing = ['covers_cities', 'assignment_weight', 'speaks'];
+        $routing = ['covers_cities', 'assignment_weight', 'speaks', 'handles'];
         $touched = array_keys($request->all());
 
         $this->authorize(
@@ -150,6 +150,8 @@ class UserController extends Controller
             'covers_cities' => ['sometimes', 'nullable', 'array', 'max:50'],
             'covers_cities.*' => ['string', 'max:120'],
             'assignment_weight' => ['sometimes', 'integer', 'min:1', 'max:10'],
+            'handles' => ['sometimes', 'nullable', 'array', 'max:5'],
+            'handles.*' => ['string', 'in:buy,rent'],
 
             /*
              * Which languages this rep can sell in. Empty means every language,

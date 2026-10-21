@@ -114,6 +114,25 @@ class NextBestAction
         }
 
         /*
+         * An interested lead whose clock is running. The window depends on how far along they are
+         * (see InterestSla): past it the lead is critical and the reason says by how much, inside
+         * the last quarter of it the lead is high. Anything else falls through to the usual rules.
+         */
+        $sla = InterestSla::for($lead);
+
+        if ($sla !== null && $sla['state'] === 'breached') {
+            $wrote = $lead->last_customer_message_at !== null && $lead->last_customer_message_at->gte($lead->interest_level_changed_at ?? $lead->last_customer_message_at);
+
+            return $this->result($wrote ? 'reply_now' : 'call_now', 'critical',
+                'تجاوز مهلة الرد بـ '.ArabicDuration::fromMinutes(abs($sla['minutes_left'])).' — تواصل معه الآن.', 0);
+        }
+
+        if ($sla !== null && $sla['state'] === 'due_soon') {
+            return $this->result('call_now', 'high',
+                'تبقّى '.ArabicDuration::fromMinutes(max(0, $sla['minutes_left'])).' على مهلة الرد.', max(0, $sla['minutes_left']));
+        }
+
+        /*
          * "Never contacted" has to mean the same thing here as it does on the
          * badge the rep is looking at. Reading the timestamp alone was enough
          * to put "عميل جديد" directly beneath a "تم التواصل" badge on the work

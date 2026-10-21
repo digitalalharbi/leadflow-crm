@@ -75,6 +75,42 @@ class WorkloadBalancer
             ->first();
     }
 
+    /**
+     * The rep most likely to close it, among those who are not already buried.
+     *
+     * "Not buried" means within three leads (per unit of weight) of the least loaded rep; among
+     * those, the best win rate over the last 90 days of decided leads, and workload breaks ties.
+     * A rep with no decided leads yet is neither rewarded nor punished: they rate as the team's
+     * average, so a new hire is not starved of leads for being new.
+     *
+     * @param  Collection<int,User>  $only
+     */
+    public function pickByPerformance(Tenant $tenant, Collection $only): ?User
+    {
+        if ($only->isEmpty()) {
+            return null;
+        }
+
+        $ids = $only->pluck('id')->all();
+        $open = $this->openCounts($tenant, $ids);
+        $load = fn (User $user) => ($open[$user->id] ?? 0) / $user->assignmentWeight();
+        $floor = $only->map($load)->min();
+        $roomy = $only->filter(fn (User $user) => $load($user) <= $floor + 3)->values();
+
+        $decided = Lead::query()->withoutGlobalScope(TenantScope::class)
+            ->where('tenant_id', $tenant->id)->whereIn('assigned_to', $ids)
+            ->whereIn('status', ['won', 'lost'])->where('updated_at', '>=', now()->subDays(90))
+            ->selectRaw("assigned_to, count(*) as decided, count(*) filter (where status = 'won') as won")
+            ->groupBy('assigned_to')->get()->keyBy('assigned_to');
+
+        $team = $decided->sum('decided') > 0 ? $decided->sum('won') / $decided->sum('decided') : 0.0;
+        $rate = fn (User $user) => ($row = $decided->get($user->id)) && $row->decided > 0 ? $row->won / $row->decided : $team;
+
+        $best = $roomy->map($rate)->max();
+
+        return $this->pick($tenant, $roomy->filter(fn (User $user) => abs($rate($user) - $best) < 0.0001)->values());
+    }
+
     /** @return Collection<int,User> */
     /**
      * Whoever can take a lead right now.

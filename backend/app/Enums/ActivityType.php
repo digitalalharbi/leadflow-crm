@@ -36,6 +36,8 @@ enum ActivityType: string
     case EmailBounced = 'email_bounced';
     /** A person said whether the lead is interested, over what the numbers say. */
     case InterestChanged = 'interest_changed';
+    /** A rep put a unit on hold for the lead. */
+    case ReservationCreated = 'reservation_created';
 
     public static function values(): array
     {

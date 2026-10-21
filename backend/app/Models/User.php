@@ -27,7 +27,7 @@ class User extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
-        'covers_cities', 'assignment_weight', 'speaks',
+        'covers_cities', 'assignment_weight', 'speaks', 'handles',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -43,6 +43,7 @@ class User extends Authenticatable
             'covers_cities' => 'array',
             'speaks' => 'array',
             'assignment_weight' => 'integer',
+            'handles' => 'array',
             'role' => Role::class,
         ];
     }
@@ -130,6 +131,17 @@ class User extends Authenticatable
     private function normaliseLanguage(string $language): string
     {
         return mb_strtolower(trim(explode('-', str_replace('_', '-', $language))[0]));
+    }
+
+    /**
+     * Whether this rep takes that kind of deal (`buy`, `rent`). An empty list means every kind,
+     * and a lead that has not said what it wants is nobody's exception.
+     */
+    public function handlesType(?string $type): bool
+    {
+        $handles = $this->handles ?? [];
+
+        return $handles === [] || blank($type) || in_array(mb_strtolower(trim($type)), array_map(fn ($h) => mb_strtolower(trim((string) $h)), $handles), true);
     }
 
     /** How many leads this rep carries for every one an ordinary rep takes. */

@@ -29,6 +29,7 @@ class SettingsController extends Controller
                 'timezone' => $tenant->settings?->timezone,
                 'default_country_code' => $tenant->settings?->default_country_code,
                 'assignment_mode' => $tenant->settings?->assignment_mode,
+                'assignment_strategy' => $tenant->settings?->assignment_strategy,
                 'score_warm_threshold' => $tenant->settings?->score_warm_threshold,
                 'score_hot_threshold' => $tenant->settings?->score_hot_threshold,
                 'first_contact_target_minutes' => $tenant->settings?->first_contact_target_minutes,
@@ -51,6 +52,11 @@ class SettingsController extends Controller
                 'score_priority_threshold' => $tenant->settings?->score_priority_threshold,
                 'high_value_from' => $tenant->settings?->high_value_from,
                 'stalled_after_days' => $tenant->settings?->stalled_after_days,
+                // How long an interested lead may wait for a person, by level. Raw: blank means the default.
+                'sla_hot_minutes' => $tenant->settings?->sla_hot_minutes,
+                'sla_interested_minutes' => $tenant->settings?->sla_interested_minutes,
+                'sla_visit_minutes' => $tenant->settings?->sla_visit_minutes,
+                'sla_reservation_minutes' => $tenant->settings?->sla_reservation_minutes,
             ],
             'thresholds' => Thresholds::describe($tenant->settings),
             'subscription' => [
@@ -106,6 +112,7 @@ class SettingsController extends Controller
             'timezone' => ['sometimes', 'timezone'],
             'default_country_code' => ['sometimes', 'string', 'max:5'],
             'assignment_mode' => ['sometimes', 'in:manual,round_robin'],
+            'assignment_strategy' => ['sometimes', 'in:workload,round_robin,performance'],
             'score_warm_threshold' => ['sometimes', 'integer', 'min:1', 'max:99'],
             'score_hot_threshold' => ['sometimes', 'integer', 'min:2', 'max:100', 'gt:score_warm_threshold'],
             // How long a new lead may sit untouched before the dashboard calls
@@ -137,6 +144,10 @@ class SettingsController extends Controller
             'score_priority_threshold' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
             'high_value_from' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:1000000000'],
             'stalled_after_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:90'],
+            'sla_hot_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'sla_interested_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'sla_visit_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'sla_reservation_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
         ]);
 
         $tenant->settings->update($data);

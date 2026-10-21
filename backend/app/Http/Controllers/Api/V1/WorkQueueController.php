@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Leads\HandoffBrief;
+use App\Domain\Leads\InterestSla;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\OutcomeRecorder;
@@ -12,6 +13,7 @@ use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadListResource;
 use App\Models\Lead;
+use App\Models\Property;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -63,7 +65,7 @@ class WorkQueueController extends Controller
             ->orderByRaw('first_contact_at is not null')  // never-contacted first
             ->orderBy('next_follow_up_at')
             ->orderByDesc('score')
-            ->with('campaignRef:id,quality_score')
+            ->with(['campaignRef:id,quality_score', 'project:id,name,location'])
             ->limit(50 + count($skipped))
             ->get();
 
@@ -115,7 +117,68 @@ class WorkQueueController extends Controller
             'queue' => $this->queue($ranked),
             'timeline' => $this->timeline($top['lead']),
             'signals' => WhyNow::signals($top['lead']),
+            // Who they are as a buyer and how long they have waited — the card's fact row.
+            'interest' => $this->interest($top['lead']),
+            'sla' => InterestSla::for($top['lead']),
+            'profile' => $this->profile($top['lead']),
+            'assignment' => $this->assignment($top['lead']),
         ]);
+    }
+
+    /**
+     * Why this lead is on this rep: the rules that applied when it was assigned and the strategy
+     * that chose among the people left. Null for a lead somebody was given by hand.
+     */
+    private function assignment(Lead $lead): ?array
+    {
+        $activity = $lead->activities()->where('type', 'assigned')->latest('id')->first(['meta', 'created_at']);
+        $why = $activity?->meta['why'] ?? null;
+
+        return $why ? [
+            'rules' => $why['rules'] ?? [],
+            'strategy' => $why['strategy'] ?? null,
+            'candidates' => $why['candidates'] ?? null,
+            'availability' => (bool) ($why['availability'] ?? false),
+            'at' => $activity->created_at?->toIso8601String(),
+        ] : null;
+    }
+
+    /** @return array{level:string, score:int, override:?string} */
+    private function interest(Lead $lead): array
+    {
+        return [
+            'level' => $lead->interest_level ?: 'cold',
+            'score' => (int) $lead->interest_score,
+            'override' => $lead->interest_override,
+        ];
+    }
+
+    /**
+     * What the rep needs in the first second of the call: what they want, how much they have,
+     * why now, and where to send them. Facts the lead has not given are left out, not guessed.
+     */
+    private function profile(Lead $lead): array
+    {
+        $property = $lead->interested_property_id ? Property::withTrashed()->find($lead->interested_property_id) : null;
+        $location = trim((string) $lead->project?->location);
+
+        return array_filter([
+            'project' => $lead->project?->name,
+            'property' => $property?->title,
+            'budget_min' => $lead->budget_min !== null ? (float) $lead->budget_min : null,
+            'budget_max' => $lead->budget_max !== null ? (float) $lead->budget_max : null,
+            'transaction_type' => $lead->transaction_type,
+            'purpose' => $lead->purchase_purpose,
+            'timeline' => $lead->purchase_timeline,
+            'district' => $lead->preferred_district,
+            'property_type' => $lead->preferred_property_type,
+            'bedrooms' => $lead->bedrooms,
+            'payment_method' => $lead->payment_method,
+            // The map link a rep can send as it is: the project's own when it already is one.
+            'location' => $location !== '' ? $location : null,
+            'map_url' => $location === '' ? null : (str_starts_with($location, 'http') ? $location : 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($location)),
+            'waiting_since' => ($lead->last_customer_message_at ?? $lead->interest_level_changed_at ?? $lead->created_at)?->toIso8601String(),
+        ], fn ($value) => $value !== null && $value !== '');
     }
 
     /**
@@ -141,6 +204,8 @@ class WorkQueueController extends Controller
                 'action' => $row['action']['action'] ?? null,
                 'urgency' => $row['action']['urgency'] ?? null,
                 'rank_reason' => $row['rank']['reason'] ?: null,
+                'interest_level' => $row['lead']->interest_level,
+                'sla_state' => InterestSla::for($row['lead'])['state'] ?? null,
                 'waiting_since' => $row['lead']->created_at?->toIso8601String(),
             ])
             ->values()

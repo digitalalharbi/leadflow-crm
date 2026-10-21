@@ -2,6 +2,7 @@
 
 namespace App\Domain\Analytics;
 
+use App\Domain\Leads\InterestSla;
 use App\Domain\Leads\PipelineOverview;
 use App\Domain\Sla\SlaMonitor;
 use App\Models\AutomationActionLog;
@@ -85,7 +86,8 @@ class ManagerCenter
             ],
             'automation' => $this->automation($user, $since, $days),
             'sources' => $this->sources($user, $since),
-            'team' => $this->team($user, $since, $open),
+            'interest' => collect($interest = $this->interest($user))->except('by_rep')->all(),
+            'team' => $this->team($user, $since, $open, $interest['by_rep']),
             'trend' => $this->trend($user, $days),
         ];
     }
@@ -165,8 +167,42 @@ class ManagerCenter
         return $head->when($tail > 0, fn ($c) => $c->push(['key' => 'other', 'count' => $tail]))->values()->all();
     }
 
+    /**
+     * Interested leads right now, by how far along they are, and how many are waiting too long.
+     *
+     * @return array{levels:array<string,int>, late:int, due_soon:int, by_rep:array<int,array{interested:int,late:int}>}
+     */
+    private function interest(User $user): array
+    {
+        $out = ['levels' => array_fill_keys(array_keys(InterestSla::KEYS), 0), 'late' => 0, 'due_soon' => 0, 'by_rep' => []];
+
+        Lead::query()->visibleTo($user)->reorder()
+            ->whereIn('leads.interest_level', array_keys(InterestSla::KEYS))
+            ->whereNotIn('leads.status', ['won', 'lost', 'invalid', 'no_response'])
+            ->orderBy('leads.interest_level_changed_at')->limit(1000)
+            ->get(['leads.id', 'leads.tenant_id', 'leads.project_id', 'leads.status', 'leads.assigned_to', 'leads.interest_level', 'leads.interest_level_changed_at', 'leads.interest_at', 'leads.last_customer_message_at', 'leads.last_contact_at', 'leads.created_at'])
+            ->each(function (Lead $lead) use (&$out) {
+                $out['levels'][$lead->interest_level]++;
+                $state = InterestSla::for($lead)['state'] ?? null;
+                $rep = $lead->assigned_to;
+
+                if ($rep) {
+                    $out['by_rep'][$rep]['interested'] = ($out['by_rep'][$rep]['interested'] ?? 0) + 1;
+                }
+
+                if ($state === 'breached') {
+                    $out['late']++;
+                    $rep && $out['by_rep'][$rep]['late'] = ($out['by_rep'][$rep]['late'] ?? 0) + 1;
+                } elseif ($state === 'due_soon') {
+                    $out['due_soon']++;
+                }
+            });
+
+        return $out;
+    }
+
     /** The team ranked by sales, with what each is carrying — who is overloaded, who is late. */
-    private function team(User $user, $since, string $open): array
+    private function team(User $user, $since, string $open, array $byRep = []): array
     {
         $rows = Lead::query()->visibleTo($user)->reorder()->whereNotNull('leads.assigned_to')
             ->selectRaw(
@@ -189,6 +225,9 @@ class ManagerCenter
                 'hot' => (int) $rows[$u->id]->hot,
                 'won' => (int) $rows[$u->id]->won,
                 'revenue' => round((int) $rows[$u->id]->revenue / 100, 2),
+                // How many interested leads they carry and how many of those have waited too long.
+                'interested' => $byRep[$u->id]['interested'] ?? 0,
+                'sla_late' => $byRep[$u->id]['late'] ?? 0,
             ])
             ->sortBy([['won', 'desc'], ['revenue', 'desc'], ['open', 'desc']])
             ->values()->all();

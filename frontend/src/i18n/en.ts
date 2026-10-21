@@ -2917,7 +2917,7 @@ export default {
   },
   salesIntel: {
     team: { close: 'Close rate', contact: 'Contact rate', sla: 'Answered in {{minutes}} min', leads: 'Team leads' },
-    rankTitle: 'A fair ranking', rankHint: 'The number: sales above what the team’s own close rate would have made of the same number of leads. Below it: their leads and their share of the team’s.',
+    rankTitle: 'Performance against expected', rankHint: 'The number: sales above what the team’s own close rate would have made of the same number of leads. Below it: their leads and their share of the team’s.',
     gridTitle: 'Each rep’s rates', gridHint: 'The pale cell is the weakest step in a rep’s row. “—” means no data.', small: 'Few leads',
     rate: { contact_rate: 'Contact', interested_rate: 'Interested', visit_rate: 'Visit', reservation_rate: 'Reservation', close_rate: 'Close', sla_compliance: 'On time', follow_up_completion: 'Follow-ups' },
     response: 'Response time', minutes_one: '1 min', minutes_other: '{{count}} min', won: 'Won', revenue: 'Revenue', visits: 'Visits',

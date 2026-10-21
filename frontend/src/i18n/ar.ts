@@ -3242,7 +3242,7 @@ export default {
   },
   salesIntel: {
     team: { close: 'معدل الإغلاق', contact: 'نسبة التواصل', sla: 'ردّ خلال {{minutes}} دقيقة', leads: 'عملاء الفريق' },
-    rankTitle: 'الترتيب بعدل', rankHint: 'الرقم: صفقات فوق ما كان سيصنعه معدل الفريق من نفس عدد العملاء. تحته: عملاؤه وحصته من عملاء الفريق.',
+    rankTitle: 'الأداء مقابل المتوقع', rankHint: 'الرقم: صفقات فوق ما كان سيصنعه معدل الفريق من نفس عدد العملاء. تحته: عملاؤه وحصته من عملاء الفريق.',
     gridTitle: 'نسب كل مندوب', gridHint: 'الخلية الباهتة هي الخطوة الأضعف في صف المندوب. «—» لا بيانات.', small: 'عملاء قليلون',
     rate: { contact_rate: 'تواصل', interested_rate: 'مهتم', visit_rate: 'زيارة', reservation_rate: 'حجز', close_rate: 'إغلاق', sla_compliance: 'في الوقت', follow_up_completion: 'متابعات' },
     response: 'زمن الاستجابة', minutes_one: 'دقيقة', minutes_other: '{{count}} دقيقة', won: 'صفقات', revenue: 'الإيراد', visits: 'زيارات',

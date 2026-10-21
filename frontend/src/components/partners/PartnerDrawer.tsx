@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/lib/api'
 import { Button, Drawer, Input, Select, Textarea } from '@/components/ui'
-import { createPartner, deletePartner, PARTNER_TYPES, updatePartner, type Partner, type PartnerInput, type PartnerType } from '@/features/partners'
+import { COMMISSION_TYPES, createPartner, deletePartner, PARTNER_TYPES, updatePartner, type CommissionType, type Partner, type PartnerInput, type PartnerType } from '@/features/partners'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 
@@ -22,7 +22,7 @@ export function PartnerDrawer({ open, partner, onClose }: { open: boolean; partn
   useEffect(() => {
     if (!open) return
     setError(null)
-    setForm(partner ? { name: partner.name, type: partner.type, company: partner.company ?? '', contact_name: partner.contact_name ?? '', email: partner.email ?? '', phone: partner.phone ?? '', commission_percent: partner.commission_percent, show_revenue: partner.show_revenue, notes: partner.notes ?? '' } : BLANK)
+    setForm(partner ? { name: partner.name, type: partner.type, company: partner.company ?? '', contact_name: partner.contact_name ?? '', email: partner.email ?? '', phone: partner.phone ?? '', commission_type: partner.commission_type, commission_percent: partner.commission_percent, commission_fixed: partner.commission_fixed, show_revenue: partner.show_revenue, notes: partner.notes ?? '' } : BLANK)
   }, [open, partner])
 
   const refresh = () => {
@@ -34,6 +34,7 @@ export function PartnerDrawer({ open, partner, onClose }: { open: boolean; partn
     ...form,
     company: form.company || null, contact_name: form.contact_name || null, email: form.email || null, phone: form.phone || null, notes: form.notes || null,
     commission_percent: form.commission_percent === null || form.commission_percent === undefined || Number.isNaN(Number(form.commission_percent)) ? null : Number(form.commission_percent),
+    commission_fixed: form.commission_fixed === null || form.commission_fixed === undefined || Number.isNaN(Number(form.commission_fixed)) ? null : Number(form.commission_fixed),
   })
 
   const save = useMutation({
@@ -76,18 +77,35 @@ export function PartnerDrawer({ open, partner, onClose }: { open: boolean; partn
         <Input label={t('partners.contact')} {...text('contact_name')} />
         <Input label={t('auth.email')} dir="ltr" type="email" {...text('email')} />
         <Input label={t('leads.phone')} dir="ltr" {...text('phone')} />
-        <Input
-          label={t('partners.commission')}
-          hint={t('partners.commissionHint')}
-          dir="ltr"
-          type="number"
-          min={0}
-          max={100}
-          step="0.1"
-          data-testid="partner-commission"
-          value={form.commission_percent ?? ''}
-          onChange={(e) => setForm((f) => ({ ...f, commission_percent: e.target.value === '' ? null : Number(e.target.value) }))}
-        />
+        <Select label={t('partners.commissionType')} value={form.commission_type ?? 'percentage'} data-testid="partner-commission-type" onChange={(e) => setForm((f) => ({ ...f, commission_type: e.target.value as CommissionType }))}>
+          {COMMISSION_TYPES.map((c) => <option key={c} value={c}>{t(`partners.commissionTypes.${c}`)}</option>)}
+        </Select>
+        {(form.commission_type ?? 'percentage') === 'percentage' ? (
+          <Input
+            label={t('partners.commission')}
+            hint={t('partners.commissionHint')}
+            dir="ltr"
+            type="number"
+            min={0}
+            max={100}
+            step="0.1"
+            data-testid="partner-commission"
+            value={form.commission_percent ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, commission_percent: e.target.value === '' ? null : Number(e.target.value) }))}
+          />
+        ) : (
+          <Input
+            label={t('partners.commissionFixed')}
+            hint={t('partners.commissionFixedHint')}
+            dir="ltr"
+            type="number"
+            min={0}
+            step="1"
+            data-testid="partner-commission-fixed"
+            value={form.commission_fixed ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, commission_fixed: e.target.value === '' ? null : Number(e.target.value) }))}
+          />
+        )}
         <label className="flex cursor-pointer items-center justify-between gap-3 self-end rounded-xl bg-[var(--color-surface-muted)] px-3 py-2">
           <span>
             <span className="t-small block font-medium">{t('partners.showRevenue')}</span>

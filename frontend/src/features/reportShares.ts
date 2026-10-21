@@ -5,7 +5,7 @@ export type ReportTemplate = (typeof REPORT_TEMPLATES)[number]
 
 export const REPORT_SECTIONS = [
   'kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'interested', 'qualification', 'visits', 'reservations', 'trend',
-  'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations',
+  'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'statement',
 ] as const
 export type ReportSection = (typeof REPORT_SECTIONS)[number]
 
@@ -136,6 +136,16 @@ export interface SharedReportData {
   attribution?: { models: Record<'first' | 'last' | 'linear' | 'position', { key: string; label: string | null; leads: number; interested: number; visits: number; reservations: number; won: number; revenue?: number }[]> }
   insights?: Finding[]
   recommendations?: Finding[]
+  /** A partner's own statement: terms, what they brought, what they are owed and have been paid. */
+  statement?: {
+    partner: string
+    terms: { type: 'percentage' | 'fixed'; percent: number | null; fixed: number | null; agreed: boolean }
+    funnel: { leads: number; qualified: number; visits: number; reservations: number; won: number }
+    commission: { due: number | null; paid: number; balance: number | null }
+    deals: { won_at: string | null; commission: number | null; value?: number }[]
+    payments: { paid_on: string; amount: number; reference: string | null }[]
+    revenue?: number
+  }
   /** The period before, day by day, when the report compares. */
   previous_trend?: { date: string; leads: number; interested: number; visits: number; reservations: number; won: number; spend?: number; revenue?: number }[]
   funnel?: { key: 'leads' | 'qualified' | 'interested' | 'visits' | 'reservations' | 'won'; count: number; rate: number | null; lost: number | null; cost?: number | null }[]

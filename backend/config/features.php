@@ -93,6 +93,7 @@ return [
         'report.section.automation' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
         'report.section.tracking_health' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
         'report.section.insights' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
+        'report.section.statement' => ['kind' => 'report_section', 'needs' => ['partners.view', 'revenue.view']],
         'report.section.recommendations' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
     ],
 ];

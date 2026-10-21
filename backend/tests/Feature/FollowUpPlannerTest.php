@@ -50,7 +50,8 @@ class FollowUpPlannerTest extends TestCase
         parent::setUp();
         Storage::fake('local');
         Mail::fake();
-        config(['mail.default' => 'smtp']);
+        // The platform door is the product's own SMTP provider, configured: the one way email now leaves.
+        config(['leadflow_mail.provider' => 'smtp', 'mail.mailers.smtp.host' => 'smtp.example.test', 'mail.mailers.smtp.username' => 'user']);
 
         // Steps are inspected, then run by hand: a day's wait is not something a test sleeps through.
         Queue::fake([RunScheduledAction::class]);

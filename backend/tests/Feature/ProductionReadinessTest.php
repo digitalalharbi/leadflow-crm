@@ -424,7 +424,8 @@ class ProductionReadinessTest extends TestCase
         // The log mailer: nothing reaches anybody.
         $this->assertSame(ProductionReadiness::EXTERNAL, $row()['status']);
 
-        config(['mail.default' => 'smtp']);
+        // The platform door is the product's own SMTP provider, configured: the one way email now leaves.
+        config(['leadflow_mail.provider' => 'smtp', 'mail.mailers.smtp.host' => 'smtp.example.test', 'mail.mailers.smtp.username' => 'user']);
         $this->assertSame(ProductionReadiness::READY, $row()['status']);
 
         // An open on a message the log mailer "sent" proves nothing.

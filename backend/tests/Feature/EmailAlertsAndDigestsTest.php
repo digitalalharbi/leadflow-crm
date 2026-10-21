@@ -84,6 +84,12 @@ class EmailAlertsAndDigestsTest extends TestCase
         $this->assertArrayNotHasKey('not_a_category', $saved['alerts']);
         $this->assertSame(AlertKinds::CATEGORIES, $saved['categories']);
 
+        // The screen is told whether the door really sends: the log provider does not; a configured SMTP does.
+        $this->assertFalse($this->actingAs($this->rep)->getJson('/api/v1/auth/notification-preferences')->json('data.mail_configured'));
+        config(['leadflow_mail.provider' => 'smtp', 'mail.mailers.smtp.host' => 'smtp.example.test', 'mail.mailers.smtp.username' => 'user']);
+        $this->assertTrue($this->actingAs($this->rep)->getJson('/api/v1/auth/notification-preferences')->json('data.mail_configured'));
+        config(['leadflow_mail.provider' => 'log']);
+
         $this->actingAs($this->rep)->patchJson('/api/v1/auth/notification-preferences', ['alerts' => ['hot_lead' => 'sometimes']])->assertStatus(422);
         $this->assertSame('daily', $this->actingAs($this->rep)->getJson('/api/v1/auth/notification-preferences')->json('data.alerts.hot_lead'));
     }

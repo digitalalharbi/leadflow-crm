@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientRule;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -42,7 +43,9 @@ class ClientRuleController extends Controller
         ]);
 
         $rules = ClientRule::query()->firstOrNew(['project_id' => $this->projectId($request)]);
+        $before = $rules->exists ? $rules->only(array_keys($data)) : null;
         $rules->fill($data + ['updated_by' => $request->user()->id])->save();
+        app(AuditLogger::class)->log('campaign.rules_changed', $request->user(), $rules, ['before' => $before, 'after' => $rules->only(array_keys($data))]);
 
         return ApiResponse::success(['rules' => $this->present($rules), 'inherited' => false]);
     }

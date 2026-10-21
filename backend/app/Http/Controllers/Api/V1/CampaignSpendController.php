@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\CampaignSpend;
 use App\Models\Lead;
+use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -94,6 +95,8 @@ class CampaignSpendController extends Controller
             ['amount_minor', 'currency', 'source', 'created_by', 'updated_at'],
         );
 
+        app(AuditLogger::class)->log('campaign_spend.saved', $request->user(), null, ['count' => count($rows), 'total' => round(array_sum(array_column($data['spends'], 'amount')), 2), 'campaigns' => array_values(array_unique(array_column($data['spends'], 'campaign_name')))]);
+
         return ApiResponse::success(['saved' => count($rows)]);
     }
 
@@ -101,7 +104,9 @@ class CampaignSpendController extends Controller
     {
         $this->authorize('export', Lead::class);
 
-        CampaignSpend::whereKey($id)->firstOrFail()->delete();
+        $spend = CampaignSpend::whereKey($id)->firstOrFail();
+        app(AuditLogger::class)->log('campaign_spend.deleted', $request->user(), $spend, ['before' => ['campaign' => $spend->campaign_name, 'date' => $spend->spend_date?->toDateString(), 'amount' => $spend->amount()]]);
+        $spend->delete();
 
         return ApiResponse::success(null, 'Removed.');
     }

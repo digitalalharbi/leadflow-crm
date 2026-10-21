@@ -18,6 +18,7 @@ use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\CompanyScope;
 use App\Models\Scopes\ExcludesTestLeads;
 use App\Models\Scopes\ProjectScope;
+use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -131,6 +132,17 @@ class Lead extends Model
             // tracking link's revenue is made of. Never allowed to break the save.
             if ($lead->wasChanged('status') && $lead->status === LeadStatus::Won) {
                 app(EventRecorder::class)->outcome($lead, EventType::Won, ['deal_value_minor' => $lead->deal_value_minor]);
+            }
+
+            // What a sale was worth is money on the record: who changed it, and from what to what.
+            if ($lead->wasChanged('deal_value_minor') && ! $lead->wasRecentlyCreated) {
+                try {
+                    app(AuditLogger::class)->log('lead.deal_value_changed', auth()->user(), $lead, [
+                        'lead' => $lead->full_name, 'before' => $lead->getPrevious()['deal_value_minor'] ?? null, 'after' => $lead->deal_value_minor,
+                    ]);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
             }
 
             // They asked to come and see it: that is a visit waiting for a time, in the visits list from now.

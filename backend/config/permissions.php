@@ -24,7 +24,7 @@ return [
 
     'resources' => [
         'dashboard', 'leads', 'visits', 'reservations', 'properties', 'projects', 'companies', 'campaigns', 'tracking',
-        'analytics', 'partners', 'reports_share', 'automation', 'integrations', 'users', 'settings', 'contacts', 'spend', 'revenue',
+        'analytics', 'partners', 'reports_share', 'automation', 'integrations', 'users', 'settings', 'audit', 'contacts', 'spend', 'revenue',
     ],
 
     'roles' => [
@@ -46,6 +46,7 @@ return [
             'automation' => ['view', 'create', 'edit', 'disable'],
             'users' => ['view'],
             'settings' => ['view'],
+            'audit' => ['view'],
             'contacts' => ['view'], 'spend' => ['view'], 'revenue' => ['view'],
         ],
 

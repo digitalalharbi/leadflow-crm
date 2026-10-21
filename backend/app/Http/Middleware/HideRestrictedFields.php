@@ -23,7 +23,7 @@ class HideRestrictedFields
     private const KEYS = [
         'contacts' => ['phone', 'phone_normalized', 'whatsapp', 'lead_phone', 'email', 'lead_email'],
         'spend' => ['spend', 'spend_source', 'cpl', 'cpql', 'cpa', 'cac', 'roas', 'daily_budget', 'cost', 'cost_per_appointment', 'cost_per_interested', 'cost_per_visit', 'cost_per_reservation', 'costPer', 'budget_spent'],
-        'revenue' => ['revenue', 'commission', 'revenue_per_lead', 'deal_value', 'deal_value_minor', 'amount', 'won_value'],
+        'revenue' => ['revenue', 'revenue_today', 'commission', 'revenue_per_lead', 'deal_value', 'deal_value_minor', 'amount', 'won_value'],
     ];
 
     public function handle(Request $request, Closure $next): Response

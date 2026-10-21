@@ -10,6 +10,7 @@ import { fetchCampaignQuality } from '@/features/conversations'
 import { can, useAuth } from '@/stores/auth'
 import { JourneyStrip } from '@/components/dashboard/JourneyStrip'
 import { InsightCards } from '@/components/dashboard/InsightCards'
+import { OpsPulse } from '@/components/dashboard/OpsPulse'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
 import { ManagerCommandCenter } from '@/components/dashboard/ManagerCommandCenter'
@@ -178,6 +179,9 @@ export function DashboardPage() {
             itself off the page for good once the five steps are done.
           */}
           <OnboardingChecklist />
+
+          {/* How today is going, and whether the machinery is healthy. */}
+          <OpsPulse />
 
           {/* What moved outside its normal range, and the few things to look at first. */}
           <InsightCards />

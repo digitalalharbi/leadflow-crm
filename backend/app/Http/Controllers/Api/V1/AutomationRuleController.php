@@ -18,6 +18,7 @@ use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Models\ScheduledAction;
+use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -145,6 +146,7 @@ class AutomationRuleController extends Controller
         $data = $this->validated($request);
 
         $rule = AutomationRule::create($data + ['created_by' => $request->user()->id]);
+        $this->audited('automation_rule.created', $request, $rule, ['after' => $this->trail($rule)]);
 
         return ApiResponse::created(['rule' => $this->present($rule)]);
     }
@@ -156,7 +158,9 @@ class AutomationRuleController extends Controller
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $rule);
 
+        $before = $this->trail($rule);
         $rule->update($this->validated($request, partial: true));
+        $this->audited('automation_rule.updated', $request, $rule, ['before' => $before, 'after' => $this->trail($rule->fresh())]);
 
         return ApiResponse::success(['rule' => $this->present($rule->fresh())]);
     }
@@ -192,6 +196,8 @@ class AutomationRuleController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
+        $this->audited('automation_rule.duplicated', $request, $copy, ['after' => $this->trail($copy), 'from' => $original->name]);
+
         return ApiResponse::created(['rule' => $this->present($copy)]);
     }
 
@@ -225,6 +231,7 @@ class AutomationRuleController extends Controller
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $rule);
 
+        $this->audited('automation_rule.deleted', $request, $rule, ['before' => $this->trail($rule)]);
         $rule->delete();
 
         return ApiResponse::success(['deleted' => true]);
@@ -582,6 +589,8 @@ class AutomationRuleController extends Controller
                 'is_enabled' => false,
             ])->save();
 
+            $this->audited('automation_rule.installed', $request, $existing, ['after' => $this->trail($existing), 'template' => $key]);
+
             return ApiResponse::success(['rule' => $this->present($existing->refresh())], status: 201);
         }
 
@@ -596,7 +605,21 @@ class AutomationRuleController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
+        $this->audited('automation_rule.installed', $request, $rule, ['after' => $this->trail($rule), 'template' => $key]);
+
         return ApiResponse::success(['rule' => $this->present($rule)], status: 201);
+    }
+
+    /** Who changed which rule, and from what to what — a rule is how the workspace talks to its customers. */
+    private function audited(string $action, Request $request, AutomationRule $rule, array $changes): void
+    {
+        app(AuditLogger::class)->log($action, $request->user(), $rule, $changes + ['name' => $rule->name]);
+    }
+
+    /** @return array<string,mixed> */
+    private function trail(AutomationRule $rule): array
+    {
+        return ['name' => $rule->name, 'trigger' => $rule->trigger, 'is_enabled' => (bool) $rule->is_enabled, 'actions' => count((array) $rule->actions), 'conditions' => count((array) $rule->conditions)];
     }
 
     /**

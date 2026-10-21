@@ -83,6 +83,7 @@ export default {
     companies: 'الشركات',
     dashboard: 'الرئيسية',
     work: 'اعمل الآن',
+    audit: 'السجل',
     partners: 'الشركاء',
     visits: 'الزيارات',
     automation: 'الأتمتة',
@@ -127,6 +128,28 @@ export default {
     appointment: { requested: 'طلب زيارة', interested: 'قد يزور' },
     sentiment: { positive: 'إيجابي', neutral: 'محايد', negative: 'سلبي' },
     objection: { price_high: 'السعر مرتفع', location: 'الموقع', financing: 'التمويل', timing: 'ليس الآن', trust: 'الثقة', competitor: 'منافس', family_decision: 'قرار العائلة' },
+  },
+  ops: {
+    title: 'اليوم في لمحة', ok: 'سليم',
+    answer: { leads_today: 'عملاء اليوم', interested: 'مهتمون', hot: 'ساخنون', needs_follow_up: 'يحتاجون متابعة', sla_late: 'تجاوزوا المهلة', visits_today: 'زيارات اليوم', reservations_pending: 'حجوزات معلّقة', won_today: 'صفقات اليوم', revenue_today: 'إيراد اليوم' },
+    health: { automation: 'الأتمتة', tracking: 'التتبع', campaigns: 'الحملات', backlog: 'تراكم المبيعات' },
+  },
+  audit: {
+    title: 'السجل', subtitle: 'من فعل ماذا، ومن ماذا إلى ماذا، ومتى — شخص أم أتمتة',
+    emptyTitle: 'لا شيء مسجّل', emptyBody: 'لم يتغيّر شيء في هذه الفترة.',
+    category: { all: 'الكل', assignment: 'الإسناد', status: 'المرحلة', reservation: 'الحجوزات', visit: 'الزيارات', deal: 'الصفقات', automation: 'الأتمتة', reports: 'التقارير', permissions: 'الصلاحيات', campaigns: 'الحملات', other: 'أخرى' },
+    source: { user: 'شخص', automation: 'أتمتة', system: 'النظام' },
+    action: {
+      'lead.assigned': 'أُسند العميل', 'lead.handed_off': 'سُلّم لمندوب', 'lead.status_changed': 'تغيّرت المرحلة', 'lead.won': 'صفقة مكسوبة', 'lead.lost': 'خسارة',
+      'lead.merged': 'دُمج عميلان', 'lead.interest_changed': 'تغيّر الاهتمام', 'lead.reservation_created': 'حُجزت وحدة', 'lead.reservation_updated': 'تغيّر الحجز', 'lead.visit_updated': 'تغيّرت زيارة', 'lead.appointment_created': 'حُجز موعد',
+      'lead.deal_value_changed': 'تغيّرت قيمة الصفقة', 'lead.deleted': 'حُذف عميل',
+      'automation_rule.created': 'قاعدة أتمتة جديدة', 'automation_rule.updated': 'عُدّلت قاعدة', 'automation_rule.deleted': 'حُذفت قاعدة', 'automation_rule.duplicated': 'نُسخت قاعدة', 'automation_rule.installed': 'رُكّب قالب',
+      'report_share.created': 'رابط تقرير جديد', 'report_share.updated': 'عُدّل رابط تقرير', 'report_share.revoked': 'أُوقف رابط تقرير', 'report_share.regenerated': 'رابط تقرير جديد بدل القديم', 'report_share.deleted': 'حُذف رابط تقرير',
+      'user.created': 'مستخدم جديد', 'user.role_changed': 'تغيّر الدور', 'user.projects_changed': 'تغيّرت المشاريع المسموحة', 'user.partner_changed': 'رُبط بشريك', 'user.deactivated': 'أُوقف حساب', 'user.deleted': 'حُذف مستخدم',
+      'campaign_spend.saved': 'أُدخل إنفاق', 'campaign_spend.deleted': 'حُذف إنفاق', 'campaign.rules_changed': 'تغيّرت قواعد العميل', 'campaign.proposal_approved': 'اعتُمد تغيير حملة', 'campaign.proposal_rejected': 'رُفض تغيير حملة',
+      'tracking_link.created': 'رابط تتبع جديد', 'tracking_link.updated': 'عُدّل رابط تتبع', 'tracking_link.deleted': 'حُذف رابط تتبع',
+      'partner.created': 'شريك جديد', 'partner.updated': 'عُدّل شريك', 'partner.deleted': 'حُذف شريك', 'anomaly.dismissed': 'تم الاطلاع على شذوذ',
+    },
   },
   insights: {
     title: 'ماذا تنظر أولًا', dismiss: 'تم الاطلاع',
@@ -1208,8 +1231,9 @@ export default {
   search: {
     open: 'بحث',
     title: 'بحث سريع',
-    placeholder: 'اسم، رقم جوال، مشروع…',
+    placeholder: 'اسم، جوال، مشروع، وحدة، حملة، شريك… أو ما تريد فعله',
     nothing: 'لا نتائج.',
+    action: { 'create-lead': 'إنشاء عميل', 'find-client': 'البحث عن عميل', 'open-project': 'فتح مشروع', 'book-visit': 'حجز زيارة', 'create-report': 'إنشاء تقرير', 'open-automation': 'فتح الأتمتة' },
   },
   commandCenter: {
     recommendedHint: 'مرتبون كما يرتبهم «اعمل الآن»',

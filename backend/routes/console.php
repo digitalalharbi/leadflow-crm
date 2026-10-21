@@ -101,6 +101,9 @@ Schedule::command('leadflow:sync-sheets')
 // Interest decays with silence and no event says so: re-read what has gone stale, hourly.
 Schedule::command('leadflow:refresh-interest')->hourly()->withoutOverlapping();
 
+// A hold nobody confirmed lapses, and the unit goes back on the market.
+Schedule::command('leadflow:expire-reservations')->hourly()->withoutOverlapping();
+
 Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlapping()
     ->after(fn () => RoutineClock::stamp('no_reply_review'));
 

@@ -8,6 +8,7 @@ use App\Domain\Leads\InterestEngine;
 use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
+use App\Domain\Visits\VisitWorkflow;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
@@ -127,6 +128,15 @@ class Lead extends Model
             // tracking link's revenue is made of. Never allowed to break the save.
             if ($lead->wasChanged('status') && $lead->status === LeadStatus::Won) {
                 app(EventRecorder::class)->outcome($lead, EventType::Won, ['deal_value_minor' => $lead->deal_value_minor]);
+            }
+
+            // They asked to come and see it: that is a visit waiting for a time, in the visits list from now.
+            if (($lead->wasRecentlyCreated || $lead->wasChanged('appointment_interest')) && $lead->appointment_interest && ! $lead->status?->isClosed()) {
+                try {
+                    app(VisitWorkflow::class)->request($lead, null, 'customer');
+                } catch (\Throwable $e) {
+                    report($e);
+                }
             }
 
             // Something that moves how interested they are: a visit or a reservation asked for, a channel

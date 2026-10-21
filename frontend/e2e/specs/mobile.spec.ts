@@ -76,9 +76,9 @@ test.describe('Mobile layout', () => {
    * page off to the side. The `truncate` on it could not help, because the
    * column had already been sized to fit it.
    *
-   * Cheap: six navigations, not a second run of the suite.
+   * Cheap: a handful of navigations, not a second run of the suite.
    */
-  for (const path of ['/integrations', '/automation', '/reports', '/data-quality', '/settings', '/users']) {
+  for (const path of ['/integrations', '/automation', '/reports', '/data-quality', '/settings', '/users', '/visits', '/work']) {
     test(`${path} fits the screen with no sideways scrolling`, async ({ page }) => {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()

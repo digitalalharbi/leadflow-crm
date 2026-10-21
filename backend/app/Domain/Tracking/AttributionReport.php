@@ -140,7 +140,7 @@ class AttributionReport
         $reservations = Reservation::query()->whereIn('lead_id', $ids)->whereIn('status', ['pending', 'confirmed', 'converted'])->pluck('lead_id')->flip();
 
         $out = [];
-        foreach (Lead::query()->reorder()->whereIn('id', $ids)->get(['id', 'status', 'qualification_status', 'qualified_at']) as $lead) {
+        foreach (Lead::query()->reorder()->whereIn('id', $ids)->get(['id', 'status', 'qualification_status', 'qualified_at', 'interest_level']) as $lead) {
             $status = $lead->status?->value;
             $mine = $appointments->get($lead->id, collect());
             $out[$lead->id] = [

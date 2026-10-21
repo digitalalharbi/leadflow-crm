@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Domain\Visits\VisitWorkflow;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class AppointmentResource extends JsonResource
@@ -12,7 +13,16 @@ class AppointmentResource extends JsonResource
             'id' => $this->uuid,
             'scheduled_at' => $this->scheduled_at?->toIso8601String(),
             'duration_minutes' => $this->duration_minutes,
-            'status' => $this->status,
+            'status' => $this->status === 'scheduled' ? 'confirmed' : $this->status,
+            'source' => $this->source,
+            'requested_at' => $this->requested_at?->toIso8601String(),
+            'confirmed_at' => $this->confirmed_at?->toIso8601String(),
+            'rescheduled_count' => (int) $this->rescheduled_count,
+            'outcome' => $this->outcome,
+            // What a screen may offer next, from the one place that knows.
+            'moves' => VisitWorkflow::movesFrom($this->status),
+            'project' => $this->whenLoaded('project', fn () => $this->project ? ['id' => $this->project->uuid, 'name' => $this->project->name] : null),
+            'property' => $this->whenLoaded('property', fn () => $this->property ? ['id' => $this->property->uuid, 'title' => $this->property->title] : null),
             'location' => $this->location,
             'notes' => $this->notes,
             'outcome_note' => $this->outcome_note,

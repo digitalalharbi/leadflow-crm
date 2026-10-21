@@ -160,7 +160,7 @@ class CommandCenterController extends Controller
         return Appointment::query()
             ->with('lead:id,uuid,full_name')
             ->whereBetween('scheduled_at', [now()->startOfDay(), now()->endOfDay()])
-            ->where('status', 'scheduled')
+            ->whereIn('status', Appointment::BOOKED)
             ->when(! $user->seesAllLeads(), fn ($q) => $q->where('assigned_to', $user->id))
             ->orderBy('scheduled_at')
             ->limit(6)

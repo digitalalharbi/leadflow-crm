@@ -2,6 +2,7 @@
 
 namespace App\Domain\Leads;
 
+use App\Domain\Visits\ReservationService;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadLost;
@@ -11,10 +12,10 @@ use App\Events\LeadStageChanged;
 use App\Events\LeadWon;
 use App\Models\FollowUp;
 use App\Models\Lead;
-use App\Models\Reservation;
 use App\Models\User;
 use App\Services\Leads\ActivityLogger;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * One rep keystroke, everything that must follow it.
@@ -194,22 +195,18 @@ class OutcomeRecorder
         });
     }
 
-    /** Holds a unit for the lead — one open reservation at a time, the one they asked about if there is one. */
+    /** Holds a unit for the lead — one open reservation at a time, the one they asked about if it is still on the market. */
     private function reserve(Lead $lead, User $actor): void
     {
-        if (Reservation::where('lead_id', $lead->id)->whereIn('status', Reservation::OPEN)->exists()) {
-            return;
-        }
+        $service = app(ReservationService::class);
 
-        Reservation::create([
-            'lead_id' => $lead->id,
-            'project_id' => $lead->project_id,
-            'property_id' => $lead->interested_property_id,
-            'created_by' => $actor->id,
-            'status' => 'pending',
-            'reserved_at' => now(),
-            'expires_at' => now()->addDays(3),
-        ]);
+        try {
+            $service->create($lead, $actor);
+        } catch (ValidationException) {
+            // The unit they asked about is gone: the hold is made without one rather than not at all.
+            $lead->forceFill(['interested_property_id' => null])->saveQuietly();
+            $service->create($lead, $actor);
+        }
     }
 
     /** Moves the lead forward only. Never backwards — see OUTCOMES. */

@@ -69,7 +69,9 @@ export function CallsPanel({ calls }: { calls: LeadCall[] }) {
 }
 
 const APPOINTMENT_STATUS: Record<LeadAppointment['status'], StatusKey> = {
-  scheduled: 'pending',
+  requested: 'pending',
+  confirmed: 'pending',
+  rescheduled: 'pending',
   completed: 'completed',
   cancelled: 'paused',
   no_show: 'overdue',
@@ -96,11 +98,11 @@ export function AppointmentsPanel({ appointments }: { appointments: LeadAppointm
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[0.9375rem] font-medium" dir="auto">
-                    {formatDateTime(appointment.scheduled_at, i18n.language)}
+                    {appointment.scheduled_at ? formatDateTime(appointment.scheduled_at, i18n.language) : t('visits.status.requested')}
                   </span>
                   {appointment.location && <span className="block truncate text-[0.8125rem] text-[var(--color-ink-subtle)]">{appointment.location}</span>}
                 </span>
-                <StatusPill status={appointment.is_past && appointment.status === 'scheduled' ? 'overdue' : APPOINTMENT_STATUS[appointment.status]} />
+                <StatusPill status={appointment.is_past && (appointment.status === 'confirmed' || appointment.status === 'rescheduled') ? 'overdue' : APPOINTMENT_STATUS[appointment.status]} />
               </li>
             ))}
           </ul>

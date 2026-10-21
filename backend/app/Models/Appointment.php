@@ -22,15 +22,46 @@ class Appointment extends Model
         static::saved(fn (self $a) => InterestEngine::touch($a->lead_id, 'appointment'));
     }
 
+    public const REQUESTED = 'requested';
+
+    public const CONFIRMED = 'confirmed';
+
+    public const COMPLETED = 'completed';
+
+    public const NO_SHOW = 'no_show';
+
+    public const RESCHEDULED = 'rescheduled';
+
+    public const CANCELLED = 'cancelled';
+
+    public const STATUSES = [self::REQUESTED, self::CONFIRMED, self::COMPLETED, self::NO_SHOW, self::RESCHEDULED, self::CANCELLED];
+
+    /**
+     * Still going to happen (or waiting for somebody to say when). `scheduled` is what a
+     * confirmed visit used to be called; rows and callers that still say it are not stranded.
+     */
+    public const LIVE = [self::REQUESTED, self::CONFIRMED, self::RESCHEDULED, 'scheduled'];
+
+    /** With a time in the calendar. */
+    public const BOOKED = [self::CONFIRMED, self::RESCHEDULED, 'scheduled'];
+
+    /** What came of a visit that happened. */
+    public const OUTCOMES = ['interested', 'follow_up', 'reservation', 'lost'];
+
     protected $fillable = [
-        'lead_id', 'assigned_to', 'created_by', 'scheduled_at', 'duration_minutes',
-        'status', 'location', 'notes', 'outcome_note', 'external_provider', 'external_id',
+        'lead_id', 'project_id', 'property_id', 'assigned_to', 'created_by', 'scheduled_at', 'duration_minutes',
+        'status', 'source', 'location', 'notes', 'outcome_note', 'external_provider', 'external_id',
     ];
 
     protected function casts(): array
     {
         return [
             'scheduled_at' => 'datetime',
+            'requested_at' => 'datetime',
+            'confirmed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'no_show_at' => 'datetime',
+            'outcome_at' => 'datetime',
             'reminded_at' => 'datetime',
             'completed_at' => 'datetime',
             'duration_minutes' => 'integer',
@@ -50,7 +81,7 @@ class Appointment extends Model
     /** Still going to happen. */
     public function scopeUpcoming($query)
     {
-        return $query->where('status', 'scheduled')->where('scheduled_at', '>=', now());
+        return $query->whereIn('status', self::BOOKED)->where('scheduled_at', '>=', now());
     }
 
     /**
@@ -60,11 +91,27 @@ class Appointment extends Model
      */
     public function scopeAwaitingOutcome($query)
     {
-        return $query->where('status', 'scheduled')->where('scheduled_at', '<', now());
+        return $query->whereIn('status', self::BOOKED)->where('scheduled_at', '<', now());
+    }
+
+    /** Asked for by the customer, no time agreed yet. */
+    public function scopeRequested($query)
+    {
+        return $query->where('status', self::REQUESTED);
     }
 
     public function isPast(): bool
     {
-        return $this->scheduled_at->isPast();
+        return $this->scheduled_at !== null && $this->scheduled_at->isPast();
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class)->withTrashed();
+    }
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class)->withTrashed();
     }
 }

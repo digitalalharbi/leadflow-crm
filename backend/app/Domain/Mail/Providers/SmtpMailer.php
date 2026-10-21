@@ -16,6 +16,8 @@ use Throwable;
  */
 final class SmtpMailer implements MailerProvider
 {
+    use ShapesMessages;
+
     public function key(): string
     {
         return 'smtp';
@@ -51,15 +53,12 @@ final class SmtpMailer implements MailerProvider
         try {
             $id = '<'.Str::uuid().'@'.(parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'mohtam.local').'>';
 
-            Mail::mailer('smtp')->html($email->html, function ($message) use ($email, $id) {
-                $message->to($email->toEmail, $email->toName)->subject($email->subject)->from($email->fromAddress, $email->fromName);
-                $message->getSymfonyMessage()->getHeaders()->addIdHeader('Message-ID', trim($id, '<>'));
-            });
+            Mail::mailer('smtp')->html($email->html, fn ($message) => $this->shape($message, $email, $id));
 
-            return DeliveryResult::sent($id);
+            return DeliveryResult::sent($email->headers['Message-ID'] ?? $id);
         } catch (Throwable $e) {
             // A refused address will not be accepted on a second try; a connection that dropped may be.
-            return DeliveryResult::failed($e->getMessage(), retryable: ! str_contains(strtolower($e->getMessage()), 'rejected') && ! str_contains($e->getMessage(), '550'));
+            return DeliveryResult::failed($e->getMessage(), retryable: ! $this->isPermanent($e));
         }
     }
 }

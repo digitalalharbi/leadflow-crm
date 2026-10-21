@@ -2,24 +2,29 @@
 
 namespace App\Services\Email;
 
+use App\Domain\Mail\MailerProvider;
+use App\Domain\Mail\MailerRegistry;
+use App\Domain\Mail\Providers\TenantSmtpMailer;
 use App\Enums\IntegrationProvider;
 use App\Models\Integration;
-use Illuminate\Contracts\Mail\Mailer;
-use Illuminate\Support\Facades\Mail;
 
 /**
- * Which door an email leaves by.
+ * Which door an email to a lead leaves by.
  *
  * Three answers, and the difference between them is the whole honesty of the
  * channel:
  *
  *   smtp      the workspace gave us its own mail server, so the message leaves
  *             from its own domain and its own reputation
- *   platform  our shared transport. It works, and the customer's mail provider
- *             sees us rather than them
- *   mock      the log or array transport: the pipeline runs, nothing is sent.
- *             Reported as such everywhere, because an email that was written
- *             to a log file and called "sent" is a lead who never heard back.
+ *   platform  the product's own provider (App\Domain\Mail), configured and able
+ *             to send. The customer's mail provider sees us rather than them
+ *   mock      the product's provider only writes it down (the log), or has no
+ *             keys: the pipeline runs, nothing is sent. Reported as such
+ *             everywhere, because an email that was written to a log file and
+ *             called "sent" is a lead who never heard back.
+ *
+ * Both doors are a MailerProvider; nothing here, or anywhere, reaches for
+ * Laravel's default mailer.
  */
 class EmailManager
 {
@@ -27,6 +32,8 @@ class EmailManager
     public const SECRETS = ['password'];
 
     public const CONFIG = ['host', 'port', 'username', 'encryption', 'from_address', 'from_name'];
+
+    public function __construct(private MailerRegistry $registry) {}
 
     public function integration(): ?Integration
     {
@@ -55,7 +62,9 @@ class EmailManager
             return 'smtp';
         }
 
-        return in_array(config('mail.default'), ['log', 'array', 'null'], true) ? 'mock' : 'platform';
+        $door = $this->registry->current();
+
+        return $door->delivers() && $door->isConfigured() ? 'platform' : 'mock';
     }
 
     public function canSend(?Integration $integration = null): bool
@@ -65,27 +74,12 @@ class EmailManager
         return true;
     }
 
-    public function mailer(?Integration $integration = null): Mailer
+    /** The door itself: the workspace's own server when it gave one, else the product's provider. */
+    public function door(?Integration $integration = null): MailerProvider
     {
         $integration ??= $this->integration();
 
-        if (! $this->isLive($integration)) {
-            return Mail::mailer();
-        }
-
-        $encryption = $integration->config['encryption'] ?? 'tls';
-
-        return Mail::build([
-            'transport' => 'smtp',
-            'host' => $integration->config['host'],
-            'port' => (int) ($integration->config['port'] ?? 587),
-            'username' => $integration->config['username'],
-            'password' => $integration->credentials['password'],
-            // Symfony's DSN: "ssl" is implicit TLS on connect; STARTTLS is
-            // negotiated by the transport itself when the server offers it.
-            'scheme' => $encryption === 'ssl' ? 'smtps' : 'smtp',
-            'timeout' => 15,
-        ]);
+        return $this->isLive($integration) ? new TenantSmtpMailer($integration) : $this->registry->current();
     }
 
     /**
@@ -107,8 +101,8 @@ class EmailManager
         }
 
         return [
-            'address' => (string) config('mail.from.address'),
-            'name' => $company ?: (string) config('mail.from.name'),
+            'address' => (string) config('leadflow_mail.from.address'),
+            'name' => $company ?: (string) config('leadflow_mail.from.name'),
         ];
     }
 }

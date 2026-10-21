@@ -6,23 +6,24 @@ use App\Domain\Digest\DigestComposer;
 use App\Domain\Notifications\AlertKinds;
 use App\Domain\Notifications\NotificationPrefs;
 use App\Enums\Role;
-use App\Mail\DigestMail;
 use App\Models\AdConnection;
+use App\Models\EmailDelivery;
 use App\Models\Lead;
 use App\Models\User;
+use App\Notifications\Channels\ProviderMailChannel;
 use App\Notifications\Channels\TenantDatabaseChannel;
 use App\Notifications\ImportantNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
  * Email alerts at once for the few things worth interrupting for, and three summaries — each to
- * the people who chose it, once, at eight in the morning where the workspace is.
+ * the people who chose it, once, at eight in the morning where the workspace is. Every one of them
+ * is a delivery through the product's own door (App\Domain\Mail), never Laravel's mailer.
  */
 class EmailAlertsAndDigestsTest extends TestCase
 {
@@ -91,19 +92,21 @@ class EmailAlertsAndDigestsTest extends TestCase
 
     public function test_an_alert_is_emailed_at_once_only_to_those_who_chose_instant(): void
     {
-        $this->assertContains('mail', $this->channelsFor($this->rep, 'hot_lead'));
+        $this->assertContains(ProviderMailChannel::class, $this->channelsFor($this->rep, 'hot_lead'));
 
         NotificationPrefs::save($this->rep, ['alerts' => ['hot_lead' => 'daily']]);
-        $this->assertNotContains('mail', $this->channelsFor($this->rep->fresh(), 'hot_lead'));
+        $this->assertNotContains(ProviderMailChannel::class, $this->channelsFor($this->rep->fresh(), 'hot_lead'));
 
         NotificationPrefs::save($this->rep, ['alerts' => ['hot_lead' => 'off']]);
-        $this->assertNotContains('mail', $this->channelsFor($this->rep->fresh(), 'hot_lead'));
+        $this->assertNotContains(ProviderMailChannel::class, $this->channelsFor($this->rep->fresh(), 'hot_lead'));
 
         // Always kept in the app, whatever the email setting.
         $this->assertContains(TenantDatabaseChannel::class, $this->channelsFor($this->rep->fresh(), 'hot_lead'));
 
         // Not one of the eight: never an email.
-        $this->assertNotContains('mail', $this->channelsFor($this->manager, 'visit_no_show'));
+        $this->assertNotContains(ProviderMailChannel::class, $this->channelsFor($this->manager, 'visit_no_show'));
+        // And never Laravel's own mail channel, whatever the setting.
+        $this->assertNotContains('mail', $this->channelsFor($this->rep->fresh(), 'hot_lead'));
     }
 
     public function test_every_alert_category_has_a_notification_that_belongs_to_it(): void
@@ -164,15 +167,22 @@ class EmailAlertsAndDigestsTest extends TestCase
 
     // ------------------------------------------------------------------ digests
 
+    /** The digests queued as deliveries — the only way a summary leaves — newest run only. */
+    private function deliveries()
+    {
+        return EmailDelivery::withoutGlobalScopes()->where('tenant_id', $this->t['tenant']->id)->where('kind', 'like', 'digest.%')->orderBy('id')->get();
+    }
+
     private function digests(string $kind): array
     {
-        Mail::fake();
+        EmailDelivery::withoutGlobalScopes()->delete();
         Artisan::call('leadflow:send-digests', ['--now' => true, '--kind' => $kind, '--tenant' => $this->t['tenant']->slug]);
 
-        $sent = Mail::sent(DigestMail::class);
+        $who = fn (EmailDelivery $d) => match ($d->to_email) {
+            $this->t['admin']->email => 'admin', $this->manager->email => 'manager', $this->rep->email => 'rep', default => 'other',
+        };
 
-        return $sent->groupBy(fn (DigestMail $m) => $m->hasTo($this->t['admin']->email) ? 'admin' : ($m->hasTo($this->manager->email) ? 'manager' : ($m->hasTo($this->rep->email) ? 'rep' : 'other')))
-            ->map(fn ($mails) => $mails->map(fn (DigestMail $m) => $m->digest['kind'])->all())->all();
+        return $this->deliveries()->groupBy($who)->map(fn ($rows) => $rows->map(fn (EmailDelivery $d) => substr($d->kind, 7))->all())->all();
     }
 
     public function test_each_digest_goes_to_the_people_who_chose_it_and_only_once_a_day(): void
@@ -182,9 +192,13 @@ class EmailAlertsAndDigestsTest extends TestCase
         $this->assertSame(['daily_sales'], $daily['manager']);
         $this->assertSame(['daily_sales'], $daily['rep']);
 
+        // Through the door, honestly: the log provider writes them down and says so.
+        $this->assertSame(['logged'], $this->deliveries()->pluck('status')->unique()->values()->all());
+        $this->assertSame(['user'], $this->deliveries()->pluck('subject_type')->unique()->values()->all());
+
         // A second run the same day sends nothing more.
         Artisan::call('leadflow:send-digests', ['--now' => true, '--kind' => 'daily', '--tenant' => $this->t['tenant']->slug]);
-        Mail::assertSent(DigestMail::class, 3);
+        $this->assertCount(3, $this->deliveries());
 
         NotificationPrefs::save($this->rep, ['digests' => ['daily_sales' => false]]);
         DB::table('alert_marks')->where('key', 'like', 'digest:%')->delete();
@@ -207,22 +221,22 @@ class EmailAlertsAndDigestsTest extends TestCase
         $sunday = Carbon::parse('2026-11-01 05:00:00', 'UTC');
         $this->assertSame(0, $sunday->copy()->setTimezone('Asia/Riyadh')->dayOfWeek);
 
-        Mail::fake();
+        EmailDelivery::withoutGlobalScopes()->delete();
         Carbon::setTestNow($sunday->copy()->addHour());
         Artisan::call('leadflow:send-digests', ['--tenant' => $this->t['tenant']->slug]);
-        Mail::assertNothingSent();
+        $this->assertCount(0, $this->deliveries());
 
         Carbon::setTestNow($sunday);
         Artisan::call('leadflow:send-digests', ['--tenant' => $this->t['tenant']->slug]);
-        $kinds = Mail::sent(DigestMail::class)->map(fn (DigestMail $m) => $m->digest['kind'])->unique()->values()->all();
+        $kinds = $this->deliveries()->map(fn (EmailDelivery $d) => substr($d->kind, 7))->unique()->values()->all();
         $this->assertEqualsCanonicalizing(['daily_sales', 'weekly_marketing', 'weekly_executive'], $kinds);
 
         // A Monday morning: the daily one only.
-        Mail::fake();
+        EmailDelivery::withoutGlobalScopes()->delete();
         DB::table('alert_marks')->where('key', 'like', 'digest:%')->delete();
         Carbon::setTestNow($sunday->copy()->addDay());
         Artisan::call('leadflow:send-digests', ['--tenant' => $this->t['tenant']->slug]);
-        $this->assertSame(['daily_sales'], Mail::sent(DigestMail::class)->map(fn (DigestMail $m) => $m->digest['kind'])->unique()->values()->all());
+        $this->assertSame(['daily_sales'], $this->deliveries()->map(fn (EmailDelivery $d) => substr($d->kind, 7))->unique()->values()->all());
 
         Carbon::setTestNow();
     }
@@ -236,19 +250,21 @@ class EmailAlertsAndDigestsTest extends TestCase
         $compose = fn (User $u) => $this->asTenant($this->t['tenant'], fn () => app(DigestComposer::class)->rollup($u, 'daily', now()->subDay()));
         $this->assertSame(['عميل عالي القيمة'], collect($compose($this->manager))->pluck('title')->all());
 
-        Mail::fake();
+        EmailDelivery::withoutGlobalScopes()->delete();
         Artisan::call('leadflow:send-digests', ['--now' => true, '--kind' => 'daily', '--tenant' => $this->t['tenant']->slug]);
-        $mail = Mail::sent(DigestMail::class)->first(fn (DigestMail $m) => $m->hasTo($this->manager->email));
-        $this->assertSame('daily_sales', $mail->digest['kind']);
-        $this->assertSame(['عميل عالي القيمة'], collect($mail->rollup)->pluck('title')->all());
+        $mail = $this->deliveries()->first(fn (EmailDelivery $d) => $d->to_email === $this->manager->email)->makeVisible('html');
+        $this->assertSame('digest.daily_sales', $mail->kind);
+        $this->assertStringContainsString('عميل عالي القيمة', $mail->html);
+        $this->assertStringNotContainsString('عميل ساخن', $mail->html, 'an instant alert does not ride in the summary');
 
         // Without a summary chosen, the roll-up is mailed on its own.
         NotificationPrefs::save($this->manager, ['digests' => ['daily_sales' => false]]);
         DB::table('alert_marks')->where('key', 'like', 'digest:%')->delete();
-        Mail::fake();
+        EmailDelivery::withoutGlobalScopes()->delete();
         Artisan::call('leadflow:send-digests', ['--now' => true, '--kind' => 'daily', '--tenant' => $this->t['tenant']->slug]);
-        $alone = Mail::sent(DigestMail::class)->first(fn (DigestMail $m) => $m->hasTo($this->manager->email));
-        $this->assertSame('alerts_daily', $alone->digest['kind']);
+        $alone = $this->deliveries()->first(fn (EmailDelivery $d) => $d->to_email === $this->manager->email);
+        $this->assertSame('digest.alerts_daily', $alone->kind);
+        $this->assertStringContainsString('عميل عالي القيمة', $alone->makeVisible('html')->html);
     }
 
     public function test_the_daily_sales_digest_counts_what_is_waiting_for_that_person(): void

@@ -1,6 +1,6 @@
 import { apiGet, apiPatch } from '@/lib/api'
 
-export const ALERT_KINDS = ['lead_spike', 'lead_drop', 'cpl_spike', 'qualified_rate_drop', 'no_response_spike', 'tracking_drop', 'backlog_growth', 'spend_no_qualified'] as const
+export const ALERT_KINDS = ['lead_spike', 'lead_drop', 'cpl_spike', 'qualified_rate_drop', 'no_response_spike', 'tracking_drop', 'backlog_growth', 'spend_no_qualified', 'manual_spend_counts', 'manual_spend_stale'] as const
 export type AlertKind = (typeof ALERT_KINDS)[number]
 
 export type Source = 'project' | 'workspace' | 'default'
@@ -10,7 +10,7 @@ export interface AlertSetting {
   enabled: boolean
   enabled_source: Source
   /** Null for an alert that is only on or off. */
-  threshold: { value: number; source: Source; workspace: number; default: number; min: number; max: number; unit: 'percent' | 'money' } | null
+  threshold: { value: number; source: Source; workspace: number; default: number; min: number; max: number; unit: 'percent' | 'money' | 'days' } | null
 }
 
 export interface AnomalySettingsData {

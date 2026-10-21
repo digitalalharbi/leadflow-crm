@@ -3,15 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Domain\Digest\DigestComposer;
+use App\Domain\Mail\DigestEmail;
+use App\Domain\Mail\EmailDeliveries;
+use App\Domain\Mail\OutboundEmail;
 use App\Domain\Notifications\AlertGate;
 use App\Domain\Notifications\NotificationPrefs;
-use App\Mail\DigestMail;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * The email summaries: sales every morning, marketing and the executive one every Sunday morning
@@ -21,6 +22,9 @@ use Illuminate\Support\Facades\Mail;
  * ever sent a given summary once a day (an alert mark), so a second run in the same hour, or a
  * manual one, cannot double up. Alerts somebody set to "daily" or "weekly" ride along in the
  * summary of that rhythm — or, with no summary chosen, arrive alone.
+ *
+ * Each summary is queued as a delivery (App\Domain\Mail): the same door, retries and delivery log
+ * as every other email the product sends, and the same honesty when the provider only logs.
  */
 class SendDigests extends Command
 {
@@ -36,8 +40,11 @@ class SendDigests extends Command
     /** Sunday: the week the market works starts there. */
     private const WEEK_STARTS = CarbonImmutable::SUNDAY;
 
-    public function handle(DigestComposer $composer, TenantContext $context): int
+    private EmailDeliveries $deliveries;
+
+    public function handle(DigestComposer $composer, TenantContext $context, EmailDeliveries $deliveries): int
     {
+        $this->deliveries = $deliveries;
         $sent = 0;
 
         $tenants = $context->withoutScope(fn () => Tenant::with('settings')->where('is_active', true)
@@ -92,16 +99,33 @@ class SendDigests extends Command
 
             // The roll-up rides on the last summary of the rhythm — one email for it, not one each.
             $carry = $index === count($wanted) - 1 ? $rollup : [];
-            Mail::to($user->email)->send(new DigestMail($composer->compose($kind, $user), $carry, $tenant->name));
+            $this->mail($user, $tenant, $kind, $composer->compose($kind, $user), $carry, $local);
             $count++;
         }
 
         // Alerts chosen for later, and no summary to carry them: they arrive alone.
         if ($wanted === [] && $rollup !== [] && AlertGate::once("digest:alerts_{$rhythm}:{$user->id}:{$local->toDateString()}")) {
-            Mail::to($user->email)->send(new DigestMail(['kind' => "alerts_{$rhythm}", 'title' => $rhythm === 'daily' ? 'تنبيهات اليوم' : 'تنبيهات الأسبوع', 'period' => $local->toDateString(), 'stats' => [], 'lists' => []], $rollup, $tenant->name));
+            $this->mail($user, $tenant, "alerts_{$rhythm}", ['kind' => "alerts_{$rhythm}", 'title' => $rhythm === 'daily' ? 'تنبيهات اليوم' : 'تنبيهات الأسبوع', 'period' => $local->toDateString(), 'stats' => [], 'lists' => []], $rollup, $local);
             $count++;
         }
 
         return $count;
+    }
+
+    /**
+     * One summary to one person, queued. The idempotency key is the same one the alert mark uses, so
+     * even a delivery asked for twice is one email.
+     *
+     * @param  array<string,mixed>  $digest
+     * @param  list<array{title:string,body:string}>  $rollup
+     */
+    private function mail(User $user, Tenant $tenant, string $kind, array $digest, array $rollup, CarbonImmutable $local): void
+    {
+        $mail = DigestEmail::compose($digest, $rollup, $tenant->name);
+
+        $this->deliveries->queue(
+            new OutboundEmail($user->email, $user->name, $mail['subject'], $mail['html'], null, '', '', "digest:{$kind}:{$user->id}:{$local->toDateString()}", ['kind' => 'digest', 'digest' => $kind]),
+            ['kind' => mb_substr("digest.{$kind}", 0, 24), 'subject_type' => 'user', 'subject_id' => $user->id],
+        );
     }
 }

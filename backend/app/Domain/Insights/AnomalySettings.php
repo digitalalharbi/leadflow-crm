@@ -9,7 +9,8 @@ use App\Models\TenantSetting;
  * How sensitive each alert is, and whether it is on — the workspace's choice, with a project able to
  * ask for something different for its own numbers.
  *
- * Eight alerts, seven of which have a line you can move (the lead spike is simply on or off):
+ * Ten alerts, eight of which have a line you can move (the lead spike, and whether entered spend
+ * counts, are simply on or off):
  *
  *   lead_drop            leads fell by this much against the usual
  *   cpl_spike            cost per lead rose by this much
@@ -18,10 +19,14 @@ use App\Models\TenantSetting;
  *   tracking_drop        tracking events fell by this much (a gap in what is recorded)
  *   backlog_growth       the sales backlog grew by this much
  *   spend_no_qualified   this much was spent in three days without one qualified lead
+ *   manual_spend_counts  whether spend somebody typed in counts in the spend alerts above (on by default)
+ *   manual_spend_stale   a campaign costed by hand has had no spend entered for more than this many days
+ *                        while it keeps bringing leads: its cost per lead is not to be believed
  *
  * The line in force is the project's if it set one, else the workspace's, else the default below;
  * `defaults()` are exactly what the detector used before it could be configured, so changing nothing
- * changes nothing.
+ * changes nothing. Every alert can be judged per project — entered spend is matched to a project's
+ * campaigns by name and platform, and a tracking event carries the project it was recorded for.
  */
 class AnomalySettings
 {
@@ -35,6 +40,8 @@ class AnomalySettings
         'tracking_drop' => ['key' => 'drop_pct', 'default' => 60, 'min' => 30, 'max' => 95, 'unit' => 'percent'],
         'backlog_growth' => ['key' => 'rise_pct', 'default' => 50, 'min' => 20, 'max' => 500, 'unit' => 'percent'],
         'spend_no_qualified' => ['key' => 'min_spend', 'default' => 300, 'min' => 1, 'max' => 100_000_000, 'unit' => 'money'],
+        'manual_spend_counts' => ['key' => null, 'default' => null, 'min' => null, 'max' => null, 'unit' => null],
+        'manual_spend_stale' => ['key' => 'days', 'default' => 3, 'min' => 1, 'max' => 30, 'unit' => 'days'],
     ];
 
     /** @param  array<string,array{enabled?:bool,value?:int}>  $workspace @param  array<string,array{enabled?:bool,value?:int}>  $project */

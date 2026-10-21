@@ -8,6 +8,7 @@ use App\Domain\Mail\OutboundEmail;
 use Aws\Ses\SesClient;
 use Aws\SesV2\SesV2Client;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -16,6 +17,8 @@ use Throwable;
  */
 final class SesMailer implements MailerProvider
 {
+    use ShapesMessages;
+
     public function key(): string
     {
         return 'ses';
@@ -48,17 +51,14 @@ final class SesMailer implements MailerProvider
         }
 
         try {
-            $id = null;
+            $id = '<'.Str::uuid().'@'.(parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'mohtam.local').'>';
 
-            Mail::mailer('ses')->html($email->html, function ($message) use ($email, &$id) {
-                $message->to($email->toEmail, $email->toName)->subject($email->subject)->from($email->fromAddress, $email->fromName);
-                $id = $message->getSymfonyMessage()->generateMessageId();
-            });
+            Mail::mailer('ses')->html($email->html, fn ($message) => $this->shape($message, $email, $id));
 
-            return DeliveryResult::sent($id);
+            return DeliveryResult::sent($email->headers['Message-ID'] ?? $id);
         } catch (Throwable $e) {
             // Throttling and server errors are worth another try; a rejected message is not.
-            $rejected = str_contains($e->getMessage(), 'MessageRejected') || str_contains($e->getMessage(), 'InvalidParameter');
+            $rejected = str_contains($e->getMessage(), 'MessageRejected') || str_contains($e->getMessage(), 'InvalidParameter') || $this->isPermanent($e);
 
             return DeliveryResult::failed($e->getMessage(), retryable: ! $rejected);
         }

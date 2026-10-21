@@ -3,6 +3,7 @@
 namespace App\Domain\Actions;
 
 use App\Domain\Campaigns\AdPlatformRegistry;
+use App\Domain\Campaigns\SelfApproval;
 use App\Jobs\ExecuteActionProposal;
 use App\Jobs\NotifyProposalApprovers;
 use App\Models\ActionLogEntry;
@@ -11,6 +12,8 @@ use App\Models\AdConnection;
 use App\Models\AdSet;
 use App\Models\Campaign;
 use App\Models\ClientRule;
+use App\Models\Project;
+use App\Models\TenantSetting;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +25,10 @@ use InvalidArgumentException;
  *
  * The only path to a write on an ad account. Agents and screens call propose();
  * nothing else calls an adapter's execute().
+ *
+ * Safe self-approve (SelfApproval): a person's own pause, resume or guarded budget
+ * change may skip the inbox when the workspace says so — the same policy check,
+ * the same execution, the same log, with the audit trail saying the mode did it.
  */
 class ActionGateway
 {
@@ -72,6 +79,7 @@ class ActionGateway
             'agent' => $agent,
             'proposed_by_user_id' => $user?->id,
             'idempotency_key' => $key,
+            'approval' => ActionProposal::MANUAL,
         ]);
 
         $verdict = $this->verdict($proposal);
@@ -85,7 +93,24 @@ class ActionGateway
             NotifyProposalApprovers::dispatch($proposal->id)->afterCommit();
         }
 
+        // A person's own low-risk change, where the workspace lets it run at once.
+        if ($agent === null && $user !== null && $proposal->status === ActionProposal::PENDING) {
+            $verdict = $this->selfApproval($proposal)->decide($proposal, $user);
+
+            if ($verdict['allowed']) {
+                return $this->approve($proposal, $user, null, $verdict['rule']);
+            }
+        }
+
         return $proposal;
+    }
+
+    /** The self-approve setting in force for a proposal: its project's, laid over the workspace's. */
+    public function selfApproval(ActionProposal $proposal): SelfApproval
+    {
+        $projectId = $proposal->project_id ?? $proposal->campaign?->project_id;
+
+        return SelfApproval::for(TenantSetting::query()->first(), $projectId ? Project::query()->find($projectId) : null);
     }
 
     /** A person changes what is proposed, before deciding. The policy is asked again. */
@@ -112,20 +137,29 @@ class ActionGateway
         return $proposal;
     }
 
-    public function approve(ActionProposal $proposal, User $user, ?string $note = null): ActionProposal
+    /**
+     * @param  array<string,mixed>|null  $self  the self-approve rule that let it through, when no person pressed approve
+     */
+    public function approve(ActionProposal $proposal, User $user, ?string $note = null, ?array $self = null): ActionProposal
     {
         $this->mustBe($proposal, [ActionProposal::PENDING]);
 
+        $approval = $self !== null ? ActionProposal::SELF : ActionProposal::MANUAL;
         $verdict = $this->verdict($proposal, executing: true);
 
         if (! $verdict['allowed']) {
-            $proposal->fill(['policy' => $verdict, 'status' => ActionProposal::BLOCKED])->save();
+            // The mode said yes; the policy, checked for running, said no. Both are on the record.
+            $proposal->fill(['policy' => $verdict, 'status' => ActionProposal::BLOCKED, 'approval' => $approval])->save();
+
+            if ($self !== null) {
+                $this->audit->log('action_proposal.self_approved', $user, $proposal, ['action' => $proposal->action, 'rule' => $self, 'outcome' => 'blocked', 'blocks' => $verdict['blocks']]);
+            }
 
             return $proposal;
         }
 
-        $proposal->fill(['status' => ActionProposal::APPROVED, 'decided_by' => $user->id, 'decided_at' => now(), 'decision_note' => $note])->save();
-        $this->audit->log('action_proposal.approved', $user, $proposal, ['action' => $proposal->action]);
+        $proposal->fill(['status' => ActionProposal::APPROVED, 'decided_by' => $user->id, 'decided_at' => now(), 'decision_note' => $note, 'approval' => $approval])->save();
+        $this->audit->log($self !== null ? 'action_proposal.self_approved' : 'action_proposal.approved', $user, $proposal, ['action' => $proposal->action] + ($self !== null ? ['rule' => $self, 'outcome' => 'approved'] : []));
 
         ExecuteActionProposal::dispatch($proposal->id, $user->id);
 

@@ -11,6 +11,7 @@ use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Domain\Campaigns\PlatformVerification;
 use App\Domain\Campaigns\QualityBreakdown;
+use App\Domain\Campaigns\SelfApproval;
 use App\Domain\Conversions\ConversionHealth;
 use App\Http\Controllers\Controller;
 use App\Models\ActionProposal;
@@ -19,6 +20,7 @@ use App\Models\AdConnection;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Models\TenantSetting;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
@@ -78,23 +80,31 @@ class CampaignController extends Controller
 
         $pending = ActionProposal::query()->where('status', ActionProposal::PENDING)->whereNotNull('campaign_id')
             ->selectRaw('campaign_id, count(*) as n')->groupBy('campaign_id')->pluck('n', 'campaign_id');
-        $ids = Campaign::query()->whereIn('uuid', array_column($rows, 'id'))->pluck('id', 'uuid');
+        $campaigns = Campaign::query()->whereIn('uuid', array_column($rows, 'id'))->get(['id', 'uuid', 'project_id'])->keyBy('uuid');
         $registry = app(AdPlatformRegistry::class);
+        $settings = TenantSetting::query()->first();
+        $projects = Project::query()->whereIn('id', $campaigns->pluck('project_id')->filter()->unique()->all())->get()->keyBy('id');
+        $workspaceSelf = SelfApproval::for($settings);
 
         return ApiResponse::success([
-            'campaigns' => array_map(function (array $row) use ($pending, $ids, $registry) {
+            'campaigns' => array_map(function (array $row) use ($pending, $campaigns, $registry, $settings, $projects, $request) {
                 $actions = $registry->get($row['platform'])->actions();
+                $campaign = $campaigns[$row['id']] ?? null;
+                $can = array_values(array_filter([
+                    in_array('pause', $actions, true) ? 'pause' : null, in_array('resume', $actions, true) ? 'resume' : null,
+                    in_array('pause', $actions, true) && in_array('resume', $actions, true) ? 'set_status' : null,
+                    in_array('update_budget', $actions, true) ? 'set_budget' : null, 'sync',
+                ]));
 
                 return $row + [
-                    'pending_proposals' => (int) ($pending[$ids[$row['id']] ?? 0] ?? 0),
+                    'pending_proposals' => (int) ($pending[$campaign?->id ?? 0] ?? 0),
                     // What this platform lets us do to it; sync reads, so it is always there.
-                    'can' => array_values(array_filter([
-                        in_array('pause', $actions, true) ? 'pause' : null, in_array('resume', $actions, true) ? 'resume' : null,
-                        in_array('pause', $actions, true) && in_array('resume', $actions, true) ? 'set_status' : null,
-                        in_array('update_budget', $actions, true) ? 'set_budget' : null, 'sync',
-                    ])),
+                    'can' => $can,
+                    // Which of those this person's own change runs at once, by the self-approve setting in force here.
+                    'instant' => SelfApproval::for($settings, $campaign?->project_id ? $projects[$campaign->project_id] ?? null : null)->instant($request->user(), $can),
                 ];
             }, $rows),
+            'self_approval' => ['enabled' => $workspaceSelf->enabled(), 'actions' => $workspaceSelf->actions(), 'max_budget_change_pct' => $workspaceSelf->maxBudgetChangePct()],
             'totals' => $totals,
             'classes' => array_count_values(array_filter(array_map(fn ($r) => $r['quality']['class'], $rows))),
             'sandbox' => $registry->sandboxed(),

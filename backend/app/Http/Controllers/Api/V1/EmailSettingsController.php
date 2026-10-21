@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Mail\OutboundEmail;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Models\CommissioningRun;
@@ -10,9 +11,7 @@ use App\Services\AuditLogger;
 use App\Services\Email\EmailManager;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
-use Throwable;
 
 /**
  * Connecting a workspace to its own mail server.
@@ -110,24 +109,16 @@ class EmailSettingsController extends Controller
             return ApiResponse::error('Enter the mail server, the sender and the credentials first.', null, 422);
         }
 
-        $ok = true;
-        $reason = null;
+        $from = $this->manager->from($integration, null);
+        $text = 'هذه رسالة اختبار من «مهتم». إن وصلتك فإعدادات البريد صحيحة.';
 
-        try {
-            $from = $this->manager->from($integration, null);
-
-            $this->manager->mailer($integration)->raw(
-                'هذه رسالة اختبار من «مهتم». إن وصلتك فإعدادات البريد صحيحة.',
-                function ($message) use ($request, $from) {
-                    $message->to($request->user()->email)
-                        ->from($from['address'], $from['name'])
-                        ->subject('اختبار إعدادات البريد');
-                },
-            );
-        } catch (Throwable $e) {
-            $ok = false;
-            $reason = mb_substr($e->getMessage(), 0, 240);
-        }
+        // The workspace's own server, through the same door every lead email takes: what it says is what the rep will get.
+        $result = $this->manager->door($integration)->send(new OutboundEmail(
+            $request->user()->email, $request->user()->name, 'اختبار إعدادات البريد', '<p>'.e($text).'</p>', $text,
+            $from['address'], $from['name'], '', ['kind' => 'smtp_test'],
+        ));
+        $ok = $result->ok;
+        $reason = $result->error !== null ? mb_substr($result->error, 0, 240) : null;
 
         $integration->forceFill([
             'status' => $ok ? Integration::CONNECTED : Integration::ERROR,

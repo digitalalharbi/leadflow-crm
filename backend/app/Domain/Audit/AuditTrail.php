@@ -118,7 +118,7 @@ class AuditTrail
             str_starts_with($action, 'user.') => 'permissions',
             str_starts_with($action, 'report_share.') => 'reports',
             str_starts_with($action, 'automation_rule.'), str_starts_with($action, 'project.automation'), $action === 'project.scoring_changed', $action === 'project.thresholds_changed' => 'automation',
-            str_starts_with($action, 'campaign'), str_starts_with($action, 'tracking_link.'), str_starts_with($action, 'partner.'), str_starts_with($action, 'anomaly.') => 'campaigns',
+            str_starts_with($action, 'campaign'), str_starts_with($action, 'action_proposal.'), str_starts_with($action, 'self_approval.'), str_starts_with($action, 'tracking_link.'), str_starts_with($action, 'partner.'), str_starts_with($action, 'anomaly.') => 'campaigns',
             $action === 'lead.deal_value_changed' => 'deal',
             str_starts_with($action, 'lead.') => 'status',
             default => 'other',

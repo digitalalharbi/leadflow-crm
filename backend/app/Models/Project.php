@@ -32,7 +32,7 @@ class Project extends Model
 
     protected function casts(): array
     {
-        return ['starting_price' => 'decimal:2', 'scoring' => 'array', 'automation_settings' => 'array', 'anomaly_settings' => 'array'];
+        return ['starting_price' => 'decimal:2', 'scoring' => 'array', 'automation_settings' => 'array', 'anomaly_settings' => 'array', 'self_approval' => 'array'];
     }
 
     public function company(): BelongsTo

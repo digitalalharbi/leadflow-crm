@@ -73,14 +73,14 @@ class OpsPulse
         $tracking = collect(app(TrackingHealth::class)->build(7)['platforms'])->filter(fn ($p) => $p['connected'] && $p['status'] === 'risk')->count();
 
         $anomalies = Anomaly::query()->whereNull('dismissed_at')->where('detected_on', '>=', now()->subDays(3)->toDateString())->get(['severity', 'kind']);
-        $campaigns = $anomalies->whereIn('kind', ['spend_no_qualified', 'cpl_spike'])->count();
+        $campaigns = $anomalies->whereIn('kind', ['spend_no_qualified', 'cpl_spike', 'manual_spend_stale'])->count();
 
         $light = fn (int $n, int $bad) => $n === 0 ? 'ok' : ($n >= $bad ? 'bad' : 'watch');
 
         return [
             'automation' => ['state' => $light($failed + $stuck, 10), 'count' => $failed + $stuck],
             'tracking' => ['state' => $light($tracking, 2), 'count' => $tracking],
-            'campaigns' => ['state' => $anomalies->where('severity', 'critical')->whereIn('kind', ['spend_no_qualified', 'cpl_spike'])->isNotEmpty() ? 'bad' : $light($campaigns, 99), 'count' => $campaigns],
+            'campaigns' => ['state' => $anomalies->where('severity', 'critical')->whereIn('kind', ['spend_no_qualified', 'cpl_spike', 'manual_spend_stale'])->isNotEmpty() ? 'bad' : $light($campaigns, 99), 'count' => $campaigns],
             'backlog' => ['state' => $light($backlog + $late, 25), 'count' => $backlog + $late],
         ];
     }

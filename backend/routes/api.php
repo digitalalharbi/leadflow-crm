@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\V1\ReservationController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\SearchController;
+use App\Http\Controllers\Api\V1\SelfApprovalController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
@@ -191,6 +192,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/anomalies/{uuid}/dismiss', [InsightController::class, 'dismiss'])->whereUuid('uuid');
             Route::get('/anomaly-settings', [AnomalySettingsController::class, 'show']);
             Route::patch('/anomaly-settings', [AnomalySettingsController::class, 'update']);
+            Route::get('/settings/self-approval', [SelfApprovalController::class, 'show']);
+            Route::patch('/settings/self-approval', [SelfApprovalController::class, 'update']);
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);

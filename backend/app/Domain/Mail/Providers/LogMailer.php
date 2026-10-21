@@ -38,7 +38,10 @@ final class LogMailer implements MailerProvider
     {
         $id = 'log-'.Str::uuid();
 
-        Log::info('email.logged', ['id' => $id, 'to' => $email->toEmail, 'subject' => $email->subject, 'tags' => $email->tags]);
+        Log::info('email.logged', [
+            'id' => $id, 'to' => $email->toEmail, 'subject' => $email->subject, 'tags' => $email->tags,
+            'reply_to' => $email->replyTo, 'headers' => array_keys($email->headers),
+        ]);
 
         return DeliveryResult::logged($id);
     }

@@ -54,6 +54,7 @@ class TenantSetting extends Model
         return [
             'work_days' => 'array',
             'anomaly_settings' => 'array',
+            'self_approval' => 'array',
             'score_priority_threshold' => 'integer',
             'high_value_from' => 'integer',
             'stalled_after_days' => 'integer',

@@ -47,9 +47,12 @@ final class ResendMailer implements MailerProvider
                 ->post((string) config('leadflow_mail.resend.endpoint'), array_filter([
                     'from' => $email->fromName !== '' ? "{$email->fromName} <{$email->fromAddress}>" : $email->fromAddress,
                     'to' => [$email->toName ? "{$email->toName} <{$email->toEmail}>" : $email->toEmail],
+                    'reply_to' => $email->replyTo,
                     'subject' => $email->subject,
                     'html' => $email->html,
                     'text' => $email->text,
+                    // Threading and list headers ride along as given; Resend keeps its own Message-ID.
+                    'headers' => array_filter($email->headers, fn ($v, $k) => filled($v) && strtolower($k) !== 'message-id', ARRAY_FILTER_USE_BOTH) ?: null,
                     'tags' => array_map(fn ($k, $v) => ['name' => $k, 'value' => $v], array_keys($email->tags), array_values($email->tags)) ?: null,
                 ]));
         } catch (Throwable $e) {

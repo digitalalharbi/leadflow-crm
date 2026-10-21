@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Domain\Sheets\SheetImporter;
 use App\Enums\IntegrationProvider;
 use App\Jobs\RunScheduledAction;
-use App\Mail\LeadEmail;
 use App\Models\AutomationActionLog;
 use App\Models\Campaign;
 use App\Models\ConversionExport;
@@ -21,9 +20,9 @@ use App\Models\SheetSource;
 use App\Services\Whatsapp\InboundWhatsappProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\FakeMailer;
 use Tests\TestCase;
 
 /**
@@ -50,10 +49,12 @@ class ASheetRowBecomesRevenueTest extends TestCase
 
     private array $sentToWhatsapp = [];
 
+    private FakeMailer $mailer;
+
     public function test_one_sheet_row_becomes_revenue_on_its_campaign_with_every_step_recorded(): void
     {
         Storage::fake('local');
-        Mail::fake();
+        $this->mailer = $this->fakeMailer();
         Queue::fake([RunScheduledAction::class]);
         config(['mail.default' => 'smtp']);
 
@@ -132,7 +133,7 @@ class ASheetRowBecomesRevenueTest extends TestCase
         $this->assertContains('send_whatsapp', $done, 'WhatsApp welcome');
         $this->assertContains('send_email', $done, 'email welcome');
         $this->assertContains('share_file', $done, 'brochure');
-        Mail::assertSent(LeadEmail::class);
+        $this->assertNotEmpty($this->mailer->sent, 'the welcome email reached the door');
         $this->assertNotEmpty($this->sentToWhatsapp);
 
         $lead = $this->asTenant($tenant, fn () => $lead->fresh());

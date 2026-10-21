@@ -106,6 +106,7 @@ export default {
     anomaly: {
       lead_spike: 'Spike in leads', lead_drop: 'Drop in leads', cpl_spike: 'Cost per lead jumped', qualified_rate_drop: 'Qualified rate fell',
       no_response_spike: 'Leads going unanswered', tracking_drop: 'Tracking events dried up', spend_no_qualified: 'Spend, nobody qualified', backlog_growth: 'Sales backlog growing',
+      manual_spend_stale: 'Entered spend gone stale',
     },
     card: {
       holds_expiring_one: '1 reservation lapses within 24h', holds_expiring_other: '{{count}} reservations lapse within 24h',
@@ -2015,8 +2016,13 @@ export default {
     reason: 'Reason',
     submit: 'Send for approval',
     needsApproval: 'Nothing changes on the ad account until it is approved.',
+    runsNow: 'Safe self-approve is on: this change is low-risk and runs at once in your name, and is recorded.',
+    runNow: 'Run now',
     filed: 'Sent for approval.',
     filedBlocked: 'Recorded, but it breaks the client rules.',
+    selfRan: 'Ran at once by self-approve.',
+    selfBlocked: 'Self-approve said yes, but the rules stopped it: {{why}}.',
+    selfBadge: 'Self-approved',
     action: {
       pause: 'Pause', resume: 'Resume', update_budget: 'Change budget', duplicate_ad_set: 'Duplicate ad set',
       create_campaign: 'New campaign', create_ad: 'New ad', update_creative: 'Update creative', update_targeting: 'Update targeting', schedule: 'Schedule',
@@ -2906,14 +2912,23 @@ export default {
   anomalySettings: {
     title: 'Smart alert sensitivity', hint: 'For each alert: switch it on or off and set the line it fires at. The default is what ran before it could be set.',
     scope: 'Scope', workspace: 'The whole workspace', projectHint: 'What you change here is this project’s alone, and its numbers are judged by its own lines. A line you leave alone is inherited from the workspace.',
-    on: 'On', off: 'Off', reset: 'Back to the default', currency: 'SAR',
-    kind: { lead_spike: 'Lead spike', lead_drop: 'Lead drop', cpl_spike: 'Cost per lead spike', qualified_rate_drop: 'Qualified-rate drop', no_response_spike: 'Leads with no contact', tracking_drop: 'Tracking gap', backlog_growth: 'Sales backlog', spend_no_qualified: 'Spend without qualified' },
-    line: { lead_spike: '', lead_drop: 'Lead drop', cpl_spike: 'Cost rise', qualified_rate_drop: 'Qualified drop', no_response_spike: 'No-contact share', tracking_drop: 'Events drop', backlog_growth: 'Backlog growth', spend_no_qualified: 'Spend line' },
+    on: 'On', off: 'Off', reset: 'Back to the default', currency: 'SAR', days: 'days',
+    kind: { lead_spike: 'Lead spike', lead_drop: 'Lead drop', cpl_spike: 'Cost per lead spike', qualified_rate_drop: 'Qualified-rate drop', no_response_spike: 'Leads with no contact', tracking_drop: 'Tracking gap', backlog_growth: 'Sales backlog', spend_no_qualified: 'Spend without qualified', manual_spend_counts: 'Entered spend counts', manual_spend_stale: 'Entered spend gone stale' },
+    line: { lead_spike: '', lead_drop: 'Lead drop', cpl_spike: 'Cost rise', qualified_rate_drop: 'Qualified drop', no_response_spike: 'No-contact share', tracking_drop: 'Events drop', backlog_growth: 'Backlog growth', spend_no_qualified: 'Spend line', manual_spend_counts: '', manual_spend_stale: 'Days without an entry' },
     about: {
       lead_spike: 'Yesterday’s leads were far above the usual.', lead_drop: 'Yesterday’s leads fell by this much or more against the usual.', cpl_spike: 'Yesterday’s cost per lead rose by this much against the usual.',
       qualified_rate_drop: 'The share who qualified this week fell by this much against the weeks before.', no_response_spike: 'This share of the last 3 days’ leads has had no contact.',
-      tracking_drop: 'Tracking events recorded yesterday fell by this much against the usual: a gap in what is being recorded.', backlog_growth: 'The sales backlog grew by this much against the usual.', spend_no_qualified: 'This much was spent in 3 days on a campaign with no qualified lead.',
+      tracking_drop: 'Tracking events recorded yesterday fell by this much against the usual: a gap in what is being recorded. Each project is judged on the events recorded for it; an event with no project belongs to the workspace alone.', backlog_growth: 'The sales backlog grew by this much against the usual.', spend_no_qualified: 'This much was spent in 3 days on a campaign with no qualified lead.',
+      manual_spend_counts: 'Spend somebody typed in counts in the cost and spend alerts. Switch it off if the entered figures cannot be relied on.', manual_spend_stale: 'A campaign costed by hand keeps bringing leads but has had no spend entered for more than this many days: its cost per lead cannot be trusted.',
     },
+  },
+  selfApproval: {
+    title: 'Safe self-approve', hint: 'Your own change to a campaign — a pause, a resume, or a budget change within a guard — runs at once instead of waiting in the approval inbox. Off until you switch it on.',
+    projectHint: 'What you change here is this project’s alone. What you leave is inherited from the workspace.',
+    on: 'On: your low-risk change runs at once', off: 'Off: every change waits for approval',
+    actions: 'What runs at once', about: { pause: 'Pause a running campaign.', resume: 'Resume a paused campaign.', update_budget: 'Change the daily budget — only within the guard below.' },
+    guard: 'Budget-change guard', guardHint: 'A budget change of up to {{pct}}% runs at once; more than that waits for approval. The client rules still sit above this guard.', guardZero: 'Zero: any budget change waits for approval, whatever is ticked.',
+    alwaysManual: 'Always waits for approval', alwaysManualHint: 'Whatever the setting — because it is high-risk, or because an agent proposed it.', agents: 'Agent proposals', syncNote: 'Sync only reads and never needed approval. Every automatic run is on the audit trail with who asked for it and the rule that let it through.',
   },
   salesIntel: {
     team: { close: 'Close rate', contact: 'Contact rate', sla: 'Answered in {{minutes}} min', leads: 'Team leads' },
@@ -2991,6 +3006,7 @@ export default {
     leads: 'Leads',
     scoring: 'Qualification & scoring',
     alerts: 'Smart alerts',
+    approvals: 'Self-approve',
     delivery: 'Email delivery',
     generalHint: 'Language, currency, timezone and how leads are assigned',
     scoringHint: 'What makes a lead hot, and how long before it counts as neglected',

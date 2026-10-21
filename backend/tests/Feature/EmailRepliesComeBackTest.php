@@ -5,14 +5,13 @@ namespace Tests\Feature;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
-use App\Mail\LeadEmail;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Models\ScheduledAction;
 use App\Services\Email\EmailSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
 use RuntimeException;
+use Tests\Support\FakeMailer;
 use Tests\TestCase;
 
 /**
@@ -28,10 +27,12 @@ class EmailRepliesComeBackTest extends TestCase
 
     private Lead $lead;
 
+    private FakeMailer $mailer;
+
     protected function setUp(): void
     {
         parent::setUp();
-        Mail::fake();
+        $this->mailer = $this->fakeMailer();
         config(['services.email_inbound.domain' => 'reply.muhtam.test', 'services.email_inbound.secret' => 'inbound-secret']);
 
         $this->t = $this->provisionTenant('Inbox Co');
@@ -53,17 +54,14 @@ class EmailRepliesComeBackTest extends TestCase
         $first = $this->sendOne();
         $second = $this->sendOne('متابعة');
 
-        $sent = [];
-        Mail::assertSent(LeadEmail::class, function (LeadEmail $mail) use (&$sent) {
-            $sent[] = $mail;
+        $sent = $this->mailer->sent;
+        $this->assertCount(2, $sent);
 
-            return true;
-        });
-
-        $this->assertSame("reply+{$first->tracking_token}@reply.muhtam.test", $sent[0]->replyAddress);
-        $this->assertNull($sent[0]->inReplyTo);
-        $this->assertSame($first->fresh()->provider_message_id, $sent[1]->inReplyTo);
-        $this->assertSame("reply+{$second->tracking_token}@reply.muhtam.test", $sent[1]->replyAddress);
+        $this->assertSame("reply+{$first->tracking_token}@reply.muhtam.test", $sent[0]->replyTo);
+        $this->assertArrayNotHasKey('In-Reply-To', $sent[0]->headers);
+        $this->assertSame($first->fresh()->provider_message_id, $sent[1]->headers['In-Reply-To']);
+        $this->assertSame($sent[0]->headers['Message-ID'], $sent[1]->headers['References'], 'the thread names the first message');
+        $this->assertSame("reply+{$second->tracking_token}@reply.muhtam.test", $sent[1]->replyTo);
     }
 
     public function test_a_postmark_reply_lands_in_the_thread_and_hands_the_lead_to_a_person(): void

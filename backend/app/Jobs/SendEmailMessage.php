@@ -2,9 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Domain\Mail\DeliveryResult;
+use App\Domain\Mail\OutboundEmail;
 use App\Enums\ActivityType;
 use App\Enums\MessageStatus;
-use App\Mail\LeadEmail;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Services\Email\EmailManager;
@@ -14,8 +15,6 @@ use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Str;
-use Symfony\Component\Mime\Exception\ExceptionInterface;
-use Throwable;
 
 /**
  * Sends one email that is already written down.
@@ -25,6 +24,9 @@ use Throwable;
  * here, with a backoff, only for failures that describe the attempt (a dropped
  * connection, a busy server); an address the server refused is permanent, and
  * trying it three more times only delays telling the rep.
+ *
+ * The door is a MailerProvider — the workspace's own server or the product's
+ * provider — and never Laravel's default mailer.
  */
 class SendEmailMessage implements ShouldQueue
 {
@@ -75,23 +77,29 @@ class SendEmailMessage implements ShouldQueue
 
             $unsubscribe = route('email.unsubscribe', ['token' => $token]);
             $html .= '<p style="color:#888;font-size:12px"><a href="'.e($unsubscribe).'">إلغاء الاشتراك</a></p>';
+            $thread = $this->threadFor($message);
 
             $message->forceFill(['attempts' => $message->attempts + 1])->save();
 
-            try {
-                $manager->mailer($integration)->to($lead->email, $lead->full_name)->send(new LeadEmail(
-                    mailSubject: (string) $message->subject,
-                    htmlBody: $html,
-                    plainBody: $message->body."\n\n".$unsubscribe,
-                    senderAddress: $from['address'],
-                    senderName: $from['name'],
-                    replyAddress: $this->replyAddress($token) ?? ($integration?->config['from_address'] ?? null),
-                    messageId: $messageId,
-                    unsubscribeUrl: $unsubscribe,
-                    inReplyTo: $this->threadFor($message),
-                ));
-            } catch (Throwable $e) {
-                $this->failed_($message, $e);
+            $result = $manager->door($integration)->send(new OutboundEmail(
+                $lead->email, $lead->full_name, (string) $message->subject, $html,
+                $message->body."\n\n".$unsubscribe,
+                $from['address'], $from['name'],
+                $messageId, ['kind' => 'lead_message'],
+                replyTo: $this->replyAddress($token) ?? ($integration?->config['from_address'] ?? null),
+                headers: array_filter([
+                    'Message-ID' => $messageId,
+                    // The thread: the customer's client shows this under the email it answers.
+                    'In-Reply-To' => $thread,
+                    'References' => $thread,
+                    // A one-click unsubscribe the mail client can offer by itself.
+                    'List-Unsubscribe' => '<'.$unsubscribe.'>',
+                    'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+                ]),
+            ));
+
+            if (! $result->ok) {
+                $this->failed_($message, $result);
 
                 return;
             }
@@ -99,7 +107,8 @@ class SendEmailMessage implements ShouldQueue
             $message->forceFill([
                 'status' => MessageStatus::Sent,
                 'sent_at' => now(),
-                'provider_message_id' => $messageId,
+                // The Message-ID the reader's client saw, which is ours unless the provider minted a real one.
+                'provider_message_id' => $result->messageId !== null && str_contains($result->messageId, '@') ? trim($result->messageId, '<>') : $messageId,
                 'failure_code' => null,
                 'failure_reason' => null,
             ])->save();
@@ -119,12 +128,12 @@ class SendEmailMessage implements ShouldQueue
         });
     }
 
-    private function failed_(LeadMessage $message, Throwable $e): void
+    private function failed_(LeadMessage $message, DeliveryResult $result): void
     {
-        $reason = Str::limit($e->getMessage(), 240);
+        $reason = Str::limit((string) $result->error, 240);
 
-        if ($this->isPermanent($e) || $message->attempts >= self::MAX_ATTEMPTS) {
-            $this->fail_($message, $this->isPermanent($e) ? 'rejected' : 'gave_up', $reason);
+        if (! $result->retryable || $message->attempts >= self::MAX_ATTEMPTS) {
+            $this->fail_($message, ! $result->retryable ? 'rejected' : 'gave_up', $reason);
 
             return;
         }
@@ -143,13 +152,6 @@ class SendEmailMessage implements ShouldQueue
             'failure_code' => $code,
             'failure_reason' => $reason,
         ])->save();
-    }
-
-    /** An SMTP 5xx reply, or an address that is not an address. Not worth another try. */
-    private function isPermanent(Throwable $e): bool
-    {
-        return preg_match('/\b5\d\d[ -]/', $e->getMessage()) === 1
-            || $e instanceof ExceptionInterface;
     }
 
     /**

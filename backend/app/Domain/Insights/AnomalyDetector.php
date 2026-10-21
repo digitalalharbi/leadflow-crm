@@ -23,11 +23,12 @@ use Illuminate\Support\Facades\DB;
 /**
  * Finds the numbers that moved outside their normal range, and says so once.
  *
- * Eight checks, each against what the workspace's own recent days looked like (see Baseline), never
+ * Nine checks, each against what the workspace's own recent days looked like (see Baseline), never
  * against a figure somebody guessed: a lead spike, a lead drop, a cost per lead that jumped, a
  * qualified rate that fell, more leads going unanswered, tracking events that dried up, a campaign
- * spending with nothing qualified, and a sales backlog that keeps growing. A check that has too
- * little history to judge says nothing — an alert from three days of data is a coin toss.
+ * spending with nothing qualified, a campaign costed by hand whose spend nobody has entered for days,
+ * and a sales backlog that keeps growing. A check that has too little history to judge says
+ * nothing — an alert from three days of data is a coin toss.
  *
  * Each finding is stored once per day (the record is the unique key) and alerts the managers only
  * when it is new, so running the pass twice, or every hour, never repeats itself.
@@ -38,6 +39,7 @@ class AnomalyDetector
     private const LINK = [
         'lead_spike' => '/leads', 'lead_drop' => '/leads', 'cpl_spike' => '/campaigns', 'qualified_rate_drop' => '/reports',
         'no_response_spike' => '/work', 'tracking_drop' => '/tracking', 'spend_no_qualified' => '/campaigns', 'backlog_growth' => '/work',
+        'manual_spend_stale' => '/campaigns',
     ];
 
     /**
@@ -87,9 +89,10 @@ class AnomalyDetector
             ['cpl_spike', fn () => $this->costPerLead($today, $cfg, $id)],
             ['qualified_rate_drop', fn () => $this->qualifiedRate($today, $cfg, $id)],
             ['no_response_spike', fn () => $this->noResponse($today, $cfg, $id)],
-            // What is recorded is not kept per project: this one is the workspace's alone.
-            ['tracking_drop', fn () => $project === null ? $this->trackingEvents($today, $cfg) : []],
+            // An event carries the project it was recorded for; one recorded for no project is the workspace's alone.
+            ['tracking_drop', fn () => $this->trackingEvents($today, $cfg, $id)],
             ['spend_no_qualified', fn () => $this->spendWithNothingQualified($today, $cfg, $id, $leaveOut)],
+            ['manual_spend_stale', fn () => $this->manualSpendStale($today, $cfg, $id, $leaveOut)],
             ['backlog_growth', fn () => $this->backlog($today, $cfg, $id)],
         ] as [$kind, $check]) {
             if (! $cfg->enabled($kind)) {
@@ -133,7 +136,7 @@ class AnomalyDetector
     {
         $yesterday = $today->subDay();
         $leads = $this->leadsPerDay($yesterday->subDays(14), $yesterday, $projectId);
-        $spend = $this->spendPerDay($yesterday->subDays(14), $yesterday, $projectId);
+        $spend = $this->spendPerDay($yesterday->subDays(14), $yesterday, $projectId, $cfg->enabled('manual_spend_counts'));
 
         $cpl = fn (CarbonImmutable $d) => ($leads[$d->toDateString()] ?? 0) >= 1 && ($spend[$d->toDateString()] ?? 0) > 0 ? $spend[$d->toDateString()] / $leads[$d->toDateString()] : null;
         $series = collect(range(2, 15))->map(fn (int $ago) => $cpl($today->subDays($ago)))->filter(fn ($v) => $v !== null)->values()->all();
@@ -190,10 +193,11 @@ class AnomalyDetector
     }
 
     /** @return list<array<string,mixed>> */
-    private function trackingEvents(CarbonImmutable $today, AnomalySettings $cfg): array
+    private function trackingEvents(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId = null): array
     {
         $yesterday = $today->subDay();
         $rows = TrackingEvent::query()->whereBetween('occurred_at', [$yesterday->subDays(14)->startOfDay(), $yesterday->endOfDay()])
+            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
             ->selectRaw('occurred_at::date as d, count(*) as n')->groupBy('d')->pluck('n', 'd');
 
         $value = (float) ($rows[$yesterday->toDateString()] ?? 0);
@@ -222,11 +226,61 @@ class AnomalyDetector
                 continue;
             }
 
-            $recentSpend = collect($row['daily'])->filter(fn ($d) => $d['date'] >= $today->subDays(3)->toDateString())->sum('spend');
+            // Spend somebody typed in only counts when the workspace says it does.
+            if (($row['spend_source'] ?? null) === 'manual' && ! $cfg->enabled('manual_spend_counts')) {
+                continue;
+            }
+
+            // The last three days' spend: the platform's daily figures, or — for a campaign costed by hand — the entries.
+            $recentSpend = ($row['spend_source'] ?? null) === 'manual'
+                ? (float) CampaignSpend::query()->where('platform', $row['platform'])->where('campaign_name', $row['name'])->where('spend_date', '>=', $today->subDays(3)->toDateString())->sum('amount_minor') / 100
+                : collect($row['daily'])->filter(fn ($d) => $d['date'] >= $today->subDays(3)->toDateString())->sum('spend');
 
             // Spending now, with five or more leads in a week and not one of them qualified.
             if ($recentSpend >= $line && $row['leads'] >= 5 && $row['qualified'] === 0) {
                 $out[] = $this->finding('spend_no_qualified', (string) $row['name'], round((float) $recentSpend, 2), 0.0, (float) $recentSpend >= $line * 6.67 ? 'critical' : 'warning', ['leads' => $row['leads']]);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * A campaign costed by hand — no platform reports on it — that keeps bringing leads while nobody
+     * has entered its spend for more than the allowed days: every cost figure for it is stale.
+     *
+     * @param  list<string>  $leaveOut  project uuids another pass judges by their own lines
+     * @return list<array<string,mixed>>
+     */
+    private function manualSpendStale(CarbonImmutable $today, AnomalySettings $cfg, ?int $projectId, array $leaveOut): array
+    {
+        $line = (int) $cfg->value('manual_spend_stale');
+        $leaveOutIds = $leaveOut === [] ? [] : Project::query()->whereIn('uuid', $leaveOut)->pluck('id')->all();
+        $out = [];
+
+        $campaigns = Campaign::query()->whereNull('archived_at')->where('status', 'active')
+            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->when($projectId === null && $leaveOutIds !== [], fn ($q) => $q->where(fn ($w) => $w->whereNull('project_id')->orWhereNotIn('project_id', $leaveOutIds)))
+            ->get(['id', 'name', 'platform', 'project_id']);
+
+        foreach ($campaigns as $campaign) {
+            // The platform reports on it: its spend is not anybody's to type in.
+            if (MetricSnapshot::query()->where('campaign_id', $campaign->id)->where('date', '>=', $today->subDays(14)->toDateString())->exists()) {
+                continue;
+            }
+
+            $last = CampaignSpend::query()->where('platform', $campaign->platform)->where('campaign_name', $campaign->name)->max('spend_date');
+
+            // Never costed is a different thing from costed and then forgotten.
+            if ($last === null) {
+                continue;
+            }
+
+            $leads = Lead::query()->reorder()->where('campaign_ref_id', $campaign->id)->where('leads.created_at', '>=', $today->subDays(7)->startOfDay())->count();
+            $age = (int) CarbonImmutable::parse($last)->diffInDays($today);
+
+            if ($leads >= 1 && $age > $line) {
+                $out[] = $this->finding('manual_spend_stale', (string) $campaign->name, (float) $age, (float) $line, $age > $line * 2 ? 'critical' : 'warning', ['leads' => $leads, 'last_spend_date' => (string) $last]);
             }
         }
 
@@ -270,14 +324,32 @@ class AnomalyDetector
             ->selectRaw('leads.created_at::date as d, count(*) as n')->groupBy('d')->pluck('n', 'd')->map(fn ($n) => (int) $n)->all();
     }
 
-    /** @return array<string,float> date → money spent that day (platform snapshots plus entered spend) */
-    private function spendPerDay(CarbonImmutable $from, CarbonImmutable $to, ?int $projectId = null): array
+    /** @return array<string,float> date → money spent that day (platform snapshots plus entered spend, when it counts) */
+    private function spendPerDay(CarbonImmutable $from, CarbonImmutable $to, ?int $projectId = null, bool $manualCounts = true): array
     {
         $platform = MetricSnapshot::query()->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->when($projectId, fn ($q) => $q->whereIn('campaign_id', Campaign::query()->where('project_id', $projectId)->select('id')))
             ->selectRaw('date, sum(spend_minor) as s')->groupBy('date')->pluck('s', 'date');
-        // Entered spend is kept by campaign name, not by project: a project's own judgement leaves it out.
-        $manual = $projectId ? collect() : CampaignSpend::query()->whereBetween('spend_date', [$from->toDateString(), $to->toDateString()])->selectRaw('spend_date, sum(amount_minor) as s')->groupBy('spend_date')->pluck('s', 'spend_date');
+
+        // Entered spend is kept by platform and campaign name; a project's own judgement takes the
+        // entries that name its campaigns.
+        $manual = collect();
+
+        if ($manualCounts) {
+            $manual = CampaignSpend::query()->whereBetween('spend_date', [$from->toDateString(), $to->toDateString()])
+                ->when($projectId, function ($q) use ($projectId) {
+                    $pairs = Campaign::query()->where('project_id', $projectId)->get(['platform', 'name']);
+
+                    $q->where(function ($w) use ($pairs) {
+                        $w->whereRaw('1 = 0');
+
+                        foreach ($pairs as $c) {
+                            $w->orWhere(fn ($x) => $x->where('platform', $c->platform)->where('campaign_name', $c->name));
+                        }
+                    });
+                })
+                ->selectRaw('spend_date, sum(amount_minor) as s')->groupBy('spend_date')->pluck('s', 'spend_date');
+        }
 
         $out = [];
         foreach ($platform as $d => $s) {
@@ -336,6 +408,7 @@ class AnomalyDetector
             'tracking_drop' => ['انخفاض أحداث التتبع', "سُجّل أمس {$o} حدثًا بينما المعتاد نحو ".round($e).'.'],
             'spend_no_qualified' => ['إنفاق بلا عملاء مؤهلين', "أُنفق {$o} ر.س. في آخر ٣ أيام دون عميل مؤهل{$who}."],
             'backlog_growth' => ['تراكم في المبيعات', "المتأخر الآن {$o} مقابل المعتاد ".round($e).' — وزّع العمل.'],
+            'manual_spend_stale' => ['إنفاق يدوي متوقف', 'آخر إنفاق مُدخَل قبل '.round($o).' أيام لحملة ما زالت تجلب عملاء — تكلفة العميل فيها غير موثوقة حتى يُدخل الإنفاق.'],
         };
 
         return [$title.$who, $body, self::LINK[$f['kind']]];

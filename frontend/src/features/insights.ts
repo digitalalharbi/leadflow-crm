@@ -9,7 +9,7 @@ export interface InsightCard {
   href: string | null
 }
 
-export type AnomalyKind = 'lead_spike' | 'lead_drop' | 'cpl_spike' | 'qualified_rate_drop' | 'no_response_spike' | 'tracking_drop' | 'spend_no_qualified' | 'backlog_growth'
+export type AnomalyKind = 'lead_spike' | 'lead_drop' | 'cpl_spike' | 'qualified_rate_drop' | 'no_response_spike' | 'tracking_drop' | 'spend_no_qualified' | 'manual_spend_stale' | 'backlog_growth'
 
 export interface Anomaly {
   id: string

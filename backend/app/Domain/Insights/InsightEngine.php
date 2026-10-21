@@ -13,6 +13,7 @@ use App\Models\Partner;
 use App\Models\Reservation;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * What to look at first, in a few words each.
@@ -43,14 +44,36 @@ class InsightEngine
         $order = ['bad' => 0, 'warn' => 1, 'good' => 2, 'neutral' => 3];
         usort($cards, fn ($a, $b) => $order[$a['tone']] <=> $order[$b['tone']]);
 
-        return ['cards' => array_slice($cards, 0, 6), // What moved outside its normal range is the team's business, not one rep's.
-            'anomalies' => $user->seesAllLeads() ? $this->anomalies() : []];
+        return ['cards' => array_slice($cards, 0, 6), 'anomalies' => $this->anomaliesFor($user)];
     }
 
-    /** @return list<array<string,mixed>> */
-    public function anomalies(): array
+    /**
+     * What moved outside its normal range is the team's business, not one rep's — and the workspace's
+     * figures are not a client's or a broker's. Somebody who sees only their projects sees only what was
+     * found in them; a finding with no project is a workspace figure and stays with the workspace.
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function anomaliesFor(User $user): array
+    {
+        if (! $user->seesAllLeads() || $user->isExternal()) {
+            return [];
+        }
+
+        if ($user->isProjectScoped()) {
+            $projects = $user->projects()->pluck('projects.id')->all();
+
+            return $projects === [] ? [] : $this->anomalies(fn ($q) => $q->whereIn('project_id', $projects));
+        }
+
+        return $this->anomalies();
+    }
+
+    /** @param  (callable(Builder):void)|null  $narrow @return list<array<string,mixed>> */
+    public function anomalies(?callable $narrow = null): array
     {
         return Anomaly::query()->whereNull('dismissed_at')->where('detected_on', '>=', now()->subDays(3)->toDateString())
+            ->when($narrow !== null, fn ($q) => $narrow($q))
             ->orderByRaw("case severity when 'critical' then 0 else 1 end")->latest('detected_on')->limit(6)->get()
             ->map(fn (Anomaly $a) => [
                 'id' => $a->uuid, 'kind' => $a->kind, 'subject' => $a->subject ?: null, 'severity' => $a->severity,

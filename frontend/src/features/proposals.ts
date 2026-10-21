@@ -17,6 +17,8 @@ export interface Proposal {
   decider: string | null
   decided_at: string | null
   decision_note: string | null
+  /** manual: a person said yes in the inbox · self: the safe self-approve mode let it through. */
+  approval: 'manual' | 'self'
   policy: { allowed: boolean; blocks: string[]; warnings: string[]; limits: Record<string, unknown> }
   error: string | null
   executed_at: string | null

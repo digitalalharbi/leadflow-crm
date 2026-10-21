@@ -181,13 +181,20 @@ class ReportShareController extends Controller
         return ApiResponse::created(['deliveries' => collect($queued)->map(fn ($d) => ['id' => $d->uuid, 'to' => $d->to_email, 'status' => $d->status, 'provider' => $d->provider])->all()]);
     }
 
-    /** The report as the team sees it: every section that is on, including the ones kept for the team. */
+    /**
+     * The report as the team sees it: every section that is on, including the ones kept for the team —
+     * less whatever this viewer may not see (a person without spend may not read the cost section
+     * through a preview any more than through the page it is built from). What was withheld is named.
+     */
     public function preview(Request $request, string $uuid)
     {
         $share = ReportShare::where('uuid', $uuid)->with('partner')->firstOrFail();
         $this->authorize('view', $share);
 
-        return ApiResponse::success(app(LiveReport::class)->build($share->setRelation('tenant', $request->user()->tenant), 'team'));
+        $sees = fn (string $section) => Permissions::sees($request->user(), "report.section.{$section}");
+        $withheld = array_values(array_filter(array_keys(array_filter($share->sections ?? [])), fn (string $s) => ! $sees($s)));
+
+        return ApiResponse::success(app(LiveReport::class)->build($share->setRelation('tenant', $request->user()->tenant), 'team', $sees) + ['withheld' => $withheld]);
     }
 
     /** Who opened a link and when: the views over time, how many different visitors, and the last few. */

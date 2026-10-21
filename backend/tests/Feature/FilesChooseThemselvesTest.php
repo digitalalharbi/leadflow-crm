@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Domain\Automation\ActionExecutor;
 use App\Domain\Files\FileForTheLead;
 use App\Enums\MessageStatus;
-use App\Mail\LeadEmail;
 use App\Models\FileShare;
 use App\Models\Lead;
 use App\Models\LeadMessage;
@@ -14,9 +13,9 @@ use App\Models\ProjectFile;
 use App\Services\Whatsapp\WhatsappSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Mockery\ExpectationInterface;
+use Tests\Support\FakeMailer;
 use Tests\TestCase;
 
 /**
@@ -32,6 +31,8 @@ class FilesChooseThemselvesTest extends TestCase
 {
     use RefreshDatabase;
 
+    private FakeMailer $mailer;
+
     private array $t;
 
     private Project $project;
@@ -40,7 +41,7 @@ class FilesChooseThemselvesTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        Mail::fake();
+        $this->mailer = $this->fakeMailer();
 
         $this->t = $this->provisionTenant('Choosing Co');
         $this->project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'النرجس']));
@@ -282,7 +283,10 @@ class FilesChooseThemselvesTest extends TestCase
         $this->actingAs($this->t['admin'])->postJson("/api/v1/leads/{$lead->uuid}/files/send", ['channel' => 'email'])
             ->assertOk()->assertJsonPath('data.status', 'sent');
 
-        Mail::assertSent(LeadEmail::class, fn ($m) => str_contains($m->plainBody, '/f/') && $m->mailSubject === 'كتيب النرجس');
+        $mail = $this->mailer->sent[0] ?? null;
+        $this->assertNotNull($mail);
+        $this->assertStringContainsString('/f/', (string) $mail->text);
+        $this->assertSame('كتيب النرجس', $mail->subject);
         $this->assertSame(1, FileShare::withoutGlobalScopes()->count());
     }
 
@@ -294,7 +298,7 @@ class FilesChooseThemselvesTest extends TestCase
         $this->actingAs($this->t['admin'])->postJson("/api/v1/leads/{$lead->uuid}/files/send", ['channel' => 'email'])->assertOk();
 
         $share = FileShare::withoutGlobalScopes()->firstOrFail();
-        Mail::assertSent(LeadEmail::class, fn ($m) => str_contains($m->plainBody, $share->token));
+        $this->assertStringContainsString($share->token, (string) $this->mailer->sent[0]->text);
     }
 
     /**
@@ -341,7 +345,7 @@ class FilesChooseThemselvesTest extends TestCase
         $this->actingAs($this->t['admin'])->postJson("/api/v1/leads/{$lead->uuid}/files/send", ['channel' => 'email'])
             ->assertStatus(422);
 
-        Mail::assertNothingSent();
+        $this->assertSame([], $this->mailer->sent);
         // For a rep to hand over some other way.
         $this->assertSame(1, FileShare::withoutGlobalScopes()->count());
     }
@@ -392,7 +396,7 @@ class FilesChooseThemselvesTest extends TestCase
         $this->assertTrue($result['ok'], $result['description']);
         $this->assertStringContainsString('للشتاء', $result['description']);
         $this->assertStringContainsString('مخصص لحملته', $result['description']);
-        Mail::assertSent(LeadEmail::class);
+        $this->assertNotEmpty($this->mailer->sent);
     }
 
     public function test_a_rule_defaults_to_whatsapp(): void
@@ -403,7 +407,7 @@ class FilesChooseThemselvesTest extends TestCase
         $result = $this->perform($this->lead(), []);
 
         $this->assertTrue($result['ok'], $result['description']);
-        Mail::assertNothingSent();
+        $this->assertSame([], $this->mailer->sent);
     }
 
     public function test_a_rule_that_only_prepares_the_link_sends_nothing(): void
@@ -413,7 +417,7 @@ class FilesChooseThemselvesTest extends TestCase
         $result = $this->perform($this->lead(), ['send' => false, 'channel' => 'email']);
 
         $this->assertTrue($result['ok']);
-        Mail::assertNothingSent();
+        $this->assertSame([], $this->mailer->sent);
         $this->assertSame(1, FileShare::withoutGlobalScopes()->count());
     }
 

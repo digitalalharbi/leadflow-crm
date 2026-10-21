@@ -40,10 +40,14 @@ class LiveReport
     private array $engine = [];
 
     /** @return array<string,mixed> */
-    public function build(ReportShare $share, string $audience = 'public'): array
+    /**
+     * @param  (callable(string):bool)|null  $allowed  for a signed-in viewer: which sections they may see at all — what
+     *                                                 they may not is not built, let alone shown
+     */
+    public function build(ReportShare $share, string $audience = 'public', ?callable $allowed = null): array
     {
         $this->engine = [];
-        $plan = ReportTemplates::plan($share, $audience);
+        $plan = array_values(array_filter(ReportTemplates::plan($share, $audience), fn (array $row) => $allowed === null || $allowed($row['key'])));
         $keys = array_column($plan, 'key');
         $days = array_column($plan, 'days', 'key');
         $has = fn (string $section) => in_array($section, $keys, true);

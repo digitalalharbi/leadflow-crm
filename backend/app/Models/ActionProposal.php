@@ -30,8 +30,14 @@ class ActionProposal extends Model
     protected $fillable = [
         'project_id', 'campaign_id', 'ad_set_id', 'ad_id', 'platform', 'action', 'payload', 'reason',
         'expected_impact', 'proposed_by', 'agent', 'proposed_by_user_id', 'status', 'policy',
-        'decided_by', 'decided_at', 'decision_note', 'idempotency_key', 'executed_at', 'error',
+        'decided_by', 'decided_at', 'decision_note', 'idempotency_key', 'executed_at', 'error', 'approval',
     ];
+
+    /** A person said yes in the inbox. */
+    public const MANUAL = 'manual';
+
+    /** The safe self-approve mode let the proposer's own change through. */
+    public const SELF = 'self';
 
     protected function casts(): array
     {

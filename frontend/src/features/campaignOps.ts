@@ -25,6 +25,8 @@ export interface OperationsRow extends CampaignRow {
   pending_proposals: number
   /** What this platform lets us do to it. */
   can: OperateAction[]
+  /** Which of those this person's own change runs at once (safe self-approve), by the setting in force here. */
+  instant: OperateAction[]
 }
 
 export interface OperationsData {
@@ -33,6 +35,8 @@ export interface OperationsData {
   classes: Partial<Record<QualityClass, number>>
   /** Changes are recorded against a stand-in, not sent: no account is connected and the sandbox is on. */
   sandbox: boolean
+  /** The workspace's safe self-approve setting. */
+  self_approval: { enabled: boolean; actions: string[]; max_budget_change_pct: number }
   currency: string
   from: string
   to: string

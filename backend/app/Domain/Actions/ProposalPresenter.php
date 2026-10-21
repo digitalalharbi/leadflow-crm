@@ -25,6 +25,8 @@ final class ProposalPresenter
             'decider' => $p->decider?->name,
             'decided_at' => $p->decided_at?->toIso8601String(),
             'decision_note' => $p->decision_note,
+            // manual: a person said yes in the inbox · self: the safe self-approve mode let it through
+            'approval' => $p->approval ?? ActionProposal::MANUAL,
             'policy' => $p->policy ?? ['allowed' => true, 'blocks' => [], 'warnings' => [], 'limits' => []],
             'error' => $p->error,
             'executed_at' => $p->executed_at?->toIso8601String(),

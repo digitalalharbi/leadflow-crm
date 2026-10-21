@@ -5,6 +5,7 @@ namespace App\Notifications\Concerns;
 use App\Domain\Notifications\AlertKinds;
 use App\Domain\Notifications\NotificationPrefs;
 use App\Models\User;
+use App\Notifications\Channels\ProviderMailChannel;
 use App\Notifications\Channels\TenantDatabaseChannel;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -14,7 +15,8 @@ use Illuminate\Notifications\Messages\MailMessage;
  * The in-app notification is always made; the email only when this person's setting for this
  * kind of alert is "instant" (the other settings put it in a digest instead, which reads what the
  * app already stored). Nothing is mailed to somebody with no address, or when the notification
- * does not belong to one of the eight alert categories.
+ * does not belong to one of the eight alert categories. The email goes through the product's own
+ * door (ProviderMailChannel → EmailDeliveries), never Laravel's mail channel.
  */
 trait MailsByPreference
 {
@@ -30,7 +32,7 @@ trait MailsByPreference
         $category = $this->alertCategory();
 
         if ($category !== null && $notifiable instanceof User && filled($notifiable->email) && NotificationPrefs::modeFor($notifiable, $category) === 'instant') {
-            $channels[] = 'mail';
+            $channels[] = ProviderMailChannel::class;
         }
 
         return $channels;

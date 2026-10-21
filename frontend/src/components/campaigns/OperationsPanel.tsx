@@ -292,28 +292,34 @@ function OperateDialog({ target, currency, onClose }: { target: { row: Operation
       void queryClient.invalidateQueries({ queryKey: ['proposals'] })
       setReason('')
       onClose()
-      if (result.kind === 'proposal') toast(result.proposal.status === 'blocked' ? t('proposals.filedBlocked') : t('proposals.filed'), result.proposal.status === 'blocked' ? 'error' : 'success')
+      if (result.kind !== 'proposal') return
+      const p = result.proposal
+      // The safe self-approve mode may have run it (or tried to) without the inbox: say so, honestly.
+      if (p.approval === 'self') toast(p.status === 'blocked' ? t('proposals.selfBlocked', { why: p.policy.blocks.map((b) => t(`proposals.block.${b}`, { defaultValue: b })).join('، ') }) : t('proposals.selfRan'), p.status === 'blocked' || p.status === 'failed' ? 'error' : 'success')
+      else toast(p.status === 'blocked' ? t('proposals.filedBlocked') : t('proposals.filed'), p.status === 'blocked' ? 'error' : 'success')
     },
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
   const needsBudget = action === 'set_budget'
+  // Pause and resume halves of "adjust status" are judged separately: the one being asked for is what counts.
+  const instant = !!row && !!action && (action === 'set_status' ? row.instant.includes(next === 'active' ? 'resume' : 'pause') : row.instant.includes(action))
 
   return (
     <Modal
       open={target !== null}
       onClose={onClose}
       title={action && row ? `${action === 'set_status' ? t('campaignOps.adjustStatus') : t(`proposals.action.${action === 'set_budget' ? 'update_budget' : action}`)} — ${row.name}` : ''}
-      description={t('proposals.needsApproval')}
+      description={instant ? t('proposals.runsNow') : t('proposals.needsApproval')}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button disabled={reason.trim() === '' || (needsBudget && !(Number(budget) > 0))} loading={send.isPending} onClick={() => send.mutate()} data-testid="ops-submit">{t('proposals.submit')}</Button>
+          <Button disabled={reason.trim() === '' || (needsBudget && !(Number(budget) > 0))} loading={send.isPending} onClick={() => send.mutate()} data-testid="ops-submit">{instant ? t('proposals.runNow') : t('proposals.submit')}</Button>
         </>
       }
     >
-      <div className="space-y-4" data-testid="ops-dialog">
+      <div className="space-y-4" data-testid="ops-dialog" data-instant={instant}>
         {needsBudget && (
           <Input label={`${t('proposals.newBudget')} (${currency})`} type="number" min="1" dir="ltr" value={budget} placeholder={row?.daily_budget ? String(row.daily_budget) : ''} onChange={(e) => setBudget(e.target.value)} data-testid="ops-budget-input" />
         )}

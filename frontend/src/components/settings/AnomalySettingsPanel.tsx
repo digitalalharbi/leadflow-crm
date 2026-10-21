@@ -85,7 +85,7 @@ export function AnomalySettingsPanel() {
                         onChange={(e) => setDraft((d) => ({ ...d, [alert.kind]: e.target.value }))}
                         onBlur={() => commit(alert)}
                       />
-                      <span className="pb-2 text-[0.875rem] text-[var(--color-ink-subtle)]">{alert.threshold.unit === 'percent' ? '%' : t('anomalySettings.currency')}</span>
+                      <span className="pb-2 text-[0.875rem] text-[var(--color-ink-subtle)]">{alert.threshold.unit === 'percent' ? '%' : alert.threshold.unit === 'days' ? t('anomalySettings.days') : t('anomalySettings.currency')}</span>
                       <span className={cn('mb-1.5 rounded-full px-2 py-0.5 text-[0.8125rem] font-semibold', SOURCE_STYLE[alert.threshold.source])} data-testid={`alert-source-${alert.kind}`}>{t(`thresholds.source.${alert.threshold.source}`)}</span>
                       {alert.threshold.source === 'project' || (!projectId && alert.threshold.source === 'workspace') ? (
                         <button type="button" aria-label={t('anomalySettings.reset')} title={t('anomalySettings.reset')} data-testid={`alert-reset-${alert.kind}`} disabled={save.isPending} onClick={() => save.mutate({ [alert.kind]: { value: null } })} className="pressable mb-1 grid size-7 place-items-center rounded-full hover:bg-[var(--color-chrome-fill)]">

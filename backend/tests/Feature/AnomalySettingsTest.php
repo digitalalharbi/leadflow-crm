@@ -7,10 +7,12 @@ use App\Domain\Insights\AnomalySettings;
 use App\Enums\Role;
 use App\Models\Anomaly;
 use App\Models\Campaign;
+use App\Models\CampaignSpend;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
 use App\Models\Project;
 use App\Models\TenantSetting;
+use App\Models\TrackingEvent;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +70,9 @@ class AnomalySettingsTest extends TestCase
         $this->assertSame(60, $byKind['tracking_drop']['threshold']['value']);
         $this->assertSame(50, $byKind['backlog_growth']['threshold']['value']);
         $this->assertSame(300, $byKind['spend_no_qualified']['threshold']['value']);
+        $this->assertSame(3, $byKind['manual_spend_stale']['threshold']['value']);
+        $this->assertSame('days', $byKind['manual_spend_stale']['threshold']['unit']);
+        $this->assertNull($byKind['manual_spend_counts']['threshold'], 'whether entered spend counts is on or off, with no line');
         $this->assertNull($byKind['lead_spike']['threshold'], 'a spike is on or off, with no line to move');
         $this->assertSame(['default'], collect($now)->pluck('threshold.source')->filter()->unique()->values()->all());
         $this->assertTrue(collect($now)->every(fn ($a) => $a['enabled']));
@@ -201,5 +206,127 @@ class AnomalySettingsTest extends TestCase
 
         $cleared = AnomalySettings::merge($merged, ['lead_drop' => ['value' => null, 'enabled' => null]]);
         $this->assertSame([], $cleared);
+    }
+    // ---------------------------------------------------------------- entered spend
+
+    /** A campaign nobody's platform reports on, costed by hand on the days given. */
+    private function handCosted(string $name, array $spendDaysAgo, int $amountMinor = 20_000, ?Project $project = null): Campaign
+    {
+        return $this->asTenant($this->t['tenant'], function () use ($name, $spendDaysAgo, $amountMinor, $project) {
+            $c = Campaign::create(['platform' => 'snapchat', 'name' => $name, 'origin' => 'manual', 'status' => 'active', 'currency' => 'SAR', 'project_id' => $project?->id]);
+
+            foreach ($spendDaysAgo as $ago) {
+                CampaignSpend::create(['platform' => 'snapchat', 'campaign_name' => $name, 'spend_date' => CarbonImmutable::today()->subDays($ago)->toDateString(), 'amount_minor' => $amountMinor, 'currency' => 'SAR', 'source' => 'manual']);
+            }
+
+            return $c;
+        });
+    }
+
+    /** @param  array<int,int>  $perDay  days ago → leads that arrived from this campaign that day */
+    private function leadsFrom(Campaign $campaign, array $perDay, bool $qualified = false): void
+    {
+        $this->asTenant($this->t['tenant'], function () use ($campaign, $perDay, $qualified) {
+            foreach ($perDay as $ago => $n) {
+                for ($i = 0; $i < $n; $i++) {
+                    $lead = Lead::create(['full_name' => "{$campaign->name} {$ago}-{$i}", 'phone_normalized' => '+9665'.random_int(10000000, 99999999), 'status' => $qualified ? 'qualified' : 'contacted', 'first_contact_at' => now(), 'project_id' => $campaign->project_id]);
+                    DB::table('leads')->where('id', $lead->id)->update(['campaign_ref_id' => $campaign->id, 'created_at' => CarbonImmutable::today()->subDays($ago)->setTime(12, 0)]);
+                }
+            }
+        });
+    }
+
+    public function test_entered_spend_counts_in_the_spend_alerts_unless_the_workspace_says_not(): void
+    {
+        // SAR 600 typed in over the last three days, six leads this week, none qualified.
+        $campaign = $this->handCosted('يدوية', [1, 2, 3]);
+        $this->leadsFrom($campaign, [1 => 6]);
+
+        $this->assertContains('spend_no_qualified:يدوية', $this->detect(), 'spend somebody entered is spend');
+
+        Anomaly::query()->delete();
+        $this->settings(['manual_spend_counts' => ['enabled' => false]])->assertOk();
+        $this->assertNotContains('spend_no_qualified:يدوية', $this->detect(), 'switched off, entered spend is not judged');
+    }
+
+    public function test_a_campaign_costed_by_hand_whose_spend_nobody_entered_is_flagged_while_it_still_brings_leads(): void
+    {
+        $forgotten = $this->handCosted('منسية', [10, 6]);
+        $this->leadsFrom($forgotten, [2 => 2]);
+        $fresh = $this->handCosted('محدّثة', [2, 1]);
+        $this->leadsFrom($fresh, [1 => 2]);
+        $idle = $this->handCosted('خاملة', [12]);
+        $never = $this->asTenant($this->t['tenant'], fn () => Campaign::create(['platform' => 'snapchat', 'name' => 'لم تُكلَّف', 'origin' => 'manual', 'status' => 'active', 'currency' => 'SAR']));
+        $this->leadsFrom($never, [1 => 3]);
+
+        $found = $this->detect();
+
+        $this->assertContains('manual_spend_stale:منسية', $found, 'six days without an entry, over the line of three');
+        $this->assertNotContains('manual_spend_stale:محدّثة', $found, 'entered yesterday');
+        $this->assertNotContains('manual_spend_stale:خاملة', $found, 'brings no leads: nothing to cost');
+        $this->assertNotContains('manual_spend_stale:لم تُكلَّف', $found, 'never costed is not forgotten');
+
+        $stale = $this->asTenant($this->t['tenant'], fn () => Anomaly::query()->where('kind', 'manual_spend_stale')->first());
+        $this->assertSame(6.0, (float) $stale->observed);
+        $this->assertSame('warning', $stale->severity);
+
+        Anomaly::query()->delete();
+        $this->settings(['manual_spend_stale' => ['value' => 10]])->assertOk();
+        $this->assertNotContains('manual_spend_stale:منسية', $this->detect(), 'the workspace allows ten days');
+
+        Anomaly::query()->delete();
+        $this->settings(['manual_spend_stale' => ['value' => null, 'enabled' => false]])->assertOk();
+        $this->assertNotContains('manual_spend_stale:منسية', $this->detect(), 'switched off');
+    }
+
+    public function test_a_projects_cost_per_lead_counts_the_spend_entered_for_its_own_campaigns(): void
+    {
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'برج']));
+        // Five leads a day; SAR 100 a day typed in for two weeks, then SAR 1,000 yesterday.
+        $campaign = $this->handCosted('سناب برج', range(2, 15), 10_000, $project);
+        $this->asTenant($this->t['tenant'], fn () => CampaignSpend::create(['platform' => 'snapchat', 'campaign_name' => 'سناب برج', 'spend_date' => CarbonImmutable::today()->subDay()->toDateString(), 'amount_minor' => 100_000, 'currency' => 'SAR', 'source' => 'manual']));
+        $this->leadsFrom($campaign, array_fill(1, 15, 5));
+
+        // The project is judged on its own once it has any setting of its own.
+        $this->settings(['lead_drop' => ['value' => 90]], $project)->assertOk();
+        $found = $this->detect();
+
+        $this->assertContains('cpl_spike:برج', $found, 'the project’s own cost per lead saw the jump in entered spend');
+
+        // The project can also say entered spend does not count for it.
+        Anomaly::query()->delete();
+        $this->settings(['manual_spend_counts' => ['enabled' => false]], $project)->assertOk();
+        $this->assertNotContains('cpl_spike:برج', $this->detect());
+    }
+
+    public function test_tracking_events_are_judged_per_project_where_the_event_names_one(): void
+    {
+        $project = $this->asTenant($this->t['tenant'], fn () => Project::create(['name' => 'معرض']));
+
+        // Twenty events a day for the project, then one yesterday.
+        $this->asTenant($this->t['tenant'], function () use ($project) {
+            foreach (range(2, 15) as $ago) {
+                foreach (range(1, 20) as $i) {
+                    TrackingEvent::create(['event_type' => 'page_view', 'occurred_at' => CarbonImmutable::today()->subDays($ago)->setTime(10, $i), 'project_id' => $project->id, 'dedupe_key' => "t-{$ago}-{$i}"]);
+                }
+            }
+            TrackingEvent::create(['event_type' => 'page_view', 'occurred_at' => CarbonImmutable::today()->subDay()->setTime(10, 0), 'project_id' => $project->id, 'dedupe_key' => 't-1-1']);
+        });
+
+        $this->assertContains('tracking_drop', $this->detect(), 'the workspace sees every event, whichever project it names');
+
+        Anomaly::query()->delete();
+        $this->settings(['qualified_rate_drop' => ['enabled' => false]], $project)->assertOk();
+        $found = $this->detect();
+
+        $this->assertContains('tracking_drop:معرض', $found, 'judged by the project’s own lines, over the events recorded for it');
+        $this->assertSame($project->id, Anomaly::query()->where('kind', 'tracking_drop')->where('subject', 'معرض')->value('project_id'));
+
+        // The project may switch the alert off for itself; the workspace's own judgement still runs.
+        Anomaly::query()->delete();
+        $this->settings(['tracking_drop' => ['enabled' => false]], $project)->assertOk();
+        $found = $this->detect();
+        $this->assertNotContains('tracking_drop:معرض', $found);
+        $this->assertContains('tracking_drop', $found);
     }
 }

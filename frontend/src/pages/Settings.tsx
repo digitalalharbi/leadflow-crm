@@ -9,6 +9,7 @@ import { useUi } from '@/stores/ui'
 import { SetupCheck } from '@/components/onboarding/SetupCheck'
 import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel'
 import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
+import { SelfApprovalPanel } from '@/components/settings/SelfApprovalPanel'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
@@ -28,7 +29,7 @@ interface SettingsResponse {
   custom_fields: CustomField[]
 }
 
-type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'delivery' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'approvals' | 'delivery' | 'subscription'
 
 
 /**
@@ -63,7 +64,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'delivery', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'approvals', 'delivery', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -157,6 +158,8 @@ export function SettingsPage() {
           )}
 
           {tab === 'alerts' && canManage && <AnomalySettingsPanel />}
+
+          {tab === 'approvals' && canManage && <SelfApprovalPanel />}
 
           {tab === 'delivery' && canManage && <EmailDeliveryPanel />}
 

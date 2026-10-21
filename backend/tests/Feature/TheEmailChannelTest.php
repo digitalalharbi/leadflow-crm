@@ -6,7 +6,6 @@ use App\Domain\Automation\ActionExecutor;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
 use App\Jobs\SendEmailMessage;
-use App\Mail\LeadEmail;
 use App\Models\CommissioningRun;
 use App\Models\Integration;
 use App\Models\Lead;
@@ -19,11 +18,7 @@ use App\Services\Email\TrackedLinks;
 use App\Services\Leads\ActivityLogger;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Facade;
-use Illuminate\Support\Facades\Mail;
-use Symfony\Component\Mailer\Exception\TransportException;
-use Symfony\Component\Mailer\SentMessage;
-use Symfony\Component\Mailer\Transport\AbstractTransport;
+use Tests\Support\FakeMailer;
 use Tests\TestCase;
 
 /**
@@ -33,6 +28,8 @@ use Tests\TestCase;
  * by a job that was already in the queue when they did; retried only for
  * failures that describe the attempt; and honest about what happened to it —
  * "sent" when a server took it, "read" only when a person's software said so.
+ *
+ * The door is the product's MailerProvider — here a fake the test reads — never Laravel's mailer.
  */
 class TheEmailChannelTest extends TestCase
 {
@@ -42,10 +39,12 @@ class TheEmailChannelTest extends TestCase
 
     private Lead $lead;
 
+    private FakeMailer $mailer;
+
     protected function setUp(): void
     {
         parent::setUp();
-        Mail::fake();
+        $this->mailer = $this->fakeMailer();
 
         $this->t = $this->provisionTenant('Mail Co');
         $this->lead = $this->makeLead();
@@ -90,7 +89,7 @@ class TheEmailChannelTest extends TestCase
         $this->assertNotNull($message->tracking_token);
         $this->assertNotNull($this->lead->fresh()->first_contact_at);
 
-        Mail::assertSent(LeadEmail::class, fn (LeadEmail $m) => $m->hasTo('ghada@example.test'));
+        $this->assertNotNull($this->mailer->to('ghada@example.test'));
     }
 
     public function test_it_is_on_the_timeline(): void
@@ -107,20 +106,22 @@ class TheEmailChannelTest extends TestCase
 
         $token = $this->message()->tracking_token;
 
-        Mail::assertSent(LeadEmail::class, function (LeadEmail $m) use ($token) {
-            return str_contains($m->htmlBody, '/e/o/'.$token)
-                && str_contains($m->htmlBody, '/e/c/'.$token)
-                // The destination is not in the clear next to our domain.
-                && ! str_contains($m->htmlBody, 'href="https://example.test')
-                && str_contains($m->unsubscribeUrl, '/e/u/'.$token);
-        });
+        $mail = $this->mailer->to('ghada@example.test');
+        $this->assertNotNull($mail);
+        $this->assertStringContainsString('/e/o/'.$token, $mail->html);
+        $this->assertStringContainsString('/e/c/'.$token, $mail->html);
+        // The destination is not in the clear next to our domain.
+        $this->assertStringNotContainsString('href="https://example.test', $mail->html);
+        $this->assertStringContainsString('/e/u/'.$token, $mail->headers['List-Unsubscribe']);
+        $this->assertSame('List-Unsubscribe=One-Click', $mail->headers['List-Unsubscribe-Post']);
+        $this->assertStringContainsString('/e/u/'.$token, (string) $mail->text, 'the plain-text twin carries the unsubscribe too');
     }
 
     public function test_the_body_is_escaped(): void
     {
         $this->send(['body' => '<script>alert(1)</script>'])->assertCreated();
 
-        Mail::assertSent(LeadEmail::class, fn (LeadEmail $m) => ! str_contains($m->htmlBody, '<script>'));
+        $this->assertStringNotContainsString('<script>', $this->mailer->to('ghada@example.test')->html);
     }
 
     public function test_a_lead_with_no_address_is_refused(): void
@@ -146,7 +147,7 @@ class TheEmailChannelTest extends TestCase
 
         $this->send(['subject' => 'الرابعة'])->assertStatus(422);
 
-        Mail::assertSentCount(3);
+        $this->assertCount(3, $this->mailer->sent);
     }
 
     // -------------------------------------------------------- unsubscribing
@@ -193,10 +194,10 @@ class TheEmailChannelTest extends TestCase
 
         $this->lead->forceFill(['email_opt_out_at' => now()])->saveQuietly();
 
-        Mail::fake();
+        $this->mailer->reset();
         (new SendEmailMessage($pending->id))->handle(...$this->jobDeps());
 
-        Mail::assertNothingSent();
+        $this->assertSame([], $this->mailer->sent);
         $this->assertSame('failed', $pending->fresh()->status->value);
         $this->assertSame('opted_out', $pending->fresh()->failure_code);
     }
@@ -205,11 +206,12 @@ class TheEmailChannelTest extends TestCase
     {
         $this->send()->assertCreated();
         $id = $this->message()->id;
+        $this->mailer->reset();
 
         (new SendEmailMessage($id))->handle(...$this->jobDeps());
         (new SendEmailMessage($id))->handle(...$this->jobDeps());
 
-        Mail::assertSentCount(1);
+        $this->assertSame([], $this->mailer->sent, 'a message already sent is left alone');
     }
 
     private function jobDeps(): array
@@ -298,36 +300,10 @@ class TheEmailChannelTest extends TestCase
 
     // -------------------------------------------------------------- retries
 
-    private function breakTheTransport(string $message): void
-    {
-        // Undo the fake: it rebinds the manager in the container, so a real one
-        // has to be asked for afresh before a transport can be registered on it.
-        app()->forgetInstance('mail.manager');
-        Facade::clearResolvedInstance('mail.manager');
-        Mail::extend('boom', fn () => new class($message) extends AbstractTransport
-        {
-            public function __construct(private string $why)
-            {
-                parent::__construct();
-            }
-
-            protected function doSend(SentMessage $message): void
-            {
-                throw new TransportException($this->why);
-            }
-
-            public function __toString(): string
-            {
-                return 'boom://';
-            }
-        });
-        config(['mail.mailers.boom' => ['transport' => 'boom'], 'mail.default' => 'boom']);
-        Mail::forgetMailers();
-    }
-
     public function test_a_dropped_connection_is_retried_and_then_given_up_on(): void
     {
-        $this->breakTheTransport('Connection timed out');
+        // The door says the attempt failed and may be worth another: a dropped connection.
+        $this->mailer->failWith('Connection timed out', retryable: true);
 
         $this->send()->assertCreated();
 
@@ -339,7 +315,8 @@ class TheEmailChannelTest extends TestCase
 
     public function test_a_refused_address_is_not_retried(): void
     {
-        $this->breakTheTransport('Expected response code "250" but got code "550", with message "550 5.1.1 mailbox unavailable".');
+        // The door says no, for good: a server that refused the address.
+        $this->mailer->failWith('Expected response code "250" but got code "550", with message "550 5.1.1 mailbox unavailable".', retryable: false);
 
         $this->send()->assertCreated();
 
@@ -401,7 +378,7 @@ class TheEmailChannelTest extends TestCase
             ->execute($this->lead->fresh(), ['type' => 'send_email', 'template_uuid' => $template->uuid]));
 
         $this->assertTrue($result['ok'], $result['description']);
-        Mail::assertSent(LeadEmail::class);
+        $this->assertNotEmpty($this->mailer->sent);
         // Written as the rule, not as the lead's owner.
         $this->assertNull($this->message()->user_id);
     }
@@ -415,7 +392,7 @@ class TheEmailChannelTest extends TestCase
             ->execute($this->lead->fresh(), ['type' => 'send_email', 'template_uuid' => $template->uuid]));
 
         $this->assertFalse($result['ok']);
-        Mail::assertNothingSent();
+        $this->assertSame([], $this->mailer->sent);
     }
 
     public function test_a_rule_cannot_use_a_whatsapp_template_for_email(): void
@@ -426,7 +403,7 @@ class TheEmailChannelTest extends TestCase
             ->execute($this->lead->fresh(), ['type' => 'send_email', 'template_uuid' => $wa->uuid]));
 
         $this->assertFalse($result['ok']);
-        Mail::assertNothingSent();
+        $this->assertSame([], $this->mailer->sent);
     }
 
     public function test_the_rule_editor_accepts_the_action(): void

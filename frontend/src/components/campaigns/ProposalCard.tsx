@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, CardBody, Input, Modal } from '@/components/ui'
+import { Badge, Button, Card, CardBody, Input, Modal } from '@/components/ui'
 import { StatusPill, type StatusKey } from '@/components/visual'
 import { approveProposal, editProposal, rejectProposal, type Proposal } from '@/features/proposals'
 import { useApiError } from '@/hooks/useApiError'
@@ -77,7 +77,7 @@ export function ProposalCard({ proposal: initial, currency }: { proposal: Propos
   const money = (minor: unknown) => formatMoneyCompact(typeof minor === 'number' ? minor / 100 : null, currency, i18n.language)
 
   return (
-    <Card data-testid="proposal-card" data-status={p.status} className={open ? undefined : 'opacity-70'}>
+    <Card data-testid="proposal-card" data-status={p.status} data-approval={p.approval} className={open ? undefined : 'opacity-70'}>
       <CardBody className="space-y-3">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand)]" aria-hidden>
@@ -96,7 +96,10 @@ export function ProposalCard({ proposal: initial, currency }: { proposal: Propos
               {[p.campaign?.name, p.ad_set, p.ad].filter(Boolean).join(' › ')}
             </p>
           </div>
-          <StatusPill status={STATUS[p.status]} />
+          <span className="flex flex-col items-end gap-1">
+            <StatusPill status={STATUS[p.status]} />
+            {p.approval === 'self' && <Badge tone="info">{t('proposals.selfBadge')}</Badge>}
+          </span>
         </div>
 
         <p className="text-[0.9375rem] leading-relaxed" dir="auto">{p.reason}</p>

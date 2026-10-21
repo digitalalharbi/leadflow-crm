@@ -14,6 +14,7 @@ import { AreaTrend, KpiCard, PipelineFunnel, RankBars, RingProgress } from '@/co
 import { TONE_COLOR, TONE_TINT } from '@/components/visual/tones'
 import { platformColor } from '@/components/charts'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
+import { OperationsPanel } from '@/components/campaigns/OperationsPanel'
 import { RevenuePanel } from '@/components/campaigns/RevenuePanel'
 import { ProposalInbox } from '@/components/campaigns/ProposalInbox'
 import { AgentsPanel } from '@/components/campaigns/AgentsPanel'
@@ -51,7 +52,7 @@ export function CampaignsPage() {
   const [days, setDays] = useState(30)
   const [platform, setPlatform] = useState('')
   const [rulesOpen, setRulesOpen] = useState(false)
-  const [tab, setTab] = useState<'overview' | 'revenue'>('overview')
+  const [tab, setTab] = useState<'overview' | 'operations' | 'revenue'>('overview')
 
   const { data, isLoading, isError, error, refetch } = useCampaigns(days, platform)
   const platforms = useCampaignPlatforms()
@@ -126,10 +127,12 @@ export function CampaignsPage() {
         value={tab}
         onChange={setTab}
         className="mb-3"
-        items={[{ key: 'overview', label: t('revenue.tab.overview') }, ...(sees(user, 'campaigns.section.revenue') ? [{ key: 'revenue' as const, label: t('revenue.tab.revenue') }] : [])]}
+        items={[{ key: 'overview', label: t('revenue.tab.overview') }, { key: 'operations' as const, label: t('campaignOps.tab') }, ...(sees(user, 'campaigns.section.revenue') ? [{ key: 'revenue' as const, label: t('revenue.tab.revenue') }] : [])]}
       />
 
-      {tab === 'revenue' && sees(user, 'campaigns.section.revenue') ? (
+      {tab === 'operations' ? (
+        <OperationsPanel days={days} platform={platform} />
+      ) : tab === 'revenue' && sees(user, 'campaigns.section.revenue') ? (
         <RevenuePanel days={days} platform={platform} />
       ) : isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>

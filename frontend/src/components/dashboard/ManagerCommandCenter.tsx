@@ -10,6 +10,7 @@ import { InterestBadge } from '@/components/visual/InterestBadge'
 import { fetchManager, type ManagerData } from '@/features/manager'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { can, useAuth } from '@/stores/auth'
 
 const PERIODS = [7, 30, 90] as const
 
@@ -156,6 +157,7 @@ function ManagerTiles({
   data, duration, money,
 }: { data: ManagerData; duration: (s: number | null) => string; money: (v: number) => string }) {
   const { t, i18n } = useTranslation()
+  const user = useAuth((state) => state.user)
   const k = data.kpis
   const pct = (v: number | null) => (v === null ? '—' : `${formatNumber(v, i18n.language)}%`)
   const trend = (key: 'leads' | 'qualified' | 'won') => data.trend.map((point) => point[key])
@@ -169,7 +171,7 @@ function ManagerTiles({
       <KpiCard testId="kpi-response" valueTestId="kpi-response-value" label={t('manager.kpi.response')} value={duration(k.avg_response_seconds)} icon={Clock} />
       <KpiCard testId="kpi-appointments" valueTestId="kpi-appointments-value" label={t('manager.kpi.appointmentRate')} value={pct(k.appointment_rate)} icon={CalendarCheck} />
       <KpiCard testId="kpi-conversion" valueTestId="kpi-conversion-value" label={t('manager.kpi.conversion')} value={pct(k.conversion_rate)} icon={TrendingUp} spark={trend('won')} />
-      <KpiCard testId="kpi-revenue" valueTestId="kpi-revenue-value" label={t('manager.kpi.revenue')} value={money(k.revenue)} icon={Coins} spark={trend('won')} />
+      {can.has(user, 'revenue.view') && <KpiCard testId="kpi-revenue" valueTestId="kpi-revenue-value" label={t('manager.kpi.revenue')} value={money(k.revenue)} icon={Coins} spark={trend('won')} />}
       <KpiCard testId="kpi-period" valueTestId="kpi-period-value" label={t('manager.kpi.period', { days: data.days })} value={formatNumber(k.leads_period, i18n.language)} icon={Target} spark={trend('leads')} />
     </div>
   )
@@ -231,6 +233,7 @@ const toneDown = (v: number | null) => (v === null ? 'neutral' : v <= 30 ? 'good
  */
 function AutomationRow({ data, duration, money }: { data: ManagerData; duration: (s: number | null) => string; money: (v: number) => string }) {
   const { t, i18n } = useTranslation()
+  const user = useAuth((state) => state.user)
   const a = data.automation
   const pct = (v: number | null) => (v === null ? '—' : `${formatNumber(v, i18n.language)}%`)
   const revenue = a.revenue_by_quality.filter((row) => row.revenue > 0)
@@ -283,7 +286,7 @@ function AutomationRow({ data, duration, money }: { data: ManagerData; duration:
         </CardBody>
       </Card>
 
-      <Card className="lg:col-span-4" data-testid="manager-revenue-quality">
+      {can.has(user, 'revenue.view') && <Card className="lg:col-span-4" data-testid="manager-revenue-quality">
         <CardBody>
           <h3 className="t-card-title mb-3">{t('manager.automation.revenueByQuality')}</h3>
           {revenue.length === 0 ? (
@@ -302,7 +305,7 @@ function AutomationRow({ data, duration, money }: { data: ManagerData; duration:
             />
           )}
         </CardBody>
-      </Card>
+      </Card>}
     </div>
   )
 }

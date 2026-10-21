@@ -151,6 +151,15 @@ class E2ESeeder extends Seeder
 
             $firstProject = $projects->first();
 
+            // One of each specialised role. The scoped ones are given a project: the first (project manager,
+            // client) or the second (broker) — so the scope specs have something they must not see.
+            $this->user($tenant, 'مدير التسويق', 'marketing@e2e.test', Role::MarketingManager);
+            $this->user($tenant, 'مدير المبيعات', 'salesmgr@e2e.test', Role::SalesManager);
+            $this->user($tenant, 'المالية', 'finance@e2e.test', Role::Finance);
+            $this->user($tenant, 'مدير المشروع', 'projectmgr@e2e.test', Role::ProjectManager)->projects()->sync([$firstProject->id]);
+            $this->user($tenant, 'عميل المشروع', 'client@e2e.test', Role::ClientViewer)->projects()->sync([$firstProject->id]);
+            $this->user($tenant, 'الوسيط', 'broker@e2e.test', Role::BrokerViewer)->projects()->sync([$projects[1]->id]);
+
             $this->seedDevelopment($tenant, $firstProject);
 
             /*

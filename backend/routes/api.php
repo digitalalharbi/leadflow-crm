@@ -151,7 +151,7 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', 'company'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
@@ -344,6 +344,7 @@ Route::prefix('v1')->group(function () {
 
             // Users
             Route::get('/users/assignable', [UserController::class, 'assignable']);
+            Route::get('/roles', [UserController::class, 'roles']);
             Route::get('/users', [UserController::class, 'index']);
             Route::post('/users', [UserController::class, 'store']);
             Route::patch('/users/{uuid}', [UserController::class, 'update']);

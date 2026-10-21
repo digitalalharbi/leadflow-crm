@@ -33,7 +33,9 @@ export interface Classification {
   key: ClassificationKey
   reason: string
 }
-export type UserRole = 'super_admin' | 'admin' | 'manager' | 'sales'
+export type UserRole =
+  | 'super_admin' | 'admin' | 'manager' | 'sales'
+  | 'marketing_manager' | 'sales_manager' | 'project_manager' | 'finance' | 'client_viewer' | 'broker_viewer'
 
 export interface Branding {
   tenant_id: string
@@ -63,6 +65,14 @@ export interface User {
   is_active: boolean
   /** When they are back. Null means they are here. */
   away_until?: string | null
+  /** What this person may do (`resource.action`) — sent with the session; absent only on a half-built session object. */
+  permissions?: string[]
+  /** Kinds of data the API will not send them: contacts, spend, revenue. */
+  hidden_data?: ('contacts' | 'spend' | 'revenue')[]
+  /** The projects a project-scoped role was given (uuids); null for everyone else. */
+  project_scope?: string[] | null
+  /** On a user in the team list: the projects that person was given. */
+  project_ids?: string[]
   /** Cities this rep sells in. Empty means every city. */
   covers_cities?: string[]
   /** Which kinds of deal this rep takes (`buy`, `rent`). Empty means every kind. */

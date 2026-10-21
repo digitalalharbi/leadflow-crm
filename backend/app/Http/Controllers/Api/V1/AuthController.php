@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\BrandingResource;
@@ -92,6 +93,11 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            // What this person may do (the interface hides the rest; the API refuses it), and which
+            // projects they are limited to (null: all of them).
+            'permissions' => Permissions::forUser($user),
+            'hidden_data' => Permissions::hiddenData($user),
+            'project_scope' => $user->role?->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             /*
              * The language this workspace itself works in, read off its default
              * country code by the same table that reads a customer's number.
@@ -113,6 +119,11 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            // What this person may do (the interface hides the rest; the API refuses it), and which
+            // projects they are limited to (null: all of them).
+            'permissions' => Permissions::forUser($user),
+            'hidden_data' => Permissions::hiddenData($user),
+            'project_scope' => $user->role?->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             // The language this workspace itself works in — see login, which
             // sends the same field; the SPA re-hydrates from here on reload.
             'workspace_language' => app(PhoneLanguage::class)

@@ -6,6 +6,7 @@ use App\Domain\Leads\InterestEngine;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use App\Models\Scopes\CompanyScope;
+use App\Models\Scopes\ProjectScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,6 +17,8 @@ class Appointment extends Model
 
     protected static function booted(): void
     {
+        static::addGlobalScope(new ProjectScope);
+
         static::addGlobalScope(new CompanyScope);
 
         // A visit booked or done changes how interested the lead is.

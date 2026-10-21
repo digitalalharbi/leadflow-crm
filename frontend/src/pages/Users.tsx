@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Users2 } from 'lucide-react'
+import { FolderLock, Pencil, Plus, ShieldCheck, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
@@ -13,6 +13,8 @@ import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
   Select, SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
+import { RolesMatrix } from '@/components/users/RolesMatrix'
+import { fetchRoles } from '@/features/roles'
 import type { User } from '@/types/api'
 
 export function UsersPage() {
@@ -29,6 +31,8 @@ export function UsersPage() {
   const [weight, setWeight] = useState('1')
   const [speaks, setSpeaks] = useState<string[]>([])
   const [handles, setHandles] = useState<('buy' | 'rent')[]>([])
+  const [projectIds, setProjectIds] = useState<string[]>([])
+  const [matrixOpen, setMatrixOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
 
@@ -62,6 +66,11 @@ export function UsersPage() {
 
   const users = directory?.users ?? []
 
+  // Every role the workspace offers, from the server — a role added there appears here without a release.
+  const roles = useQuery({ queryKey: ['roles'], queryFn: fetchRoles, enabled: canManage, staleTime: 5 * 60_000 })
+  const projects = useQuery({ queryKey: ['users-projects'], queryFn: () => apiGet<{ projects: { id: string; name: string }[] }>('/projects'), enabled: canManage })
+  const scoped = roles.data?.roles.find((role) => role.role === form.role)?.scoped ?? false
+
   /*
    * Served rather than listed here: a rep can only be matched on a language the
    * system can read off a phone number, so the screen offers exactly that list
@@ -93,6 +102,8 @@ export function UsersPage() {
         email: form.email,
         role: form.role,
         phone: form.phone || null,
+        // The projects a scoped role is limited to; sent for everybody so that moving someone out of a scoped role clears them.
+        project_ids: scoped ? projectIds : [],
       }
 
       if (form.password) payload.password = form.password
@@ -141,6 +152,7 @@ export function UsersPage() {
     setCities('')
     setWeight('1')
     setSpeaks([])
+    setProjectIds([])
     setFieldErrors({})
     setOpen(true)
   }
@@ -152,6 +164,7 @@ export function UsersPage() {
     setWeight(String(user.assignment_weight ?? 1))
     setSpeaks(user.speaks ?? [])
     setHandles(user.handles ?? [])
+    setProjectIds(user.project_ids ?? [])
     setFieldErrors({})
     setOpen(true)
   }
@@ -174,9 +187,10 @@ export function UsersPage() {
         title={t('users.title')}
         subtitle={t('users.subtitle')}
         actions={
-          canManage ? (
-            <Button icon={<Plus className="size-4" />} onClick={openCreate}>{t('users.addUser')}</Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" icon={<ShieldCheck className="size-4" />} onClick={() => setMatrixOpen(true)} data-testid="open-roles-matrix">{t('roles.matrix')}</Button>
+            {canManage && <Button icon={<Plus className="size-4" />} onClick={openCreate}>{t('users.addUser')}</Button>}
+          </div>
         }
       />
 
@@ -275,6 +289,8 @@ export function UsersPage() {
         )}
       </Card>
 
+      <RolesMatrix open={matrixOpen} onClose={() => setMatrixOpen(false)} />
+
       <Modal
         open={open}
         onClose={close}
@@ -334,9 +350,9 @@ export function UsersPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               disabled={editing?.id === currentUser?.id}
             >
-              <option value="sales">{t('roles.sales')}</option>
-              <option value="manager">{t('roles.manager')}</option>
-              <option value="admin">{t('roles.admin')}</option>
+              {(roles.data?.roles.map((role) => role.role) ?? ['sales', 'manager', 'admin']).map((role) => (
+                <option key={role} value={role}>{t(`roles.${role}`)}</option>
+              ))}
             </Select>
             <Input
               dir="ltr"
@@ -346,6 +362,33 @@ export function UsersPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
             />
           </div>
+
+          {/* A project manager, a client or a broker sees only these — and nothing at all until they are given one. */}
+          {scoped && (
+            <fieldset className="space-y-2" data-testid="user-projects">
+              <legend className="t-small mb-1 flex items-center gap-1.5 font-medium"><FolderLock className="size-4" aria-hidden />{t('roles.projectsGiven')}</legend>
+              <p className="t-caption">{t('roles.projectsHint')}</p>
+              <div className="flex flex-wrap gap-2">
+                {(projects.data?.projects ?? []).map((project) => {
+                  const chosen = projectIds.includes(project.id)
+
+                  return (
+                    <button
+                      key={project.id}
+                      type="button"
+                      aria-pressed={chosen}
+                      data-testid={`user-project-${project.id}`}
+                      onClick={() => setProjectIds((previous) => (chosen ? previous.filter((id) => id !== project.id) : [...previous, project.id]))}
+                      className={cn('pressable rounded-full border px-3 py-1 text-[0.9375rem]', chosen ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]' : 'border-[var(--color-border)] text-[var(--color-ink-muted)]')}
+                    >
+                      {project.name}
+                    </button>
+                  )
+                })}
+              </div>
+              {projectIds.length === 0 && <p className="t-caption text-[var(--color-warning)]" data-testid="user-projects-none">{t('roles.noProjectsWarning')}</p>}
+            </fieldset>
+          )}
           </>
           )}
 

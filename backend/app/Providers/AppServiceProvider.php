@@ -37,6 +37,7 @@ use App\Policies\TenantSettingsPolicy;
 use App\Policies\TrackingLinkPolicy;
 use App\Policies\UserPolicy;
 use App\Support\CompanyContext;
+use App\Support\ProjectContext;
 use App\Support\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(TenantContext::class);
         $this->app->singleton(CompanyContext::class);
+        $this->app->singleton(ProjectContext::class);
 
         /*
          * One client, one registry, for every code host. Bound here rather than
@@ -103,6 +105,15 @@ class AppServiceProvider extends ServiceProvider
         // relation is accessed without eager loading, so N+1s never reach staging.
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+
+        /*
+         * The specialised roles are decided by the permission matrix, once, at the route
+         * (EnforcePermissions) — by the time a policy is asked, the request has already been
+         * granted its area and verb. Their policies are therefore not asked to guess at roles
+         * they were never written for: without this a sales manager who is granted `leads.edit`
+         * would be refused by a policy that only knows "admin, manager or the lead's owner".
+         */
+        Gate::before(fn ($user) => $user instanceof User && $user->role?->usesMatrix() ? true : null);
 
         Gate::policy(AutomationRule::class, AutomationRulePolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);

@@ -21,19 +21,33 @@ class LeadFunnel
     public const STEPS = ['leads', 'qualified', 'interested', 'visit', 'reservation', 'won'];
 
     /**
+     * Each step as a SQL condition on `leads`: "reached this one, or any later one". The same
+     * five conditions serve the funnel, the campaign table and the trend, so a number cannot
+     * mean one thing on one screen and another on the next.
+     *
+     * @return array{qualified:string, interested:string, visit:string, reservation:string, won:string}
+     */
+    public static function stages(): array
+    {
+        $levels = "'".implode("','", InterestEngine::INTERESTED)."'";
+
+        $won = "leads.status = 'won'";
+        $reservation = "(exists (select 1 from reservations r where r.lead_id = leads.id and r.status in ('pending','confirmed','converted')) or {$won})";
+        $visit = "(exists (select 1 from appointments av where av.lead_id = leads.id and av.deleted_at is null and av.status = 'completed') or {$reservation})";
+        $interested = "(leads.interest_level in ({$levels}) or {$visit})";
+        $qualified = "(leads.qualification_status = 'qualified' or leads.status in ('qualified','appointment','negotiation','won') or {$interested})";
+
+        return compact('qualified', 'interested', 'visit', 'reservation', 'won');
+    }
+
+    /**
      * @param  Builder<Lead>  $leads  Already scoped (period, project, campaign, who may see it).
      * @return array{steps:array<string,int>, booked:int}
      */
     public static function counts(Builder $leads): array
     {
-        $interestedLevels = "'".implode("','", InterestEngine::INTERESTED)."'";
-
-        // Each step is "reached this one, or any later one".
-        $won = "leads.status = 'won'";
-        $reservation = "(exists (select 1 from reservations r where r.lead_id = leads.id and r.status in ('pending','confirmed','converted')) or {$won})";
-        $visit = "(exists (select 1 from appointments av where av.lead_id = leads.id and av.deleted_at is null and av.status = 'completed') or {$reservation})";
-        $interested = "(leads.interest_level in ({$interestedLevels}) or {$visit})";
-        $qualified = "(leads.qualification_status = 'qualified' or leads.status in ('qualified','appointment','negotiation','won') or {$interested})";
+        $stage = self::stages();
+        ['won' => $won, 'reservation' => $reservation, 'visit' => $visit, 'interested' => $interested, 'qualified' => $qualified] = $stage;
 
         $row = (clone $leads)->reorder()->selectRaw("
             count(*) as leads,

@@ -27,6 +27,9 @@ export interface CampaignRow {
   valid: number
   engaged: number
   qualified: number
+  interested: number
+  visits: number
+  reservations: number
   appointments: number
   won: number
   cold: number
@@ -36,6 +39,10 @@ export interface CampaignRow {
   cpl: number | null
   cpql: number | null
   cost_per_appointment: number | null
+  cost_per_interested: number | null
+  cost_per_visit: number | null
+  cost_per_reservation: number | null
+  cac: number | null
   cpa: number | null
   roas: number | null
   revenue_per_lead: number | null
@@ -51,11 +58,18 @@ export interface CampaignTotals {
   valid: number
   engaged: number
   qualified: number
+  interested: number
+  visits: number
+  reservations: number
   appointments: number
   won: number
   revenue: number
   cpl: number | null
   cpql: number | null
+  cost_per_interested: number | null
+  cost_per_visit: number | null
+  cost_per_reservation: number | null
+  cac: number | null
   cpa: number | null
   roas: number | null
   qualified_rate: number | null
@@ -212,5 +226,50 @@ export function useCampaign(id: string, days: number) {
     queryKey: ['campaigns', 'detail', id, days],
     queryFn: () => apiGet<CampaignDetailData>(`/campaigns/${id}`, { days }),
     enabled: Boolean(id),
+  })
+}
+
+export const REVENUE_STEPS = ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won'] as const
+export type RevenueStep = (typeof REVENUE_STEPS)[number]
+
+export interface Compared { current: number | null; previous: number | null; change: number | null }
+
+export interface RevenueRanked {
+  id: string
+  name: string
+  platform: AdPlatformKey
+  spend: number | null
+  leads: number
+  reservations: number
+  won: number
+  revenue: number
+  cpl: number | null
+  roas: number | null
+}
+
+/** From the money spent to the money earned — funnel, table, heatmap, trend, mix, comparison, rankings. */
+export interface CampaignRevenueData {
+  from: string
+  to: string
+  days: number
+  currency: string
+  totals: CampaignTotals
+  comparison: Record<string, Compared>
+  funnel: { key: RevenueStep; count: number; cost: number | null; rate: number | null; lost: number | null }[]
+  campaigns: CampaignRow[]
+  heatmap: { steps: RevenueStep[]; rows: { id: string; name: string; platform: AdPlatformKey; leads: number; cells: number[] }[] }
+  mix: {
+    platforms: { key: string; leads: number; spend: number; revenue: number }[]
+    revenue_by_campaign: { key: string; label: string | null; value: number }[]
+  }
+  rankings: Record<'roas' | 'cpl' | 'reservations' | 'wasted', RevenueRanked[]>
+  trend: { date: string; spend: number; leads: number; interested: number; visits: number; reservations: number; won: number; revenue: number }[]
+}
+
+export function useCampaignRevenue(days: number, platform = '') {
+  return useQuery({
+    queryKey: ['campaigns', 'revenue', days, platform],
+    queryFn: () => apiGet<CampaignRevenueData>('/campaigns/revenue', { days, ...(platform ? { platform } : {}) }),
+    placeholderData: (previous) => previous,
   })
 }

@@ -347,6 +347,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
             Route::get('/campaigns', [CampaignController::class, 'index']);
             Route::get('/campaigns/platforms', [CampaignController::class, 'platforms']);
+            Route::get('/campaigns/revenue', [CampaignController::class, 'revenue']);
             Route::get('/ad-connections/{platform}', [AdConnectionController::class, 'show']);
             Route::put('/ad-connections/{platform}', [AdConnectionController::class, 'update']);
             Route::post('/ad-connections/{platform}/test', [AdConnectionController::class, 'test']);

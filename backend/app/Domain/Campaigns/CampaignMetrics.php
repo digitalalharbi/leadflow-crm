@@ -3,6 +3,7 @@
 namespace App\Domain\Campaigns;
 
 use App\Domain\Agents\CreativeAgent;
+use App\Domain\Analytics\LeadFunnel;
 use App\Domain\Leads\LeadClassification;
 use App\Enums\LeadStatus;
 use App\Models\Campaign;
@@ -111,6 +112,9 @@ class CampaignMetrics
         $any = collect($rows)->contains(fn ($r) => $r['spend'] !== null);
         $leads = $sum('leads');
         $qualified = $sum('qualified');
+        $interested = $sum('interested');
+        $visits = $sum('visits');
+        $reservations = $sum('reservations');
         $won = $sum('won');
         $revenue = $sum('revenue');
 
@@ -121,12 +125,19 @@ class CampaignMetrics
             'valid' => $sum('valid'),
             'engaged' => $sum('engaged'),
             'qualified' => $qualified,
+            'interested' => $interested,
+            'visits' => $visits,
+            'reservations' => $reservations,
             'appointments' => $sum('appointments'),
             'won' => $won,
             'revenue' => round($revenue, 2),
             'cpl' => $any && $leads > 0 ? round($spend / $leads, 2) : null,
             'cpql' => $any && $qualified > 0 ? round($spend / $qualified, 2) : null,
+            'cost_per_interested' => $any && $interested > 0 ? round($spend / $interested, 2) : null,
+            'cost_per_visit' => $any && $visits > 0 ? round($spend / $visits, 2) : null,
+            'cost_per_reservation' => $any && $reservations > 0 ? round($spend / $reservations, 2) : null,
             'cpa' => $any && $won > 0 ? round($spend / $won, 2) : null,
+            'cac' => $any && $won > 0 ? round($spend / $won, 2) : null,
             'roas' => $any && $spend > 0 && ($won === 0 || $revenue > 0) ? round($revenue / $spend, 2) : null,
             'qualified_rate' => $leads > 0 ? round($qualified / $leads * 100, 1) : null,
             'won_rate' => $leads > 0 ? round($won / $leads * 100, 1) : null,
@@ -278,6 +289,7 @@ class CampaignMetrics
         $won = LeadStatus::Won->value;
         $invalid = LeadStatus::Invalid->value;
         $replied = "'replied', 'qualified', 'appointment', 'negotiation', '{$won}'";
+        $stage = LeadFunnel::stages();
 
         return $this->leads()
             ->whereBetween('leads.created_at', [$this->from->copy()->startOfDay(), $this->to->copy()->endOfDay()])
@@ -285,13 +297,17 @@ class CampaignMetrics
                 "count(*) as leads,
                  count(*) filter (where status <> '%1\$s') as valid,
                  count(*) filter (where first_response_at is not null or status in (%2\$s)) as engaged,
-                 count(*) filter (where qualification_status = 'qualified' or status in ('qualified', 'appointment', 'negotiation', '%3\$s')) as qualified,
+                 count(*) filter (where %5\$s) as qualified,
+                 count(*) filter (where %6\$s) as interested,
+                 count(*) filter (where %7\$s) as visits,
+                 count(*) filter (where %8\$s) as reservations,
                  count(*) filter (where status in ('appointment', 'negotiation', '%3\$s')) as appointments,
                  count(*) filter (where status = '%3\$s') as won,
                  count(*) filter (where (%4\$s) in ('cold', 'new')) as cold,
                  count(*) filter (where (%4\$s) in ('hot', 'priority')) as hot,
                  coalesce(sum(deal_value_minor), 0) as revenue_minor",
                 $invalid, $replied, $won, LeadClassification::sql('leads'),
+                $stage['qualified'], $stage['interested'], $stage['visit'], $stage['reservation'],
             ));
     }
 
@@ -302,6 +318,9 @@ class CampaignMetrics
             'valid' => (int) $row->valid,
             'engaged' => (int) $row->engaged,
             'qualified' => (int) $row->qualified,
+            'interested' => (int) $row->interested,
+            'visits' => (int) $row->visits,
+            'reservations' => (int) $row->reservations,
             'appointments' => (int) $row->appointments,
             'won' => (int) $row->won,
             'cold' => (int) $row->cold,
@@ -320,7 +339,7 @@ class CampaignMetrics
 
     private function emptyCrm(): array
     {
-        return ['leads' => 0, 'valid' => 0, 'engaged' => 0, 'qualified' => 0, 'appointments' => 0, 'won' => 0, 'cold' => 0, 'hot' => 0, 'revenue' => 0.0, '_revenue_minor' => 0];
+        return ['leads' => 0, 'valid' => 0, 'engaged' => 0, 'qualified' => 0, 'interested' => 0, 'visits' => 0, 'reservations' => 0, 'appointments' => 0, 'won' => 0, 'cold' => 0, 'hot' => 0, 'revenue' => 0.0, '_revenue_minor' => 0];
     }
 
     /** @return array<string, int> minor units keyed "platform|name" */
@@ -355,7 +374,13 @@ class CampaignMetrics
             // nothing is the finding itself, and the leads column says so.
             'cpql' => $per($crm['qualified']),
             'cost_per_appointment' => $per($crm['appointments']),
+            // What it cost to get one person to each step the business cares about.
+            'cost_per_interested' => $per($crm['interested']),
+            'cost_per_visit' => $per($crm['visits']),
+            'cost_per_reservation' => $per($crm['reservations']),
             'cpa' => $per($crm['won']),
+            // Customer acquisition cost: the same division as cost per won, named for the question it answers.
+            'cac' => $per($crm['won']),
             'roas' => $spendMinor !== null && $spendMinor > 0 && ($crm['won'] === 0 || $crm['_revenue_minor'] > 0)
                 ? round($crm['_revenue_minor'] / $spendMinor, 2)
                 : null,

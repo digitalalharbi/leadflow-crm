@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\CreativeController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
+use App\Http\Controllers\Api\V1\EmailDeliveryController;
 use App\Http\Controllers\Api\V1\EmailSettingsController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\FollowUpPlanController;
@@ -389,6 +390,9 @@ Route::prefix('v1')->group(function () {
             Route::patch('/report-shares/{uuid}', [ReportShareController::class, 'update']);
             Route::get('/report-shares/{uuid}/preview', [ReportShareController::class, 'preview']);
             Route::get('/report-shares/{uuid}/analytics', [ReportShareController::class, 'analytics']);
+            Route::post('/report-shares/{uuid}/email', [ReportShareController::class, 'email']);
+            Route::get('/email-deliveries', [EmailDeliveryController::class, 'index']);
+            Route::post('/email-deliveries/{uuid}/retry', [EmailDeliveryController::class, 'retry']);
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);
             Route::post('/report-shares/{uuid}/regenerate', [ReportShareController::class, 'regenerate']);
             Route::delete('/report-shares/{uuid}', [ReportShareController::class, 'destroy']);

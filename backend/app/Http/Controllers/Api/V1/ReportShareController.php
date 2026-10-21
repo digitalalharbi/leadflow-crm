@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Mail\EmailDeliveries;
+use App\Domain\Mail\OutboundEmail;
+use App\Domain\Mail\ReportEmail;
 use App\Domain\Reports\LiveReport;
 use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
@@ -144,6 +147,38 @@ class ReportShareController extends Controller
         $this->audit->log('report_share.regenerated', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
         return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
+    }
+
+    /**
+     * Sends the link to a report by email — one queued delivery per recipient, the same message never
+     * twice to the same person in the same hour. The email carries the link, not the numbers.
+     */
+    public function email(Request $request, string $uuid, EmailDeliveries $deliveries)
+    {
+        $share = ReportShare::where('uuid', $uuid)->with(['tenant.branding', 'tenant.settings'])->firstOrFail();
+        $this->authorize('update', $share);
+        abort_if($share->status() !== 'active', 422, 'Only an active link can be sent.');
+
+        $data = $request->validate([
+            'recipients' => ['required', 'array', 'min:1', 'max:20'],
+            'recipients.*' => ['required', 'email:rfc', 'max:190'],
+            'message' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $queued = [];
+
+        foreach (array_values(array_unique(array_map('strtolower', $data['recipients']))) as $address) {
+            $mail = ReportEmail::compose($share, $address, $data['message'] ?? null, $request->user());
+            $queued[] = $deliveries->queue(
+                new OutboundEmail($address, null, $mail['subject'], $mail['html'], null, '', '', hash('sha256', "{$share->id}|{$address}|".now()->format('Y-m-d H')), ['kind' => 'report']),
+                ['kind' => 'report', 'subject_type' => 'report_share', 'subject_id' => $share->id],
+                $request->user(),
+            );
+        }
+
+        $this->audit->log('report_share.emailed', $request->user(), $share, ['recipients' => count($queued)]);
+
+        return ApiResponse::created(['deliveries' => collect($queued)->map(fn ($d) => ['id' => $d->uuid, 'to' => $d->to_email, 'status' => $d->status, 'provider' => $d->provider])->all()]);
     }
 
     /** The report as the team sees it: every section that is on, including the ones kept for the team. */

@@ -72,6 +72,19 @@ export default {
     sentiment: { positive: 'Positive', neutral: 'Neutral', negative: 'Negative' },
     objection: { price_high: 'Price too high', location: 'Location', financing: 'Financing', timing: 'Not now', trust: 'Trust', competitor: 'Competitor', family_decision: 'Family decision' },
   },
+  alerts: {
+    title: 'Alerts & summaries',
+    subtitle: 'How you want to hear about what matters — email: {{email}}',
+    mailOff: 'Email is not switched on at the server yet, so alerts reach you inside the app only until it is set up.',
+    mode: { instant: 'At once', daily: 'Daily', weekly: 'Weekly', off: 'Off' },
+    category: {
+      hot_lead: 'Hot lead', visit_requested: 'Visit requested', reservation_intent: 'Reservation intent', sla_breach: 'Reply window missed',
+      automation_failure: 'Automation failure', high_value: 'High-value lead', tracking_failure: 'Tracking failure', budget_anomaly: 'Spend anomaly',
+    },
+    digests: 'Summaries',
+    digest: { daily_sales: 'Daily sales summary', weekly_marketing: 'Weekly marketing summary', weekly_executive: 'Weekly executive summary' },
+    digestHint: { daily_sales: 'Every morning at 8 — what is waiting for you', weekly_marketing: 'Sundays — spend, return, best campaigns', weekly_executive: 'Sundays — the funnel, revenue, what needs attention' },
+  },
   share: {
     intro: 'Live reports that open with a link — no sign-in. The numbers are always current.',
     new: 'New report link', edit: 'Edit', copy: 'Copy link', copied: 'Link copied.',

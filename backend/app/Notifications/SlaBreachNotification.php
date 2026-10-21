@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Lead;
-use App\Notifications\Channels\TenantDatabaseChannel;
+use App\Notifications\Concerns\MailsByPreference;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -19,7 +19,7 @@ use Illuminate\Notifications\Notification;
  */
 class SlaBreachNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use MailsByPreference, Queueable;
 
     public const REMIND = 'remind';
 
@@ -32,12 +32,19 @@ class SlaBreachNotification extends Notification implements ShouldQueue
         public int $ageMinutes,
     ) {}
 
-    public function via(object $notifiable): array
+    public function alertCategory(): ?string
     {
-        return [TenantDatabaseChannel::class];
+        return 'sla_breach';
     }
 
-    public function toDatabase(object $notifiable): array
+    public function alertContent(): array
+    {
+        $data = $this->toDatabase(null);
+
+        return ['title' => $data['title'], 'body' => $data['body'], 'lead_id' => $this->lead->uuid, 'severity' => 'critical'];
+    }
+
+    public function toDatabase(?object $notifiable): array
     {
         $title = $this->stage === self::ESCALATE
             ? 'تصعيد: عميل بلا تواصل'

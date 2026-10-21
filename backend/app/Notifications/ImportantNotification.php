@@ -2,7 +2,8 @@
 
 namespace App\Notifications;
 
-use App\Notifications\Channels\TenantDatabaseChannel;
+use App\Domain\Notifications\AlertKinds;
+use App\Notifications\Concerns\MailsByPreference;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -15,7 +16,7 @@ use Illuminate\Notifications\Notification;
  */
 class ImportantNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use MailsByPreference, Queueable;
 
     public function __construct(
         public string $kind,
@@ -26,9 +27,14 @@ class ImportantNotification extends Notification implements ShouldQueue
         public string $severity = 'warning',
     ) {}
 
-    public function via(object $notifiable): array
+    public function alertCategory(): ?string
     {
-        return [TenantDatabaseChannel::class];
+        return AlertKinds::categoryOf($this->kind);
+    }
+
+    public function alertContent(): array
+    {
+        return ['title' => $this->title, 'body' => $this->body, 'lead_id' => $this->leadId, 'severity' => $this->severity];
     }
 
     public function toDatabase(object $notifiable): array

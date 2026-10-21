@@ -101,6 +101,12 @@ Schedule::command('leadflow:sync-sheets')
 // Interest decays with silence and no event says so: re-read what has gone stale, hourly.
 Schedule::command('leadflow:refresh-interest')->hourly()->withoutOverlapping();
 
+// The email summaries: eight o'clock where each workspace is; sales daily, marketing and executive on Sundays.
+Schedule::command('leadflow:send-digests')->hourly()->withoutOverlapping();
+
+// A connected platform that stopped delivering or stopped being told about sales: tell the managers.
+Schedule::command('leadflow:watch-tracking')->hourly()->withoutOverlapping();
+
 // A hold nobody confirmed lapses, and the unit goes back on the market.
 Schedule::command('leadflow:expire-reservations')->hourly()->withoutOverlapping();
 

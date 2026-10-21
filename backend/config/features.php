@@ -36,6 +36,7 @@ return [
         'dashboard.widget.board' => ['kind' => 'widget', 'needs' => ['dashboard.view']],
         'dashboard.widget.ops_pulse' => ['kind' => 'widget', 'needs' => ['dashboard.view']],
         'dashboard.widget.insights' => ['kind' => 'widget', 'needs' => ['analytics.view']],
+        'dashboard.widget.recommendations' => ['kind' => 'widget', 'needs' => ['analytics.view']],
         'dashboard.widget.manager' => ['kind' => 'widget', 'needs' => ['analytics.view']],
         'dashboard.widget.today' => ['kind' => 'widget', 'needs' => ['dashboard.view']],
         'dashboard.kpi.leads_today' => ['kind' => 'kpi', 'needs' => ['analytics.view']],

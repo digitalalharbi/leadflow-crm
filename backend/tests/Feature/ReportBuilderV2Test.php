@@ -285,4 +285,40 @@ class ReportBuilderV2Test extends TestCase
 
         $this->assertSame([], array_values(array_diff(array_column($items, 'key'), ['sla_late'])));
     }
+
+    public function test_recommendations_are_served_to_the_team_with_their_way_in_and_without_money_to_those_who_may_not_see_it(): void
+    {
+        $this->asTenant($this->t['tenant'], function () {
+            $cheap = Campaign::create(['platform' => 'meta', 'name' => 'رخيصة', 'origin' => 'manual', 'status' => 'active', 'currency' => 'SAR']);
+            $dear = Campaign::create(['platform' => 'tiktok', 'name' => 'غالية', 'origin' => 'manual', 'status' => 'active', 'currency' => 'SAR']);
+            MetricSnapshot::create(['platform' => 'meta', 'level' => 'campaign', 'campaign_id' => $cheap->id, 'date' => now()->subDay()->toDateString(), 'spend_minor' => 200_000, 'currency' => 'SAR']);
+            MetricSnapshot::create(['platform' => 'tiktok', 'level' => 'campaign', 'campaign_id' => $dear->id, 'date' => now()->subDay()->toDateString(), 'spend_minor' => 600_000, 'currency' => 'SAR']);
+
+            foreach (range(1, 20) as $i) {
+                foreach ([[$cheap, 'ر', 1000], [$dear, 'غ', 2000]] as [$campaign, $prefix, $base]) {
+                    $lead = Lead::create(['full_name' => "{$prefix}{$i}", 'phone_normalized' => '+966551'.($base + $i).random_int(10, 99), 'status' => 'contacted']);
+                    DB::table('leads')->where('id', $lead->id)->update(['campaign_ref_id' => $campaign->id, 'created_at' => now()->subDay()]);
+
+                    if ($campaign->id === $dear->id && $i <= 8) {
+                        Reservation::create(['lead_id' => $lead->id, 'status' => 'pending', 'reserved_at' => now()]);
+                    }
+                }
+            }
+        });
+
+        $items = $this->actingAs($this->t['admin'])->getJson('/api/v1/insights/recommendations')->assertOk()->json('data.items');
+        $found = collect($items)->firstWhere('key', 'cheap_but_weak');
+        $this->assertNotNull($found);
+        $this->assertStringStartsWith('/campaigns/', $found['link']);
+
+        // A role that may not see spend is shown nothing that quotes it.
+        $role = $this->actingAs($this->t['admin'])->postJson('/api/v1/access/roles', ['name' => 'No Spend', 'base_role' => 'sales_manager', 'grants' => ['dashboard' => ['view'], 'analytics' => ['view'], 'leads' => ['view']]])->assertCreated()->json('data.role.id');
+        $person = $this->makeUser($this->t['tenant'], Role::SalesManager);
+        $this->actingAs($this->t['admin'])->patchJson("/api/v1/users/{$person->uuid}", ['access_role_id' => $role])->assertOk();
+        $keys = array_column($this->actingAs($person->fresh())->getJson('/api/v1/insights/recommendations')->assertOk()->json('data.items'), 'key');
+        $this->assertNotContains('cheap_but_weak', $keys);
+
+        $this->actingAs($this->makeUser($this->t['tenant'], Role::Sales))->getJson('/api/v1/insights/recommendations')->assertForbidden();
+        $this->actingAs($this->makeUser($this->t['tenant'], Role::ClientViewer))->getJson('/api/v1/insights/recommendations')->assertForbidden();
+    }
 }

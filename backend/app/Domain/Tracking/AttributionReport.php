@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tracking;
 
+use App\Models\Ad;
 use App\Models\Appointment;
 use App\Models\Lead;
 use App\Models\Reservation;
@@ -30,13 +31,24 @@ class AttributionReport
     public function __construct(private Attribution $attribution) {}
 
     /** @return array<string,mixed> */
-    public function build(string $model, string $dimension, Carbon $from, Carbon $to, ?int $projectId = null): array
+    /**
+     * Who gets the credit — for the leads that arrived in the period and match the filters.
+     *
+     * @param  array{campaign_id?:int,platform?:string,ad_id?:int,creative_id?:int,partner_id?:int,rep_id?:int}  $filters  ids of the thing the leads belong to
+     */
+    public function build(string $model, string $dimension, Carbon $from, Carbon $to, ?int $projectId = null, array $filters = []): array
     {
         $model = in_array($model, Attribution::MODELS, true) ? $model : 'last';
         $dimension = in_array($dimension, self::DIMENSIONS, true) ? $dimension : 'channel';
 
         $leads = Lead::query()->reorder()->whereBetween('created_at', [$from, $to])
             ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->when($filters['campaign_id'] ?? null, fn ($q, $id) => $q->where('campaign_ref_id', $id))
+            ->when($filters['platform'] ?? null, fn ($q, $p) => $q->where('platform', $p))
+            ->when($filters['ad_id'] ?? null, fn ($q, $id) => $q->where('ad_ref_id', $id))
+            ->when($filters['creative_id'] ?? null, fn ($q, $id) => $q->whereIn('ad_ref_id', Ad::query()->where('creative_id', $id)->select('id')))
+            ->when($filters['partner_id'] ?? null, fn ($q, $id) => $q->where('partner_id', $id))
+            ->when($filters['rep_id'] ?? null, fn ($q, $id) => $q->where('assigned_to', $id))
             ->get(['id', 'status', 'qualification_status', 'qualified_at', 'deal_value_minor', 'first_touch_link_id', 'last_touch_link_id']);
 
         $ids = $leads->pluck('id');
@@ -90,6 +102,48 @@ class AttributionReport
                 'unattributed_percent' => $leads->count() > 0 ? round($unattributed / $leads->count() * 100, 1) : null,
             ] + collect(self::METRICS)->mapWithKeys(fn (string $m) => [$m => round($rows->sum($m), 2)])->all() + ['revenue' => round($rows->sum('revenue'), 2)],
             'rows' => $rows->all(),
+        ];
+    }
+
+    /**
+     * The same question under every model, side by side: for each bucket, what each way of counting
+     * gives it, so "who really brought the reservations?" can be answered with how much it depends
+     * on who is counting. `swing` is the widest gap between two models, as a share of the largest —
+     * a high one is a bucket whose credit is an argument, not a fact.
+     *
+     * @param  array<string,int>  $filters
+     * @return array<string,mixed>
+     */
+    public function compare(string $dimension, Carbon $from, Carbon $to, ?int $projectId = null, array $filters = []): array
+    {
+        $builds = collect(Attribution::MODELS)->mapWithKeys(fn (string $m) => [$m => $this->build($m, $dimension, $from, $to, $projectId, $filters)]);
+        $metrics = ['leads', 'interested', 'visits', 'reservations', 'won', 'revenue'];
+
+        $keys = $builds->flatMap(fn (array $b) => collect($b['rows'])->pluck('key'))->unique()->values();
+        $rows = $keys->map(function (string $key) use ($builds, $metrics) {
+            $by = [];
+            $label = null;
+
+            foreach ($builds as $model => $build) {
+                $row = collect($build['rows'])->firstWhere('key', $key);
+                $label ??= $row['label'] ?? null;
+                $by[$model] = collect($metrics)->mapWithKeys(fn (string $m) => [$m => $row[$m] ?? 0])->all();
+            }
+
+            $swing = fn (string $m) => ($hi = max(array_column($by, $m))) > 0 ? round(($hi - min(array_column($by, $m))) / $hi * 100, 1) : 0.0;
+
+            return ['key' => $key, 'label' => $label, 'by_model' => $by, 'swing' => ['reservations' => $swing('reservations'), 'revenue' => $swing('revenue')]];
+        })->sortByDesc(fn (array $r) => $r['by_model']['last']['leads'])->values();
+
+        return [
+            'dimension' => $dimension,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'metrics' => $metrics,
+            'models' => Attribution::MODELS,
+            'rows' => $rows->all(),
+            'totals' => $builds->map(fn (array $b) => collect($metrics)->mapWithKeys(fn (string $m) => [$m => round(collect($b['rows'])->sum($m), 2)])->all())->all(),
+            'unattributed_percent' => $builds['last']['totals']['unattributed_percent'],
         ];
     }
 

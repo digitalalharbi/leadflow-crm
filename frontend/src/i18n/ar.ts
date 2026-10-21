@@ -2780,7 +2780,9 @@ export default {
     stat: { clicks: 'نقرات', visitors: 'زوّار', leads: 'عملاء', won: 'صفقات', revenue: 'الإيراد' },
     channels: { meta: 'ميتا', tiktok: 'تيك توك', snapchat: 'سناب شات', google: 'جوجل', x: 'X', linkedin: 'لينكدإن', whatsapp: 'واتساب', landing_page: 'صفحة هبوط', portal: 'بوابة عقارية', email: 'بريد', sms: 'رسالة نصية', influencer: 'مؤثر', broker: 'وسيط', qr: 'رمز QR', other: 'أخرى' },
     event: { visit: 'زيارة', click: 'نقرة', form_start: 'بدأ النموذج', form_submit: 'أرسل النموذج', whatsapp_click: 'ضغط واتساب', call_click: 'ضغط اتصال', brochure_open: 'فتح البروشور', project_view: 'عرض مشروع', property_view: 'عرض وحدة', appointment_request: 'طلب زيارة', site_visit: 'زار الموقع', reservation: 'حجز', won: 'صفقة' },
-    model: 'نموذج الإسناد', dimension: 'التجميع',
+    model: 'نموذج الإسناد',
+    filter: { project: 'كل المشاريع', campaign: 'كل الحملات', platform: 'كل المنصات', ad: 'كل الإعلانات', creative: 'كل الإبداعات', partner: 'كل الشركاء', rep: 'كل المندوبين', clear_one: 'إزالة فلتر', clear_other: 'إزالة {{count}} فلاتر' },
+    compare: { title: 'من يستحق الفضل؟ النماذج الأربعة معًا', hint: 'كل خلية: حصة المصدر من المجموع تحت ذلك النموذج. الصف الذي تتباعد خلاياه فضلُه محل خلاف.', metric: 'المقياس', swing: 'تباين {{percent}}٪', m: { revenue: 'الإيراد', interested: 'المهتمون', visits: 'الزيارات', reservations: 'الحجوزات' } }, dimension: 'التجميع',
     models: { first: 'أول لمسة', last: 'آخر لمسة', linear: 'خطي', position: 'موزّع' },
     dimensions: { channel: 'القناة', link: 'الرابط', campaign: 'الحملة', ad: 'الإعلان', creative: 'التصميم', project: 'المشروع', rep: 'المندوب', partner: 'الشريك', landing_page: 'صفحة الهبوط', branch: 'الفرع', source: 'المصدر' },
     answers: { ad: 'أي إعلان جلب العملاء؟', interested: 'أي حملة جلبت المهتمين؟', visit: 'أي مصدر جلب الزيارات؟', reservation: 'أي حملة جلبت الحجوزات؟', revenue: 'أي قناة جلبت الإيراد؟' },
@@ -3089,7 +3091,7 @@ export default {
         audit: 'سجل التغييرات',
       },
       dashboard: {
-        widget: {holding:'نظرة الشركة القابضة',journey:'رحلة العميل',board:'لوحة اليوم',ops_pulse:'نبض التشغيل',insights:'الرؤى',manager:'مركز المدير',today:'ما يجب فعله اليوم'},
+        widget: {holding:'نظرة الشركة القابضة',journey:'رحلة العميل',board:'لوحة اليوم',ops_pulse:'نبض التشغيل',insights:'الرؤى',recommendations:'التوصيات',manager:'مركز المدير',today:'ما يجب فعله اليوم'},
         kpi: {leads_today:'عملاء اليوم',qualified:'المؤهلون',overdue:'متابعات متأخرة',stalled:'متوقفون',response:'زمن الاستجابة',appointment_rate:'معدل الزيارات',conversion:'معدل الإغلاق',period:'عملاء الفترة',revenue:'الإيراد'},
         chart: {funnel:'قمع المبيعات',velocity:'سرعة الحركة',campaign_quality:'جودة الحملات',platforms:'المنصات',lead_quality:'جودة العملاء',response_time:'زمن الاستجابة',revenue_by_quality:'الإيراد حسب الجودة'}},
       campaigns: {
@@ -3162,7 +3164,7 @@ export default {
       impact: 'جودة أعلى لكل عميل.', action: 'وسّع حصته من الروابط ورموز QR.',
     },
     rep_loses_after_visit: {
-      finding: '{{name}} يرد سريعًا ({{response}} دقيقة) لكنه يخسر بعد الزيارة: إغلاق {{rate}}٪ مقابل {{avg}}٪.',
+      finding: '{{name}} يرد سريعًا ({{response}} دقيقة) لكنه يخسر بعد الزيارة: حجز {{rate}}٪ مقابل {{avg}}٪ للفريق.',
       impact: 'زيارات كلّفت وقتًا ثم ضاعت.', action: 'راجع معه متابعة ما بعد الزيارة.',
     },
     budget_share_gap: {
@@ -3238,6 +3240,14 @@ export default {
       tracking_drop: 'أحداث التتبع المسجّلة أمس هبطت بهذه النسبة عن المعتاد: فجوة فيما يُسجَّل.', backlog_growth: 'المتأخر على المبيعات نما بهذه النسبة عن المعتاد.', spend_no_qualified: 'أُنفق هذا المبلغ في آخر ٣ أيام على حملة بلا عميل مؤهل.',
     },
   },
+  salesIntel: {
+    team: { close: 'معدل الإغلاق', contact: 'نسبة التواصل', sla: 'ردّ خلال {{minutes}} دقيقة', leads: 'عملاء الفريق' },
+    rankTitle: 'الترتيب بعدل', rankHint: 'الرقم: صفقات فوق ما كان سيصنعه معدل الفريق من نفس عدد العملاء. تحته: عملاؤه وحصته من عملاء الفريق.',
+    gridTitle: 'نسب كل مندوب', gridHint: 'الخلية الباهتة هي الخطوة الأضعف في صف المندوب. «—» لا بيانات.', small: 'عملاء قليلون',
+    rate: { contact_rate: 'تواصل', interested_rate: 'مهتم', visit_rate: 'زيارة', reservation_rate: 'حجز', close_rate: 'إغلاق', sla_compliance: 'في الوقت', follow_up_completion: 'متابعات' },
+    response: 'زمن الاستجابة', minutes_one: 'دقيقة', minutes_other: '{{count}} دقيقة', won: 'صفقات', revenue: 'الإيراد', visits: 'زيارات',
+  },
+  recommendations: { title: 'ماذا نفعل الآن', open: 'افتح' },
   roles: {
     admin: 'مدير النظام',
     manager: 'مدير مبيعات',

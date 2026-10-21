@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReportShareController;
+use App\Http\Controllers\Api\V1\RepPerformanceController;
 use App\Http\Controllers\Api\V1\ReservationController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
 use App\Http\Controllers\Api\V1\SavedViewController;
@@ -183,6 +184,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard/journey', [JourneyController::class, 'show']);
             Route::get('/dashboard/ops', [InsightController::class, 'ops']);
             Route::get('/insights', [InsightController::class, 'index']);
+            Route::get('/insights/recommendations', [InsightController::class, 'recommendations']);
             Route::get('/audit', AuditTrailController::class);
             Route::post('/anomalies/{uuid}/dismiss', [InsightController::class, 'dismiss'])->whereUuid('uuid');
             Route::get('/anomaly-settings', [AnomalySettingsController::class, 'show']);
@@ -335,6 +337,8 @@ Route::prefix('v1')->group(function () {
             Route::patch('/tracking/links/{uuid}', [TrackingLinkController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/links/{uuid}', [TrackingLinkController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/tracking/attribution', AttributionController::class);
+            Route::get('/tracking/attribution/compare', [AttributionController::class, 'compare']);
+            Route::get('/tracking/attribution/options', [AttributionController::class, 'options']);
             Route::get('/tracking/health', TrackingHealthController::class);
 
             // The units a project sells or lets.
@@ -443,6 +447,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/campaign-quality', [SalesPerformanceController::class, 'campaignQuality']);
             Route::get('/reports/campaign-quality/export', [SalesPerformanceController::class, 'exportCampaignQuality']);
             Route::get('/reports/performance', [SalesPerformanceController::class, 'performance']);
+            Route::get('/reports/sales-performance', RepPerformanceController::class);
             Route::get('/reports/sales-team', [SalesPerformanceController::class, 'salesTeam']);
 
             // Integrations (admin only, enforced by policy)

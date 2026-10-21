@@ -5,7 +5,9 @@ import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody, Select, Skeleton } from '@/components/ui'
 import { Donut, RankBars, RingProgress } from '@/components/visual'
-import { fetchAttribution, DIMENSIONS, MODELS, type AttributionModel, type AttributionRow, type Dimension } from '@/features/tracking'
+import { fetchAttribution, fetchAttributionCompare, fetchAttributionOptions, COMPARE_METRICS, DIMENSIONS, MODELS, type AttributionFilters, type AttributionModel, type AttributionRow, type CompareMetric, type Dimension } from '@/features/tracking'
+import { fetchProjects } from '@/features/leads'
+import { HeatGrid } from '@/components/visual'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -30,20 +32,34 @@ export function AttributionPanel({ days }: { days: number }) {
   const { t, i18n } = useTranslation()
   const [model, setModel] = useState<AttributionModel>('last')
   const [dimension, setDimension] = useState<Dimension>('channel')
+  const [filters, setFilters] = useState<AttributionFilters>({})
+  const [metric, setMetric] = useState<CompareMetric>('revenue')
+
+  const options = useQuery({ queryKey: ['attribution-options'], queryFn: fetchAttributionOptions, staleTime: 5 * 60_000 })
+  const projects = useQuery({ queryKey: ['projects'], queryFn: fetchProjects, staleTime: 5 * 60_000 })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['attribution', model, dimension, days],
-    queryFn: () => fetchAttribution(model, dimension, days),
+    queryKey: ['attribution', model, dimension, days, filters],
+    queryFn: () => fetchAttribution(model, dimension, days, filters),
+    placeholderData: (previous) => previous,
+  })
+
+  const compare = useQuery({
+    queryKey: ['attribution-compare', dimension, days, filters],
+    queryFn: () => fetchAttributionCompare(dimension, days, filters),
     placeholderData: (previous) => previous,
   })
 
   const answers = useQueries({
     queries: ANSWERS.map((a) => ({
-      queryKey: ['attribution-answer', a.key, model, days],
-      queryFn: () => fetchAttribution(model, a.dimension, days),
+      queryKey: ['attribution-answer', a.key, model, days, filters],
+      queryFn: () => fetchAttribution(model, a.dimension, days, filters),
       staleTime: 60_000,
     })),
   })
+
+  const setFilter = (key: keyof AttributionFilters, value: string) => setFilters((f) => ({ ...f, [key]: value || undefined }))
+  const active = Object.values(filters).filter(Boolean).length
 
   const label = (row: AttributionRow, dim: Dimension) => {
     if (row.key === 'unattributed') return t('tracking.unattributed')
@@ -73,6 +89,25 @@ export function AttributionPanel({ days }: { days: number }) {
         </Select>
       </div>
 
+      {/* The slice the question is asked of: any of these, together. */}
+      <div className="flex flex-wrap items-end gap-2" data-testid="attribution-filters">
+        {([
+          ['project_id', 'project', (projects.data ?? []).map((p) => ({ id: p.id, name: p.name }))],
+          ['campaign_id', 'campaign', options.data?.campaigns ?? []],
+          ['platform', 'platform', (options.data?.platforms ?? []).map((p) => ({ id: p, name: t(`platforms.${p}`, { defaultValue: p }) }))],
+          ['ad_id', 'ad', options.data?.ads ?? []],
+          ['creative_id', 'creative', options.data?.creatives ?? []],
+          ['partner_id', 'partner', options.data?.partners ?? []],
+          ['rep_id', 'rep', options.data?.reps ?? []],
+        ] as const).map(([key, label, list]) => (
+          <Select key={key} value={filters[key] ?? ''} onChange={(e) => setFilter(key, e.target.value)} className="filter-pill min-w-32" aria-label={t(`tracking.filter.${label}`)} data-testid={`attr-filter-${label}`}>
+            <option value="">{t(`tracking.filter.${label}`)}</option>
+            {list.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </Select>
+        ))}
+        {active > 0 && <button type="button" onClick={() => setFilters({})} data-testid="attr-filter-clear" className="pressable text-[0.875rem] font-semibold text-[var(--brand)] underline">{t('tracking.filter.clear', { count: active })}</button>}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="attribution-answers">
         {ANSWERS.map((a, i) => {
           const q = answers[i]
@@ -96,6 +131,46 @@ export function AttributionPanel({ days }: { days: number }) {
           )
         })}
       </div>
+
+      {/* The four models side by side: what each makes of who brought the interested, the visits, the reservations, the revenue. */}
+      {compare.data && compare.data.rows.length > 0 && (
+        <Card data-testid="attribution-compare">
+          <CardBody>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="t-card-title">{t('tracking.compare.title')}</h3>
+                <p className="t-caption">{t('tracking.compare.hint')}</p>
+              </div>
+              <div role="group" aria-label={t('tracking.compare.metric')} className="inline-flex gap-1 rounded-full bg-[var(--color-chrome-fill)] p-1">
+                {COMPARE_METRICS.map((m) => (
+                  <button key={m} type="button" aria-pressed={metric === m} data-testid={`compare-metric-${m}`} onClick={() => setMetric(m)}
+                    className={cn('pressable rounded-full px-3 py-1 text-[0.875rem] font-semibold', metric === m ? 'bg-[var(--color-surface)] shadow-[var(--shadow-card)]' : 'text-[var(--color-ink-muted)]')}>
+                    {t(`tracking.compare.m.${m}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <HeatGrid
+              testId="compare-grid"
+              columns={MODELS.map((m) => t(`tracking.models.${m}`))}
+              rows={compare.data.rows
+                .filter((r) => r.key !== 'unattributed' && r.key !== 'none')
+                .toSorted((x, y) => y.by_model.last[metric] - x.by_model.last[metric])
+                .slice(0, 8)
+                .map((r) => ({
+                  key: r.key,
+                  label: label({ key: r.key, label: r.label } as AttributionRow, compare.data!.dimension),
+                  note: t('tracking.compare.swing', { percent: Math.round(metric === 'revenue' ? r.swing.revenue : r.swing.reservations) }),
+                  cells: MODELS.map((m) => {
+                    const total = compare.data!.totals[m][metric]
+
+                    return total > 0 ? Math.round((r.by_model[m][metric] / total) * 100) : null
+                  }),
+                }))}
+            />
+          </CardBody>
+        </Card>
+      )}
 
       {isLoading && !data ? <Skeleton className="h-64" /> : data && (
         <div className="grid gap-3 lg:grid-cols-12">

@@ -23,11 +23,11 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     <div
       className={cn(
         /*
-         * No border. The shadow already carries a 1px ring, and a border on
-         * top of it reads as two edges — which is the difference between a
-         * card that sits on the canvas and one that is drawn on it.
+         * White on limestone with the identity's own border (#E2DACB in light, limestone at 12% in
+         * dark). On a warm canvas the line is what separates a card from the page; a shadow alone
+         * is too faint to do it.
          */
-        'rounded-[var(--radius-card)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]',
+        'rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]',
         className,
       )}
       {...props}

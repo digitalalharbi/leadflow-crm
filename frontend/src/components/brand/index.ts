@@ -1,4 +1,2 @@
-export { BrandMark } from './BrandMark'
-export { BrandWordmark } from './BrandWordmark'
+export { Logo, type LogoLayout, type LogoVariant } from './Logo'
 export { BrandLockup } from './BrandLockup'
-export { BrandField } from './BrandField'

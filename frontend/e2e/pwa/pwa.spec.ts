@@ -28,7 +28,7 @@ async function openLogin(page: Page) {
 
 test.describe('Installable app', () => {
   test('the manifest names the product, runs standalone and its icons exist', async ({ page }) => {
-    const response = await page.request.get('/manifest.webmanifest')
+    const response = await page.request.get('/site.webmanifest')
     expect(response.status()).toBe(200)
     const manifest = await response.json()
 
@@ -39,8 +39,9 @@ test.describe('Installable app', () => {
     expect(manifest.lang).toBe('ar')
     expect(manifest.scope).toBe('/')
     expect(manifest.start_url).toMatch(/^\/\?source=pwa$/)
-    expect(manifest.theme_color).toBe('#12A594')
-    expect(manifest.background_color).toBe('#ffffff')
+    // The brand kit's own: pine for the browser chrome, limestone behind the launch icon.
+    expect(manifest.theme_color).toBe('#0C2A25')
+    expect(manifest.background_color).toBe('#F6F3EE')
 
     const icons = manifest.icons as { src: string; sizes: string; type: string; purpose?: string }[]
     expect(icons.map((i) => i.sizes)).toEqual(expect.arrayContaining(['192x192', '512x512']))
@@ -59,7 +60,7 @@ test.describe('Installable app', () => {
   test('the page declares itself installable and has a launch screen for each iPhone', async ({ page }) => {
     await page.goto('/login')
 
-    expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('/manifest.webmanifest')
+    expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('/site.webmanifest')
     expect(await page.locator('meta[name="theme-color"]').getAttribute('content')).toMatch(/^#/)
     expect(await page.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content')).toBe('yes')
     expect(await page.locator('meta[name="mobile-web-app-capable"]').getAttribute('content')).toBe('yes')
@@ -197,6 +198,8 @@ test.describe('Installable app', () => {
   test('a new version arrives while the app is open: a notice offers it, one press and the page reloads into it', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'one engine is enough to prove the update flow; the worker protocol is the same')
 
+    // An earlier project's run of this test leaves version 2 on disk; start from version 1 whatever ran before.
+    rebuild('v1')
     await openLogin(page)
     expect(await page.evaluate(() => (window as unknown as { __MAHTAM_BUILD__?: string }).__MAHTAM_BUILD__)).toBe('v1')
     const before = await (await page.request.get('/sw.js')).text()

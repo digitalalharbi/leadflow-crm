@@ -56,10 +56,11 @@ export function Topbar() {
      * the page scrolls under it.
      */
     <header
-      className="app-bar sticky top-0 z-20 -mx-2 -mt-2 flex h-14 items-center gap-2 bg-[var(--color-surface)] px-3 shadow-[0_1px_0_var(--color-line)] sm:top-3 sm:mx-0 sm:mt-0 sm:gap-3 sm:rounded-[var(--radius-pill)] sm:shadow-[var(--shadow-card)] lg:h-[4.25rem] lg:px-4 print:hidden"
+      className="app-bar sticky top-0 z-20 -mx-2 -mt-2 flex h-14 items-center gap-2 bg-[var(--color-surface)] px-3 shadow-[0_1px_0_var(--color-line)] sm:top-3 sm:mx-0 sm:mt-0 sm:gap-3 sm:rounded-[var(--radius-pill)] sm:border sm:border-[var(--color-line)] sm:shadow-[var(--shadow-card)] lg:h-[4.25rem] lg:px-4 print:hidden"
       data-testid="app-header"
     >
-      <BrandLockup to="/" size="md" />
+      {/* The console's header is dark in either theme, so it takes the reverse logo. */}
+      <BrandLockup to="/" size="md" variant={isSuperAdmin ? 'reverse' : 'auto'} onDark={isSuperAdmin} />
 
       {/*
         The console says so in words as well as in colour. Colour alone is the

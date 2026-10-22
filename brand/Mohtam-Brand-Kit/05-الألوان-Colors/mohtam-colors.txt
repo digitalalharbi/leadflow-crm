@@ -1,0 +1,32 @@
+ألوان هوية مهتم — HEX / RGB / CMYK (CMYK تقريبي، اطلب بروفة طباعة)
+
+[pine-green]
+pine-900               #0C2A25   RGB(12, 42, 37)   CMYK(71, 0, 12, 84)
+pine-800               #133B34   RGB(19, 59, 52)   CMYK(68, 0, 12, 77)
+green-700 (primary)    #1D5E52   RGB(29, 94, 82)   CMYK(69, 0, 13, 63)
+green-500              #2E7D6E   RGB(46, 125, 110)   CMYK(63, 0, 12, 51)
+green-300              #8DB9AE   RGB(141, 185, 174)   CMYK(24, 0, 6, 27)
+green-100              #DCEBE6   RGB(220, 235, 230)   CMYK(6, 0, 2, 8)
+green-50               #EEF5F2   RGB(238, 245, 242)   CMYK(3, 0, 1, 4)
+
+[brass]
+brass-700              #84612F   RGB(132, 97, 47)   CMYK(0, 27, 64, 48)
+brass-500 (accent)     #B38A55   RGB(179, 138, 85)   CMYK(0, 23, 53, 30)
+brass-400              #C9A26E   RGB(201, 162, 110)   CMYK(0, 19, 45, 21)
+brass-200              #E3C99F   RGB(227, 201, 159)   CMYK(0, 11, 30, 11)
+brass-100              #F3E9DA   RGB(243, 233, 218)   CMYK(0, 4, 10, 5)
+brass-50               #FAF5EC   RGB(250, 245, 236)   CMYK(0, 2, 6, 2)
+
+[neutral]
+ink                    #14201D   RGB(20, 32, 29)   CMYK(38, 0, 9, 87)
+slate                  #5B6662   RGB(91, 102, 98)   CMYK(11, 0, 4, 60)
+line                   #E2DACB   RGB(226, 218, 203)   CMYK(0, 4, 10, 11)
+stone                  #E9E1D4   RGB(233, 225, 212)   CMYK(0, 3, 9, 9)
+limestone              #F6F3EE   RGB(246, 243, 238)   CMYK(0, 1, 3, 4)
+white                  #FFFFFF   RGB(255, 255, 255)   CMYK(0, 0, 0, 0)
+
+[status]
+success                #2F7D5B   RGB(47, 125, 91)   CMYK(62, 0, 27, 51)
+warning                #C08A2E   RGB(192, 138, 46)   CMYK(0, 28, 76, 25)
+danger                 #9E3B30   RGB(158, 59, 48)   CMYK(0, 63, 70, 38)
+info                   #3A6F95   RGB(58, 111, 149)   CMYK(61, 26, 0, 42)

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, CalendarCheck, Globe, Inbox, Megaphone, MessageCircle, Repeat2, Timer, Trophy } from 'lucide-react'
+import { Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { apiGet, ApiError } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
@@ -10,7 +10,8 @@ import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { applyLocale } from '@/i18n'
 import { Button, Input } from '@/components/ui'
 import type { Branding } from '@/types/api'
-import { BrandField, BrandMark } from '@/components/brand'
+import { Logo } from '@/components/brand'
+import markUrl from '@/assets/brand/logo/mono-black/mohtam-mark-mono-black.svg?url'
 import { cn } from '@/lib/cn'
 
 /**
@@ -92,16 +93,21 @@ export function LoginPage() {
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       {/* Form side */}
-      <div className="flex flex-col px-6 py-8 sm:px-10">
+      <div className="flex flex-col bg-[var(--color-surface)] px-6 py-8 sm:px-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            {logo ? (
-              <img src={logo} alt="" className="size-9 rounded-[var(--radius-control)] object-contain" />
-            ) : (
-              <BrandMark size={30} animated />
-            )}
-            <span className="text-[1.0625rem] font-semibold">{systemName}</span>
-          </div>
+          {/* The official logo unless this workspace has an identity of its own; see BrandLockup. */}
+          {logo || branding?.system_name ? (
+            <div className="flex items-center gap-2.5">
+              {logo ? (
+                <img src={logo} alt="" className="size-9 rounded-[var(--radius-control)] object-contain" />
+              ) : (
+                <Logo variant="auto" layout="mark" height={32} />
+              )}
+              <span className="text-[1.0625rem] font-semibold">{systemName}</span>
+            </div>
+          ) : (
+            <Logo variant="auto" layout="horizontal" height={48} />
+          )}
 
           <button
             type="button"
@@ -114,7 +120,7 @@ export function LoginPage() {
         </div>
 
         <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm rounded-[1.75rem] bg-[var(--color-surface)] p-7 shadow-[var(--shadow-card)] sm:p-8" data-testid="login-card">
+          <div className="w-full max-w-sm rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-canvas)] p-7 sm:p-8" data-testid="login-card">
             <h1 className="t-display">{t('auth.welcome')}</h1>
             <p className="t-small mt-1.5 text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
 
@@ -183,11 +189,10 @@ export function LoginPage() {
         className={cn(
           'relative hidden overflow-hidden lg:block',
           /*
-           * A tenant's own photograph keeps the dark treatment it was always
-           * given: white type over an image needs the scrim whatever the
-           * theme is. Everything else follows the theme — see `.login-art`.
+           * A tenant's own photograph keeps the dark treatment it was always given: light type over
+           * an image needs the scrim. Everything else is the identity's pine — see `.login-panel`.
            */
-          ownBackground ? undefined : 'login-art',
+          ownBackground ? undefined : 'login-panel',
         )}
         style={
           ownBackground
@@ -196,78 +201,55 @@ export function LoginPage() {
         }
       >
         {/*
-          Not decoration: the field draws interests arriving, travelling, and a
-          few of them resolving into opportunities. It is the product's claim,
-          rendered — and it is suppressed when a tenant supplies its own
-          background, because then the picture is theirs to choose.
-
-          Brand ink on the pale panel, white on the dark one. The drawing is the
-          same either way; only `currentColor` changes.
+          The official mark, large and quiet, in the second pine: a shape cut from the kit's own file
+          and filled with a token, so it can never drift from the logo. No copper dot — one colour.
         */}
         {!ownBackground && (
-          <BrandField className="absolute inset-0 h-full w-full text-[var(--brand)] dark:text-white" />
+          <span
+            aria-hidden
+            data-testid="login-watermark"
+            className="pointer-events-none absolute -top-24 -end-28 size-[36rem] bg-[var(--chrome-2)]"
+            style={{ WebkitMask: `url("${markUrl}") center / contain no-repeat`, mask: `url("${markUrl}") center / contain no-repeat` }}
+          />
         )}
 
-        {/*
-          The scrim exists to protect white text. In light mode, where this
-          panel has none, it would only grey the picture down — so it arrives
-          with dark mode rather than unconditionally.
-        */}
-        <div
-          className={cn(
-            'absolute inset-0',
-            ownBackground
-              ? 'bg-[var(--color-neutral-950)]/15'
-              : 'dark:bg-[var(--color-neutral-950)]/15',
-          )}
-        />
+        {ownBackground && <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />}
 
-        <div
-          className={cn(
-            'relative flex h-full flex-col justify-end p-12',
-            ownBackground ? 'text-white' : 'text-[var(--color-ink)] dark:text-white',
-          )}
-        >
-          {!ownBackground && <JourneyRibbon />}
+        <div className="relative flex h-full flex-col justify-between p-12 text-[var(--chrome-ink)]">
+          <div>
+            {!ownBackground && !branding?.company_name && <Logo variant="reverse" layout="horizontal" height={56} />}
+          </div>
 
-          <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
-            {branding?.company_name ?? systemName}
-          </h2>
-          {/* The tagline belongs to مهتم; a tenant's own name stands alone. */}
-          <p
-            className={cn(
-              'mt-2.5 text-[1.0625rem] font-medium',
-              ownBackground ? 'text-white/90' : 'text-[var(--color-ink-muted)] dark:text-white/90',
+          <div>
+            {!ownBackground && !branding?.company_name ? (
+              <>
+                <h2 className="text-[2.5rem] leading-[1.2] font-bold" data-testid="login-headline">{t('brand.tagline')}</h2>
+                <p className="mt-3 max-w-sm text-[1.0625rem] leading-relaxed text-[var(--chrome-ink)]/80">{t('brand.subtext')}</p>
+                <JourneyPath />
+              </>
+            ) : (
+              <>
+                <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
+                  {branding?.company_name ?? systemName}
+                </h2>
+                {/* The tagline belongs to مهتم; a tenant's own name stands alone. */}
+                <p className="mt-2.5 text-[1.0625rem] font-medium text-[var(--chrome-ink)]/90">{t('auth.welcomeSubtitle')}</p>
+              </>
             )}
-          >
-            {branding?.company_name ? t('auth.welcomeSubtitle') : t('brand.tagline')}
-          </p>
-          {!branding?.company_name && (
-            <p
-              className={cn(
-                'mt-3 max-w-sm text-[1.0625rem] leading-relaxed',
-                // Muted, not subtle: `--color-ink-subtle` is 2.58:1 on a pale
-                // panel, which is a caption colour being asked to carry a
-                // sentence. The size and weight already place it below the
-                // tagline without help from the contrast.
-                ownBackground ? 'text-white/70' : 'text-[var(--color-ink-muted)] dark:text-white/70',
-              )}
-            >
-              {t('brand.subtext')}
-            </p>
-          )}
-          {!ownBackground && (
-            <ul className="mt-6 space-y-2.5" data-testid="login-pillars">
-              {PILLARS.map(({ key, icon: Icon }) => (
-                <li key={key} className="flex items-center gap-3 text-[1rem] font-medium">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--color-surface)]/80 text-[var(--brand)] shadow-[var(--shadow-card)]" aria-hidden>
-                    <Icon className="size-4" />
-                  </span>
-                  {t(`brand.pillars.${key}`)}
-                </li>
-              ))}
-            </ul>
-          )}
+
+            {!ownBackground && (
+              <ul className="mt-8 space-y-2.5" data-testid="login-pillars">
+                {PILLARS.map(({ key, icon: Icon }) => (
+                  <li key={key} className="flex items-center gap-3 text-[1rem] font-medium">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--chrome-2)] text-[var(--chrome-muted)]" aria-hidden>
+                      <Icon className="size-4" />
+                    </span>
+                    {t(`brand.pillars.${key}`)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -280,37 +262,29 @@ const PILLARS: Array<{ key: 'ads' | 'speed' | 'loop'; icon: LucideIcon }> = [
   { key: 'loop', icon: Repeat2 },
 ]
 
-const JOURNEY: Array<{ key: string; icon: LucideIcon }> = [
-  { key: 'arrived', icon: Inbox },
-  { key: 'contacted', icon: MessageCircle },
-  { key: 'qualified', icon: BadgeCheck },
-  { key: 'appointment', icon: CalendarCheck },
-  { key: 'won', icon: Trophy },
-]
+const JOURNEY = ['arrived', 'contacted', 'qualified', 'appointment', 'won'] as const
 
 /**
- * The path a lead takes, drawn as five stops on one line — what the product
- * does, said before anyone signs in. No numbers on it on purpose: a figure on
- * a login screen reads as somebody's data, and this one would belong to nobody.
+ * The path a lead takes, said in five words before anyone signs in: وصل ← تواصل ← تأهّل ← موعد ←
+ * صفقة. The last is the one that matters, so it alone wears the copper. No numbers on it on
+ * purpose: a figure on a login screen reads as somebody's data, and this one would belong to nobody.
  */
-function JourneyRibbon() {
-  const { t } = useTranslation()
+function JourneyPath() {
+  const { t, i18n } = useTranslation()
+  const arrow = i18n.dir() === 'rtl' ? '←' : '→'
 
   return (
-    <ol className="relative mb-8 flex max-w-md items-start justify-between rounded-[1.5rem] bg-[var(--color-surface)]/70 p-4 backdrop-blur-sm" data-testid="login-journey">
-      <span aria-hidden className="absolute inset-x-9 top-9 h-0.5 rounded-full bg-[color-mix(in_srgb,var(--brand)_35%,transparent)]" />
-      {JOURNEY.map(({ key, icon: Icon }, index) => (
-        <li key={key} className="relative flex flex-col items-center gap-1.5">
-          <span
-            className={cn(
-              'grid size-10 place-items-center rounded-full shadow-[var(--shadow-card)]',
-              index === JOURNEY.length - 1 ? 'bg-[var(--brand)] text-[var(--brand-contrast)]' : 'bg-[var(--color-surface)] text-[var(--brand)]',
-            )}
-            aria-hidden
-          >
-            <Icon className="size-[1.125rem]" />
+    <ol className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-1 text-[1.0625rem] font-semibold" data-testid="login-journey">
+      {JOURNEY.map((key, index) => (
+        <li key={key} className="flex items-center gap-3">
+          <span className={index === JOURNEY.length - 1 ? 'text-[var(--accent-on-dark)]' : undefined} data-stage={key}>
+            {t(`brand.journey.${key}`)}
           </span>
-          <span className="text-[0.875rem] font-medium">{t(`brand.journey.${key}`)}</span>
+          {index < JOURNEY.length - 1 && (
+            <span aria-hidden className="text-[var(--chrome-muted)]">
+              {arrow}
+            </span>
+          )}
         </li>
       ))}
     </ol>

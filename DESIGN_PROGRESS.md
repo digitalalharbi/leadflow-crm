@@ -8,8 +8,10 @@ without re-reading the diff.
 
 ## Decisions already made — do not revisit
 
-- **Brand**: teal `#12A594`, ink `#0B1220`. Teal rather than blue because this
-  market's CRMs are all blue and the mark has to survive a printed sales deck.
+- **Brand**: the official identity kit (`brand/Mohtam-Brand-Kit`, applied in PR feat/brand-identity): emerald
+  `#1D5E52`, pine `#0C2A25`, copper `#B38A55` (at most 5% of a screen), limestone `#F6F3EE`, IBM Plex Sans Arabic
+  as the only typeface. The earlier teal `#12A594` identity is retired. Colours live in `src/styles/mohtam-colors.css`
+  and are mapped to the product's semantic tokens in `src/index.css`.
 - **Mark**: a closed loop with م's descending tail, opening onto a dot about to
   enter it. Two earlier versions were scrapped after viewing — one read as a
   tadpole, one as a Latin "C" with the tail running backwards for Arabic.

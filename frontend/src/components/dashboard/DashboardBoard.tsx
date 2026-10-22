@@ -135,7 +135,7 @@ function HeroCard({ command }: { command: CommandCenterData }) {
 
   return (
     <section
-      className="flex h-full min-h-60 flex-col justify-between gap-3 rounded-[var(--radius-card)] bg-[var(--brand)] p-5 text-[var(--brand-contrast)]"
+      className="flex h-full min-h-60 flex-col justify-between gap-3 rounded-[var(--radius-card)] bg-[var(--chrome-1)] p-5 text-[var(--chrome-ink)]"
       data-testid="command-center"
     >
       <div className="flex items-start justify-between gap-3">
@@ -143,7 +143,7 @@ function HeroCard({ command }: { command: CommandCenterData }) {
           <h2 className="t-card-title">
             {command.attention.some((row) => row.severity === 'critical') ? t('commandCenter.needsYou') : t('commandCenter.title')}
           </h2>
-          <p className="mt-0.5 text-[0.875rem] opacity-70">
+          <p className="mt-0.5 text-[0.875rem] text-[var(--chrome-muted)]">
             {command.attention.length === 0
               ? t('commandCenter.allClear')
               : t('commandCenter.subtitle', { count: command.attention.length })}
@@ -154,14 +154,14 @@ function HeroCard({ command }: { command: CommandCenterData }) {
             to="/work"
             data-testid="start-work"
             aria-label={t('commandCenter.startWork')}
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-white/15 hover:bg-white/25"
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--chrome-active)] text-[var(--chrome-active-ink)] ring-1 ring-[var(--chrome-line)] hover:brightness-110"
           >
             <Rocket className="size-4" aria-hidden />
           </Link>
         )}
       </div>
 
-      <p className="text-[2.5rem] font-bold leading-none tabular-nums">{formatNumber(total)}</p>
+      <p className="text-[2.5rem] font-bold leading-none tabular-nums text-[var(--accent-on-dark)]" data-testid="attention-total">{formatNumber(total)}</p>
 
       {command.attention.length > 0 && (
         <ul className="space-y-1 sm:max-h-28 sm:overflow-y-auto sm:pe-1" data-testid="attention-list">
@@ -173,9 +173,9 @@ function HeroCard({ command }: { command: CommandCenterData }) {
                 <Link
                   to={row.href}
                   data-testid={`attention-${row.key}`}
-                  className="flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-1 text-[0.875rem] hover:bg-white/20"
+                  className="flex items-center gap-2 rounded-full bg-[var(--chrome-2)] px-2.5 py-1 text-[0.875rem] hover:brightness-125"
                 >
-                  <Icon className="size-3.5 shrink-0 opacity-80" aria-hidden />
+                  <Icon className="size-3.5 shrink-0 text-[var(--chrome-muted)]" aria-hidden />
                   <span className="min-w-0 flex-1 truncate">
                     {t(`commandCenter.attention.${row.key}`, { minutes: row.minutes })}
                   </span>
@@ -202,8 +202,9 @@ function DeltaPill({ value, previous, invert = false }: { value: number; previou
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.875rem] font-medium tabular-nums text-white',
-        good ? 'bg-[var(--brand-bright)]' : 'bg-[var(--color-danger)]',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.875rem] font-semibold tabular-nums',
+        // A change is a figure worth noticing, so it wears the copper: dark copper on its soft fill.
+        good ? 'bg-[var(--accent-soft)] text-[var(--accent-text)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--accent)_30%,transparent)]' : 'bg-[var(--color-danger)] text-white',
       )}
       data-testid="delta-pill"
       // The sign belongs before the number in either direction: in an RTL line
@@ -337,7 +338,7 @@ function AreaTrend({ values }: { values: number[] }) {
         </linearGradient>
       </defs>
       <path d={`${line} L${width},${height} L0,${height} Z`} fill={`url(#${fill})`} />
-      <path d={line} fill="none" stroke="var(--brand-deep)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <path d={line} fill="none" stroke="var(--chart-seq-latest)" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

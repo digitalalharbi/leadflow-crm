@@ -19,7 +19,8 @@ export function Delta({ value, previous, invert = false }: { value: number; prev
       data-testid="delta"
       className={cn(
         'inline-flex items-center rounded-full px-2 py-0.5 text-[0.8125rem] font-semibold tabular-nums',
-        good ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]' : 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]',
+        // A change is a figure worth noticing: dark copper on its soft fill. A fall stays danger.
+        good ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]' : 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]',
       )}
     >
       {change >= 0 ? '+' : ''}
@@ -46,6 +47,7 @@ export function KpiCard({
   to,
   testId,
   valueTestId,
+  revenue = false,
   children,
 }: {
   label: string
@@ -57,6 +59,8 @@ export function KpiCard({
   to?: string
   testId?: string
   valueTestId?: string
+  /** Money or deals: the one kind of card that wears the copper rule and label (never every card). */
+  revenue?: boolean
   children?: ReactNode
 }) {
   const body = (
@@ -72,7 +76,7 @@ export function KpiCard({
         {delta}
       </div>
 
-      <p className="mt-2 text-[0.9375rem] text-[var(--color-ink-muted)] sm:mt-3">{label}</p>
+      <p className={cn('mt-2 text-[0.9375rem] sm:mt-3', revenue ? 'font-medium text-[var(--accent-text)]' : 'text-[var(--color-ink-muted)]')}>{label}</p>
       <div className="flex items-end justify-between gap-2">
         <div className="t-metric" data-testid={valueTestId}>
           {value}
@@ -83,7 +87,7 @@ export function KpiCard({
     </>
   )
 
-  const shell = 'block rounded-[var(--radius-card)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)] sm:p-4'
+  const shell = cn('block rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)] sm:p-4', revenue && 'border-t-[3px] border-t-[var(--accent)]')
 
   return to ? (
     <Link to={to} className={cn(shell, 'transition-shadow hover:shadow-[var(--shadow-raised)]')} data-testid={testId}>

@@ -45,17 +45,17 @@ export function Sidebar() {
            * the whole theme rests on cards being the only white things on the
            * screen, so the chrome has to recede for them to read as objects.
            */
-          'rounded-e-[var(--radius-panel)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)]',
+          'rounded-e-[var(--radius-panel)] bg-[var(--chrome-1)] text-[var(--chrome-ink)] shadow-[var(--shadow-pop)]',
         )}
       >
-        <div className="flex h-14 items-center justify-between gap-2 px-3">
-          {/* One component decides whose identity this is — see BrandLockup. */}
-          <BrandLockup to="/" size="md" />
+        <div className="flex h-16 items-center justify-between gap-2 px-3">
+          {/* One component decides whose identity this is — see BrandLockup. The drawer is pine, so the reverse logo. */}
+          <BrandLockup to="/" size="md" variant="reverse" onDark />
 
           <button
             type="button"
             aria-label={t('common.close')}
-            className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
+            className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--chrome-muted)] hover:bg-[var(--chrome-2)] hover:text-[var(--chrome-ink)] lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="size-4" aria-hidden />
@@ -69,7 +69,7 @@ export function Sidebar() {
            * operator, a projector, a screenshot pasted into a ticket.
            */}
           {isSuperAdmin && (
-            <p className="label-caps px-3 pb-2 text-[var(--color-ink-subtle)]">
+            <p className="label-caps px-3 pb-2 text-[var(--chrome-muted)]">
               {t('nav.platformConsole')}
             </p>
           )}
@@ -96,10 +96,8 @@ export function Sidebar() {
                      * see, and that is the one state that must never be subtle.
                      */
                     isActive
-                      ? [
-                          'bg-[var(--brand)] font-semibold text-[var(--brand-contrast)]',
-                        ].join(' ')
-                      : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-chrome-fill)] hover:text-[var(--color-ink)]',
+                      ? 'bg-[var(--chrome-active)] font-semibold text-[var(--chrome-active-ink)]'
+                      : 'text-[var(--chrome-muted)] hover:bg-[var(--chrome-2)] hover:text-[var(--chrome-ink)]',
                   )
                 }
               >
@@ -115,8 +113,8 @@ export function Sidebar() {
         </nav>
 
         {branding?.support_email && (
-          <div className="border-t border-[var(--color-line)] p-3 text-[0.875rem] text-[var(--color-ink-subtle)]">
-            <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--color-ink)]">
+          <div className="border-t border-[var(--chrome-line)] p-3 text-[0.875rem] text-[var(--chrome-muted)]">
+            <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--chrome-ink)]">
               {branding.support_email}
             </a>
           </div>

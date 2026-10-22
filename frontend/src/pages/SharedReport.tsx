@@ -10,13 +10,15 @@ import {
   AttributionSection, AutomationSection, CampaignsSection, FunnelSection, InsightsSection, InterestedSection, KpiCards, PlatformsSection,
   QualificationSection, RecommendationsSection, ReservationsSection, StatementSection, TeamSection, TrackingHealthSection, TrendSection, useReportCtx, VisitsSection,
 } from '@/components/reports/ReportSections'
-import { useBrandingTheme } from '@/hooks/useBrandingTheme'
+import { useBrandingTheme, usesOwnColours } from '@/hooks/useBrandingTheme'
+import { Logo } from '@/components/brand'
 import { fetchSharedReport, type SharedReportData } from '@/features/reportShares'
 import type { Branding } from '@/types/api'
 
 /** Only the colour matters to the theme; the rest of a Branding is the signed-in app's. */
 function themeFor(color: string | null | undefined, name: string | null | undefined): Branding {
-  return { primary_color: color ?? '#0f766e', secondary_color: '#0f172a', system_name: name ?? null } as Branding
+  // No colour of its own: the platform's emerald and pine, from the brand kit — useBrandingTheme treats them as "no choice".
+  return { primary_color: color ?? '#1D5E52', secondary_color: '#0C2A25', system_name: name ?? null } as Branding
 }
 
 /**
@@ -99,6 +101,8 @@ export function SharedReportPage() {
 function Shell({ children, workspace }: { children: React.ReactNode; workspace?: string | null }) {
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-3 px-4 py-6" data-testid="shared-report">
+      {/* A page with no workspace to show (gone, expired, locked) is the platform's own. */}
+      <div className="flex justify-center"><Logo variant="auto" layout="horizontal" height={48} /></div>
       {workspace && <p className="t-caption text-center">{workspace}</p>}
       {children}
     </main>
@@ -154,6 +158,9 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
     return out
   }, [])
 
+  // A workspace that chose no colours of its own is shown as مهتم, logo and all; one that did keeps its own name alone.
+  const platformLook = !usesOwnColours(data.workspace.color)
+
   const when = new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.report.generated_at))
 
 
@@ -173,6 +180,8 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-3 px-4 py-6" data-testid="shared-report">
+      {platformLook && <Logo variant="auto" layout="horizontal" height={44} />}
+
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="t-caption">{data.workspace.name}</p>
@@ -203,6 +212,7 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
       <p className="t-caption flex items-center justify-center gap-1.5 text-center" data-testid="shared-generated">
         <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} aria-hidden />
         {t('share.public.generated', { when })}
+        {platformLook && <Logo variant="auto" layout="mark" height={20} className="ms-1 opacity-80" />}
       </p>
     </main>
   )

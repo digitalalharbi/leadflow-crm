@@ -6,6 +6,9 @@
  */
 export const PASSWORD = 'Password123!'
 
+/** What the tab says when a workspace has not renamed the product (the brand kit's title). */
+export const PLATFORM_TITLE = 'مهتم | حوّل الاهتمام إلى فرصة'
+
 export const ALPHA = {
   slug: 'e2e-alpha',
   // Not renamed by this workspace, so it is the product's own name.

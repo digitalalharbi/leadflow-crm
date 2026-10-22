@@ -19,7 +19,8 @@ import {
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
 
-const SWATCHES = ['#0f766e', '#2563eb', '#7c3aed', '#c2410c', '#be123c', '#4d7c0f', '#0e7490', '#475569']
+/** The colours a company in a holding can be marked with: the identity's own, so a holding reads as one family. Emerald first. */
+const SWATCHES = ['#1D5E52', '#2E7D6E', '#3A6F95', '#B38A55', '#84612F', '#9E3B30', '#133B34', '#5B6662']
 
 /**
  * The holding, as the businesses inside it.

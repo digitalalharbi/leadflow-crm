@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useBrandingTheme } from './useBrandingTheme'
+import { PLATFORM_TITLE, useBrandingTheme } from './useBrandingTheme'
 import type { Branding } from '@/types/api'
 
 function branding(overrides: Partial<Branding> = {}): Branding {
@@ -31,7 +31,7 @@ function icon() {
 describe('useBrandingTheme', () => {
   beforeEach(() => {
     document.head.innerHTML =
-      '<link rel="icon" href="/favicon.svg"><meta name="theme-color" content="#12A594">'
+      '<link rel="icon" href="/favicon.svg"><meta name="theme-color" content="#0C2A25">'
     document.documentElement.removeAttribute('style')
     document.title = 'مهتم'
   })
@@ -45,10 +45,13 @@ describe('useBrandingTheme', () => {
       .toBe('#aa3366')
   })
 
-  it("prefers the tenant's own favicon over the platform's", () => {
+  it("prefers the tenant's own favicon over the platform's — and leaves none of the platform's icons beside it", () => {
+    document.head.innerHTML = '<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0C2A25">'
+
     renderHook(() => useBrandingTheme(branding({ favicon_url: 'https://cdn.test/acme.png' })))
 
     expect(icon()).toBe('https://cdn.test/acme.png')
+    expect(document.querySelectorAll("link[rel='icon']")).toHaveLength(1)
   })
 
   /*
@@ -67,7 +70,7 @@ describe('useBrandingTheme', () => {
     rerender({ b: branding({ system_name: '', favicon_url: null, slug: 'other' }) })
 
     expect(icon()).toBe('/favicon.svg')
-    expect(document.title).toBe('مهتم')
+    expect(document.title).toBe(PLATFORM_TITLE)
   })
 
   it('picks a readable contrast colour rather than assuming white', () => {

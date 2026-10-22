@@ -11,9 +11,9 @@ import { cn } from '@/lib/cn'
 const RESULTS: Array<HistoryResult | ''> = ['', 'completed', 'recovered', 'waiting', 'needs_human', 'failed', 'skipped']
 
 const RESULT_STYLE: Record<HistoryResult, string> = {
-  completed: 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]',
+  completed: 'bg-[var(--brand-soft)] text-[var(--brand-text)]',
   recovered: 'bg-[color-mix(in_srgb,var(--color-success)_14%,transparent)] text-[var(--color-success)]',
-  waiting: 'bg-[color-mix(in_srgb,var(--color-info,#3b82f6)_12%,transparent)] text-[var(--color-info,#2563eb)]',
+  waiting: 'bg-[color-mix(in_srgb,var(--color-info)_12%,transparent)] text-[var(--color-info)]',
   needs_human: 'bg-[color-mix(in_srgb,var(--color-warning)_15%,transparent)] text-[color-mix(in_srgb,var(--color-warning)_80%,black)]',
   failed: 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]',
   skipped: 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]',

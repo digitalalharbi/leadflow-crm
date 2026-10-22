@@ -13,7 +13,7 @@ import { cn } from '@/lib/cn'
 const KIND: Record<JourneyKind, { icon: LucideIcon; color: string }> = {
   source: { icon: Inbox, color: 'var(--color-info)' },
   automation: { icon: Zap, color: 'var(--brand)' },
-  whatsapp: { icon: MessageCircle, color: '#1faa59' },
+  whatsapp: { icon: MessageCircle, color: 'var(--color-status-contacted)' },
   email: { icon: Mail, color: 'var(--color-info)' },
   file: { icon: FileText, color: 'var(--color-warning)' },
   call: { icon: Phone, color: 'var(--color-success)' },

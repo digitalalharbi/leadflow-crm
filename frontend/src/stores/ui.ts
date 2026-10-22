@@ -59,6 +59,9 @@ export function applyAppearance(appearance: Appearance): void {
   const dark = appearance === 'dark' || (appearance === 'system' && prefersDark)
 
   document.documentElement.classList.toggle('dark', dark)
+  // The brand kit's own dark switch (mohtam-colors.css), kept in step with the class Tailwind reads.
+  if (dark) document.documentElement.setAttribute('data-theme', 'dark')
+  else document.documentElement.removeAttribute('data-theme')
 }
 
 export const useUi = create<UiState>((set) => ({

@@ -1,12 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!--
-    Safari pinned tabs render a single-colour silhouette, so the tile is gone
-    and the mark has to carry itself. Drawn solid black: Safari recolours it.
-  -->
-  <g transform="translate(0.158 1.372) scale(0.92)">
-    <path d="M18.96 7.75 A6.9 6.9 0 1 0 21.87 12.80 M13.57 20.15 Q14.00 23.80 9.60 25.60"
-          fill="none" stroke="#000" stroke-width="3.6"
-          stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="24.79" cy="7.75" r="3.2" fill="#000"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512.0 512.0" width="512" height="512"><g transform="translate(-73.87 -66.56) scale(10.4388)"><path d="M36 19.8A13 13 0 1 0 40.7 27.1" fill="none" stroke="#14201D" stroke-width="6.0" stroke-linecap="round"/><path d="M25.7 42.8L19.5 48.5" fill="none" stroke="#14201D" stroke-width="6.0" stroke-linecap="round"/><circle cx="46" cy="15.5" r="5.2" fill="#14201D"/></g></svg>

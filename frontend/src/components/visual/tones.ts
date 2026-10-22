@@ -16,20 +16,23 @@ export const TONE_COLOR: Record<Tone, string> = {
   neutral: 'var(--color-border-strong)',
 }
 
-/** A soft tint of the tone, for a chip or an icon disc. */
+/**
+ * A soft fill of the tone, for a chip or an icon disc. Healthy is the kit's pale green with
+ * emerald ink; a warning or backlog is its pale copper with dark copper ink (4.5:1 on its fill).
+ */
 export const TONE_TINT: Record<Tone, string> = {
-  good: 'color-mix(in srgb, var(--brand) 12%, transparent)',
-  brand: 'color-mix(in srgb, var(--brand) 12%, transparent)',
-  warn: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+  good: 'var(--brand-soft)',
+  brand: 'var(--brand-soft)',
+  warn: 'var(--status-warn-bg)',
   bad: 'color-mix(in srgb, var(--color-danger) 12%, transparent)',
   neutral: 'var(--color-chrome-fill)',
 }
 
 /** The ink to put on a tinted tone. */
 export const TONE_INK: Record<Tone, string> = {
-  good: 'var(--brand)',
-  brand: 'var(--brand)',
-  warn: 'color-mix(in srgb, var(--color-warning) 80%, black)',
+  good: 'var(--brand-text)',
+  brand: 'var(--brand-text)',
+  warn: 'var(--status-warn-ink)',
   bad: 'var(--color-danger)',
   neutral: 'var(--color-ink-muted)',
 }

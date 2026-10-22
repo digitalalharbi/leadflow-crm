@@ -1,4 +1,4 @@
-import { BrandLockup, BrandMark, BrandWordmark } from '@/components/brand'
+import { BrandLockup, Logo, type LogoVariant } from '@/components/brand'
 import { ActionCard, Donut, KpiCard, PipelineFunnel, RankBars, RingProgress, StatusPill, ProgressBar, type StatusKey } from '@/components/visual'
 import { Users, Phone } from 'lucide-react'
 import { Badge, Button, Card, CardBody, CardHeader, Input, Select, StatusBadge, TemperatureBadge, Textarea } from '@/components/ui'
@@ -22,24 +22,23 @@ export function DesignSystemPage() {
       </header>
 
       <Section title="العلامة">
-        <div className="flex flex-wrap items-end gap-8">
-          {[16, 24, 32, 48, 64].map((size) => (
-            <div key={size} className="text-center">
-              <BrandMark size={size} />
-              <p className="t-caption mt-2">{size}px</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {([
+            ['primary', 'bg-[var(--color-canvas)]'],
+            ['reverse', 'bg-[var(--chrome-1)]'],
+            ['on-green', 'bg-[var(--chrome-active)]'],
+            ['mono', 'bg-[var(--color-canvas)]'],
+          ] as Array<[LogoVariant, string]>).map(([variant, surface]) => (
+            <div key={variant} className={`grid place-items-center gap-4 rounded-[var(--radius-card)] p-6 ${surface}`}>
+              <Logo variant={variant} layout="horizontal" />
+              <Logo variant={variant} layout="stacked" />
+              <Logo variant={variant} layout="mark" />
+              <p className="t-caption">{variant}</p>
             </div>
           ))}
-          <div className="text-center">
-            <span className="grid size-16 place-items-center rounded-[var(--radius-card)] bg-[var(--color-ink-strong)]">
-              <BrandMark size={36} tone="mono" className="text-white" />
-            </span>
-            <p className="t-caption mt-2">معكوس</p>
-          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-8">
-          <BrandWordmark size="lg" />
-          <BrandWordmark size="lg" locale="en" />
           <BrandLockup size="lg" />
         </div>
       </Section>
@@ -57,14 +56,18 @@ export function DesignSystemPage() {
             ['--color-warning', 'Warning'],
             ['--color-danger', 'Danger'],
             ['--color-info', 'Info'],
+            ['--accent', 'Copper'],
+            ['--accent-text', 'Copper on light'],
+            ['--chrome-1', 'Pine'],
+            ['--chrome-2', 'Pine 2'],
           ].map(([token, label]) => (
             <Swatch key={token} token={token} label={label} />
           ))}
         </div>
 
         <p className="t-caption mt-5 mb-2">سلسلة الرسوم</p>
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-          {Array.from({ length: 8 }, (_, i) => (
+        <div className="grid grid-cols-5 gap-3">
+          {Array.from({ length: 5 }, (_, i) => (
             <Swatch key={i} token={`--chart-${i + 1}`} label={`chart-${i + 1}`} />
           ))}
         </div>

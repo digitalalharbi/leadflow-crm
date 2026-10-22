@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { PageHeaderSlotProvider } from '@/components/ui/PageHeader'
 import { useLiveFeed } from '@/hooks/useLiveFeed'
+import { useUi } from '@/stores/ui'
 import { useAuth } from '@/stores/auth'
 import { BottomNav } from './BottomNav'
 import { IconRail } from './IconRail'
@@ -23,6 +24,7 @@ import { Topbar } from './Topbar'
  */
 export function AppShell() {
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const focusMode = useUi((s) => s.focusMode)
   // A callback ref into state: the pages below need the element itself, and
   // need to re-render once it exists.
   const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null)
@@ -47,9 +49,11 @@ export function AppShell() {
       data-console={isSuperAdmin ? 'platform' : undefined}
     >
       <div
-        className="app-frame mx-auto flex min-h-dvh w-full max-w-[112rem] flex-col gap-4 bg-[var(--color-canvas)] p-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:min-h-[calc(100dvh-1.5rem)] sm:rounded-[var(--radius-frame)] sm:p-3 lg:min-h-[calc(100dvh-2.5rem)] lg:p-4 lg:pb-4 print:min-h-0 print:p-0"
+        data-focus={focusMode}
+        className="app-frame mx-auto flex min-h-dvh w-full max-w-[112rem] flex-col gap-4 bg-[var(--color-canvas)] p-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] data-[focus=true]:max-lg:p-0 sm:min-h-[calc(100dvh-1.5rem)] sm:rounded-[var(--radius-frame)] sm:p-3 lg:min-h-[calc(100dvh-2.5rem)] lg:p-4 lg:pb-4 print:min-h-0 print:p-0"
       >
-        <Topbar />
+        {/* On a phone a focused screen has its own header; the app bar would only cost it height. */}
+        <div className={focusMode ? 'max-lg:hidden' : 'contents'}><Topbar /></div>
 
         {/* The title row: full width, above the rail and the cards. */}
         <div ref={setTitleSlot} className="empty:hidden" data-testid="page-header-slot" />

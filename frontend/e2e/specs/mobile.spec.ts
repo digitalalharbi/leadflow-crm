@@ -100,11 +100,14 @@ test.describe('Mobile layout', () => {
     await page.getByTestId('lead-search').fill(LEADS.activity)
     await page.getByRole('link', { name: LEADS.activity }).click()
 
-    // Every quick action is reachable without scrolling into the page body.
-    await expect(page.getByTestId('lead-quick-actions')).toBeInViewport()
-    await expect(page.getByTestId('action-call')).toBeVisible()
-    await expect(page.getByTestId('action-whatsapp')).toBeVisible()
-    await expect(page.getByTestId('action-note')).toBeVisible()
+    // The phone's own lead screen: the four ways to reach them at the top, the same four in a bar that
+    // stays at the bottom — none of it needs scrolling into the page body.
+    await expect(page.getByTestId('mobile-lead')).toBeVisible()
+    await expect(page.getByTestId('quick-call')).toBeInViewport()
+    await expect(page.getByTestId('quick-whatsapp')).toBeVisible()
+    await expect(page.getByTestId('quick-message')).toBeVisible()
+    await expect(page.getByTestId('sales-bar')).toBeInViewport()
+    await expect(page.getByTestId('sales-outcome')).toBeVisible()
   })
 
   /**

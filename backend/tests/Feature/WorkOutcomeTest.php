@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Leads\OutcomeRecorder;
 use App\Enums\LeadStatus;
 use App\Models\FollowUp;
 use App\Models\Lead;
@@ -155,5 +156,17 @@ class WorkOutcomeTest extends TestCase
         $this->actingAs($this->t['admin'])
             ->postJson('/api/v1/work/outcome', ['lead_id' => $theirs->uuid, 'outcome' => 'won'])
             ->assertNotFound();
+    }
+
+    /** «تم التواصل»: they spoke, nothing more is decided — the lead sits at Contacted with a step tomorrow. */
+    public function test_spoke_to_them_records_the_contact_and_books_tomorrow(): void
+    {
+        $lead = $this->lead(['status' => 'new']);
+
+        $this->assertStringContainsString('تم التواصل', $this->record($lead, 'contacted')->assertOk()->json('data.recorded'));
+
+        $this->assertSame('contacted', $lead->fresh()->status->value);
+        $this->assertNotNull($lead->fresh()->last_contact_at);
+        $this->assertContains('contacted', OutcomeRecorder::available());
     }
 }

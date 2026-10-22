@@ -30,7 +30,7 @@ test.describe('Lead activities', () => {
     // Calling a brand-new lead moves it out of "new" on its own — a rep should
     // never have to remember to do that by hand.
     await expect(page.getByTestId('lead-status-badge')).toHaveText('تم التواصل')
-    await expect(page.getByTestId('activity-timeline').getByText('تم الاتصال')).toBeVisible()
+    await expect(page.getByTestId('activity-timeline').getByText('بدأ اتصالًا')).toBeVisible()
   })
 
   test('the WhatsApp button opens wa.me with the normalised number', async ({ page }) => {

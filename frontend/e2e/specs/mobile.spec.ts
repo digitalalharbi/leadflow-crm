@@ -29,13 +29,55 @@ test.describe('Mobile layout', () => {
     const nav = page.getByRole('link', { name: 'العملاء المحتملون' })
     await expect(nav).not.toBeInViewport()
 
-    await page.getByRole('banner').getByRole('button').first().click()
+    // "More" on the tab bar opens the full list, the way an app's last tab does.
+    await page.getByTestId('bottom-nav-more').click()
     await expect(nav).toBeInViewport()
 
     await nav.click()
     await expect(page).toHaveURL(/\/leads/)
     // Choosing a destination closes the drawer rather than leaving it over the page.
     await expect(page.getByRole('heading', { name: 'العملاء المحتملون', level: 1 })).toBeVisible()
+  })
+
+  test('it has a tab bar at the thumb, like an app, and the header is a flat bar', async ({ page }) => {
+    const bar = page.getByTestId('bottom-nav')
+    await expect(bar).toBeVisible()
+
+    // Four places and "More"; the current one is marked.
+    await expect(bar.getByRole('link')).toHaveCount(4)
+    await expect(bar.getByTestId('tab-home')).toHaveClass(/bottom-tab-active/)
+    await bar.getByTestId('tab-leads').click()
+    await expect(page).toHaveURL(/\/leads/)
+    await expect(bar.getByTestId('tab-leads')).toHaveClass(/bottom-tab-active/)
+
+    // Pinned to the bottom edge, and tall enough for a thumb.
+    const box = (await bar.boundingBox())!
+    const viewport = page.viewportSize()!
+    expect(Math.abs(box.y + box.height - viewport.height)).toBeLessThanOrEqual(1)
+    expect(box.height).toBeGreaterThanOrEqual(56)
+
+    // The header is a bar across the top, not a floating capsule, and has no menu button of its own.
+    const header = (await page.getByTestId('app-header').boundingBox())!
+    expect(header.x).toBeLessThanOrEqual(1)
+    expect(Math.round(header.width)).toBe(viewport.width)
+    expect(header.y).toBeLessThanOrEqual(1)
+
+    // The last thing on a long page is not hidden behind the bar.
+    await expect(page.locator('table tbody tr').first()).toBeVisible()
+    await expect.poll(async () => {
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+
+      return page.evaluate(() => document.querySelector('main')!.getBoundingClientRect().bottom)
+    }).toBeLessThanOrEqual(box.y + 1)
+  })
+
+  test('typing hides the tab bar so it does not sit on the keyboard', async ({ page }) => {
+    await page.goto('/leads')
+    await expect(page.getByTestId('bottom-nav')).toBeVisible()
+    await page.getByTestId('lead-search').focus()
+    await expect(page.getByTestId('bottom-nav')).toHaveCount(0)
+    await page.getByTestId('lead-search').blur()
+    await expect(page.getByTestId('bottom-nav')).toBeVisible()
   })
 
   test('the leads list shows stage and interest without horizontal scrolling', async ({ page }) => {

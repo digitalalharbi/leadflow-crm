@@ -1,7 +1,7 @@
-import { usePwa, type BeforeInstallPromptEvent } from '@/stores/pwa'
+import { usePwa } from '@/stores/pwa'
 
 /**
- * Wires the app to the browser's idea of being installed and of being online, and registers the
+ * Wires the app to whether it is online and whether it was opened from a home-screen icon, and registers the
  * service worker — in a production build only: in development a worker caching the dev server's
  * files is a way to spend an afternoon wondering why an edit does not show.
  */
@@ -20,18 +20,16 @@ export function startPwa(): void {
   const standalone = window.matchMedia?.('(display-mode: standalone)')
   const isStandalone = () => Boolean(standalone?.matches) || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
-  pwa.setStandalone(isStandalone())
-  standalone?.addEventListener?.('change', () => usePwa.getState().setStandalone(isStandalone()))
+  // Opened from a home-screen icon: the stylesheet can drop what only makes sense inside a browser.
+  const mark = () => {
+    pwa.setStandalone(isStandalone())
+    document.documentElement.toggleAttribute('data-standalone', isStandalone())
+  }
 
-  // Chrome and Edge (and Chrome on Android) offer installation through this event, once.
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault()
-    usePwa.getState().setInstallEvent(event as BeforeInstallPromptEvent)
-  })
-  window.addEventListener('appinstalled', () => {
-    usePwa.getState().setInstallEvent(null)
-    usePwa.getState().setStandalone(true)
-  })
+  mark()
+  standalone?.addEventListener?.('change', mark)
+
+  // The browser's own "install" offer is left alone: this product never nags anyone to install it.
 
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     void registerWorker()

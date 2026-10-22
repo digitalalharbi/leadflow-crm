@@ -16,8 +16,6 @@ export default {
   pwa: {
     offline: 'You are offline. What you see may be out of date, and nothing can be changed until the connection is back.',
     updateReady: 'A newer version of مهتم is ready.', updateNow: 'Update now',
-    installTitle: 'Install مهتم on your device', installBody: 'Opens in one tap from the home screen, in its own window.', install: 'Install', notNow: 'Not now',
-    iosSteps: 'In Safari, tap the Share button, then “Add to Home Screen”.', gotIt: 'Got it',
   },
   errors: {
     offline: 'There is no internet connection, so the change was not made. Try again when you are back online.',
@@ -45,6 +43,10 @@ export default {
     access: 'Access',
     menu: 'Menu',
     primary: 'Primary navigation',
+    more: 'More',
+    tabs: 'Quick navigation',
+    /** The tab bar has room for a word, not a phrase: only the destinations whose name is longer say so here. */
+    short: { leads: 'Leads' },
     readiness: 'Production readiness',
     companies: 'Companies',
     dashboard: 'Dashboard',

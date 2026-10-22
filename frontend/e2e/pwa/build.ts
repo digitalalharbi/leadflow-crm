@@ -4,7 +4,7 @@ import { execSync } from 'node:child_process'
 export function rebuild(label: string) {
   execSync('npx vite build --outDir dist-pwa', {
     stdio: process.env.E2E_VERBOSE ? 'inherit' : 'pipe',
-    env: { ...process.env, VITE_BUILD_LABEL: label, VITE_PWA_DWELL_MS: '600' },
+    env: { ...process.env, VITE_BUILD_LABEL: label },
     timeout: 300_000,
   })
 }

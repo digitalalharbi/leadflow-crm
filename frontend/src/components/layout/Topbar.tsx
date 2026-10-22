@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, ChevronDown, LogOut, Menu, User as UserIcon } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { CompanySwitcher } from '@/components/company/CompanySwitcher'
@@ -23,7 +23,6 @@ export function Topbar() {
   const user = useAuth((s) => s.user)
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
   const logout = useAuth((s) => s.logout)
-  const toggleSidebar = useUi((s) => s.toggleSidebar)
   const appearance = useUi((s) => s.appearance)
   const setAppearance = useUi((s) => s.setAppearance)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -57,18 +56,9 @@ export function Topbar() {
      * the page scrolls under it.
      */
     <header
-      className="sticky top-3 z-20 flex h-16 items-center gap-3 rounded-[var(--radius-pill)] bg-[var(--color-surface)] px-3 shadow-[var(--shadow-card)] lg:h-[4.25rem] lg:px-4 print:hidden"
+      className="app-bar sticky top-0 z-20 -mx-2 -mt-2 flex h-14 items-center gap-2 bg-[var(--color-surface)] px-3 shadow-[0_1px_0_var(--color-line)] sm:top-3 sm:mx-0 sm:mt-0 sm:gap-3 sm:rounded-[var(--radius-pill)] sm:shadow-[var(--shadow-card)] lg:h-[4.25rem] lg:px-4 print:hidden"
       data-testid="app-header"
     >
-      <button
-        type="button"
-        onClick={toggleSidebar}
-        aria-label={t('common.actions')}
-        className="chrome-circle lg:hidden"
-      >
-        <Menu className="size-5" aria-hidden />
-      </button>
-
       <BrandLockup to="/" size="md" />
 
       {/*

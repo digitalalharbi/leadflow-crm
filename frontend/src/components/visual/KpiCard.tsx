@@ -63,7 +63,7 @@ export function KpiCard({
     <>
       <div className="flex items-start justify-between gap-2">
         <span
-          className="grid size-10 place-items-center rounded-full"
+          className="grid size-8 place-items-center rounded-full sm:size-10"
           style={{ background: TONE_TINT[tone], color: TONE_INK[tone] }}
           aria-hidden
         >
@@ -72,7 +72,7 @@ export function KpiCard({
         {delta}
       </div>
 
-      <p className="mt-3 text-[0.9375rem] text-[var(--color-ink-muted)]">{label}</p>
+      <p className="mt-2 text-[0.9375rem] text-[var(--color-ink-muted)] sm:mt-3">{label}</p>
       <div className="flex items-end justify-between gap-2">
         <div className="t-metric" data-testid={valueTestId}>
           {value}
@@ -83,7 +83,7 @@ export function KpiCard({
     </>
   )
 
-  const shell = 'block rounded-[var(--radius-card)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]'
+  const shell = 'block rounded-[var(--radius-card)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)] sm:p-4'
 
   return to ? (
     <Link to={to} className={cn(shell, 'transition-shadow hover:shadow-[var(--shadow-raised)]')} data-testid={testId}>

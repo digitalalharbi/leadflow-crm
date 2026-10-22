@@ -9,7 +9,7 @@ import type { Branding } from '@/types/api'
  */
 const PLATFORM_NAME = 'مهتم'
 const PLATFORM_FAVICON = '/favicon.svg'
-const PLATFORM_MANIFEST = '/site.webmanifest'
+const PLATFORM_MANIFEST = '/manifest.webmanifest'
 
 /** The blob the last tenant's manifest lives in, so it can be released. */
 let manifestUrl: string | null = null
@@ -97,25 +97,34 @@ function setManifest(branding: Branding): void {
 
   const name = branding.system_name || PLATFORM_NAME
 
+  /*
+   * Absolute addresses throughout: this manifest lives at a blob: URL, and a relative address in
+   * it would be resolved against that and point nowhere. The tenant's own icon leads when they
+   * have one; the platform's PNGs follow, because an installable app needs at least one PNG of
+   * 192 and 512 whatever the tenant uploaded.
+   */
+  const origin = window.location.origin
+  const abs = (path: string) => (/^https?:\/\//.test(path) ? path : `${origin}${path.startsWith('/') ? '' : '/'}${path}`)
+  const own = branding.favicon_url ? abs(branding.favicon_url) : null
+
   const manifest = {
+    id: `${origin}/`,
     name,
     short_name: name,
     lang: branding.locale || 'ar',
     dir: (branding.locale || 'ar') === 'ar' ? 'rtl' : 'ltr',
-    start_url: '/',
-    scope: '/',
+    start_url: `${origin}/?source=pwa`,
+    scope: `${origin}/`,
     display: 'standalone',
+    display_override: ['standalone', 'minimal-ui'],
+    orientation: 'any',
     background_color: '#ffffff',
     theme_color: branding.primary_color,
     icons: [
-      {
-        src: branding.favicon_url || PLATFORM_FAVICON,
-        sizes: 'any',
-        type: (branding.favicon_url ?? PLATFORM_FAVICON).endsWith('.svg')
-          ? 'image/svg+xml'
-          : 'image/png',
-        purpose: 'any',
-      },
+      ...(own ? [{ src: own, sizes: 'any', type: own.split('?')[0].endsWith('.svg') ? 'image/svg+xml' : 'image/png', purpose: 'any' }] : []),
+      { src: abs('/icons/icon-192.png'), sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: abs('/icons/icon-512.png'), sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: abs('/icons/icon-maskable-512.png'), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 

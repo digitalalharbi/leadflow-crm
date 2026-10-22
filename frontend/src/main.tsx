@@ -7,6 +7,7 @@ import { setUnauthenticatedHandler } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { applyAppearance, useUi } from '@/stores/ui'
 import { App } from '@/App'
+import { startPwa } from '@/pwa/register'
 import '@/i18n'
 /*
  * The typography system: three families, all self-hosted so the product does
@@ -31,6 +32,9 @@ import '@/index.css'
  * of white on the way into dark mode is the one thing people notice about it.
  */
 applyAppearance(useUi.getState().appearance)
+
+// Installable, and honest about being offline; the service worker only in a production build.
+startPwa()
 
 globalThis.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
   // Only while following the system; an explicit choice is not overridden by

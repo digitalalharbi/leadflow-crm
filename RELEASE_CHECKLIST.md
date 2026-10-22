@@ -1,11 +1,19 @@
 # RELEASE CHECKLIST — «مهتم» release candidate
 
-Status words: **READY** (works as shipped, nothing to supply) · **EXTERNAL BLOCKER** (a value only you can
+Status words: **READY** (works as shipped, nothing to supply) · **EXTERNAL CONFIG REQUIRED** (a value only you can
 supply; the feature stays honest-off until it is there) · **OPTIONAL** (nice to have; nothing depends on it).
 
 The product is tested Local-only. Nothing below has been exercised against a real server; the gates
 are the repository's own suites (see "Gates" at the end). `./scripts/check-deploy-readiness.sh` reports
 which of these exist on a machine without printing any value.
+
+## At a glance
+
+| | Items |
+| --- | --- |
+| **READY** | the application and its tenant isolation, roles and per-element access, audit log, encrypted credentials, signed webhooks and rate limits · the sales-first phone flow · the installable app (manifest, service worker, offline notice) · the brand kit · the public pages (§P) · email as a recorded log (§4) · queue, scheduler and backups once their processes run (§3) |
+| **EXTERNAL CONFIG REQUIRED** | server, domain and HTTPS (§2) · a mail provider to really send (§4) · WhatsApp Business credentials (§5) · Google Sheets OAuth (§6) · each ad platform's app credentials (§7) · the four public-page values (§P): legal name, contact email, postal address, named processors |
+| **OPTIONAL** | AI key (§8) · Sentry and log shipping (§9) · Twilio calls (§10) · inbound-email parse domain (§4) |
 
 ## 1. Application (READY)
 
@@ -19,7 +27,7 @@ which of these exist on a machine without printing any value.
 | `API_RATE_LIMIT_PER_MINUTE`, `LOGIN_RATE_LIMIT_PER_MINUTE`, `LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE`, `WEBHOOK_MAX_BODY_BYTES`, `WEBHOOK_RATE_LIMIT_PER_MINUTE` | defaults are sane; set only to change them |
 | `LOG_CHANNEL`, `LOG_LEVEL` | `daily` + `warning` in production |
 
-## 2. Server, domain, HTTPS (EXTERNAL BLOCKER — yours tomorrow)
+## 2. Server, domain, HTTPS (EXTERNAL CONFIG REQUIRED — yours tomorrow)
 
 - VPS with PHP 8.4 (`pdo_pgsql`, `gd`, `intl`, `bcmath`, `mbstring`), Node 20 for the frontend build, PostgreSQL, nginx.
 - Two origins behind HTTPS: the web app (`FRONTEND_URL`) and the API (`APP_URL`). CORS/CSRF are driven by these two values; the session cookie is `Secure` + `SameSite` from `SESSION_*`.
@@ -32,7 +40,7 @@ which of these exist on a machine without printing any value.
 - **Scheduler**: `* * * * * php artisan schedule:run` (cron). Hourly: follow-up reminders, daily digest, interest refresh, email digests, anomaly detection, tracking watch, reservation expiry; 03:30 daily payload pruning (`RETENTION_PAYLOAD_DAYS`).
 - **Backups**: `./scripts/backup-db.sh <env> <label>` before every migration; keep a copy off-box. The RC itself is bundled at `~/Developer/leadflow-backups/leadflow-crm-rc-2026-10-22.bundle` on the build machine.
 
-## 4. Email — the one door (EXTERNAL BLOCKER to really send; READY as log)
+## 4. Email — the one door (EXTERNAL CONFIG REQUIRED to really send; READY as log)
 
 Every product email (report shares, daily sales / weekly marketing / weekly executive digests,
 instant alerts, a lead's email, the mail-server test) leaves through `App\Domain\Mail\MailerProvider`.
@@ -41,24 +49,24 @@ Default `LEADFLOW_MAIL_PROVIDER=log`: everything is recorded as **logged**, neve
 | Provider | Variables | Status |
 | --- | --- | --- |
 | `log` | — | READY (writes to the log, sends nothing) |
-| `smtp` | `LEADFLOW_MAIL_PROVIDER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SCHEME` | EXTERNAL BLOCKER (credentials) |
-| `ses` | `LEADFLOW_MAIL_PROVIDER=ses`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `composer require aws/aws-sdk-php` | EXTERNAL BLOCKER (keys + SDK) |
-| `resend` | `LEADFLOW_MAIL_PROVIDER=resend`, `RESEND_API_KEY` | EXTERNAL BLOCKER (key) |
+| `smtp` | `LEADFLOW_MAIL_PROVIDER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SCHEME` | EXTERNAL CONFIG REQUIRED (credentials) |
+| `ses` | `LEADFLOW_MAIL_PROVIDER=ses`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `composer require aws/aws-sdk-php` | EXTERNAL CONFIG REQUIRED (keys + SDK) |
+| `resend` | `LEADFLOW_MAIL_PROVIDER=resend`, `RESEND_API_KEY` | EXTERNAL CONFIG REQUIRED (key) |
 | sender | `LEADFLOW_MAIL_FROM_ADDRESS`, `LEADFLOW_MAIL_FROM_NAME` (fall back to `MAIL_FROM_*`) | set with the provider |
 | replies to leads | `EMAIL_INBOUND_DOMAIN`, `EMAIL_INBOUND_SECRET` + an inbound-parse webhook (Postmark/SendGrid/Mailgun) | OPTIONAL — without it customer replies reach the workspace mailbox, not the thread |
 
 A workspace may also connect its own SMTP in Settings → Integrations → Email; that door is per-workspace and needs no server variable. None of the four adapters has sent a real message yet.
 
-## 5. WhatsApp Business (EXTERNAL BLOCKER per workspace)
+## 5. WhatsApp Business (EXTERNAL CONFIG REQUIRED per workspace)
 
 - Server: `WHATSAPP_GRAPH_URL`, `WHATSAPP_GRAPH_VERSION` (defaults fine), `WHATSAPP_RATE_LIMIT_*`, `WHATSAPP_MESSAGES_PER_LEAD`.
 - Per workspace (Settings → Integrations → WhatsApp): phone number id, access token, app secret, verify token; the webhook URL is shown on that screen. Without a token the mock provider runs and the screen says "configuration required".
 
-## 6. Google Sheets (EXTERNAL BLOCKER)
+## 6. Google Sheets (EXTERNAL CONFIG REQUIRED)
 
 `GOOGLE_SHEETS_CLIENT_ID`, `GOOGLE_SHEETS_CLIENT_SECRET`, `GOOGLE_PICKER_API_KEY`, `GOOGLE_PROJECT_NUMBER` — an OAuth client in Google Cloud with the redirect URL the Integrations screen prints. Sheet imports stay off until then.
 
-## 7. Ad platforms (EXTERNAL BLOCKER each; the product is honest without them)
+## 7. Ad platforms (EXTERNAL CONFIG REQUIRED each; the product is honest without them)
 
 | Platform | Variables |
 | --- | --- |
@@ -86,6 +94,25 @@ for log shipping.
 ## 10. Calls (OPTIONAL)
 
 Twilio Voice is per-workspace (Settings → Calls); no server variable. The status webhook is public and signed.
+
+## P. Public pages: privacy, terms, data deletion, security, contact, about (READY; four values EXTERNAL CONFIG REQUIRED)
+
+The pages ship as drafts and invent nothing. Until a value is set they show a visible marker,
+"[يُضاف قبل الإطلاق: …]", in its place; none of them is hidden. They are **build-time** values (compiled into the
+bundle, public by nature), passed through `docker-compose.*.yml` → `docker/Dockerfile.frontend`, or `frontend/.env`
+for a plain `npm run build`.
+
+| Variable | What it is | State |
+| --- | --- | --- |
+| `VITE_PUBLIC_LEGAL_NAME` | the legal entity that provides the service | EXTERNAL CONFIG REQUIRED — not set |
+| `VITE_PUBLIC_CONTACT_EMAIL` | one mailbox for support, privacy and deletion requests | EXTERNAL CONFIG REQUIRED — not set |
+| `VITE_PUBLIC_ADDRESS` | the postal address | EXTERNAL CONFIG REQUIRED — not set |
+| `VITE_PUBLIC_PROCESSORS` | the named outside services that process data (hosting, mail, WhatsApp, …) | EXTERNAL CONFIG REQUIRED — not set |
+
+- **Data deletion** is instructions only (write to the mailbox above): there is no self-service deletion endpoint, and the page says so.
+- **Password reset** is by the workspace administrator; there is no forgot-password flow, and the sign-in screen links to the contact page instead.
+- The texts are drafts: have them read by counsel before launch. The security page states no certification (no SOC 2, ISO 27001, PCI or GDPR claim).
+- The public pages are indexable; the sign-in and the app stay `noindex`.
 
 ## Installable app and browsers (READY; HTTPS is yours tomorrow)
 

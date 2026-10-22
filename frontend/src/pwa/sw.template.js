@@ -15,7 +15,10 @@ const SHELL_CACHE = `mahtam-shell-${BUILD}`
 const ASSET_CACHE = `mahtam-assets-${BUILD}`
 
 // What the offline page and the install prompt need, and nothing that carries data.
-const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png']
+/** Icons, launch screens, fonts for the offline page and the manifest: small, rarely changed, safe to serve from cache. */
+const STATIC_ASSET = /^\/(splash\/|fonts\/|favicon|android-chrome|maskable-icon|apple-touch-icon|site\.webmanifest)/
+
+const PRECACHE = ['/offline.html', '/site.webmanifest', '/favicon.svg', '/android-chrome-192x192.png', '/android-chrome-512x512.png', '/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2', '/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2']
 
 self.addEventListener('install', (event) => {
   // No skipWaiting here: a waiting worker is what lets the app tell the person "an update is ready"
@@ -74,7 +77,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Icons, splash screens and the manifest: fast from cache, refreshed behind the scenes.
-  if (url.pathname.startsWith('/icons/') || url.pathname.startsWith('/splash/') || url.pathname === '/manifest.webmanifest' || url.pathname === '/favicon.svg') {
+  if (STATIC_ASSET.test(url.pathname)) {
     event.respondWith(
       caches.open(SHELL_CACHE).then(async (cache) => {
         const hit = await cache.match(request)

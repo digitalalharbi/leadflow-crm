@@ -90,7 +90,7 @@ Twilio Voice is per-workspace (Settings → Calls); no server variable. The stat
 ## Installable app and browsers (READY; HTTPS is yours tomorrow)
 
 - The app installs to a phone or desktop (name «مهتم», standalone, green theme). A service worker, the install prompt and the offline notice need **HTTPS on the web origin** — they do not run on plain HTTP except on localhost.
-- `docker/nginx/spa.conf` serves `sw.js`, `manifest.webmanifest` and `offline.html` with `no-cache`; if you use another web server, give those three files the same rule. A cached `sw.js` means an installed app never hears of an update.
+- `docker/nginx/spa.conf` serves `sw.js`, `site.webmanifest` and `offline.html` with `no-cache`; if you use another web server, give those three files the same rule. A cached `sw.js` means an installed app never hears of an update.
 - Nothing from `/api/` is ever stored by the worker. With no connection the app shows a notice, pages fall back to an offline page, and every change (save, send, approve) is refused out loud — nothing is queued.
 - Tested in Chromium (Chrome and Edge share the engine), Firefox, WebKit (Safari engine), an iPhone 14 profile and a Pixel 7 profile, at 375, 390, 430, 768 and 1366×768. **Not** tested on a real iPhone, a real Android phone, or Microsoft Edge itself; add-to-home-screen on iOS is a manual step the app explains on screen.
 

@@ -136,6 +136,8 @@ export interface LeadDetailResponse {
   notes: LeadNote[]
   follow_ups: FollowUp[]
   next_action: NextAction
+  /** Where the reply clock stands for an interested lead (the same one the work queue shows); null for a lead with no clock. */
+  sla?: { level: string; state: 'ok' | 'due_soon' | 'breached' | 'done'; target_minutes: number; since: string; deadline: string; minutes_left: number } | null
   /** What the customer did that makes now the moment: replied, opened the brochure… */
   signals?: string[]
   calls: LeadCall[]

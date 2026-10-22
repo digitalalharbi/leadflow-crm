@@ -58,6 +58,13 @@ class OutcomeRecorder
             'followUpHours' => 24,
             'label' => 'حجز وحدة',
         ],
+        // Spoke to them, and nothing more decided: the stage floor is Contacted, and a reminder tomorrow so it is not left there.
+        'contacted' => [
+            'stage' => LeadStatus::Contacted,
+            'activity' => ActivityType::Contacted,
+            'followUpHours' => 24,
+            'label' => 'تم التواصل',
+        ],
         'call_later' => [
             'stage' => LeadStatus::Contacted,
             'activity' => ActivityType::Called,

@@ -6,9 +6,9 @@ import { can, useAuth } from '@/stores/auth'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { AppShell } from '@/components/layout/AppShell'
 import { LoginPage } from '@/pages/Login'
-import { DashboardPage } from '@/pages/Dashboard'
 import { Toaster, Skeleton } from '@/components/ui'
 import { PwaBanners } from '@/components/pwa/PwaBanners'
+import { useIsPhone } from '@/hooks/useIsPhone'
 
 // Everything past the dashboard is code-split: the first paint only pays for
 // what a user actually lands on.
@@ -17,11 +17,16 @@ import { PwaBanners } from '@/components/pwa/PwaBanners'
  * replaced with `false` at build time, so the branch is dead code and the
  * chunk is never emitted — a conditional route alone still ships the file.
  */
+// The dashboard carries every chart in the product; it is a chunk of its own so a phone working a lead never downloads it.
+const DashboardPage = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.DashboardPage })))
 const DesignSystemPage = import.meta.env.DEV
   ? lazy(() => import('@/pages/dev/DesignSystem').then((m) => ({ default: m.DesignSystemPage })))
   : () => null
 const AccessPage = lazy(() => import('@/pages/Access').then((m) => ({ default: m.AccessPage })))
 const WorkPage = lazy(() => import('@/pages/Work').then((m) => ({ default: m.WorkPage })))
+// A phone gets the sales flow's own screens, as chunks of their own: the desktop lead page and its charts are never downloaded there.
+const MobileWork = lazy(() => import('@/components/mobile/MobileWork').then((m) => ({ default: m.MobileWork })))
+const MobileLeadScreen = lazy(() => import('@/components/mobile/MobileLeadScreen').then((m) => ({ default: m.MobileLeadScreen })))
 const DataQualityPage = lazy(() => import('@/pages/DataQuality').then((m) => ({ default: m.DataQualityPage })))
 const AutomationPage = lazy(() => import('@/pages/Automation').then((m) => ({ default: m.AutomationPage })))
 const LeadsPage = lazy(() => import('@/pages/Leads').then((m) => ({ default: m.LeadsPage })))
@@ -47,6 +52,16 @@ const SettingsPage = lazy(() => import('@/pages/Settings').then((m) => ({ defaul
 const ProfilePage = lazy(() => import('@/pages/Profile').then((m) => ({ default: m.ProfilePage })))
 const ReadinessPage = lazy(() => import('@/pages/Readiness').then((m) => ({ default: m.ReadinessPage })))
 const PlatformPage = lazy(() => import('@/pages/Platform').then((m) => ({ default: m.PlatformPage })))
+
+/** «اعمل الآن»: one lead at a time on a phone, the full board on a laptop. */
+function WorkRoute() {
+  return useIsPhone() ? <MobileWork /> : <WorkPage />
+}
+
+/** A lead: the conversation-first screen on a phone, the full workspace on a laptop. */
+function LeadRoute() {
+  return useIsPhone() ? <MobileLeadScreen /> : <LeadDetailPage />
+}
 
 function PageFallback() {
   return (
@@ -97,7 +112,7 @@ function firstHome(user: ReturnType<typeof useAuth.getState>['user']): string {
 function HomeRoute() {
   const user = useAuth((s) => s.user)
 
-  return seesPage(user, '/') ? <DashboardPage /> : <Navigate to={firstHome(user)} replace />
+  return seesPage(user, '/') ? <Suspense fallback={<PageFallback />}><DashboardPage /></Suspense> : <Navigate to={firstHome(user)} replace />
 }
 
 /** Blocks a route until the session is known, so no flash of the login screen. */
@@ -162,11 +177,11 @@ export function App() {
             element={
               <Suspense fallback={<PageFallback />}>
                 <Routes>
-                  <Route path="/work" element={<RequirePermission any={['leads.execute']}><WorkPage /></RequirePermission>} />
+                  <Route path="/work" element={<RequirePermission any={['leads.execute']}><WorkRoute /></RequirePermission>} />
                   <Route path="/data-quality" element={<RequirePermission any={['leads.view']}><DataQualityPage /></RequirePermission>} />
                   <Route path="/automation" element={<RequirePermission any={['automation.view']}><AutomationPage /></RequirePermission>} />
                   <Route path="/leads" element={<RequirePermission any={['leads.view']}><LeadsPage /></RequirePermission>} />
-                  <Route path="/leads/:id" element={<RequirePermission any={['leads.view']}><LeadDetailPage /></RequirePermission>} />
+                  <Route path="/leads/:id" element={<RequirePermission any={['leads.view']}><LeadRoute /></RequirePermission>} />
                   <Route path="/pipeline" element={<RequirePermission any={['leads.view']}><PipelinePage /></RequirePermission>} />
                   <Route path="/campaigns" element={<RequirePermission any={['campaigns.view']}><CampaignsPage /></RequirePermission>} />
                   <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><TrackingPage /></RequirePermission>} />

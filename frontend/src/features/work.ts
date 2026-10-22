@@ -182,6 +182,8 @@ export const OUTCOMES = [
   'lost',
   'reservation',
   'not_interested',
+  // Added last so the numbers on the laptop's shortcuts stay where a rep has learned them.
+  'contacted',
 ] as const
 
 export type Outcome = (typeof OUTCOMES)[number]

@@ -10,6 +10,7 @@ use App\Domain\Conversation\ConversationIntelligence;
 use App\Domain\Leads\DuplicateFinder;
 use App\Domain\Leads\HandoffBrief;
 use App\Domain\Leads\InterestEngine;
+use App\Domain\Leads\InterestSla;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\LeadMerger;
@@ -186,6 +187,8 @@ class LeadController extends Controller
             // The next week of automatic follow-up, and what it will do about this lead.
             'follow_up' => app(FollowUpPlanner::class)->view($lead),
             'signals' => WhyNow::signals($lead),
+            // Where the reply clock stands for an interested lead — the same one the work queue shows, so a phone's lead screen can say it.
+            'sla' => InterestSla::for($lead),
             // The rep's name comes from a join, not an eager load: an eager load is
             // skipped when there are no calls, which would make a quiet lead cost
             // fewer queries than a busy one and break the constant-cost guarantee.

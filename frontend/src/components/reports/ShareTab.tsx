@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, BarChart3, Copy, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, CalendarClock, Copy, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui'
 import {
   createShare, deleteShare, fetchShareAnalytics, fetchSharePreview, fetchShares, MONEY_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, updateShare,
-  type LayoutItem, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
+  type LayoutItem, type ReportPreset, type ReportPresetKey, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
 } from '@/features/reportShares'
+import { createSchedule, deleteSchedule, fetchSchedules, updateSchedule, type ScheduleFrequency } from '@/features/reportSchedules'
 import { AreaTrend } from '@/components/visual'
 import { emailReport } from '@/features/emailDeliveries'
 import { Modal, Textarea } from '@/components/ui'
@@ -32,6 +33,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
   const [analytics, setAnalytics] = useState<ReportShare | null>(null)
   const [preview, setPreview] = useState<ReportShare | null>(null)
   const [mailing, setMailing] = useState<ReportShare | null>(null)
+  const [scheduling, setScheduling] = useState<ReportShare | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['report-shares'], queryFn: fetchShares })
 
@@ -89,11 +91,19 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
                 {share.expires_at && <span className="t-caption">{t('share.expiresOn', { date: formatDate(share.expires_at, i18n.language) })}</span>}
               </div>
 
+              {(share.schedules ?? []).length > 0 && (
+                <p className="t-caption inline-flex flex-wrap items-center gap-x-2 gap-y-0.5" data-testid="share-schedules-line">
+                  <CalendarClock className="size-3.5" aria-hidden />
+                  {(share.schedules ?? []).map((s) => <span key={s.id} className={s.enabled ? undefined : 'line-through opacity-60'}>{t(`schedule.frequency.${s.frequency}`)}</span>)}
+                </p>
+              )}
+
               <div className="flex flex-wrap gap-1.5">
                 <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked'} data-testid="share-copy">{t('share.copy')}</Button>
                 <Button size="sm" variant="secondary" onClick={() => setEditing(share)} data-testid="share-edit">{t('share.edit')}</Button>
                 <Button size="sm" variant="outline" icon={<Eye className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-preview">{t('share.preview')}</Button>
                 {share.status === 'active' && <Button size="sm" variant="outline" icon={<Mail className="size-3.5" aria-hidden />} onClick={() => setMailing(share)} data-testid="share-email">{t('emailDelivery.send')}</Button>}
+                <Button size="sm" variant="outline" icon={<CalendarClock className="size-3.5" aria-hidden />} onClick={() => setScheduling(share)} data-testid="share-schedule">{t('schedule.action')}</Button>
                 <Button size="sm" variant="outline" icon={<BarChart3 className="size-3.5" aria-hidden />} onClick={() => setAnalytics(share)} data-testid="share-analytics">{t('share.analytics')}</Button>
                 <Button size="sm" variant="outline" icon={<RefreshCw className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'regenerate', id: share.id })} data-testid="share-regenerate">{t('share.regenerate')}</Button>
                 {share.status !== 'revoked' && (
@@ -109,12 +119,15 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
       <ShareAnalyticsDrawer share={analytics} onClose={() => setAnalytics(null)} />
       <SharePreviewDrawer share={preview} onClose={() => setPreview(null)} />
       <ShareEmailDialog share={mailing} onClose={() => setMailing(null)} />
+      <ScheduleDialog share={scheduling} onClose={() => setScheduling(null)} onChanged={refresh} />
 
       <ShareBuilder
         key={typeof editing === 'object' && editing ? editing.id : 'new'}
         open={editing !== null}
         share={editing === 'new' ? null : editing}
         templates={data.templates}
+        presets={data.presets ?? []}
+        unavailable={data.unavailable ?? []}
         onClose={() => setEditing(null)}
         onSaved={(share) => { setEditing(null); refresh(); void copy(share.url) }}
       />
@@ -126,10 +139,12 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
  * The builder: which report (a template), what it shows (each section a switch, money marked),
  * and who may open it (a password, an end date). Saving copies the link.
  */
-function ShareBuilder({ open, share, templates, onClose, onSaved }: {
+function ShareBuilder({ open, share, templates, presets, unavailable, onClose, onSaved }: {
   open: boolean
   share: ReportShare | null
   templates: { key: ReportTemplate; sections: Record<ReportSection, boolean>; layout: LayoutItem[] }[]
+  presets: ReportPreset[]
+  unavailable: ReportSection[]
   onClose: () => void
   onSaved: (share: ReportShare) => void
 }) {
@@ -150,10 +165,26 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
   const [partnerId, setPartnerId] = useState(share?.partner?.id ?? '')
   const { data: partners } = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: open, select: (d) => d.partners })
 
+  const [preset, setPreset] = useState<ReportPresetKey | null>(null)
+
   const pick = (key: ReportTemplate) => {
+    setPreset(null)
     setTemplate(key)
     setLayout(templates.find((x) => x.key === key)!.layout)
   }
+
+  /** A preset fills the form in; everything on it can still be changed. */
+  const applyPreset = (p: ReportPreset) => {
+    setPreset(p.key)
+    setTemplate(p.template)
+    setLayout(p.layout)
+    setCompare(p.compare)
+    setDays(String(p.days))
+    setRefreshSeconds(String(p.refresh_seconds))
+    if (!name.trim()) setName(t(`share.preset.${p.key}`))
+  }
+  /** A preset whose pages are built from what this person may not see is not offered to them. */
+  const offered = (p: ReportPreset) => !p.layout.some((row) => row.on && unavailable.includes(row.key))
 
   const move = (from: number, to: number) => setLayout((prev) => {
     if (to < 0 || to >= prev.length || from === to) return prev
@@ -169,6 +200,7 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
     mutationFn: () => {
       const payload = {
         name,
+        ...(!share && preset ? { preset } : {}),
         template,
         layout,
         sections: Object.fromEntries(layout.map((row) => [row.key, row.on])),
@@ -199,6 +231,29 @@ function ShareBuilder({ open, share, templates, onClose, onSaved }: {
     >
       <div className="space-y-5">
         <Input label={t('share.name')} value={name} data-testid="share-name" onChange={(e) => setName(e.target.value)} />
+
+        {/* Ready-made reports: who it is for, how far back it looks, what it carries. */}
+        {!share && presets.length > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="t-small mb-1 font-medium">{t('share.step.preset')}</legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="share-presets">
+              {presets.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  aria-pressed={preset === p.key}
+                  disabled={!offered(p)}
+                  data-testid={`share-preset-${p.key}`}
+                  onClick={() => applyPreset(p)}
+                  className={cn('pressable rounded-xl border p-2 text-start disabled:opacity-50', preset === p.key ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-[var(--color-border)]')}
+                >
+                  <span className="t-small block font-semibold">{t(`share.preset.${p.key}`)}</span>
+                  <span className="t-caption block">{offered(p) ? t(`share.presetHint.${p.key}`) : t('share.presetUnavailable')}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         <fieldset className="space-y-2">
           <legend className="t-small mb-1 font-medium">{t('share.step.template')}</legend>
@@ -409,6 +464,105 @@ function ShareEmailDialog({ share, onClose }: { share: ReportShare | null; onClo
     >
       <div className="space-y-3" data-testid="share-email-dialog">
         <Textarea label={t('emailDelivery.recipients')} hint={t('emailDelivery.recipientsHint')} dir="ltr" rows={3} value={recipients} onChange={(e) => setRecipients(e.target.value)} data-testid="share-email-recipients" />
+        <Textarea label={t('emailDelivery.message')} rows={2} value={message} onChange={(e) => setMessage(e.target.value)} />
+      </div>
+    </Modal>
+  )
+}
+
+
+const WEEKDAYS = [7, 1, 2, 3, 4, 5, 6] as const
+
+/**
+ * A report that sends itself: every day, every week on a weekday, every month on a day — at an hour
+ * of the workspace's own clock, to a list of people, as a link. The existing schedules are listed
+ * (each can be paused or removed), and a new one is a few fields.
+ */
+function ScheduleDialog({ share, onClose, onChanged }: { share: ReportShare | null; onClose: () => void; onChanged: () => void }) {
+  const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const [frequency, setFrequency] = useState<ScheduleFrequency>('weekly')
+  const [weekday, setWeekday] = useState('7')
+  const [monthDay, setMonthDay] = useState('1')
+  const [hour, setHour] = useState('8')
+  const [recipients, setRecipients] = useState('')
+  const [message, setMessage] = useState('')
+
+  const key = ['report-schedules', share?.id]
+  const { data } = useQuery({ queryKey: key, queryFn: () => fetchSchedules(share!.id), enabled: share !== null })
+  const done = () => { void queryClient.invalidateQueries({ queryKey: key }); onChanged() }
+  const list = recipients.split(/[\s,;،]+/).map((r) => r.trim()).filter(Boolean)
+
+  const add = useMutation({
+    mutationFn: () => createSchedule(share!.id, {
+      frequency, send_hour: Number(hour), recipients: list, message: message || null,
+      ...(frequency === 'weekly' ? { weekday: Number(weekday) } : {}), ...(frequency === 'monthly' ? { month_day: Number(monthDay) } : {}),
+    }),
+    onSuccess: () => { setRecipients(''); setMessage(''); toast(t('schedule.created'), 'success'); done() },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+  const toggle = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateSchedule(id, { enabled }),
+    onSuccess: done,
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteSchedule(id),
+    onSuccess: () => { toast(t('schedule.deleted'), 'success'); done() },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const when = (s: { frequency: ScheduleFrequency; weekday: number | null; month_day: number | null; send_hour: number }) => {
+    const at = `${String(s.send_hour).padStart(2, '0')}:00`
+
+    return s.frequency === 'daily' ? t('schedule.whenDaily', { at }) : s.frequency === 'weekly' ? t('schedule.whenWeekly', { day: t(`schedule.weekday.${s.weekday}`), at }) : t('schedule.whenMonthly', { day: s.month_day, at })
+  }
+
+  return (
+    <Modal open={share !== null} onClose={onClose} title={share ? t('schedule.title', { name: share.name }) : ''} size="lg" footer={<Button disabled={list.length === 0 || list.length > 20} loading={add.isPending} onClick={() => add.mutate()} data-testid="schedule-add">{t('schedule.add')}</Button>}>
+      <div className="space-y-4" data-testid="schedule-dialog">
+        <p className="t-caption">{t('schedule.hint')}</p>
+
+        {(data?.schedules ?? []).length > 0 && (
+          <ul className="space-y-1.5" data-testid="schedule-list">
+            {(data?.schedules ?? []).map((s) => (
+              <li key={s.id} data-testid={`schedule-${s.id}`} data-enabled={s.enabled} className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--color-surface-muted)] px-2.5 py-1.5">
+                <span className="t-small min-w-0 flex-1">
+                  <strong>{t(`schedule.frequency.${s.frequency}`)}</strong> · {when(s)}
+                  <span className="t-caption block">{t('schedule.to', { count: s.recipients.length })}{s.next_run_at ? ` · ${t('schedule.next', { when: formatLastSeen(s.next_run_at, i18n.language) })}` : ''}{s.last_status === 'stopped' ? ` · ${t('schedule.stopped')}` : ''}</span>
+                </span>
+                <label className="flex cursor-pointer items-center gap-1.5 text-[0.875rem]">
+                  <input type="checkbox" role="switch" checked={s.enabled} data-testid={`schedule-enabled-${s.id}`} onChange={(e) => toggle.mutate({ id: s.id, enabled: e.target.checked })} className="size-4 accent-[var(--brand)]" />
+                  {s.enabled ? t('schedule.on') : t('schedule.off')}
+                </label>
+                <Button size="icon" variant="ghost" aria-label={t('common.delete')} icon={<Trash2 className="size-4" />} data-testid={`schedule-delete-${s.id}`} onClick={() => remove.mutate(s.id)} />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Select label={t('schedule.every')} value={frequency} data-testid="schedule-frequency" onChange={(e) => setFrequency(e.target.value as ScheduleFrequency)}>
+            {(['daily', 'weekly', 'monthly'] as const).map((f) => <option key={f} value={f}>{t(`schedule.frequency.${f}`)}</option>)}
+          </Select>
+          {frequency === 'weekly' && (
+            <Select label={t('schedule.onWeekday')} value={weekday} data-testid="schedule-weekday" onChange={(e) => setWeekday(e.target.value)}>
+              {WEEKDAYS.map((d) => <option key={d} value={d}>{t(`schedule.weekday.${d}`)}</option>)}
+            </Select>
+          )}
+          {frequency === 'monthly' && (
+            <Select label={t('schedule.onDay')} value={monthDay} data-testid="schedule-monthday" onChange={(e) => setMonthDay(e.target.value)}>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
+            </Select>
+          )}
+          <Select label={t('schedule.atHour')} value={hour} data-testid="schedule-hour" onChange={(e) => setHour(e.target.value)}>
+            {Array.from({ length: 24 }, (_, h) => h).map((h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+          </Select>
+        </div>
+
+        <Textarea label={t('emailDelivery.recipients')} hint={t('schedule.recipientsHint')} dir="ltr" rows={2} value={recipients} onChange={(e) => setRecipients(e.target.value)} data-testid="schedule-recipients" />
         <Textarea label={t('emailDelivery.message')} rows={2} value={message} onChange={(e) => setMessage(e.target.value)} />
       </div>
     </Modal>

@@ -21,13 +21,15 @@ class ReportTemplates
     public const SECTIONS = [
         'kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'interested', 'qualification', 'visits', 'reservations', 'trend',
         'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'statement',
+        // The four pages of the management report: marketing, sales, automation and tracking, each a group of figures.
+        'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking',
     ];
 
     /** Sections that mean something only in a partner's own report. */
     public const PARTNER_ONLY = ['statement'];
 
     /** The money in the report: sections that may not be offered to somebody who should not see them. */
-    public const MONEY = ['kpi_cost', 'kpi_revenue'];
+    public const MONEY = ['kpi_cost', 'kpi_revenue', 'exec_marketing', 'exec_sales'];
 
     public const VISIBILITY = ['public', 'team'];
 
@@ -45,11 +47,13 @@ class ReportTemplates
         'partner' => ['kpi_volume', 'funnel', 'trend'],
         // A partner's statement: what they brought, what they are owed and have been paid.
         'statement' => ['kpi_volume', 'statement', 'funnel', 'trend'],
+        // The management report: marketing, sales, automation and tracking in one place, then the funnel, the trend and what to do.
+        'executive_management' => ['exec_marketing', 'exec_sales', 'funnel', 'exec_automation', 'exec_tracking', 'trend', 'insights', 'recommendations'],
         'management' => self::SECTIONS,
     ];
 
     /** What a partner's report may never carry, whatever was switched on: the company's own cost and other people's data. */
-    public const NOT_FOR_PARTNERS = ['kpi_cost', 'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations'];
+    public const NOT_FOR_PARTNERS = ['kpi_cost', 'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking'];
 
     /** @return list<string> the template's sections in order, then the rest (off) */
     private static function order(string $template): array

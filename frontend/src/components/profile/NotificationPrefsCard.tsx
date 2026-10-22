@@ -3,14 +3,16 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { BellRing, MailWarning } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody, CardHeader, Skeleton } from '@/components/ui'
-import { fetchNotificationPrefs, saveNotificationPrefs, type AlertCategory, type AlertMode, type DigestKind, type NotificationPrefs } from '@/features/notificationPrefs'
+import { fetchNotificationPrefs, saveNotificationPrefs, type AlertCategory, type AlertMode, type DigestKind, type NotificationPrefs, type WhatsappChanges } from '@/features/notificationPrefs'
+import { WhatsappAlertsSection } from '@/components/profile/WhatsappAlertsSection'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
 
 /**
  * How this person wants to be told: each kind of alert at once, in the daily or weekly summary,
- * or not at all — and which summaries arrive. Every press saves; there is no form to forget.
+ * or not at all — which summaries arrive (daily, weekly, monthly) — and whether the critical few
+ * also come to their WhatsApp. Every press saves; there is no form to forget.
  */
 export function NotificationPrefsCard() {
   const { t } = useTranslation()
@@ -50,6 +52,20 @@ export function NotificationPrefsCard() {
   const setDigest = (digest: DigestKind, on: boolean) => {
     setData({ ...data, digests: { ...data.digests, [digest]: on } })
     save.mutate({ digests: { [digest]: on } })
+  }
+
+  /** WhatsApp changes are applied on screen at once, as the server will apply them, and sent in order. */
+  const setWhatsapp = (changes: WhatsappChanges) => {
+    // From the latest state, not the one this render saw: two quick edits (start, then end) must both land.
+    setData((current) => {
+      if (!current) return current
+
+      const w = current.whatsapp
+      const quiet = changes.quiet === undefined ? w.quiet : changes.quiet === null ? { ...w.quiet, source: 'workspace' as const } : { enabled: changes.quiet.enabled, start: changes.quiet.start ?? w.quiet.start, end: changes.quiet.end ?? w.quiet.end, source: 'own' as const }
+
+      return { ...current, whatsapp: { ...w, enabled: changes.enabled ?? w.enabled, alerts: { ...w.alerts, ...changes.alerts }, quiet } }
+    })
+    save.mutate({ whatsapp: changes })
   }
 
   return (
@@ -100,6 +116,8 @@ export function NotificationPrefsCard() {
             </label>
           ))}
         </div>
+
+        <WhatsappAlertsSection prefs={data.whatsapp} onChange={setWhatsapp} />
       </CardBody>
     </Card>
   )

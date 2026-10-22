@@ -115,6 +115,49 @@ class RepPerformance
     }
 
     /**
+     * The whole team as one line: what was assigned, how much of it was reached and how fast, and how it
+     * ended. The management report's sales page, and the same funnel steps as everywhere else.
+     *
+     * @return array<string,int|float|null>
+     */
+    public function teamSummary(CarbonInterface $from, CarbonInterface $to, ?int $projectId = null): array
+    {
+        $stage = LeadFunnel::stages();
+        $target = (int) Thresholds::workspace('sla_minutes');
+
+        $r = Lead::query()->reorder()->whereNotNull('leads.assigned_to')->whereBetween('leads.created_at', [$from, $to])
+            ->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))
+            ->selectRaw("count(*) as assigned,
+                count(*) filter (where leads.first_contact_at is not null) as contacted,
+                count(*) filter (where leads.first_contact_at is not null and leads.assigned_at is not null and leads.first_contact_at <= leads.assigned_at + make_interval(mins => ?)) as in_time,
+                percentile_cont(0.5) within group (order by extract(epoch from (leads.first_contact_at - leads.assigned_at)) / 60)
+                    filter (where leads.first_contact_at is not null and leads.assigned_at is not null and leads.first_contact_at >= leads.assigned_at) as response_minutes,
+                count(*) filter (where {$stage['visit']}) as visits,
+                count(*) filter (where {$stage['reservation']}) as reservations,
+                count(*) filter (where {$stage['won']}) as won,
+                coalesce(sum(leads.deal_value_minor) filter (where {$stage['won']}), 0) as revenue_minor", [$target])->first();
+
+        $due = FollowUp::query()->whereBetween('due_at', [$from, min($to, now())])->where('status', '!=', 'cancelled')
+            ->when($projectId, fn ($q) => $q->whereHas('lead', fn ($l) => $l->where('leads.project_id', $projectId)))
+            ->selectRaw("count(*) as due, count(*) filter (where status = 'completed') as done")->first();
+
+        $assigned = (int) $r->assigned;
+
+        return [
+            'assigned' => $assigned,
+            'contacted' => (int) $r->contacted,
+            'response_minutes' => $r->response_minutes !== null ? (int) round((float) $r->response_minutes) : null,
+            'follow_up_completion' => $this->pct((int) $due->done, (int) $due->due),
+            'visits' => (int) $r->visits,
+            'reservations' => (int) $r->reservations,
+            'won' => (int) $r->won,
+            'revenue' => round(((int) $r->revenue_minor) / 100, 2),
+            'close_rate' => $this->pct((int) $r->won, $assigned),
+            'sla' => $this->pct((int) $r->in_time, $assigned),
+        ];
+    }
+
+    /**
      * The share of follow-ups that came due in the period and were done — per rep.
      *
      * @param  list<int>  $ids

@@ -2,12 +2,15 @@
 
 namespace App\Domain\Digest;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Analytics\LeadFunnel;
+use App\Domain\Automation\AutomationCentre;
 use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Leads\InterestEngine;
 use App\Domain\Leads\InterestSla;
 use App\Domain\Notifications\AlertKinds;
 use App\Domain\Notifications\NotificationPrefs;
+use App\Domain\Sales\RepPerformance;
 use App\Domain\Tracking\TrackingHealth;
 use App\Models\Appointment;
 use App\Models\FollowUp;
@@ -23,6 +26,8 @@ use Carbon\CarbonInterface;
  *   daily_sales        what is waiting for a person today — and what happened yesterday
  *   weekly_marketing   the week's spend and what it brought, against the week before
  *   weekly_executive   the funnel, the money, and what is on fire
+ *   monthly_executive  the month that just ended, against the one before: the funnel, the money, how the
+ *                      team answered and how much the automation did — and the campaigns to keep and to stop
  *
  * Each is returned as plain data — a title, a few figures (with their change against the period
  * before where there is one), lists — so the email, a test and, later, a screen read the same
@@ -39,6 +44,7 @@ class DigestComposer
             'daily_sales' => $this->dailySales($user),
             'weekly_marketing' => $this->weeklyMarketing($user),
             'weekly_executive' => $this->weeklyExecutive($user),
+            'monthly_executive' => $this->monthlyExecutive($user),
             default => throw new \InvalidArgumentException("Unknown digest {$kind}"),
         };
     }
@@ -135,6 +141,70 @@ class DigestComposer
                 $this->stat('منصات في خطر', $risk, null, $risk > 0 ? 'bad' : null),
             ],
             'lists' => [],
+        ];
+    }
+
+    /**
+     * The calendar month that has just ended, against the month before it: a short page for the
+     * person who answers for the whole workspace. Money only for somebody who may see it.
+     */
+    private function monthlyExecutive(User $user): array
+    {
+        $first = CarbonImmutable::now()->startOfMonth()->subMonth();
+        $from = $first->startOfDay();
+        $to = $first->endOfMonth()->endOfDay();
+        $prevFrom = $first->subMonth()->startOfMonth();
+        $prevTo = $first->subMonth()->endOfMonth()->endOfDay();
+
+        $funnel = fn (CarbonImmutable $a, CarbonImmutable $b) => LeadFunnel::counts(Lead::query()->visibleTo($user)->whereBetween('leads.created_at', [$a, $b]))['steps'];
+        // What was sold in the month — by the day it was won, whatever brought the customer.
+        $won = fn (CarbonImmutable $a, CarbonImmutable $b) => round(((int) Lead::query()->visibleTo($user)->reorder()->where('leads.status', 'won')->whereBetween('leads.won_at', [$a, $b])->sum('deal_value_minor')) / 100, 2);
+        $now = $funnel($from, $to);
+        $before = $funnel($prevFrom, $prevTo);
+        $change = fn (string $k) => ($before[$k] ?? 0) > 0 ? round(($now[$k] - $before[$k]) / $before[$k] * 100, 1) : null;
+
+        $sees = fn (string $kind) => Permissions::has($user, "{$kind}.view");
+        $report = (new CampaignRevenue($user))->build($from, $to);
+        $c = $report['comparison'];
+        $team = (new RepPerformance)->build($from, $to, null, false)['team'];
+        $automation = app(AutomationCentre::class)->summary(30);
+
+        $stats = [
+            $this->stat('عملاء جدد', $now['leads'], $change('leads')),
+            $this->stat('مؤهلون', $now['qualified'], $change('qualified')),
+            $this->stat('مهتمون', $now['interested'], $change('interested')),
+            $this->stat('زاروا', $now['visit'], $change('visit')),
+            $this->stat('حجزوا', $now['reservation'], $change('reservation')),
+            $this->stat('اشتروا', $now['won'], $change('won')),
+        ];
+
+        $revenue = $won($from, $to);
+        $before_ = $won($prevFrom, $prevTo);
+
+        if ($sees('revenue')) {
+            $stats[] = $this->stat('الإيراد', number_format($revenue).' ر.س.', $before_ > 0 ? round(($revenue - $before_) / $before_ * 100, 1) : null);
+        }
+
+        if ($sees('spend')) {
+            $stats[] = $this->stat('الإنفاق', number_format((float) ($c['spend']['current'] ?? 0)).' ر.س.', $c['spend']['change'] ?? null, null, true);
+            $stats[] = $this->stat('تكلفة العميل', $c['cpl']['current'] ?? null, $c['cpl']['change'] ?? null, null, true);
+            $stats[] = $this->stat('تكلفة الاكتساب', $c['cac']['current'] ?? null, $c['cac']['change'] ?? null, null, true);
+            $spent = (float) ($c['spend']['current'] ?? 0);
+            $stats[] = $this->stat('العائد على الإنفاق', $spent > 0 ? round($revenue / $spent, 2).'x' : null);
+        }
+
+        $stats[] = $this->stat('الرد في الوقت', $team['sla_compliance'] !== null ? $team['sla_compliance'].'%' : null);
+        $stats[] = $this->stat('نجاح الأتمتة', $automation['success_rate'] !== null ? $automation['success_rate'].'%' : null);
+
+        return [
+            'kind' => 'monthly_executive',
+            'title' => 'الملخص التنفيذي الشهري',
+            'period' => $from->toDateString().' → '.$to->toDateString(),
+            'stats' => $stats,
+            'lists' => array_values(array_filter([
+                ! $sees('spend') || $report['rankings']['roas'] === [] ? null : ['title' => 'أفضل حملات الشهر عائدًا', 'items' => collect($report['rankings']['roas'])->map(fn ($r) => "{$r['name']} — {$r['roas']}x")->all()],
+                ! $sees('spend') || $report['rankings']['wasted'] === [] ? null : ['title' => 'إنفاق بلا تأهيل — أوقفه أو راجعه', 'items' => collect($report['rankings']['wasted'])->map(fn ($r) => "{$r['name']} — ".number_format((float) $r['spend']).' ر.س.')->all()],
+            ])),
         ];
     }
 

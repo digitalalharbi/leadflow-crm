@@ -1,16 +1,37 @@
 import { apiDelete, apiGet, apiPatch, apiPost, http } from '@/lib/api'
 
-export const REPORT_TEMPLATES = ['executive', 'marketing', 'sales', 'client', 'investor', 'partner', 'management'] as const
+export const REPORT_TEMPLATES = ['executive', 'executive_management', 'marketing', 'sales', 'client', 'investor', 'partner', 'management'] as const
 export type ReportTemplate = (typeof REPORT_TEMPLATES)[number]
 
 export const REPORT_SECTIONS = [
   'kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'interested', 'qualification', 'visits', 'reservations', 'trend',
   'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'statement',
+  'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking',
 ] as const
 export type ReportSection = (typeof REPORT_SECTIONS)[number]
 
 /** The sections that show money: the ones to be careful about handing to a client or a broker. */
-export const MONEY_SECTIONS: ReportSection[] = ['kpi_cost', 'kpi_revenue']
+export const MONEY_SECTIONS: ReportSection[] = ['kpi_cost', 'kpi_revenue', 'exec_marketing', 'exec_sales']
+
+/** The reports a workspace starts from, ready-made. */
+export const REPORT_PRESETS = ['executive_management', 'marketing', 'sales', 'client', 'investor', 'partner'] as const
+export type ReportPresetKey = (typeof REPORT_PRESETS)[number]
+
+export interface ReportPreset {
+  key: ReportPresetKey
+  template: ReportTemplate
+  days: number
+  compare: boolean
+  refresh_seconds: number
+  audience: string
+  /** A partner report is about one partner. */
+  needs_partner: boolean
+  sections: Record<ReportSection, boolean>
+  layout: LayoutItem[]
+}
+
+/** How a report sends itself, at a glance; the schedules are managed on their own. */
+export interface ScheduleSummary { id: string; frequency: 'daily' | 'weekly' | 'monthly'; enabled: boolean; next_run_at: string | null; recipients: number }
 
 export type ShareStatus = 'active' | 'expired' | 'revoked'
 
@@ -49,6 +70,7 @@ export interface ReportShare {
   view_count: number
   last_viewed_at: string | null
   created_at: string
+  schedules?: ScheduleSummary[]
 }
 
 export interface ShareDirectory {
@@ -56,6 +78,9 @@ export interface ShareDirectory {
   templates: { key: ReportTemplate; sections: Record<ReportSection, boolean>; layout: LayoutItem[] }[]
   sections: ReportSection[]
   money: ReportSection[]
+  presets: ReportPreset[]
+  /** The sections this person may not put in a report: they cannot see what they are built from. */
+  unavailable: ReportSection[]
 }
 
 export function fetchShares() {
@@ -64,6 +89,7 @@ export function fetchShares() {
 
 export interface ShareInput {
   name: string
+  preset?: ReportPresetKey
   template: ReportTemplate
   sections?: Partial<Record<ReportSection, boolean>>
   layout?: LayoutItem[]
@@ -117,6 +143,12 @@ export interface Finding {
   link?: string | null
 }
 
+/** One page of the management report. */
+export interface ExecPage<K extends string> {
+  figures: Record<K, number | null>
+  previous: Partial<Record<K, number | null>> | null
+}
+
 export type KpiKey = 'leads' | 'interested' | 'visits' | 'reservations' | 'won' | 'spend' | 'cpl' | 'cac' | 'roas' | 'revenue'
 
 /** What a shared link shows. Only the sections that are on are present, in the order the owner chose. */
@@ -132,6 +164,11 @@ export interface SharedReportData {
   visits?: { booked: number; completed: number; no_show: number; cancelled: number; completion_rate: number | null; by_day?: { date: string; count: number }[] }
   reservations?: { pending: number; confirmed: number; converted: number; cancelled: number; conversion_rate: number | null }
   automation?: { handled_pct: number | null; automated: number; human: number; needs_human: number }
+  /** The management report's four pages: each a group of figures, with the period before beside it when the report compares. */
+  exec_marketing?: ExecPage<'spend' | 'leads' | 'cpl' | 'qualified' | 'cpql' | 'interested' | 'visits' | 'reservations' | 'cac' | 'roas'>
+  exec_sales?: ExecPage<'assigned' | 'contacted' | 'response_minutes' | 'follow_up_completion' | 'visits' | 'reservations' | 'won' | 'revenue' | 'close_rate' | 'sla'>
+  exec_automation?: ExecPage<'coverage' | 'success' | 'failures' | 'needs_human'>
+  exec_tracking?: ExecPage<'attribution' | 'utm_health' | 'unattributed' | 'offline_sent' | 'offline_failed' | 'offline_success'>
   tracking_health?: { platform: string; state: string; sent: number; failed: number; last_sent_at: string | null }[]
   attribution?: { models: Record<'first' | 'last' | 'linear' | 'position', { key: string; label: string | null; leads: number; interested: number; visits: number; reservations: number; won: number; revenue?: number }[]> }
   insights?: Finding[]

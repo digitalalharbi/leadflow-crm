@@ -15,8 +15,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 
 /**
- * The email summaries: sales every morning, marketing and the executive one every Sunday morning
- * — eight o'clock where the workspace is, once each, to the people who chose them.
+ * The email summaries: sales every morning, marketing and the executive one every Sunday morning,
+ * and the month's executive one on the first of the month — eight o'clock where the workspace is,
+ * once each, to the people who chose them.
  *
  * Run hourly; a workspace is only sent to in the hour that is 08:00 for it, and a person is only
  * ever sent a given summary once a day (an alert mark), so a second run in the same hour, or a
@@ -30,10 +31,10 @@ class SendDigests extends Command
 {
     protected $signature = 'leadflow:send-digests
         {--tenant= : only this tenant slug}
-        {--kind= : daily or weekly (default: whichever is due)}
+        {--kind= : daily, weekly or monthly (default: whichever is due)}
         {--now : send regardless of the hour, for a manual run}';
 
-    protected $description = 'Email the daily and weekly summaries to the people who chose them';
+    protected $description = 'Email the daily, weekly and monthly summaries to the people who chose them';
 
     private const SEND_AT_HOUR = 8;
 
@@ -59,6 +60,8 @@ class SendDigests extends Command
                 $rhythms = array_values(array_filter([
                     ($force || $morning) && in_array($this->option('kind'), [null, 'daily'], true) ? 'daily' : null,
                     ($force || ($morning && $local->dayOfWeek === self::WEEK_STARTS)) && in_array($this->option('kind'), [null, 'weekly'], true) ? 'weekly' : null,
+                    // The first of the month: the month that has just ended.
+                    ($force || ($morning && $local->day === 1)) && in_array($this->option('kind'), [null, 'monthly'], true) ? 'monthly' : null,
                 ]));
 
                 if ($rhythms === []) {
@@ -86,9 +89,18 @@ class SendDigests extends Command
 
     private function sendTo(User $user, Tenant $tenant, string $rhythm, DigestComposer $composer, CarbonImmutable $local): int
     {
-        $since = $rhythm === 'daily' ? CarbonImmutable::now()->subDay() : CarbonImmutable::now()->subWeek();
-        $rollup = $composer->rollup($user, $rhythm, $since);
-        $digests = $rhythm === 'daily' ? ['daily_sales'] : ['weekly_marketing', 'weekly_executive'];
+        $since = match ($rhythm) {
+            'daily' => CarbonImmutable::now()->subDay(),
+            'weekly' => CarbonImmutable::now()->subWeek(),
+            default => CarbonImmutable::now()->subMonth(),
+        };
+        // Alerts are chosen for later by the day or the week; the month's page carries none.
+        $rollup = $rhythm === 'monthly' ? [] : $composer->rollup($user, $rhythm, $since);
+        $digests = match ($rhythm) {
+            'daily' => ['daily_sales'],
+            'weekly' => ['weekly_marketing', 'weekly_executive'],
+            default => ['monthly_executive'],
+        };
         $wanted = array_values(array_filter($digests, fn (string $d) => NotificationPrefs::wantsDigest($user, $d)));
         $count = 0;
 

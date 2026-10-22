@@ -7,6 +7,7 @@ use App\Domain\Mail\EmailDeliveries;
 use App\Domain\Mail\OutboundEmail;
 use App\Domain\Mail\ReportEmail;
 use App\Domain\Reports\LiveReport;
+use App\Domain\Reports\ReportPresets;
 use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
@@ -34,7 +35,9 @@ class ReportShareController extends Controller
         $this->authorize('viewAny', ReportShare::class);
 
         return ApiResponse::success([
-            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
+            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
+            // The reports a workspace starts from, ready-made: who each is for, how far back it looks, what it carries.
+            'presets' => ReportPresets::all(),
             'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key), 'layout' => ReportTemplates::layoutFor($key)])->values(),
             'sections' => ReportTemplates::SECTIONS,
             'money' => ReportTemplates::MONEY,
@@ -48,17 +51,21 @@ class ReportShareController extends Controller
         $this->authorize('create', ReportShare::class);
 
         $data = $this->validated($request);
-        [$layout, $sections] = $this->shape($data, $data['template'], null);
+        // A preset fills in what the form leaves out; anything the form says wins.
+        $preset = isset($data['preset']) ? ReportPresets::find($data['preset']) : null;
+        $template = $data['template'] ?? $preset['template'];
+        abort_if(($preset['needs_partner'] ?? false) && empty($data['partner_id']), 422, 'A partner report needs a partner.');
+        [$layout, $sections] = $this->shape($data, $template, null);
         $this->assertMaySee($request, $sections);
 
         $share = new ReportShare([
             'name' => $data['name'],
-            'template' => $data['template'],
+            'template' => $template,
             'sections' => $sections,
             'layout' => $layout,
-            'compare' => (bool) ($data['compare'] ?? false),
-            'refresh_seconds' => $data['refresh_seconds'] ?? 60,
-            'days' => $data['days'] ?? 30,
+            'compare' => (bool) ($data['compare'] ?? $preset['compare'] ?? false),
+            'refresh_seconds' => $data['refresh_seconds'] ?? $preset['refresh_seconds'] ?? 60,
+            'days' => $data['days'] ?? $preset['days'] ?? 30,
             'project_id' => $this->projectId($data),
             'partner_id' => $this->partnerId($data),
             'expires_at' => $data['expires_at'] ?? null,
@@ -234,7 +241,8 @@ class ReportShareController extends Controller
 
         return $request->validate([
             'name' => [$req, 'string', 'max:120'],
-            'template' => [$req, Rule::in(array_keys(ReportTemplates::TEMPLATES))],
+            'preset' => ['sometimes', Rule::in(array_keys(ReportPresets::PRESETS))],
+            'template' => [$partial ? 'sometimes' : 'required_without:preset', Rule::in(array_keys(ReportTemplates::TEMPLATES))],
             'sections' => ['sometimes', 'array'],
             'sections.*' => ['boolean'],
             'layout' => ['sometimes', 'array', 'max:40'],
@@ -335,6 +343,8 @@ class ReportShareController extends Controller
             'view_count' => $share->view_count,
             'last_viewed_at' => $share->last_viewed_at?->toIso8601String(),
             'created_at' => $share->created_at?->toIso8601String(),
+            // How it sends itself, at a glance; the schedules themselves are managed on their own endpoint.
+            'schedules' => $share->relationLoaded('schedules') ? $share->schedules->map(fn ($s) => ['id' => $s->uuid, 'frequency' => $s->frequency, 'enabled' => $s->enabled, 'next_run_at' => $s->next_run_at?->toIso8601String(), 'recipients' => count((array) $s->recipients)])->values()->all() : [],
         ];
     }
 }

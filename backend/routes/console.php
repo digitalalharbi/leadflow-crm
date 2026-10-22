@@ -138,3 +138,6 @@ Schedule::command('leadflow:prune-payloads')->dailyAt('03:30')->withoutOverlappi
  * running", and only the second is worth the word live.
  */
 Schedule::command('leadflow:heartbeat')->everyMinute();
+
+// Reports that send themselves: each workspace's daily, weekly and monthly deliveries, at their own hour.
+Schedule::command('leadflow:send-report-schedules')->hourly()->withoutOverlapping();

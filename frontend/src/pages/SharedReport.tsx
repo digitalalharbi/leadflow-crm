@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { KeyRound, LockKeyhole, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, Input, Skeleton } from '@/components/ui'
+import { ExecPageSection } from '@/components/reports/ExecPages'
 import {
   AttributionSection, AutomationSection, CampaignsSection, FunnelSection, InsightsSection, InterestedSection, KpiCards, PlatformsSection,
   QualificationSection, RecommendationsSection, ReservationsSection, StatementSection, TeamSection, TrackingHealthSection, TrendSection, useReportCtx, VisitsSection,
@@ -131,6 +132,10 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
       case 'insights': return <InsightsSection ctx={ctx} />
       case 'recommendations': return <RecommendationsSection ctx={ctx} />
       case 'statement': return <StatementSection ctx={ctx} />
+      case 'exec_marketing':
+      case 'exec_sales':
+      case 'exec_automation':
+      case 'exec_tracking': return <ExecPageSection page={section} data={data} />
       default: return null
     }
   }
@@ -151,6 +156,21 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
 
   const when = new Intl.DateTimeFormat(i18n.language.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(data.report.generated_at))
 
+
+  // Two half-width sections share a row; one left on its own takes the whole row instead of leaving a hole beside it.
+  const spans = new Map<number, 'half' | 'full'>()
+  let pending: number | null = null
+  blocks.forEach((block, i) => {
+    if (block.kind === 'section' && HALF.has(block.section)) {
+      if (pending === null) pending = i
+      else { spans.set(pending, 'half'); spans.set(i, 'half'); pending = null }
+    } else if (pending !== null) {
+      spans.set(pending, 'full')
+      pending = null
+    }
+  })
+  if (pending !== null) spans.set(pending, 'full')
+
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-3 px-4 py-6" data-testid="shared-report">
       <header className="flex flex-wrap items-end justify-between gap-2">
@@ -166,13 +186,13 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
 
       {/* Sections in the order the owner chose; the ones that read well together share a row. */}
       <div className="grid items-start gap-3 lg:grid-cols-2">
-        {blocks.map((block) => block.kind === 'kpi' ? (
+        {blocks.map((block, index) => block.kind === 'kpi' ? (
           // Consecutive figures flow as one grid, whatever mix of volume, cost and revenue they are.
           <div key={block.sections[0]} data-section={block.sections.join(' ')} data-testid="shared-kpis" className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3 lg:col-span-2">
             {block.sections.map((section) => <KpiCards key={section} ctx={ctx} section={section as 'kpi_volume'} />)}
           </div>
         ) : (
-          <div key={block.section} data-section={block.section} className={cn('min-w-0', !HALF.has(block.section) && 'lg:col-span-2')}>{render(block.section)}</div>
+          <div key={block.section} data-section={block.section} className={cn('min-w-0', spans.get(index) !== 'half' && 'lg:col-span-2')}>{render(block.section)}</div>
         ))}
       </div>
 

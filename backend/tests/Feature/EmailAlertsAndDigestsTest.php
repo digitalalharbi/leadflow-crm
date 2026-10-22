@@ -235,7 +235,8 @@ class EmailAlertsAndDigestsTest extends TestCase
         Carbon::setTestNow($sunday);
         Artisan::call('leadflow:send-digests', ['--tenant' => $this->t['tenant']->slug]);
         $kinds = $this->deliveries()->map(fn (EmailDelivery $d) => substr($d->kind, 7))->unique()->values()->all();
-        $this->assertEqualsCanonicalizing(['daily_sales', 'weekly_marketing', 'weekly_executive'], $kinds);
+        // Sunday the 1st: the day's, the week's two, and the month's.
+        $this->assertEqualsCanonicalizing(['daily_sales', 'weekly_marketing', 'weekly_executive', 'monthly_executive'], $kinds);
 
         // A Monday morning: the daily one only.
         EmailDelivery::withoutGlobalScopes()->delete();

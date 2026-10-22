@@ -196,6 +196,22 @@ class CampaignQualityTest extends TestCase
         }
     }
 
+    public function test_the_sales_team_report_answers_inside_a_date_range(): void
+    {
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales);
+
+        $this->seedCampaign('meta', 'حملة المدى', total: 4, contacted: 2);
+        $this->asTenant($this->t['tenant'], fn () => Lead::query()->limit(2)->update(['assigned_to' => $rep->id]));
+
+        // The report joins the users table; a bare `created_at` in the date filter is ambiguous there and was a 500.
+        $rows = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/reports/sales-team?date_from='.now()->subDays(30)->toDateString().'&date_to='.now()->addDay()->toDateString())
+            ->assertSuccessful()
+            ->json('data.rows');
+
+        $this->assertSame(2, collect($rows)->firstWhere('name', $rep->name)['leads']);
+    }
+
     public function test_the_sales_team_report_is_not_open_to_reps(): void
     {
         $rep = $this->makeUser($this->t['tenant'], Role::Sales);

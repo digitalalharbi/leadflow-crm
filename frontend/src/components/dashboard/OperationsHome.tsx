@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Bot, Crown, Handshake, Megaphone, Radar, Siren, 
 import { useTranslation } from 'react-i18next'
 import { platformColor } from '@/components/charts'
 import { Gate } from '@/components/access/Gate'
+import { can, useAuth } from '@/stores/auth'
 import { AreaTrend, Delta, Donut, RankBars, RingProgress, StatusPill, type StatusKey } from '@/components/visual'
 import { Card, CardBody, Skeleton } from '@/components/ui'
 import { useCommandCenter } from '@/features/commandCenter'
@@ -25,6 +26,7 @@ const HEALTH_STATUS: Record<string, StatusKey> = { healthy: 'healthy', attention
  */
 export function OperationsHome() {
   const { t, i18n } = useTranslation()
+  const user = useAuth((s) => s.user)
   const { data } = useOperationsHome()
   const command = useCommandCenter()
   const Arrow = i18n.dir() === 'rtl' ? ArrowLeft : ArrowRight
@@ -129,7 +131,7 @@ export function OperationsHome() {
                     <h3 className="t-card-title flex items-center gap-1.5"><Workflow className="size-4" aria-hidden />{t('opsHome.automation')}</h3>
                     <p className="t-caption">{t('opsHome.automationLine', { failed: data.automation_health.failed, human: data.automation_health.needs_human })}</p>
                   </div>
-                  <Link to="/automation" className="text-[var(--brand)]" aria-label={t('opsHome.automation')}><Arrow className="size-4" aria-hidden /></Link>
+                  {can.has(user, 'automation.view') && <Link to="/automation" className="text-[var(--brand)]" aria-label={t('opsHome.automation')}><Arrow className="size-4" aria-hidden /></Link>}
                 </CardBody>
               </Card>
             )}

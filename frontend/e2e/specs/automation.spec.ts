@@ -139,7 +139,14 @@ test.describe('الأتمتة — rules', () => {
   test('a sales rep is not offered the rules screen at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
 
+    // Wait for the dashboard's own automation step to be drawn: before the numbers arrive there is no link
+    // to find, which would make "no link" true of every role.
+    await expect(page.getByTestId('journey-automated')).toBeVisible()
     await expect(page.locator('a[href="/automation"]')).toHaveCount(0)
+
+    // And the route itself sends them back rather than showing the rules.
+    await page.goto('/automation')
+    await expect(page).not.toHaveURL(/\/automation/)
   })
 
   test('counts in the list read as Arabic', async ({ page }) => {

@@ -45,10 +45,10 @@ test.describe('Mobile layout', () => {
 
     // Four places and "More"; the current one is marked.
     await expect(bar.getByRole('link')).toHaveCount(4)
-    await expect(bar.getByTestId('tab-home')).toHaveClass(/bottom-tab-active/)
-    await bar.getByTestId('tab-leads').click()
+    await expect(bar.getByTestId('bottom-tab-home')).toHaveClass(/bottom-tab-active/)
+    await bar.getByTestId('bottom-tab-leads').click()
     await expect(page).toHaveURL(/\/leads/)
-    await expect(bar.getByTestId('tab-leads')).toHaveClass(/bottom-tab-active/)
+    await expect(bar.getByTestId('bottom-tab-leads')).toHaveClass(/bottom-tab-active/)
 
     // Pinned to the bottom edge, and tall enough for a thumb.
     const box = (await bar.boundingBox())!

@@ -8,6 +8,7 @@ import { Card, Skeleton } from '@/components/ui'
 import { ProgressBar } from '@/components/visual'
 import { formatCompact } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { can, useAuth } from '@/stores/auth'
 
 type StepKey = 'arrived' | 'automated' | 'reached' | 'followed' | 'waiting' | 'closed'
 
@@ -26,6 +27,18 @@ const STEPS: Record<StepKey, { Icon: LucideIcon; to: string }> = {
 }
 
 /**
+ * A step opens its screen only for somebody who may open it: a rep sees the automation count, but not a
+ * link to a screen that would send them back to the dashboard.
+ */
+function StepLink({ to, open, children }: { to: string; open: boolean; children: React.ReactNode }) {
+  const base = 'group flex flex-col items-center gap-1.5 rounded-[var(--radius-control)] px-1 py-1 text-center'
+
+  return open
+    ? <Link to={to} className={cn(base, 'hover:bg-[var(--color-surface-muted)]')}>{children}</Link>
+    : <div className={base}>{children}</div>
+}
+
+/**
  * The product's promise, in order, as one row.
  *
  * A lead arrives, the automation starts, the customer is reached, a follow-up
@@ -37,6 +50,7 @@ const STEPS: Record<StepKey, { Icon: LucideIcon; to: string }> = {
  */
 export function JourneyStrip({ days }: { days: number }) {
   const { t, i18n } = useTranslation()
+  const user = useAuth((s) => s.user)
 
   const { data } = useQuery({
     queryKey: ['dashboard', 'journey', days],
@@ -58,7 +72,7 @@ export function JourneyStrip({ days }: { days: number }) {
 
           return (
             <li key={step.key} className="relative" data-testid={`journey-${step.key}`}>
-              <Link to={to} className="group flex flex-col items-center gap-1.5 rounded-[var(--radius-control)] px-1 py-1 text-center hover:bg-[var(--color-surface-muted)]">
+              <StepLink to={to} open={to !== '/automation' || can.has(user, 'automation.view')}>
                 <span
                   className={cn(
                     'grid size-11 place-items-center rounded-full transition-transform group-hover:scale-105',
@@ -73,7 +87,7 @@ export function JourneyStrip({ days }: { days: number }) {
                 </span>
                 <span className="text-[0.875rem] text-[var(--color-ink-muted)]">{t(`journey.${step.key}`)}</span>
                 {share !== null ? <ProgressBar value={share} className="w-full max-w-24" /> : <span className="h-1.5" />}
-              </Link>
+              </StepLink>
               {index < data.steps.length - 1 && (
                 <ChevronLeft
                   className="absolute top-5 hidden size-4 text-[var(--color-ink-subtle)] [inset-inline-end:-0.5rem] lg:block ltr:rotate-180"

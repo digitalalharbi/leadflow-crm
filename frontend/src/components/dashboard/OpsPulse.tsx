@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchOps, type Light, type OpsPulseData } from '@/features/ops'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { can, useAuth } from '@/stores/auth'
 import { Skeleton } from '@/components/ui'
 
 const LIGHT: Record<Light, string> = { ok: 'var(--color-success)', watch: 'var(--color-warning)', bad: 'var(--color-danger)' }
@@ -39,6 +40,7 @@ const HEALTH: { key: 'automation' | 'tracking' | 'campaigns' | 'backlog'; icon: 
  */
 export function OpsPulse() {
   const { t, i18n } = useTranslation()
+  const user = useAuth((s) => s.user)
   const { data } = useQuery({ queryKey: ['ops-pulse'], queryFn: fetchOps, refetchInterval: 60_000, staleTime: 30_000 })
 
   // The space is held while the numbers load: a chart below must not jump under a resting cursor.
@@ -86,13 +88,22 @@ export function OpsPulse() {
           {HEALTH.map(({ key, icon: Icon, to }) => {
             const h = data.health![key]
 
+            // A light for a screen this person may not open is a light, not a link to a redirect.
+            const open = key !== 'automation' || can.has(user, 'automation.view')
+            const light = (
+              <>
+                <span className="grid size-6 place-items-center rounded-full text-white" style={{ background: LIGHT[h.state] }} aria-hidden><Icon className="size-3.5" /></span>
+                <span className="text-[0.9375rem] font-semibold">{t(`ops.health.${key}`)}</span>
+                <span className="t-caption">{h.state === 'ok' ? t('ops.ok') : <span className="font-bold tabular-nums" dir="ltr">{num(h.count)}</span>}</span>
+              </>
+            )
+            const pill = 'inline-flex items-center gap-2 rounded-full bg-[var(--color-surface)] py-1 pe-3 ps-1.5 shadow-[var(--shadow-card)]'
+
             return (
               <li key={key}>
-                <Link to={to} data-testid={`health-${key}`} data-state={h.state} className="pressable inline-flex items-center gap-2 rounded-full bg-[var(--color-surface)] py-1 pe-3 ps-1.5 shadow-[var(--shadow-card)]">
-                  <span className="grid size-6 place-items-center rounded-full text-white" style={{ background: LIGHT[h.state] }} aria-hidden><Icon className="size-3.5" /></span>
-                  <span className="text-[0.9375rem] font-semibold">{t(`ops.health.${key}`)}</span>
-                  <span className="t-caption">{h.state === 'ok' ? t('ops.ok') : <span className="font-bold tabular-nums" dir="ltr">{num(h.count)}</span>}</span>
-                </Link>
+                {open
+                  ? <Link to={to} data-testid={`health-${key}`} data-state={h.state} className={cn('pressable', pill)}>{light}</Link>
+                  : <span data-testid={`health-${key}`} data-state={h.state} className={pill}>{light}</span>}
               </li>
             )
           })}

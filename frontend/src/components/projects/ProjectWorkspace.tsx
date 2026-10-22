@@ -265,9 +265,9 @@ export function ProjectAutomations({ projectId }: { projectId: string }) {
           title={t('projects.workspace.automationsTitle')}
           description={t('projects.workspace.automationsGeneral', { count: general })}
           action={
-            <Link to="/automation" className="t-small text-[var(--brand)] hover:underline">
+            can.has(user, 'automation.view') ? <Link to="/automation" className="t-small text-[var(--brand)] hover:underline">
               {t('projects.workspace.manageRules')}
-            </Link>
+            </Link> : undefined
           }
         />
         <CardBody>

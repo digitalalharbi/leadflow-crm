@@ -97,5 +97,10 @@ return [
         'report.section.insights' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
         'report.section.statement' => ['kind' => 'report_section', 'needs' => ['partners.view', 'revenue.view']],
         'report.section.recommendations' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
+        // The management report's four pages. Marketing carries the cost, sales the revenue: each needs what it is built from.
+        'report.section.exec_marketing' => ['kind' => 'report_section', 'needs' => ['analytics.view', 'spend.view']],
+        'report.section.exec_sales' => ['kind' => 'report_section', 'needs' => ['analytics.view', 'revenue.view']],
+        'report.section.exec_automation' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
+        'report.section.exec_tracking' => ['kind' => 'report_section', 'needs' => ['analytics.view']],
     ],
 ];

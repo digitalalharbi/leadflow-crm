@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\ReportScheduleController;
 use App\Http\Controllers\Api\V1\ReportShareController;
 use App\Http\Controllers\Api\V1\RepPerformanceController;
 use App\Http\Controllers\Api\V1\ReservationController;
@@ -166,6 +167,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
         Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
         Route::patch('/auth/notification-preferences', [NotificationPreferenceController::class, 'update']);
+        Route::get('/auth/notification-preferences/whatsapp-log', [NotificationPreferenceController::class, 'whatsappLog']);
 
         /*
         | Tenant workspace. `tenant.active` blocks suspended / expired accounts.
@@ -394,6 +396,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/report-shares/{uuid}/preview', [ReportShareController::class, 'preview']);
             Route::get('/report-shares/{uuid}/analytics', [ReportShareController::class, 'analytics']);
             Route::post('/report-shares/{uuid}/email', [ReportShareController::class, 'email']);
+            Route::get('/report-shares/{uuid}/schedules', [ReportScheduleController::class, 'index']);
+            Route::post('/report-shares/{uuid}/schedules', [ReportScheduleController::class, 'store']);
+            Route::patch('/report-schedules/{uuid}', [ReportScheduleController::class, 'update']);
+            Route::delete('/report-schedules/{uuid}', [ReportScheduleController::class, 'destroy']);
             Route::get('/email-deliveries', [EmailDeliveryController::class, 'index']);
             Route::post('/email-deliveries/{uuid}/retry', [EmailDeliveryController::class, 'retry']);
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);

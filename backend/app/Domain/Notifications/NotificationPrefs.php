@@ -33,6 +33,7 @@ class NotificationPrefs
                 'daily_sales' => true,
                 'weekly_marketing' => $manages,
                 'weekly_executive' => $user->isAdmin(),
+                'monthly_executive' => $user->isAdmin(),
             ],
         ];
     }

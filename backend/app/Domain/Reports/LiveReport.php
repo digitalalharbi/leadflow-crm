@@ -8,9 +8,13 @@ use App\Domain\Conversions\ConversionHealth;
 use App\Domain\Insights\Recommendations;
 use App\Domain\Leads\InterestSlaStats;
 use App\Domain\Partners\CommissionLedger;
+use App\Domain\Sales\RepPerformance;
 use App\Domain\Tracking\AttributionReport;
+use App\Domain\Tracking\TrackingHealth;
 use App\Enums\QualificationStatus;
 use App\Models\Appointment;
+use App\Models\AutomationActionLog;
+use App\Models\ConversionExport;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Models\ReportShare;
@@ -89,6 +93,10 @@ class LiveReport
                 'team' => $out + ['team' => $this->team($window['from'], $window['to'], $share->project_id)],
                 'automation' => $out + ['automation' => $this->automation($window)],
                 'tracking_health' => $out + ['tracking_health' => $this->trackingHealth()],
+                'exec_marketing' => $out + ['exec_marketing' => $this->execMarketing($share, $window)],
+                'exec_sales' => $out + ['exec_sales' => $this->execSales($share, $window)],
+                'exec_automation' => $out + ['exec_automation' => $this->execAutomation($share, $window)],
+                'exec_tracking' => $out + ['exec_tracking' => $this->execTracking($share, $window)],
                 'statement' => $out + ['statement' => $this->statement($share, $window)],
                 'insights', 'recommendations' => $this->findings($out, $share, $section, $window, $money, $currency, $audience),
                 default => $out,
@@ -394,6 +402,92 @@ class LiveReport
     }
 
     /** What each platform's conversion feed is doing — states and counts, never a credential. @return list<array<string,mixed>> */
+    /**
+     * The management report's marketing page: what the ads cost and what each step of the way cost,
+     * with the period before beside it when the report compares.
+     *
+     * @return array{figures:array<string,int|float|null>,previous:?array<string,int|float|null>}
+     */
+    private function execMarketing(ReportShare $share, array $window): array
+    {
+        $keys = ['spend', 'leads', 'cpl', 'qualified', 'cpql', 'interested', 'visits', 'reservations', 'cac', 'roas'];
+        $pick = fn (CarbonImmutable $from, CarbonImmutable $to) => array_intersect_key($this->revenue($share, $from, $to)['totals'], array_flip($keys));
+
+        return [
+            'figures' => $pick($window['from'], $window['to']),
+            'previous' => $share->compare ? $pick($window['prev_from'], $window['prev_to']) : null,
+        ];
+    }
+
+    /**
+     * The sales page: the whole team as one — what was assigned, how fast it was answered and how it ended.
+     *
+     * @return array{figures:array<string,int|float|null>,previous:?array<string,int|float|null>}
+     */
+    private function execSales(ReportShare $share, array $window): array
+    {
+        $team = new RepPerformance;
+
+        return [
+            'figures' => $team->teamSummary($window['from'], $window['to'], $share->project_id),
+            'previous' => $share->compare ? $team->teamSummary($window['prev_from'], $window['prev_to'], $share->project_id) : null,
+        ];
+    }
+
+    /**
+     * The automation page: how much of the talking it did, how often it worked, and what it handed to a person.
+     *
+     * @return array{figures:array<string,int|float|null>,previous:?array<string,int|float|null>}
+     */
+    private function execAutomation(ReportShare $share, array $window): array
+    {
+        $at = function (CarbonImmutable $from, CarbonImmutable $to): array {
+            $logs = AutomationActionLog::query()->whereBetween('happened_at', [$from, $to]);
+            $completed = (clone $logs)->where('result', AutomationActionLog::COMPLETED)->count();
+            $failed = (clone $logs)->where('result', AutomationActionLog::FAILED)->count();
+
+            return [
+                'coverage' => $this->automation(['from' => $from, 'to' => $to])['handled_pct'],
+                'success' => $completed + $failed > 0 ? round($completed / ($completed + $failed) * 100, 1) : null,
+                'failures' => $failed,
+            ];
+        };
+        $needsHuman = Lead::query()->reorder()->whereNotNull('leads.needs_human_reason')->whereNotIn('leads.status', ['won', 'lost'])->count();
+
+        return [
+            'figures' => $at($window['from'], $window['to']) + ['needs_human' => $needsHuman],
+            // What needs a person is a state, not a flow: there is no "last month's" of it to compare.
+            'previous' => $share->compare ? $at($window['prev_from'], $window['prev_to']) : null,
+        ];
+    }
+
+    /**
+     * The tracking page: how much of what arrived can be traced, how clean the UTMs are, and whether the
+     * sales that were told back to the platforms were accepted.
+     *
+     * @return array{figures:array<string,int|float|null>,previous:?array<string,int|float|null>}
+     */
+    private function execTracking(ReportShare $share, array $window): array
+    {
+        $health = app(TrackingHealth::class)->build(max(1, (int) $window['days']))['summary'];
+        $offline = function (CarbonImmutable $from, CarbonImmutable $to): array {
+            $rows = ConversionExport::query()->whereBetween('created_at', [$from, $to])->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
+            $sent = (int) ($rows[ConversionExport::SENT] ?? 0);
+            $failed = (int) ($rows[ConversionExport::FAILED] ?? 0);
+
+            return ['offline_sent' => $sent, 'offline_failed' => $failed, 'offline_success' => $sent + $failed > 0 ? round($sent / ($sent + $failed) * 100, 1) : null];
+        };
+
+        return [
+            'figures' => [
+                'attribution' => $health['unattributed_percent'] !== null ? round(100 - (float) $health['unattributed_percent'], 1) : null,
+                'utm_health' => $health['missing_utm_percent'] !== null ? round(100 - (float) $health['missing_utm_percent'], 1) : null,
+                'unattributed' => $health['unattributed_percent'],
+            ] + $offline($window['from'], $window['to']),
+            'previous' => $share->compare ? $offline($window['prev_from'], $window['prev_to']) : null,
+        ];
+    }
+
     private function trackingHealth(): array
     {
         return collect(app(ConversionHealth::class)->summary())->map(fn (array $p) => [

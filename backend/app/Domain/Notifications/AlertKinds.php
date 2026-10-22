@@ -16,7 +16,10 @@ class AlertKinds
     /** How a person can hear about a category. */
     public const MODES = ['instant', 'daily', 'weekly', 'off'];
 
-    public const DIGESTS = ['daily_sales', 'weekly_marketing', 'weekly_executive'];
+    public const DIGESTS = ['daily_sales', 'weekly_marketing', 'weekly_executive', 'monthly_executive'];
+
+    /** The six things worth a WhatsApp message to a member of staff — critical ones only. */
+    public const STAFF_WHATSAPP = ['hot_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'high_value', 'automation_failure'];
 
     private const KIND_TO_CATEGORY = [
         'hot_lead' => 'hot_lead',

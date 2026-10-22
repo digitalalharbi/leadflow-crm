@@ -4,8 +4,10 @@ namespace App\Notifications\Concerns;
 
 use App\Domain\Notifications\AlertKinds;
 use App\Domain\Notifications\NotificationPrefs;
+use App\Domain\Notifications\StaffWhatsapp;
 use App\Models\User;
 use App\Notifications\Channels\ProviderMailChannel;
+use App\Notifications\Channels\StaffWhatsappChannel;
 use App\Notifications\Channels\TenantDatabaseChannel;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -33,6 +35,11 @@ trait MailsByPreference
 
         if ($category !== null && $notifiable instanceof User && filled($notifiable->email) && NotificationPrefs::modeFor($notifiable, $category) === 'instant') {
             $channels[] = ProviderMailChannel::class;
+        }
+
+        // WhatsApp, for the few who asked for it and only for the critical six.
+        if ($category !== null && $notifiable instanceof User && StaffWhatsapp::wants($notifiable, $category)) {
+            $channels[] = StaffWhatsappChannel::class;
         }
 
         return $channels;

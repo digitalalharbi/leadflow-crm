@@ -75,6 +75,8 @@ export function Modal({ open, onClose, title, description, children, footer, siz
           // A sheet on a phone, a dialog on a desktop: it rises from the bottom
           // edge where a thumb is, and from the centre where a cursor is.
           'animate-rise rounded-t-[var(--radius-panel)] sm:rounded-[var(--radius-panel)]',
+          // The home indicator's room, so a sheet's last button is never under it.
+          'pb-[env(safe-area-inset-bottom)] sm:pb-0',
           sizes[size],
         )}
       >

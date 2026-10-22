@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn'
 export function LoginPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const login = useAuth((s) => s.login)
   const status = useAuth((s) => s.status)
@@ -35,11 +36,20 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
+  /*
+   * Where the person was going when the session asked them to sign in — an alert's link to a lead, say.
+   * Only a path inside this app counts: anything else (a protocol-relative address, another origin, the
+   * login screen itself) falls back to the home screen, so this can never be turned into a redirect elsewhere.
+   */
+  const wanted = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
+  const landing =
+    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' ? `${wanted.pathname}${wanted.search ?? ''}` : '/'
+
   useBrandingTheme(branding)
 
   useEffect(() => {
-    if (status === 'authenticated') navigate('/', { replace: true })
-  }, [status, navigate])
+    if (status === 'authenticated') navigate(landing, { replace: true })
+  }, [status, navigate, landing])
 
   // Resolve branding from ?tenant= or the subdomain the user arrived on.
   useEffect(() => {
@@ -64,7 +74,7 @@ export function LoginPage() {
 
     try {
       await login({ email, password, tenant: tenant || undefined })
-      navigate('/', { replace: true })
+      navigate(landing, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 422 && caught.errors) {
         const next: Record<string, string> = {}

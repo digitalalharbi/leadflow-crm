@@ -11,9 +11,12 @@ export type Appearance = 'system' | 'light' | 'dark'
 
 interface UiState {
   sidebarOpen: boolean
+  /** A screen that is a task of its own (the lead, the work queue on a phone): no app bar, no tab bar, its own action bar. */
+  focusMode: boolean
   appearance: Appearance
   toasts: Toast[]
   setSidebarOpen: (open: boolean) => void
+  setFocusMode: (on: boolean) => void
   toggleSidebar: () => void
   setAppearance: (appearance: Appearance) => void
   toast: (message: string, variant?: Toast['variant']) => void
@@ -66,10 +69,12 @@ export function applyAppearance(appearance: Appearance): void {
 
 export const useUi = create<UiState>((set) => ({
   sidebarOpen: false,
+  focusMode: false,
   appearance: storedAppearance(),
   toasts: [],
 
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setFocusMode: (focusMode) => set({ focusMode }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
   setAppearance: (appearance) => {

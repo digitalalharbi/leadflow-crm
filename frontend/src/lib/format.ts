@@ -54,6 +54,13 @@ export function formatLastSeen(iso: string | null | undefined, lang = 'ar'): str
   return formatRelative(iso, lang)
 }
 
+/** How long ago, as a bare duration — "3 دقائق", "2 days" — for a sentence that supplies its own "since". */
+export function formatElapsed(iso: string | null | undefined, lang = 'ar'): string {
+  if (!iso) return '—'
+
+  return formatDistanceToNowStrict(parseISO(iso), { locale: resolveLocale(lang) })
+}
+
 /** Just the clock, for pairing with a relative label that carries the day. */
 export function formatClock(iso: string | null | undefined): string {
   return iso ? format(parseISO(iso), 'HH:mm') : '—'

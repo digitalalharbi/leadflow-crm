@@ -44,8 +44,10 @@ export function BottomNav() {
   const sidebarOpen = useUi((s) => s.sidebarOpen)
   const setSidebarOpen = useUi((s) => s.setSidebarOpen)
   const keyboard = useKeyboardOpen()
+  const focusMode = useUi((s) => s.focusMode)
 
-  if (keyboard) return null
+  // A focused screen (the lead on a phone) has its own action bar where this one would be.
+  if (keyboard || focusMode) return null
 
   return (
     <nav

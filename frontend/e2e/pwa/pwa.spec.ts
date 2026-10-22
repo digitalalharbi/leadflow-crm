@@ -198,6 +198,8 @@ test.describe('Installable app', () => {
   test('a new version arrives while the app is open: a notice offers it, one press and the page reloads into it', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'one engine is enough to prove the update flow; the worker protocol is the same')
 
+    // An earlier project's run of this test leaves version 2 on disk; start from version 1 whatever ran before.
+    rebuild('v1')
     await openLogin(page)
     expect(await page.evaluate(() => (window as unknown as { __MAHTAM_BUILD__?: string }).__MAHTAM_BUILD__)).toBe('v1')
     const before = await (await page.request.get('/sw.js')).text()

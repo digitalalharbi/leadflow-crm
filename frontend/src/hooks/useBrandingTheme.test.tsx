@@ -45,10 +45,13 @@ describe('useBrandingTheme', () => {
       .toBe('#aa3366')
   })
 
-  it("prefers the tenant's own favicon over the platform's", () => {
+  it("prefers the tenant's own favicon over the platform's — and leaves none of the platform's icons beside it", () => {
+    document.head.innerHTML = '<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0C2A25">'
+
     renderHook(() => useBrandingTheme(branding({ favicon_url: 'https://cdn.test/acme.png' })))
 
     expect(icon()).toBe('https://cdn.test/acme.png')
+    expect(document.querySelectorAll("link[rel='icon']")).toHaveLength(1)
   })
 
   /*

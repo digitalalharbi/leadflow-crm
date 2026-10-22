@@ -43,16 +43,34 @@ function hasOwnColours(branding: Branding): boolean {
 /** The blob the last tenant's manifest lives in, so it can be released. */
 let manifestUrl: string | null = null
 
-function setIcon(selector: string, href: string) {
-  let link = document.querySelector<HTMLLinkElement>(selector)
+/** The platform's own icon links as the page shipped them (the kit's: .ico, .svg and the PNG sizes), read once before any workspace changes them. */
+let platformIcons: Array<{ href: string; type: string | null; sizes: string | null }> | null = null
 
-  if (!link) {
-    link = document.createElement('link')
+/**
+ * The tab's icon: the workspace's own when it has one, otherwise the platform's whole set.
+ *
+ * The page carries several `rel="icon"` links (a browser picks whichever suits it), so swapping only the
+ * first would leave the platform's SVG and PNGs in place beside a customer's icon — and some browsers would
+ * show ours. All of them are replaced, and the full set is put back for a workspace with none of its own.
+ */
+function setIcons(own: string | null) {
+  const links = Array.from(document.querySelectorAll<HTMLLinkElement>("link[rel='icon']"))
+
+  platformIcons ??= links.length > 0
+    ? links.map((link) => ({ href: link.getAttribute('href') ?? PLATFORM_FAVICON, type: link.getAttribute('type'), sizes: link.getAttribute('sizes') }))
+    : [{ href: PLATFORM_FAVICON, type: 'image/svg+xml', sizes: null }]
+
+  for (const link of links) link.remove()
+
+  for (const icon of own ? [{ href: own, type: null, sizes: null }] : platformIcons) {
+    const link = document.createElement('link')
+
     link.rel = 'icon'
+    link.setAttribute('href', icon.href)
+    if (icon.type) link.setAttribute('type', icon.type)
+    if (icon.sizes) link.setAttribute('sizes', icon.sizes)
     document.head.appendChild(link)
   }
-
-  link.href = href
 }
 
 export function useBrandingTheme(branding: Branding | null) {
@@ -124,7 +142,7 @@ export function useBrandingTheme(branding: Branding | null) {
      * would otherwise leave the previous customer's icon and title in the tab,
      * which is the one white-label leak a user can see without looking.
      */
-    setIcon("link[rel='icon']", branding.favicon_url || PLATFORM_FAVICON)
+    setIcons(branding.favicon_url || null)
     setManifest(branding)
   }, [branding, appearance])
 }

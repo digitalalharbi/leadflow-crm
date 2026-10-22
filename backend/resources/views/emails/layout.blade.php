@@ -11,7 +11,7 @@
         <td align="center">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
                 <tr>
-                    <td style="background:{{ $accent ?? '#0f766e' }};padding:14px 20px;color:#ffffff;font-size:15px;font-weight:700;">
+                    <td style="background:{{ $accent ?? '#1D5E52' }};padding:14px 20px;color:#ffffff;font-size:15px;font-weight:700;">
                         مهتم @if(!empty($workspace)) · {{ $workspace }} @endif
                     </td>
                 </tr>

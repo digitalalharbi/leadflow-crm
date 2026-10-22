@@ -11,6 +11,7 @@ use App\Enums\Role;
 use App\Models\Anomaly;
 use App\Models\AutomationRule;
 use App\Models\Campaign;
+use App\Models\EmailDelivery;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
 use App\Models\User;
@@ -224,7 +225,7 @@ class DigestsCoverTheBriefTest extends TestCase
         config(['leadflow_mail.provider' => 'log']);
         $this->artisan('leadflow:send-digests', ['--tenant' => $this->t['tenant']->slug, '--now' => true, '--kind' => 'daily'])->assertSuccessful();
 
-        $delivery = \App\Models\EmailDelivery::withoutGlobalScopes()->where('tenant_id', $this->t['tenant']->id)->where('kind', 'like', 'digest.daily%')->first();
+        $delivery = EmailDelivery::withoutGlobalScopes()->where('tenant_id', $this->t['tenant']->id)->where('kind', 'like', 'digest.daily%')->first();
 
         $this->assertNotNull($delivery, 'the command sent nothing');
         $this->assertStringContainsString('/leads?view=interested', (string) ($delivery->html ?? $delivery->body ?? ''));

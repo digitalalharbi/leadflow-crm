@@ -3,6 +3,7 @@
 namespace App\Domain\Notifications;
 
 use App\Domain\Automation\Thresholds;
+use App\Domain\Leads\NextBestAction;
 use App\Enums\Platform;
 use App\Models\Lead;
 use App\Models\Project;
@@ -79,7 +80,7 @@ class ImportantAlerts
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'interested_lead', 'عميل مهتم', "{$lead->full_name} أبدى اهتمامًا".self::about($lead).' — تواصل معه قبل غيرك.', $lead->uuid, null, 'warning',
+            'interested_lead', 'عميل مهتم', "{$lead->full_name} أبدى اهتمامًا".self::about($lead).' — تواصل معه قبل غيرك.'.self::suggestion($lead), $lead->uuid, null, 'warning',
         ));
     }
 
@@ -99,6 +100,19 @@ class ImportantAlerts
             ));
         } catch (\Throwable $e) {
             Log::warning('important_alert_failed', ['lead' => $lead->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** What the system would do next with this lead, and why — a sentence, so the alert is also an instruction. */
+    private static function suggestion(Lead $lead): string
+    {
+        try {
+            $next = app(NextBestAction::class)->for($lead);
+            $reason = trim((string) ($next['reason'] ?? ''));
+
+            return $reason === '' ? '' : " الخطوة المقترحة: {$reason}";
+        } catch (\Throwable) {
+            return '';
         }
     }
 

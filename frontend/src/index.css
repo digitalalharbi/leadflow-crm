@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/mohtam-colors.css';
 
 /*
 |------------------------------------------------------------------------------
@@ -23,176 +24,169 @@
 /*
  * The typography system.
  *
- * One stack for body and headings: Inter for Latin letters and every digit,
- * Noto Sans Arabic for Arabic, IBM Plex Sans Arabic only as a local fallback. The browser falls through per glyph, so a
- * line that mixes a customer's name, a Latin campaign id and an Arabic sentence
- * is set in two typefaces that were chosen to share an x-height and a rhythm.
- * Nothing else is loaded; the system stack at the end is a fallback for the
- * instant before the files arrive, never a design choice.
- *
- * Mono is for values a person copies or reads character by character — ids,
- * keys, webhook URLs, log lines, commands. Never for decoration.
+ * One family for body and headings: IBM Plex Sans Arabic, the identity's typeface. Mono is a
+ * system stack, for values a person copies or reads character by character — ids, keys, webhook
+ * URLs, log lines, commands. Never for decoration.
+ */
+/*
+ * The identity's own colours, verbatim from the brand kit (brand/Mohtam-Brand-Kit/05-الألوان-Colors).
+ * Everything below maps the product's semantic tokens onto these; nothing else in the product
+ * writes a brand colour, so a change to the identity is a change to this one file.
  */
 :root {
-  --font-body: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
-  --font-heading: 'Inter Variable', 'IBM Plex Sans Arabic', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-heading: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  /* Values a person copies character by character. A system face, not a loaded one: the identity has one family. */
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 }
 
 @theme {
   /*
-   * Arabic first. IBM Plex Sans Arabic carries both scripts with the same
-   * rhythm, which matters when a screen mixes a customer's name with a Latin
-   * campaign id. The system stack behind it keeps first paint readable.
+   * IBM Plex Sans Arabic is the identity's only typeface. It carries Arabic and Latin with one
+   * rhythm and holds every digit 0–9, so a screen that mixes a customer's name, a campaign id and
+   * an Arabic sentence is set in one family. The system stack behind it is the instant before the
+   * files arrive, never a design choice.
    */
   --font-sans: var(--font-body);
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
   /*
-   * Neutrals, warmed very slightly off pure grey. A pure-grey interface reads
-   * as cold and a little cheap next to the warm whites screens actually show.
+   * Neutrals, built from the identity's own limestone, stone, line, slate and ink — never from a
+   * grey. The steps between are mixes of those, so the scale stays warm end to end.
    */
-  /*
-   * Mahtam neutrals. Cooled a half-step toward the ink colour rather than
-   * toward grey, so a page of white cards sits inside the identity instead of
-   * beside it.
-   */
-  /*
-   * The reference's greys — pure, not cooled. Sampled from the supplied design:
-   * a near-white workspace under white cards, a slightly darker outer canvas, a
-   * hairline that is barely a line, and ink that is black rather than navy.
-   */
-  --color-neutral-0: #ffffff;
-  --color-neutral-25: #fafafa;
-  --color-neutral-50: #f6f6f6;
-  --color-neutral-100: #f0f0f0;
-  --color-neutral-200: #e8e8e8;
-  --color-neutral-300: #d9d9d9;
-  --color-neutral-400: #a6a6a6;
-  --color-neutral-500: #777777;
-  --color-neutral-600: #5a5a5a;
-  --color-neutral-700: #3a3a3a;
-  --color-neutral-800: #222222;
-  --color-neutral-900: #111111;
-  --color-neutral-950: #0a0a0a;
+  --color-neutral-0: var(--mh-white);
+  --color-neutral-25: color-mix(in srgb, var(--mh-limestone) 45%, var(--mh-white));
+  --color-neutral-50: var(--mh-limestone);
+  --color-neutral-100: color-mix(in srgb, var(--mh-limestone) 55%, var(--mh-stone));
+  --color-neutral-200: var(--mh-stone);
+  --color-neutral-300: var(--mh-line);
+  --color-neutral-400: color-mix(in srgb, var(--mh-slate) 40%, var(--mh-line));
+  --color-neutral-500: color-mix(in srgb, var(--mh-slate) 88%, var(--mh-line));
+  --color-neutral-600: var(--mh-slate);
+  --color-neutral-700: color-mix(in srgb, var(--mh-ink) 55%, var(--mh-slate));
+  --color-neutral-800: color-mix(in srgb, var(--mh-ink) 85%, var(--mh-slate));
+  --color-neutral-900: var(--mh-ink);
+  --color-neutral-950: var(--mh-pine-900);
 
   /*
-   * Semantic surfaces, swapped wholesale in dark mode.
-   *
-   * The canvas is a shade, not white, and the cards are white. That one
-   * relationship is what makes a dashboard read as a set of objects on a
-   * surface rather than as a page with lines drawn on it — and it is why the
-   * cards below need almost no border to be legible.
+   * Semantic surfaces. Limestone is the page, white is the card, stone is a section, and the line
+   * between them is the kit's own border colour — the relationship that makes a screen read as
+   * objects on a surface rather than a page with lines drawn on it.
    */
-  /* The outer canvas the app frame floats on, and the workspace inside it. */
-  --color-outer: #dcdce0;
-  --color-canvas: #eeeeee;
-  --color-surface: var(--color-neutral-0);
-  --color-surface-raised: var(--color-neutral-0);
-  --color-surface-muted: #f6f6f6;
-  --color-surface-sunken: var(--color-neutral-100);
-  --color-border: #f0f0f0;
-  --color-border-strong: #e2e2e2;
+  --color-outer: var(--mh-stone);
+  --color-canvas: var(--mh-limestone);
+  --color-surface: var(--mh-white);
+  --color-surface-raised: var(--mh-white);
+  --color-surface-muted: var(--mh-limestone);
+  --color-surface-sunken: var(--mh-stone);
+  --color-border: var(--mh-line);
+  --color-border-strong: color-mix(in srgb, var(--mh-line) 65%, var(--mh-slate));
   /* The fill of the round buttons in the header and the nav track. */
-  --color-chrome-fill: #f2f2f2;
-  /* A line that reads as a hairline at any density, unlike a solid grey. */
-  --color-line: color-mix(in srgb, var(--color-neutral-900) 6%, transparent);
+  --color-chrome-fill: var(--mh-limestone);
+  --color-line: var(--mh-line);
 
-  --color-ink: var(--color-neutral-900);
-  --color-ink-muted: var(--color-neutral-600);
-  --color-ink-subtle: var(--color-neutral-500);
-  --color-ink-inverted: var(--color-neutral-0);
-
-  /*
-   * Pipeline stages. Deliberately desaturated from the Tailwind defaults: six
-   * fully saturated hues on one board is a fruit salad, and the eye stops
-   * being able to tell which one means trouble.
-   */
-  --color-status-new: #4f7cff;
-  --color-status-contacted: #8b73f5;
-  /* Replied sits between contacted and qualified, so it reads as a step along
-     the same path rather than a new kind of thing. */
-  --color-status-replied: #6d8df7;
-  --color-status-negotiation: #d4a017;
-  /* The two exits are grey on purpose: they are not progress, and colouring
-     them like a stage would put them in the same visual family as one. */
-  --color-status-invalid: #7c8698;
-  --color-status-no_response: #98a2b3;
-  --color-status-qualified: #12a594;
-  --color-status-appointment: #e0922f;
-  --color-status-won: #16a34a;
-  --color-status-lost: #e85d75;
-
-  --color-temp-hot: #e85d75;
-  --color-temp-warm: #e0922f;
-  --color-temp-cold: #3aa8e0;
-
-  /* Semantic feedback, distinct from the pipeline stages they often share a
-     hue with — "won" is a stage, "success" is an outcome of an action. */
-  --color-success: #16a34a;
-  --color-warning: #e0922f;
-  --color-danger: #e85d75;
-  --color-info: #4f7cff;
+  --color-ink: var(--mh-ink);
+  --color-ink-muted: var(--mh-slate);
+  /* Slate, a step lighter: still 4.5:1 on the limestone page and on a white card, which is the floor for text. */
+  --color-ink-subtle: color-mix(in srgb, var(--mh-slate) 94%, var(--mh-white));
+  --color-ink-inverted: var(--mh-white);
+  --color-ink-strong: var(--mh-pine-900);
 
   /*
-   * Mahtam teal. Chosen against the field it competes in: this market's CRMs
-   * are overwhelmingly blue, and a teal reads as adjacent-but-not-the-same at
-   * a glance — confident rather than corporate, and it survives being printed
-   * on a sales deck.
+   * Pipeline stages, in the identity's own colours: the journey وصل ← تواصل ← تأهّل ← موعد ← صفقة
+   * runs info blue → soft green → emerald → warning → copper (the deal), with the two exits grey
+   * on purpose: they are not progress, and colouring them like a stage would say they were.
    */
-  --color-brand-50: #e6f2ec;
-  --color-brand-100: #cde6da;
-  --color-brand-500: #078759;
-  --color-brand-600: #067049;
-  --color-brand-700: #055a3b;
+  --color-status-new: var(--mh-info);
+  --color-status-contacted: var(--mh-green-500);
+  --color-status-replied: var(--mh-green-300);
+  --color-status-negotiation: var(--mh-brass-500);
+  --color-status-invalid: var(--mh-slate);
+  --color-status-no_response: color-mix(in srgb, var(--mh-slate) 60%, var(--mh-line));
+  --color-status-qualified: var(--mh-green-700);
+  --color-status-appointment: var(--mh-warning);
+  --color-status-won: var(--mh-success);
+  --color-status-lost: var(--mh-danger);
 
-  /* Mahtam ink — the identity's dark, used for headings and the brand field. */
-  --color-ink-strong: #0b1220;
+  --color-temp-hot: var(--mh-danger);
+  --color-temp-warm: var(--mh-warning);
+  --color-temp-cold: var(--mh-info);
 
-  /*
-   * The data palette. Deliberately not derived from the brand: a chart whose
-   * every series is a tint of one hue is unreadable, and under white label the
-   * brand colour belongs to the customer. Only the primary series takes it.
-   */
-  /*
-   * Five series, computed rather than chosen — see charts/palette.ts for the
-   * reasoning and scripts/validate-chart-palette.mjs for the proof. The hues
-   * are Okabe-Ito's, which are the standard for colour-vision safety; only
-   * their lightness is re-stepped, because Okabe-Ito was built for bright
-   * marks on white and fails WCAG 3:1 against this surface.
-   *
-   * There is no sixth. A sixth series folds into --chart-other, which is
-   * neutral on purpose: an invented hue is one nobody can tell from the five.
-   */
-  --chart-1: #007b59;
-  --chart-2: #025e94;
-  --chart-3: #bf8408;
-  --chart-4: #ce64a2;
-  --chart-5: #a64906;
-  --chart-other: #6b7280;
+  /* A warning or backlog chip: the kit's pale copper with its dark copper ink. */
+  --status-warn-bg: var(--mh-brass-100);
+  --status-warn-ink: var(--mh-brass-700);
+
+  /* Semantic feedback, distinct from the pipeline stages they often share a hue with. */
+  --color-success: var(--mh-success);
+  --color-warning: var(--mh-warning);
+  --color-danger: var(--mh-danger);
+  --color-info: var(--mh-info);
 
   /*
-   * The tenant's colour, written at runtime by useBrandingTheme. Defaults are
-   * here so the login screen has an identity before branding resolves.
+   * Emerald, the brand. A tenant's own colour still replaces `--brand` at runtime; the tints are
+   * derived from it, never from a literal, so a white-label workspace gets a coherent set rather
+   * than green leftovers.
    */
+  --color-brand-50: var(--mh-green-50);
+  --color-brand-100: var(--mh-green-100);
+  --color-brand-500: var(--mh-green-500);
+  --color-brand-600: var(--mh-green-700);
+  --color-brand-700: var(--mh-pine-800);
+
   /*
-   * Mahtam green, sampled from the reference: the deep emerald of the active
-   * states and the hero card. A tenant's own colour still replaces `--brand`
-   * at runtime; the tints below are derived from it, never from a literal, so a
-   * white-label workspace gets a coherent set rather than green leftovers.
+   * The data palette, in the kit's order and never reordered: emerald, copper, info blue, soft
+   * green, light copper. Components read these variables and never carry a colour of their own.
+   * `charts/palette.ts` mirrors them for the unit tests; `scripts/check-chart-palette.mjs` fails the
+   * build if the two ever disagree. Everything past the fifth folds into --chart-other.
    */
-  --brand: #078759;
-  --brand-hover: #067049;
-  --brand-secondary: #139b70;
-  --brand-soft: #e6f2ec;
-  --brand-softer: #f2f8f5;
-  --brand-ring: color-mix(in srgb, #078759 28%, transparent);
-  --brand-contrast: #ffffff;
-  /* The pale fill of chart bars, and the deep one of the highlighted bar. */
-  --brand-tint: color-mix(in srgb, var(--brand) 42%, white);
-  /* The small bright pill ("+12.8%"): the brand, lightened — never the tenant's secondary colour, which is often an ink. */
-  --brand-bright: color-mix(in srgb, var(--brand) 82%, white);
-  --brand-deep: color-mix(in srgb, var(--brand) 82%, black);
+  --chart-1: var(--mh-green-700);
+  --chart-2: var(--mh-brass-500);
+  --chart-3: var(--mh-info);
+  --chart-4: var(--mh-green-300);
+  --chart-5: var(--mh-brass-200);
+  --chart-other: color-mix(in srgb, var(--mh-slate) 55%, var(--mh-line));
+  /* A trend or a run of bars: old, middle, latest — pale to deep, in the brand's own greens. */
+  --chart-seq-old: var(--mh-green-100);
+  --chart-seq-mid: var(--mh-green-300);
+  --chart-seq-latest: var(--mh-green-700);
+
+  /*
+   * Copper: the accent, at most five per cent of a screen. The logo's dot, a revenue or deal
+   * figure, a percentage change, the deal stage. Small text on a light surface wears the dark
+   * copper (4.5:1); the bright one is for a fill, a rule or a number set large.
+   */
+  --accent: var(--mh-brass-500);
+  --accent-text: var(--mh-brass-700);
+  --accent-soft: var(--mh-brass-100);
+  --accent-on-dark: var(--mh-brass-400);
+
+  /*
+   * Pine: the identity's dark surfaces — the sidebar, the attention card, the login panel. Under
+   * a tenant's own colours (see useBrandingTheme) these follow that tenant's secondary colour
+   * instead, so a white-label workspace carries none of ours.
+   */
+  --chrome-1: var(--mh-pine-900);
+  --chrome-2: var(--mh-pine-800);
+  --chrome-ink: var(--mh-limestone);
+  --chrome-muted: var(--mh-green-300);
+  --chrome-line: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
+  --chrome-active: var(--mh-green-700);
+  --chrome-active-ink: var(--mh-white);
+
+  /* The tenant's colour, written at runtime by useBrandingTheme. These are the platform's own. */
+  --brand: var(--mh-primary);
+  --brand-hover: var(--mh-primary-hover);
+  --brand-secondary: var(--mh-pine-800);
+  --brand-soft: var(--mh-green-100);
+  --brand-softer: var(--mh-green-50);
+  --brand-ring: color-mix(in srgb, var(--mh-green-700) 28%, transparent);
+  --brand-contrast: var(--mh-white);
+  /* The pale fill of chart bars, the small bright pill, and the deep highlight. */
+  --brand-tint: var(--mh-green-300);
+  --brand-bright: var(--mh-green-500);
+  --brand-deep: var(--mh-pine-800);
+  /* Brand colour as TEXT or a thin line: the brand itself on light, lifted where the surface is pine. */
+  --brand-text: var(--brand);
 
   /*
    * Elevation as light falling on a surface, not a drop shadow: a tight
@@ -218,8 +212,8 @@
    * somebody wants to look at from an admin panel they have to.
    */
   --radius-control: 0.875rem;
-  --radius-card: 1.5rem;
-  --radius-panel: 1.75rem;
+  --radius-card: 1.25rem;
+  --radius-panel: 1.5rem;
   /* The app frame that floats on the outer canvas. */
   --radius-frame: 2rem;
   /* For nav items, filter chips and anything that should read as a token. */
@@ -249,80 +243,95 @@
 }
 
 /*
- * Dark mode is a different set of surfaces, not an inversion. Cards lift by
- * getting *lighter* than the page, borders become light at low opacity, and
- * the brand colour is softened so it does not glow.
- */
-/*
- * Dark mode is built from the ink colour rather than from black. Pure black
- * makes every shadow invisible and every white text edge buzz; a blue-black
- * keeps the identity and lets surfaces separate by lightness.
+ * Dark is the identity's own dark: pine for the page, a half-step lighter pine for cards, limestone
+ * for text, soft green for secondary text and the lifted emerald for the primary. Cards lift by
+ * getting lighter than the page; borders become limestone at low opacity; nothing is pure black.
+ * `data-theme="dark"` (set beside the class) also switches the kit's own `--mh-*` semantic tokens.
  */
 .dark {
-  --color-canvas: #0b1220;
-  --color-surface: #141a26;
-  --color-surface-raised: #1b2230;
-  --color-surface-muted: #0f1724;
-  --color-surface-sunken: #202939;
-  --color-border: #2a3344;
-  --color-border-strong: #3a4557;
-  --color-line: color-mix(in srgb, #ffffff 10%, transparent);
+  --color-outer: color-mix(in srgb, var(--mh-pine-900) 78%, black);
+  --color-canvas: var(--mh-pine-900);
+  --color-surface: var(--mh-pine-800);
+  --color-surface-raised: color-mix(in srgb, var(--mh-pine-800) 88%, var(--mh-limestone));
+  --color-surface-muted: color-mix(in srgb, var(--mh-pine-900) 70%, var(--mh-pine-800));
+  --color-surface-sunken: color-mix(in srgb, var(--mh-pine-900) 80%, black);
+  --color-border: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
+  --color-border-strong: color-mix(in srgb, var(--mh-limestone) 22%, transparent);
+  --color-chrome-fill: color-mix(in srgb, var(--mh-pine-800) 80%, var(--mh-limestone));
+  --color-line: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
 
-  --color-ink: #eceff4;
-  --color-ink-muted: #b4bccb;
-  --color-ink-subtle: #98a2b3;
-  --color-ink-inverted: #0b1220;
+  --color-ink: var(--mh-limestone);
+  --color-ink-muted: var(--mh-green-300);
+  --color-ink-subtle: color-mix(in srgb, var(--mh-green-300) 90%, var(--mh-pine-800));
+  --color-ink-inverted: var(--mh-pine-900);
+  --color-ink-strong: var(--mh-limestone);
 
   /*
-   * Hues lifted and slightly desaturated. A colour that reads as confident on
-   * white glows on a dark field, and a glowing status badge is the fastest way
-   * to make a dark theme look like a toy.
+   * Status hues lifted toward limestone, from the same identity colours: a colour that reads as
+   * confident on white glows on a dark field, and a glowing badge makes a dark theme look like a toy.
    */
-  --color-status-new: #7d9dff;
-  --color-status-contacted: #a996ff;
-  --color-status-replied: #8fa8ff;
-  --color-status-negotiation: #e3b445;
-  --color-status-invalid: #8a93a5;
-  --color-status-no_response: #9aa5b8;
-  --color-status-qualified: #2bc4b0;
-  --color-status-appointment: #edab51;
-  --color-status-won: #44c77a;
-  --color-status-lost: #ff8398;
+  --color-status-new: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
+  --color-status-contacted: color-mix(in srgb, var(--mh-green-500) 70%, var(--mh-limestone));
+  --color-status-replied: var(--mh-green-300);
+  --color-status-negotiation: var(--mh-brass-400);
+  --color-status-invalid: color-mix(in srgb, var(--mh-slate) 60%, var(--mh-limestone));
+  --color-status-no_response: color-mix(in srgb, var(--mh-slate) 50%, var(--mh-limestone));
+  --color-status-qualified: color-mix(in srgb, var(--mh-green-700) 55%, var(--mh-green-300));
+  --color-status-appointment: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
+  --color-status-won: color-mix(in srgb, var(--mh-success) 65%, var(--mh-limestone));
+  --color-status-lost: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
 
-  --color-temp-hot: #ff8398;
-  --color-temp-warm: #edab51;
-  --color-temp-cold: #5fbcea;
+  --color-temp-hot: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
+  --color-temp-warm: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
+  --color-temp-cold: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
 
-  --color-success: #44c77a;
-  --color-warning: #edab51;
-  --color-danger: #ff8398;
-  --color-info: #7d9dff;
+  --status-warn-bg: color-mix(in srgb, var(--mh-brass-400) 16%, var(--mh-pine-800));
+  --status-warn-ink: var(--mh-brass-400);
 
-  --color-brand-50: #0d2b28;
-  --color-brand-100: #11433c;
+  --color-success: color-mix(in srgb, var(--mh-success) 65%, var(--mh-limestone));
+  --color-warning: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
+  --color-danger: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
+  --color-info: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
 
-  /* Series lifted the same way, so a chart keeps its separation on dark. */
-  /*
-   * Dark is stepped separately against the dark surface, not lightened from
-   * the light set: the warm hues converge as they brighten, and an automatic
-   * flip put amber and vermillion at ΔE 9.4 — two series a reader cannot tell
-   * apart with full colour vision.
-   */
-  --chart-1: #048560;
-  --chart-2: #0178bb;
-  --chart-3: #bc8207;
-  --chart-4: #b8528f;
-  --chart-5: #a63c0c;
-  --chart-other: #8a93a5;
+  --color-brand-50: color-mix(in srgb, var(--mh-green-500) 14%, var(--mh-pine-900));
+  --color-brand-100: color-mix(in srgb, var(--mh-green-500) 24%, var(--mh-pine-900));
+
+  /* The series on pine: stepped against the dark card (see palette.test.ts), never flipped from light. */
+  --chart-1: var(--mh-green-300);
+  --chart-2: var(--mh-brass-400);
+  --chart-3: color-mix(in srgb, var(--mh-info) 75%, var(--mh-limestone));
+  --chart-4: var(--mh-green-500);
+  --chart-5: var(--mh-brass-200);
+  --chart-other: color-mix(in srgb, var(--mh-slate) 55%, var(--mh-limestone));
+  --chart-seq-old: color-mix(in srgb, var(--mh-green-500) 30%, var(--mh-pine-800));
+  --chart-seq-mid: var(--mh-green-500);
+  --chart-seq-latest: var(--mh-green-300);
+
+  --accent: var(--mh-brass-400);
+  --accent-text: var(--mh-brass-400);
+  --accent-soft: color-mix(in srgb, var(--mh-brass-400) 16%, var(--mh-pine-800));
+
+  --chrome-1: color-mix(in srgb, var(--mh-pine-900) 82%, black);
+  --chrome-2: var(--mh-pine-800);
+
+  --brand: var(--mh-green-500);
+  --brand-hover: color-mix(in srgb, var(--mh-green-500) 78%, var(--mh-limestone));
+  --brand-soft: color-mix(in srgb, var(--mh-green-500) 24%, var(--mh-pine-800));
+  --brand-softer: color-mix(in srgb, var(--mh-green-500) 12%, var(--mh-pine-800));
+  --brand-ring: color-mix(in srgb, var(--mh-green-300) 40%, transparent);
+  --brand-tint: var(--mh-green-500);
+  --brand-bright: var(--mh-green-300);
+  --brand-deep: var(--mh-green-300);
+  --brand-text: color-mix(in srgb, var(--brand) 38%, var(--mh-limestone));
 
   --shadow-card:
-    0 0 0 0.5px color-mix(in srgb, #ffffff 7%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--mh-limestone) 8%, transparent),
     0 1px 2px -1px rgb(0 0 0 / 0.4);
   --shadow-raised:
-    0 0 0 0.5px color-mix(in srgb, #ffffff 8%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--mh-limestone) 9%, transparent),
     0 4px 12px -4px rgb(0 0 0 / 0.5);
   --shadow-pop:
-    0 0 0 0.5px color-mix(in srgb, #ffffff 9%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--mh-limestone) 10%, transparent),
     0 16px 40px -12px rgb(0 0 0 / 0.65);
 }
 
@@ -441,6 +450,10 @@
     border-radius: var(--radius-control);
   }
 
+  .dark :focus-visible {
+    outline-color: var(--brand-text);
+  }
+
   /* Pointer users get the ring only where it carries information. */
   :focus:not(:focus-visible) {
     outline: none;
@@ -551,9 +564,18 @@
   }
 
   .nav-pill-active {
-    background: var(--color-surface);
-    color: var(--color-ink);
+    background: var(--brand);
+    color: var(--brand-contrast);
     font-weight: 500;
+  }
+
+  .nav-pill-active:hover {
+    color: var(--brand-contrast);
+  }
+
+  /* The rail's capsules are pine, the identity's dark surface; its icons are the kit's soft green. */
+  .rail-group {
+    background: var(--chrome-1);
     box-shadow: var(--shadow-card);
   }
 
@@ -564,21 +586,21 @@
     height: 2.25rem;
     place-items: center;
     border-radius: 999px;
-    color: var(--color-ink-muted);
+    color: var(--chrome-muted);
     transition:
       background var(--duration-fast) var(--ease-out-soft),
       color var(--duration-fast) var(--ease-out-soft);
   }
 
   .rail-item:hover {
-    background: var(--color-chrome-fill);
-    color: var(--color-ink);
+    background: var(--chrome-2);
+    color: var(--chrome-ink);
   }
 
   .rail-item-active,
   .rail-item-active:hover {
-    background: var(--brand);
-    color: var(--brand-contrast);
+    background: var(--chrome-active);
+    color: var(--chrome-active-ink);
   }
 
   /*
@@ -663,18 +685,18 @@
      * sidebar is lighter than the page — it is the opposite relationship, so
      * the console never resolves to the same picture as a workspace.
      */
-    --color-surface: #060b14;
-    --color-surface-raised: #121a28;
-    --color-surface-muted: #0b1220;
-    --color-surface-sunken: #161f2e;
-    --color-chrome-fill: #161f2e;
-    --color-border: color-mix(in srgb, #ffffff 14%, transparent);
-    --color-line: color-mix(in srgb, #ffffff 9%, transparent);
-    --color-ink: #eceff4;
-    --color-ink-muted: #b8c1d0;
-    --color-ink-subtle: #9aa5b8;
-    --color-ink-inverted: #060b14;
-    --brand-soft: color-mix(in srgb, var(--brand) 22%, #060b14);
+    --color-surface: color-mix(in srgb, var(--mh-ink) 88%, black);
+    --color-surface-raised: color-mix(in srgb, var(--mh-ink) 80%, var(--mh-limestone));
+    --color-surface-muted: color-mix(in srgb, var(--mh-ink) 92%, black);
+    --color-surface-sunken: color-mix(in srgb, var(--mh-ink) 75%, var(--mh-limestone));
+    --color-chrome-fill: color-mix(in srgb, var(--mh-ink) 75%, var(--mh-limestone));
+    --color-border: color-mix(in srgb, var(--mh-limestone) 14%, transparent);
+    --color-line: color-mix(in srgb, var(--mh-limestone) 9%, transparent);
+    --color-ink: var(--mh-limestone);
+    --color-ink-muted: color-mix(in srgb, var(--mh-limestone) 72%, var(--mh-ink));
+    --color-ink-subtle: color-mix(in srgb, var(--mh-limestone) 58%, var(--mh-ink));
+    --color-ink-inverted: color-mix(in srgb, var(--mh-ink) 88%, black);
+    --brand-soft: color-mix(in srgb, var(--brand) 22%, color-mix(in srgb, var(--mh-ink) 88%, black));
     color: var(--color-ink);
   }
 
@@ -690,7 +712,7 @@
   }
 
   [data-console='platform'] [data-testid='app-header'] {
-    background-color: #060b14;
+    background-color: color-mix(in srgb, var(--mh-ink) 88%, black);
   }
 
   /*
@@ -811,89 +833,11 @@
   }
 
   /*
-   * The brand mark's one movement: the dot arrives, then the link to it
-   * settles. Runs once, on mount, and never loops — a logo that keeps moving
-   * is a logo nobody can stop looking at.
+   * The login screen's brand panel: pine, the identity's own dark, in both themes. A tenant with
+   * colours of its own gets its secondary colour instead (--chrome-1), so it carries none of ours.
    */
-  @keyframes brand-dot-arrive {
-    from { opacity: 0; transform: translate(4px, -4px) scale(0.6); }
-    to { opacity: 1; transform: none; }
-  }
-
-  @keyframes brand-link-draw {
-    from { opacity: 0; }
-    to { opacity: 0.45; }
-  }
-
-  .brand-mark-dot {
-    transform-origin: 24.79px 7.75px;
-    animation: brand-dot-arrive var(--duration-slow) var(--ease-out-soft) both;
-  }
-
-  .brand-mark-link {
-    animation: brand-link-draw var(--duration-slow) var(--ease-out-soft) 120ms both;
-  }
-
-  /*
-   * The login field settles in once. Points fade up in column order, so the
-   * eye follows the same left-to-right progression the picture is about.
-   */
-  @keyframes field-in {
-    from { opacity: 0; transform: scale(0.4); }
-  }
-
-  @keyframes field-link-in {
-    from { opacity: 0; }
-  }
-
-  .brand-field-node {
-    animation: field-in 520ms var(--ease-out-soft) both;
-  }
-
-  .brand-field-link {
-    animation: field-link-in 700ms var(--ease-out-soft) both;
-  }
-
-  /*
-   * The login panel.
-   *
-   * Light mode gets a pale wash with the brand arriving as light from the
-   * corners, not a slab of saturated colour. The theme's one rule is that the
-   * workspace is light and colour is an accent, and the login screen is the
-   * first place anybody meets that rule — a brand-coloured half-screen there
-   * promises a different product than the one behind it.
-   *
-   * Dark mode keeps the saturated gradient, where it is the pale panel that
-   * would be the thing looking wrong.
-   */
-  .login-art {
-    background:
-      radial-gradient(
-        85% 65% at 82% 6%,
-        color-mix(in srgb, var(--brand) 20%, transparent) 0%,
-        transparent 62%
-      ),
-      radial-gradient(
-        75% 60% at 8% 98%,
-        color-mix(in srgb, var(--brand-secondary, var(--brand)) 14%, transparent) 0%,
-        transparent 68%
-      ),
-      linear-gradient(160deg, color-mix(in srgb, var(--brand) 7%, white) 0%, var(--color-canvas) 100%);
-  }
-
-  .dark .login-art {
-    background:
-      radial-gradient(
-        110% 80% at 18% 8%,
-        color-mix(in srgb, var(--brand) 55%, white) 0%,
-        transparent 55%
-      ),
-      radial-gradient(
-        90% 70% at 85% 95%,
-        color-mix(in srgb, var(--brand-secondary) 70%, black) 0%,
-        transparent 60%
-      ),
-      linear-gradient(145deg, var(--brand) 0%, var(--brand-secondary, #16181f) 100%);
+  .login-panel {
+    background: var(--chrome-1);
   }
 
   /*
@@ -1101,15 +1045,15 @@
   :root,
   :root[data-theme='dark'] {
     color-scheme: light;
-    --color-bg: #ffffff;
-    --color-surface: #ffffff;
-    --color-surface-raised: #ffffff;
-    --color-surface-sunken: #f1f3f5;
-    --color-ink: #11181c;
-    --color-ink-muted: #45525b;
-    --color-ink-subtle: #5c6b73;
-    --color-line: #d7dde2;
-    --color-border: #d7dde2;
+    --color-bg: var(--mh-white);
+    --color-surface: var(--mh-white);
+    --color-surface-raised: var(--mh-white);
+    --color-surface-sunken: var(--mh-limestone);
+    --color-ink: var(--mh-ink);
+    --color-ink-muted: var(--mh-slate);
+    --color-ink-subtle: color-mix(in srgb, var(--mh-slate) 94%, var(--mh-white));
+    --color-line: var(--mh-line);
+    --color-border: var(--mh-line);
   }
 
   /* The chrome is navigation. On paper there is nowhere to navigate to. */
@@ -1299,7 +1243,7 @@ input[type='file']::-webkit-file-upload-button {
 }
 
 .bottom-tab-active {
-  color: var(--brand);
+  color: var(--brand-text);
   font-weight: 600;
 }
 
@@ -1311,7 +1255,7 @@ input[type='file']::-webkit-file-upload-button {
   width: 1.75rem;
   height: 0.1875rem;
   border-radius: 0 0 0.25rem 0.25rem;
-  background: var(--brand);
+  background: var(--brand-text);
 }
 
 .bottom-tab:active {
@@ -1367,4 +1311,16 @@ input[type='file']::-webkit-file-upload-button {
 /* Opened from a home-screen icon there is no browser bar to pull down, so the page must not rubber-band like a document. */
 html[data-standalone] body {
   overscroll-behavior-y: none;
+}
+
+/* In dark, "brand as text" (104 places write it as a utility) is the lifted green; fills keep the brand itself. */
+.dark [class~='text-[var(--brand)]'] {
+  color: var(--brand-text);
+}
+
+/* The platform console never resolves to the same picture as a workspace: its chrome is near-black, not pine. */
+[data-console='platform'] {
+  --chrome-1: color-mix(in srgb, var(--mh-ink) 88%, black);
+  --chrome-2: color-mix(in srgb, var(--mh-ink) 76%, var(--mh-limestone));
+  --chrome-muted: color-mix(in srgb, var(--mh-limestone) 70%, var(--mh-ink));
 }

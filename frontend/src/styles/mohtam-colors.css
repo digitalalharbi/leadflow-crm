@@ -1,0 +1,55 @@
+:root {
+  /* pine-green */
+  --mh-pine-900: #0C2A25;
+  --mh-pine-800: #133B34;
+  --mh-green-700: #1D5E52;
+  --mh-green-500: #2E7D6E;
+  --mh-green-300: #8DB9AE;
+  --mh-green-100: #DCEBE6;
+  --mh-green-50: #EEF5F2;
+  /* brass */
+  --mh-brass-700: #84612F;
+  --mh-brass-500: #B38A55;
+  --mh-brass-400: #C9A26E;
+  --mh-brass-200: #E3C99F;
+  --mh-brass-100: #F3E9DA;
+  --mh-brass-50: #FAF5EC;
+  /* neutral */
+  --mh-ink: #14201D;
+  --mh-slate: #5B6662;
+  --mh-line: #E2DACB;
+  --mh-stone: #E9E1D4;
+  --mh-limestone: #F6F3EE;
+  --mh-white: #FFFFFF;
+  /* status */
+  --mh-success: #2F7D5B;
+  --mh-warning: #C08A2E;
+  --mh-danger: #9E3B30;
+  --mh-info: #3A6F95;
+
+  /* light mode (default) */
+  --mh-bg: var(--mh-limestone);
+  --mh-card: var(--mh-white);
+  --mh-text: var(--mh-ink);
+  --mh-text-muted: var(--mh-slate);
+  --mh-border: var(--mh-line);
+  --mh-primary: var(--mh-green-700);
+  --mh-primary-hover: var(--mh-pine-800);
+  --mh-accent: var(--mh-brass-500);
+  --mh-accent-text: var(--mh-brass-700);
+  --mh-sidebar: var(--mh-pine-900);
+  --mh-radius: 16px;
+  --mh-font: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+}
+
+/* dark mode */
+[data-theme=dark], .theme-dark {
+  --mh-bg: var(--mh-pine-900);
+  --mh-card: var(--mh-pine-800);
+  --mh-text: var(--mh-limestone);
+  --mh-text-muted: var(--mh-green-300);
+  --mh-border: rgba(246,243,238,.12);
+  --mh-primary: var(--mh-green-500);
+  --mh-accent: var(--mh-brass-400);
+  --mh-accent-text: var(--mh-brass-400);
+}

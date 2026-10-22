@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { checkPalette, cvdDistance, normalDistance } from './paletteChecks'
 import {
@@ -17,6 +19,8 @@ import {
  * `scripts/check-chart-palette.mjs` separately fails the build if `index.css`
  * and that list ever disagree, so neither copy can drift unnoticed.
  */
+const kitCss = readFileSync(resolve(process.cwd(), 'src/styles/mohtam-colors.css'), 'utf-8')
+
 describe('chart palette', () => {
   it('is two distinct five-colour sets', () => {
     expect(LIGHT_HEXES).toHaveLength(5)
@@ -25,45 +29,82 @@ describe('chart palette', () => {
     expect([...DARK_HEXES]).not.toEqual([...LIGHT_HEXES])
   })
 
+  /** The identity decides the colours; this fails if the list ever stops being the kit's own, in its order. */
+  it('is the brand kit’s palette, in the kit’s order', () => {
+    expect([...LIGHT_HEXES]).toEqual(['#1D5E52', '#B38A55', '#3A6F95', '#8DB9AE', '#E3C99F'])
+    // Emerald, copper, info blue, soft green, light copper — straight from mohtam-colors.css.
+    expect(kitColour('--mh-green-700')).toBe(LIGHT_HEXES[0])
+    expect(kitColour('--mh-brass-500')).toBe(LIGHT_HEXES[1])
+    expect(kitColour('--mh-info')).toBe(LIGHT_HEXES[2])
+    expect(kitColour('--mh-green-300')).toBe(LIGHT_HEXES[3])
+    expect(kitColour('--mh-brass-200')).toBe(LIGHT_HEXES[4])
+    expect(LIGHT_SURFACE).toBe('#ffffff')
+    expect(DARK_SURFACE).toBe(kitColour('--mh-pine-800'))
+  })
+
   /*
-   * Light clears every check outright, contrast included. It did not always:
-   * the magenta slot sat at 2.97:1 against a white card and was excused on the
-   * grounds that ChartCard ships a table view. Re-stepping it down its own hue
-   * to 3.52:1 cost nothing — the pair distances that bind the palette are
-   * elsewhere — so the excuse is gone and this test no longer filters.
+   * The property that decides whether a reader can tell two series apart at all: no pair collapses
+   * under simulated colour blindness. It held for the palette this replaced and it holds for the
+   * kit's, in both themes, with nothing excused.
    */
-  it('passes every check on light, with nothing excused', () => {
+  it('keeps every pair separable under colour blindness, in both themes', () => {
+    for (const [hexes, mode, surface] of [[LIGHT_HEXES, 'light', LIGHT_SURFACE], [DARK_HEXES, 'dark', DARK_SURFACE]] as const) {
+      const cvd = checkPalette([...hexes], { mode, surface }).filter((issue) => issue.check === 'cvd')
+
+      expect(cvd.map((i) => i.detail), mode).toEqual([])
+    }
+  })
+
+  /*
+   * What the kit's palette does not clear, written down.
+   *
+   * The identity is an earthy, quiet set and the earlier palette's stricter bar (full-colour pair
+   * distance 15, a chroma floor, a lightness band, 3:1 contrast on every slot) is not one it meets.
+   * That was a deliberate trade by the owner of the identity; these two lists are what it costs. A
+   * new miss, or a worse one, fails here instead of joining them unseen. The charts make it good
+   * with the second encoding they already carry: legend, direct labels, 2px gaps and a table view.
+   */
+  it('misses exactly the checks recorded here on light, and no others', () => {
     const issues = checkPalette([...LIGHT_HEXES], { mode: 'light', surface: LIGHT_SURFACE })
 
-    expect(issues.map((i) => `${i.check}: ${i.detail}`)).toEqual([])
+    expect(summarise(issues)).toEqual({
+      chroma: ['#1D5E52', '#3A6F95', '#8DB9AE', '#B38A55', '#E3C99F'],
+      contrast: ['#8DB9AE', '#E3C99F'],
+      lightness: ['#E3C99F'],
+      'normal-vision': ['#1D5E52↔#3A6F95', '#8DB9AE↔#E3C99F', '#B38A55↔#8DB9AE'],
+    })
   })
 
-  it('every pair is separable on dark', () => {
+  it('misses exactly the checks recorded here on dark, and no others', () => {
     const issues = checkPalette([...DARK_HEXES], { mode: 'dark', surface: DARK_SURFACE })
-      .filter((issue) => issue.check !== 'contrast')
 
-    expect(issues.map((i) => `${i.check}: ${i.detail}`)).toEqual([])
+    expect(summarise(issues)).toEqual({
+      chroma: ['#2E7D6E', '#6990AB', '#8DB9AE', '#C9A26E', '#E3C99F'],
+      contrast: ['#2E7D6E'],
+      lightness: ['#8DB9AE', '#C9A26E', '#E3C99F'],
+      'normal-vision': ['#6990AB↔#2E7D6E', '#8DB9AE↔#6990AB', '#8DB9AE↔#C9A26E', '#8DB9AE↔#E3C99F', '#C9A26E↔#E3C99F'],
+    })
   })
 
-  /*
-   * Dark keeps one exemption, and this is what stops it spreading.
-   *
-   * Vermillion cannot reach 3:1 against the dark surface without being
-   * brightened into amber: at the lightness that clears contrast the two sit at
-   * ΔE 14.5 for normal vision, under the floor. Contrast is recoverable with a
-   * label; two series nobody can tell apart are not. So the trade is taken
-   * deliberately, for that slot only — naming it here means a second slot
-   * slipping below 3:1 fails the build instead of joining a blanket filter.
-   */
-  it('exempts exactly one dark slot from contrast, and says which', () => {
-    const below = checkPalette([...DARK_HEXES], { mode: 'dark', surface: DARK_SURFACE })
-      .filter((issue) => issue.check === 'contrast')
-      .map((issue) => issue.detail.split(' ')[0])
+  /** The closest any two series sit, so a nudge that makes it worse is caught even when no check changes. */
+  it('keeps the closest pairs no closer than they were when the kit palette was adopted', () => {
+    for (const [hexes, normal, cvd] of [[LIGHT_HEXES, 11, 8], [DARK_HEXES, 10, 8]] as const) {
+      let closestNormal = Infinity
+      let closestCvd = Infinity
 
-    expect(below).toEqual([DARK_HEXES[4]])
+      for (let a = 0; a < hexes.length; a++) {
+        for (let b = a + 1; b < hexes.length; b++) {
+          closestNormal = Math.min(closestNormal, normalDistance(hexes[a], hexes[b]))
+          closestCvd = Math.min(closestCvd, cvdDistance(hexes[a], hexes[b]))
+        }
+      }
+
+      expect(closestNormal).toBeGreaterThanOrEqual(normal)
+      expect(closestCvd).toBeGreaterThanOrEqual(cvd)
+    }
   })
 
-  /** The specific defect that prompted all of this. */
+  /** The checker itself is still trusted: it rejects the palette that originally prompted it. */
   it('rejects the palette it replaced', () => {
     const old = ['#12a594', '#4f7cff', '#8b73f5', '#e0922f', '#16a34a', '#e85d75', '#3aa8e0', '#7c8698']
     const issues = checkPalette(old, { mode: 'light', surface: LIGHT_SURFACE })
@@ -79,6 +120,32 @@ describe('chart palette', () => {
     expect(SERIES).not.toContain(OTHER)
   })
 })
+
+/** The hex a kit variable is declared with, read from the copy of the kit's colour file the app ships. */
+function kitColour(name: string): string {
+  const match = new RegExp(`${name}:\\s*(#[0-9A-Fa-f]{6});`).exec(kitCss)
+
+  if (!match) throw new Error(`${name} is not in mohtam-colors.css`)
+
+  return match[1].toUpperCase()
+}
+
+/** Issues grouped by check, each reduced to the colour (or pair) it names, in a stable order. */
+function summarise(issues: ReturnType<typeof checkPalette>): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+
+  for (const issue of issues) {
+    const key = issue.check === 'normal-vision'
+      ? issue.detail.split(' ΔE')[0].replace(/ ↔ /, '↔')
+      : issue.detail.split(' ')[0]
+
+    ;(out[issue.check] ??= []).push(key)
+  }
+
+  for (const list of Object.values(out)) list.sort()
+
+  return out
+}
 
 describe('folding the tail', () => {
   const items = [
@@ -146,22 +213,26 @@ describe('mixing palettes', () => {
    * reliably separate.
    */
   it('the success green is too close to the first series to be a fourth', () => {
-    expect(normalDistance(LIGHT_HEXES[0], '#16a34a')).toBeLessThan(15)
+    expect(normalDistance(LIGHT_HEXES[0], '#2F7D5B')).toBeLessThan(15)
   })
 
-  it('but the first four series separate from each other', () => {
+  it('but the first four series separate from each other for a colour-blind reader', () => {
     const four = LIGHT_HEXES.slice(0, 4)
     const issues = checkPalette([...four], { mode: 'light', surface: LIGHT_SURFACE })
-      .filter((issue) => issue.check !== 'contrast')
+      .filter((issue) => issue.check === 'cvd')
 
     expect(issues).toEqual([])
   })
 
-  /** A status colour means a state. A series means an entity. Never swapped. */
-  it('no status colour appears in the categorical palette', () => {
-    const statuses = ['#12a594', '#16a34a', '#e0922f', '#e85d75', '#4f7cff']
+  /**
+   * A status colour means a state. A series means an entity. Never swapped — with the one exception
+   * the kit itself makes: its info blue is also the third series, so the three that carry a verdict
+   * (healthy, warning, danger) stay out of the palette and info is shared.
+   */
+  it('no verdict colour appears in the categorical palette', () => {
+    const verdicts = ['#2F7D5B', '#C08A2E', '#9E3B30']
 
-    for (const status of statuses) {
+    for (const status of verdicts) {
       expect(LIGHT_HEXES).not.toContain(status)
       expect(DARK_HEXES).not.toContain(status)
     }

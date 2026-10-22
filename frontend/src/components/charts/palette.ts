@@ -1,48 +1,30 @@
 /**
  * The chart palette, read from CSS variables so it follows the theme.
  *
- * Deliberately not derived from the tenant's brand colour: a chart whose every
- * series is a tint of one hue cannot be read, and under white label that hue
- * belongs to the customer.
+ * It is the brand kit's own, in the kit's order and never reordered: emerald, copper, info blue,
+ * soft green, light copper (`brand/Mohtam-Brand-Kit/05-الألوان-Colors`). Components take their
+ * colours from here and never carry one of their own. It is deliberately not derived from the
+ * tenant's brand colour: a chart whose every series is a tint of one hue cannot be read, and under
+ * white label that hue belongs to the customer.
  *
- * ## Why five, and why these five
+ * ## What it clears, and what it does not
  *
- * The colours are computed, not chosen. `scripts/validate-chart-palette.mjs`
- * checks every pair for lightness band, chroma floor, colour-vision separation,
- * normal-vision separation and contrast against the surface — and five is the
- * largest set that passes all of them in both themes.
+ * The previous palette was computed to pass every check in `paletteChecks.ts` — a lightness band, a
+ * chroma floor, colour-vision separation, normal-vision separation and 3:1 contrast. The kit's is an
+ * earthy, deliberately quiet identity palette, and it does not pass all of them. `palette.test.ts`
+ * records exactly which it misses, so nothing slips further without the build saying so:
  *
- * The previous palette had eight and failed: `#8b73f5` and `#4f7cff` sat next
- * to each other in the series order at ΔE 7.7 for normal vision and ΔE 1.1 for
- * protanopia. Two adjacent series that nobody could tell apart, and a red-blind
- * reader saw one colour. It had been that way since the charts were written,
- * because nobody had measured it.
+ *  - **Every pair is separable under simulated colour blindness**, in both themes. That is the check
+ *    that decides whether a reader can tell two series apart at all, and it holds.
+ *  - Under full colour vision three pairs sit between ΔE 11 and 14, against a floor of 15: the two
+ *    soft greens, the copper next to the soft green, and the two coppers.
+ *  - Four marks are quiet rather than vivid (chroma), and slots 4 and 5 are pale: soft green and light
+ *    copper are 2.2:1 and 1.6:1 on a white card, against the 3:1 asked of a graphic.
  *
- * The hues are Okabe-Ito's, the standard set for colour-vision safety. Only
- * their lightness is re-stepped: Okabe-Ito was designed for bright marks and
- * fails WCAG 3:1 against a near-white surface, and the dark theme is stepped
- * separately rather than lightened, because the warm hues converge as they
- * brighten.
- *
- * ## What it clears, and the one thing it does not
- *
- * Light passes every check outright, contrast included: the closest pair is
- * ΔE 9.2 under simulated protanopia and ΔE 15.0 for normal vision, and the
- * weakest slot is 3.22:1 against a white card. The magenta used to be the
- * exception at 2.97:1, excused because `ChartCard` ships a table view; it was
- * re-stepped down its own hue instead, which cost nothing, because the pair
- * distances that bind this palette are all elsewhere.
- *
- * Dark keeps one exemption and is unlikely ever to lose it. Vermillion cannot
- * reach 3:1 against the dark surface without being brightened into the amber:
- * at the lightness that clears contrast the two sit at ΔE 14.5 for normal
- * vision, under the floor. Contrast is recoverable with a label; two series a
- * reader cannot separate are not. `palette.test.ts` names that slot, so a
- * second one slipping below 3:1 fails the build rather than quietly joining it.
- *
- * The second encoding is not optional either way — every chart carries a
- * legend, four or fewer series are also labelled directly, and fills are
- * separated by a 2px gap.
+ * So the second encoding is not optional: every chart carries a legend, four or fewer series are
+ * also labelled directly, fills are separated by a 2px gap, and `ChartCard` ships a table view. Dark
+ * is stepped separately for the pine card rather than flipped from light — the blue is lifted toward
+ * limestone until it separates from the soft green, the emerald is replaced by the lifted soft green.
  */
 
 /**
@@ -54,8 +36,8 @@
  * this list ever disagree. Two copies with a check between them beats one copy
  * nothing can verify.
  */
-export const LIGHT_HEXES = ['#007b59', '#025e94', '#bf8408', '#ce64a2', '#a64906'] as const
-export const DARK_HEXES = ['#048560', '#0178bb', '#bc8207', '#b8528f', '#a63c0c'] as const
+export const LIGHT_HEXES = ['#1D5E52', '#B38A55', '#3A6F95', '#8DB9AE', '#E3C99F'] as const
+export const DARK_HEXES = ['#8DB9AE', '#C9A26E', '#6990AB', '#2E7D6E', '#E3C99F'] as const
 
 /*
  * The surfaces a chart actually sits on, read off the running app rather than
@@ -63,7 +45,7 @@ export const DARK_HEXES = ['#048560', '#0178bb', '#bc8207', '#b8528f', '#a63c0c'
  * be checking a palette nobody ships.
  */
 export const LIGHT_SURFACE = '#ffffff'
-export const DARK_SURFACE = '#141a26'
+export const DARK_SURFACE = '#133B34'
 
 /**
  * Fixed order, never cycled. A sixth series is not a generated hue — it folds
@@ -84,7 +66,7 @@ export const OTHER = 'var(--chart-other)'
 export const MAX_SERIES = SERIES.length
 
 /** The first series is the tenant's own colour where a chart shows only one. */
-export const PRIMARY = 'var(--brand)'
+export const PRIMARY = 'var(--brand-text)'
 
 /**
  * Status and temperature are a *status* palette, not a categorical one: the

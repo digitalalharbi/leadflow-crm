@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useBrandingTheme } from './useBrandingTheme'
+import { PLATFORM_TITLE, useBrandingTheme } from './useBrandingTheme'
 import type { Branding } from '@/types/api'
 
 function branding(overrides: Partial<Branding> = {}): Branding {
@@ -31,7 +31,7 @@ function icon() {
 describe('useBrandingTheme', () => {
   beforeEach(() => {
     document.head.innerHTML =
-      '<link rel="icon" href="/favicon.svg"><meta name="theme-color" content="#12A594">'
+      '<link rel="icon" href="/favicon.svg"><meta name="theme-color" content="#0C2A25">'
     document.documentElement.removeAttribute('style')
     document.title = 'مهتم'
   })
@@ -67,7 +67,7 @@ describe('useBrandingTheme', () => {
     rerender({ b: branding({ system_name: '', favicon_url: null, slug: 'other' }) })
 
     expect(icon()).toBe('/favicon.svg')
-    expect(document.title).toBe('مهتم')
+    expect(document.title).toBe(PLATFORM_TITLE)
   })
 
   it('picks a readable contrast colour rather than assuming white', () => {

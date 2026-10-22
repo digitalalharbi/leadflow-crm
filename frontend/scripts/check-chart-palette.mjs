@@ -19,8 +19,48 @@ const here = dirname(fileURLToPath(import.meta.url))
 const css = readFileSync(resolve(here, '../src/index.css'), 'utf8')
 const ts = readFileSync(resolve(here, '../src/components/charts/palette.ts'), 'utf8')
 
+/*
+ * The stylesheet writes the series as the brand kit's own variables (`var(--mh-green-700)`) and, on
+ * dark, as a mix of two of them. Resolve both to the hex a browser would paint, so what is compared
+ * is the colour and not the way it is spelled.
+ */
+const kit = readFileSync(resolve(here, '../src/styles/mohtam-colors.css'), 'utf8')
+const tokens = new Map([...kit.matchAll(/^\s*--(mh-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6});/gm)].map((m) => [m[1], m[2]]))
+
+const channels = (hex) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+const toHex = (rgb) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`
+
+function resolveColour(expression) {
+  const text = expression.trim()
+  const hex = text.match(/^#[0-9a-fA-F]{6}$/)
+
+  if (hex) return text
+
+  const reference = text.match(/^var\(--([a-z0-9-]+)\)$/)
+
+  if (reference) {
+    const value = tokens.get(reference[1])
+
+    if (!value) throw new Error(`unknown kit token --${reference[1]}`)
+
+    return value
+  }
+
+  // color-mix(in srgb, A P%, B): CSS mixes in sRGB by straight interpolation.
+  const mix = text.match(/^color-mix\(in srgb,\s*(var\(--[a-z0-9-]+\)|#[0-9a-fA-F]{6})\s+(\d+)%,\s*(var\(--[a-z0-9-]+\)|#[0-9a-fA-F]{6})\)$/)
+
+  if (mix) {
+    const [first, second] = [channels(resolveColour(mix[1])), channels(resolveColour(mix[3]))]
+    const share = Number(mix[2]) / 100
+
+    return toHex(first.map((v, i) => v * share + second[i] * (1 - share)))
+  }
+
+  throw new Error(`cannot resolve "${text}"`)
+}
+
 /** Only real declarations — prose in a comment must not count as one. */
-const declared = [...css.matchAll(/^\s*--chart-([1-5]):\s*(#[0-9a-fA-F]{6});/gm)].map((m) => m[2])
+const declared = [...css.matchAll(/^\s*--chart-([1-5]):\s*([^;]+);/gm)].map((m) => resolveColour(m[2]))
 
 function constantFrom(name) {
   const match = ts.match(new RegExp(`export const ${name} = \\[([^\\]]+)\\]`))

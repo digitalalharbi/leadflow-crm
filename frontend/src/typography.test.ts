@@ -9,28 +9,31 @@ const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf-8')
 const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf-8')
 
 /**
- * The typography system is a contract, not a preference: three families, all
- * self-hosted, with technical values in mono and nothing else slipping in.
+ * The typography system is a contract, not a preference: one family, self-hosted, and nothing else
+ * slipping in. The identity's typeface is IBM Plex Sans Arabic (brand kit); technical values use the
+ * system monospace, which is never loaded.
  */
 describe('typography system', () => {
-  it('sets one stack for body and headings: Inter for Latin and digits, IBM Plex Sans Arabic for Arabic', () => {
-    const stack = /'Inter Variable',\s*'IBM Plex Sans Arabic',\s*system-ui,\s*sans-serif;/
+  it('sets one stack for body and headings: IBM Plex Sans Arabic, which carries Arabic, Latin and every digit', () => {
+    const stack = /'IBM Plex Sans Arabic',\s*system-ui,\s*sans-serif;/
 
     expect(css).toMatch(new RegExp(`--font-body:\\s*${stack.source}`))
     expect(css).toMatch(new RegExp(`--font-heading:\\s*${stack.source}`))
+    // The previous identity's faces are gone, not merely demoted in the stack.
+    expect(css).not.toMatch(/Inter Variable|Noto Sans Arabic|JetBrains Mono/)
   })
 
-  it('ships the Arabic face it names, self-hosted, in the weights the interface uses', () => {
+  it('ships the face it names, self-hosted, in the five weights the interface uses', () => {
     const main = readFileSync(resolve(process.cwd(), 'src/main.tsx'), 'utf-8')
 
-    for (const weight of [400, 500, 600, 700]) {
+    for (const weight of [300, 400, 500, 600, 700]) {
       expect(main).toMatch(new RegExp(`@fontsource/ibm-plex-sans-arabic/${weight}\\.css`))
     }
-    expect(main).not.toMatch(/noto-sans-arabic/)
+    expect(main).not.toMatch(/noto-sans-arabic|fontsource-variable\/inter|jetbrains-mono/)
   })
 
-  it('keeps JetBrains Mono for technical values', () => {
-    expect(css).toMatch(/--font-mono:\s*'JetBrains Mono',\s*monospace;/)
+  it('sets technical values in the system monospace, which is not a loaded font', () => {
+    expect(css).toMatch(/--font-mono:\s*ui-monospace,/)
     expect(css).toMatch(/code,\s*kbd,\s*samp,\s*pre,\s*\.font-mono\s*\{[^}]*font-family:\s*var\(--font-mono\)/)
   })
 

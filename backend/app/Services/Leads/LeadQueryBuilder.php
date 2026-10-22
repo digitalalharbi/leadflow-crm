@@ -130,8 +130,8 @@ class LeadQueryBuilder
 
                 return $q->whereHas('assignee', fn ($u) => $u->whereIn('uuid', $ids));
             })
-            ->when($request->filled('date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->date('date_from')))
-            ->when($request->filled('date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->date('date_to')))
+            ->when($request->filled('date_from'), fn ($q) => $q->whereDate('leads.created_at', '>=', $request->date('date_from')))
+            ->when($request->filled('date_to'), fn ($q) => $q->whereDate('leads.created_at', '<=', $request->date('date_to')))
             ->when($request->boolean('priority'), fn ($q) => $q->where('is_priority', true))
             ->when($request->boolean('wrong_fit'), fn ($q) => $q->where('wrong_fit', true))
             ->when($request->boolean('overdue'), fn ($q) => $q->overdueFollowUp())

@@ -136,6 +136,10 @@ services:
       target: production
       args:
         VITE_API_URL: ${APP_SCHEME:-https}://${STAGING_API_DOMAIN}/api/v1
+        VITE_PUBLIC_LEGAL_NAME: ${VITE_PUBLIC_LEGAL_NAME:-}
+        VITE_PUBLIC_CONTACT_EMAIL: ${VITE_PUBLIC_CONTACT_EMAIL:-}
+        VITE_PUBLIC_ADDRESS: ${VITE_PUBLIC_ADDRESS:-}
+        VITE_PUBLIC_PROCESSORS: ${VITE_PUBLIC_PROCESSORS:-}
     ports:
       - "127.0.0.1:8080:80"
     restart: unless-stopped

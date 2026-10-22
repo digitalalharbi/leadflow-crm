@@ -2,7 +2,7 @@
  * What the public pages say about who runs the service.
  *
  * None of it is invented. The legal name, the contact address and the postal address are set per
- * deployment (`VITE_PUBLIC_COMPANY_NAME`, `VITE_PUBLIC_CONTACT_EMAIL`, `VITE_PUBLIC_ADDRESS`, `VITE_PUBLIC_PROCESSORS`); until they
+ * deployment (`VITE_PUBLIC_LEGAL_NAME`, `VITE_PUBLIC_CONTACT_EMAIL`, `VITE_PUBLIC_ADDRESS`, `VITE_PUBLIC_PROCESSORS`); until they
  * are, the pages show a plain "to be added before launch" marker in their place — never a made-up company
  * or a mailbox nobody reads. `unset` lists what is still missing, for the deploy checklist.
  */
@@ -14,7 +14,7 @@ const read = (value: string | undefined): string | null => {
 
 export const PUBLIC_INFO = {
   /** The legal entity that provides the service. */
-  companyName: read(import.meta.env.VITE_PUBLIC_COMPANY_NAME),
+  companyName: read(import.meta.env.VITE_PUBLIC_LEGAL_NAME) ?? read(import.meta.env.VITE_PUBLIC_COMPANY_NAME),
   /** One mailbox for support, privacy and deletion requests. */
   email: read(import.meta.env.VITE_PUBLIC_CONTACT_EMAIL),
   /** The postal address. */

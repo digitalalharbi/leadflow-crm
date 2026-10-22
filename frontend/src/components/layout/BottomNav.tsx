@@ -61,7 +61,9 @@ export function BottomNav() {
           to={to}
           end={to === '/'}
           onClick={() => setSidebarOpen(false)}
-          data-testid={`tab-${to === '/' ? 'home' : to.slice(1)}`}
+          // Its own prefix: the bar is in the DOM at every width (hidden from the laptop breakpoint), and
+          // the pages' own tab strips use `tab-<key>`, so sharing the prefix made two elements answer to one id.
+          data-testid={`bottom-tab-${to === '/' ? 'home' : to.slice(1)}`}
           className={({ isActive }) => cn('bottom-tab', isActive && 'bottom-tab-active')}
         >
           <Icon className="size-[1.375rem]" aria-hidden />

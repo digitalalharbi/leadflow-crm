@@ -53,7 +53,7 @@ class AttributionController extends Controller
             'ads' => $names(Ad::class),
             'creatives' => Creative::query()->orderBy('id')->limit(300)->get(['uuid', 'name', 'headline'])->map(fn ($c) => ['id' => $c->uuid, 'name' => $c->headline ?: $c->name])->all(),
             'partners' => $names(Partner::class),
-            'reps' => User::query()->whereIn('role', ['admin', 'manager', 'sales', 'sales_manager'])->orderBy('name')->get(['uuid', 'name'])->map(fn ($u) => ['id' => $u->uuid, 'name' => $u->name])->all(),
+            'reps' => User::query()->inWorkspace($request->user()->tenant_id)->whereIn('role', ['admin', 'manager', 'sales', 'sales_manager'])->orderBy('name')->get(['uuid', 'name'])->map(fn ($u) => ['id' => $u->uuid, 'name' => $u->name])->all(),
             'platforms' => Lead::query()->reorder()->whereNotNull('platform')->distinct()->orderBy('platform')->pluck('platform')->all(),
         ]);
     }

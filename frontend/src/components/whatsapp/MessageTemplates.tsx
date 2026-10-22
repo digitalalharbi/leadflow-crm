@@ -245,7 +245,7 @@ function TemplateDrawer({
           <legend className="t-small px-1 font-medium">{t('templates.target.title')}</legend>
           <Select label={t('templates.target.purpose')} value={purpose} onChange={(e) => setPurpose(e.target.value)} data-testid="template-purpose">
             <option value="">{t('templates.target.none')}</option>
-            {['welcome', 'qualification', 'reminder', 'nurture', 'appointment', 'brochure', 'won', 'lost'].map((key) => (
+            {['welcome', 'qualification', 'reminder', 'nurture', 'appointment', 'brochure', 'won', 'lost', 'interested', 'interested_follow_up', 'visit_invite', 'final'].map((key) => (
               <option key={key} value={key}>{t(`templates.purpose.${key}`)}</option>
             ))}
           </Select>

@@ -6,6 +6,7 @@ use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Leads\DuplicateMatcher;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\Attribution;
 use App\Domain\Tracking\EventRecorder;
 use App\Enums\ActivityType;
@@ -182,6 +183,9 @@ class LeadIngestionService
         }
 
         $lead->refresh();
+
+        // Nobody owns it, so nobody was told by the assignment: the managers are.
+        ImportantAlerts::newLeadWithoutAnOwner($lead);
 
         // Tie the lead to its campaign, ad set and ad. Never allowed to cost the
         // lead: in a savepoint, so a failure here rolls back only itself.

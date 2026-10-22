@@ -12,14 +12,17 @@
                 <tr>
                     @foreach($row as $stat)
                         <td width="50%" style="padding:4px;vertical-align:top;">
-                            <div style="background:#f9fafb;border-radius:12px;padding:12px;">
+                            @php $tile = $stat['link'] ?? null; @endphp
+                            @if($tile)<a href="{{ rtrim($link, '/') . $tile }}" style="display:block;text-decoration:none;color:inherit;">@endif
+                            <div style="background:#F6F3EE;border:1px solid #E2DACB;border-radius:12px;padding:12px;">
                                 <div style="font-size:12px;color:#6b7280;">{{ $stat['label'] }}</div>
                                 <div style="font-size:22px;font-weight:800;margin-top:2px;{{ ($stat['tone'] ?? null) === 'bad' ? 'color:#b91c1c;' : '' }}">{{ $stat['value'] ?? '—' }}</div>
                                 @if(isset($stat['change']))
                                     @php $good = ($stat['cost'] ?? false) ? $stat['change'] <= 0 : $stat['change'] >= 0; @endphp
-                                    <div style="font-size:12px;margin-top:2px;direction:ltr;text-align:right;color:{{ $good ? '#0f766e' : '#b91c1c' }};">{{ $stat['change'] >= 0 ? '+' : '' }}{{ $stat['change'] }}%</div>
+                                    <div style="font-size:12px;margin-top:2px;direction:ltr;text-align:right;color:{{ $good ? '#1D5E52' : '#b91c1c' }};">{{ $stat['change'] >= 0 ? '+' : '' }}{{ $stat['change'] }}%</div>
                                 @endif
                             </div>
+                            @if($tile)</a>@endif
                         </td>
                     @endforeach
                     @if(count($row) === 1)<td width="50%"></td>@endif
@@ -31,7 +34,10 @@
     @foreach($digest['lists'] ?? [] as $list)
         <h2 style="margin:16px 0 6px;font-size:15px;">{{ $list['title'] }}</h2>
         <ul style="margin:0;padding:0 18px 0 0;font-size:14px;line-height:1.9;">
-            @foreach($list['items'] as $item)<li>{{ $item }}</li>@endforeach
+            @foreach($list['items'] as $i => $item)
+                @php $to = $list['links'][$i] ?? null; @endphp
+                <li>@if($to)<a href="{{ rtrim($link, '/') . $to }}" style="color:#1D5E52;text-decoration:none;font-weight:600;">{{ $item }}</a>@else{{ $item }}@endif</li>
+            @endforeach
         </ul>
     @endforeach
 
@@ -42,7 +48,7 @@
         </ul>
     @endif
 
-    <p style="margin:20px 0 0;"><a href="{{ $link }}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:999px;font-size:14px;font-weight:700;">افتح مهتم</a></p>
+    <p style="margin:20px 0 0;"><a href="{{ $link }}" style="display:inline-block;background:#1D5E52;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:999px;font-size:14px;font-weight:700;">افتح مهتم</a></p>
 @endsection
 
 @section('footer')

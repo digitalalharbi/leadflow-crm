@@ -14,16 +14,18 @@ use App\Models\User;
  */
 class NotificationPrefs
 {
-    private const REP_INSTANT = ['hot_lead', 'visit_requested', 'reservation_intent', 'sla_breach'];
+    private const REP_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach'];
 
-    private const MANAGER_INSTANT = ['hot_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'tracking_failure'];
+    private const MANAGER_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'tracking_failure'];
 
     /** @return array{alerts: array<string,string>, digests: array<string,bool>} */
     public static function defaults(User $user): array
     {
         $manages = $user->isAdmin() || $user->isManager();
         $instant = $manages ? self::MANAGER_INSTANT : self::REP_INSTANT;
-        $daily = $manages ? ['high_value', 'budget_anomaly'] : [];
+        // A new lead reaches its owner in the app and does the work by itself; a rep is not mailed every one,
+        // and a manager hears of the ones nobody owns in the day's summary.
+        $daily = $manages ? ['new_lead', 'high_value', 'budget_anomaly'] : [];
 
         return [
             'alerts' => collect(AlertKinds::CATEGORIES)->mapWithKeys(fn (string $c) => [

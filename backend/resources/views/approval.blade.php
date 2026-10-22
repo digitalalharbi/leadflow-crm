@@ -7,7 +7,7 @@
 <meta name="referrer" content="no-referrer">
 <title>مهتم — قرار</title>
 <style>
-  :root { --ink:#0f1720; --muted:#667085; --line:#e6e8ec; --brand:#0f766e; --danger:#d1435b; --bg:#f3f4f6; }
+  :root { --ink:#0f1720; --muted:#667085; --line:#e6e8ec; --brand:#1D5E52; --danger:#d1435b; --bg:#f3f4f6; }
   @media (prefers-color-scheme: dark) { :root { --ink:#eef1f4; --muted:#9aa3ae; --line:#2a2f36; --bg:#111418; } .card{background:#1a1e24!important} }
   * { box-sizing: border-box; }
   body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; background:var(--bg); color:var(--ink); }

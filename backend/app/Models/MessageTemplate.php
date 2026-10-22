@@ -26,7 +26,7 @@ class MessageTemplate extends Model
      * and get the one written for this lead's project, language and stage
      * rather than naming one template for every project in the workspace.
      */
-    public const PURPOSES = ['welcome', 'qualification', 'reminder', 'nurture', 'appointment', 'brochure', 'won', 'lost'];
+    public const PURPOSES = ['welcome', 'qualification', 'reminder', 'nurture', 'appointment', 'brochure', 'won', 'lost', 'interested', 'interested_follow_up', 'visit_invite', 'final'];
 
     /** Who a message is written for, read off what the lead told us. */
     public const AUDIENCES = ['investment', 'end_user'];
@@ -50,6 +50,26 @@ class MessageTemplate extends Model
         'name' => 'أسئلة التأهيل',
         'purpose' => 'qualification',
         'body' => "حتى نخدمك بشكل أدق يا {{name}}، نحتاج إجابتك على هذه الأسئلة:\n{{questions}}\n\nيكفي أن ترد برقم السؤال وإجابتك.",
+    ];
+
+    /**
+     * What an interested customer is written, in four different messages — one at each moment of the
+     * interested journey, so nobody is ever sent the same words twice. Short, personal, and each ends in
+     * one thing to do. A workspace edits them or writes its own per project; these are only the start.
+     */
+    public const INTERESTED_DEFAULTS = [
+        'whatsapp' => [
+            ['name' => 'اهتمام: تعريف شخصي', 'purpose' => 'interested', 'body' => 'مرحبًا {{name}}، سعدنا باهتمامك بمشروع {{project}}. جهّزت لك ما يناسبك من التفاصيل، وأحب أن أسمع منك: ما أهم ما تبحث عنه؟ أستطيع الاتصال بك في الوقت الأنسب لك. {{agent}}'],
+            ['name' => 'اهتمام: متابعة اليوم التالي', 'purpose' => 'interested_follow_up', 'body' => '{{name}}، هل اطلعت على تفاصيل {{project}}؟ إن أحببت أرتّب لك مكالمة قصيرة أجيب فيها عن كل ما يهمك.'],
+            ['name' => 'اهتمام: دعوة لزيارة', 'purpose' => 'visit_invite', 'body' => '{{name}}، أفضل طريقة لتتعرف على {{project}} أن تراه بنفسك. متى تناسبك زيارة قصيرة هذا الأسبوع؟ أرتّب لك كل شيء.'],
+            ['name' => 'اهتمام: كلمة أخيرة', 'purpose' => 'final', 'body' => '{{name}}، لن أطيل عليك. أبقيت لك باب {{project}} مفتوحًا — متى أحببت التفاصيل أو الزيارة يكفي أن تكتب لي هنا.'],
+        ],
+        'email' => [
+            ['name' => 'بريد الاهتمام: تعريف شخصي', 'purpose' => 'interested', 'subject' => '{{name}}، ما يناسبك في {{project}}', 'body' => "مرحبًا {{name}}،\n\nسعدنا باهتمامك بمشروع {{project}}. جهّزت لك ما يناسبك من التفاصيل، وأحب أن أسمع منك: ما أهم ما تبحث عنه؟\n\nيمكنني الاتصال بك في الوقت الأنسب لك.\n\n{{agent}}"],
+            ['name' => 'بريد الاهتمام: متابعة اليوم التالي', 'purpose' => 'interested_follow_up', 'subject' => 'هل وصلتك تفاصيل {{project}}؟', 'body' => "{{name}}،\n\nهل اطلعت على تفاصيل {{project}}؟ إن أحببت أرتّب لك مكالمة قصيرة أجيب فيها عن كل ما يهمك.\n\n{{agent}}"],
+            ['name' => 'بريد الاهتمام: دعوة لزيارة', 'purpose' => 'visit_invite', 'subject' => 'زيارة قصيرة إلى {{project}}', 'body' => "{{name}}،\n\nأفضل طريقة لتتعرف على {{project}} أن تراه بنفسك. متى تناسبك زيارة قصيرة هذا الأسبوع؟ أرتّب لك كل شيء.\n\n{{agent}}"],
+            ['name' => 'بريد الاهتمام: كلمة أخيرة', 'purpose' => 'final', 'subject' => 'بابنا مفتوح — {{project}}', 'body' => "{{name}}،\n\nلن أطيل عليك. أبقيت لك باب {{project}} مفتوحًا — متى أحببت التفاصيل أو الزيارة يكفي أن تردّ على هذه الرسالة.\n\n{{agent}}"],
+        ],
     ];
 
     public const DEFAULTS = [

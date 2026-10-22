@@ -5,7 +5,6 @@ namespace App\Domain\Sla;
 use App\Domain\Leads\InterestSla;
 use App\Domain\Notifications\AlertGate;
 use App\Enums\ActivityType;
-use App\Enums\Role;
 use App\Events\LeadSignal;
 use App\Models\Lead;
 use App\Models\Tenant;
@@ -33,7 +32,7 @@ class InterestSlaSweeper
         $counts = ['due_soon' => 0, 'breached' => 0];
         $this->context->set($tenant);
 
-        $managers = User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true)->get();
+        $managers = User::query()->inWorkspace($tenant->id)->managers()->get();
 
         Lead::query()
             ->whereIn('interest_level', array_keys(InterestSla::KEYS))

@@ -231,7 +231,7 @@ class Recovery
 
         $owner = $lead->assigned_to ? User::query()->where('tenant_id', $lead->tenant_id)->where('is_active', true)->find($lead->assigned_to) : null;
         $notification = new ImportantNotification('delivery_failed', 'تعذّر الوصول إلى عميل آليًا', "{$lead->full_name}: فشل واتساب والبريد — اتصل به مباشرة.", $lead->uuid, null, 'critical');
-        ($owner ? collect([$owner]) : User::query()->whereIn('role', ['admin', 'manager'])->where('is_active', true)->get())
+        ($owner ? collect([$owner]) : User::query()->inWorkspace($lead->tenant_id)->managers()->get())
             ->each(fn ($user) => $user->notify(clone $notification));
     }
 

@@ -76,6 +76,17 @@ class WhatsappApprovalTest extends TestCase
         $this->assertSame(64, strlen($token->token_hash), 'The token itself was stored.');
     }
 
+    public function test_another_workspaces_managers_are_never_sent_the_approval_link(): void
+    {
+        $rival = $this->provisionTenant('Rival Approvers');
+        $rival['admin']->forceFill(['phone' => '+966559999999'])->save();
+
+        $this->agentProposes();
+
+        $this->assertSame(0, ApprovalToken::withoutGlobalScopes()->where('user_id', $rival['admin']->id)->count(), 'a rival was handed a link to approve this workspace\'s action');
+        $this->assertSame(1, ApprovalToken::withoutGlobalScopes()->where('user_id', $this->t['admin']->id)->count());
+    }
+
     public function test_opening_the_link_decides_nothing_and_pressing_approve_executes_once(): void
     {
         $proposal = $this->agentProposes();

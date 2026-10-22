@@ -3,7 +3,7 @@
 namespace App\Domain\Notifications;
 
 /**
- * The eight things worth an email, and which notification belongs to which.
+ * The things worth an email, and which notification belongs to which.
  *
  * A notification carries a `kind` of its own ("interest_sla_breached"); a person chooses how to
  * hear about a *category* ("an SLA was breached"). This is the one place that says which is which,
@@ -11,7 +11,7 @@ namespace App\Domain\Notifications;
  */
 class AlertKinds
 {
-    public const CATEGORIES = ['hot_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'high_value', 'tracking_failure', 'budget_anomaly'];
+    public const CATEGORIES = ['new_lead', 'hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'high_value', 'tracking_failure', 'budget_anomaly'];
 
     /** How a person can hear about a category. */
     public const MODES = ['instant', 'daily', 'weekly', 'off'];
@@ -22,6 +22,8 @@ class AlertKinds
     public const STAFF_WHATSAPP = ['hot_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'high_value', 'automation_failure'];
 
     private const KIND_TO_CATEGORY = [
+        'new_lead' => 'new_lead',
+        'interested_lead' => 'interested_lead',
         'hot_lead' => 'hot_lead',
         'appointment_requested' => 'visit_requested',
         'reservation_intent' => 'reservation_intent',

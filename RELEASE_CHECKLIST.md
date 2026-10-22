@@ -95,6 +95,31 @@ for log shipping.
 
 Twilio Voice is per-workspace (Settings → Calls); no server variable. The status webhook is public and signed.
 
+## 11. Automation first — alerts, summaries, the journeys (READY; three things only you can switch on)
+
+Audited end to end on 2026-10-23: a lead arrives by webhook and the conversation starts without anybody (normalise → de-duplicate →
+attribute → project → assign → WhatsApp + email + brochure + the project's questions → the owner told → the SLA clock), and the
+follow-up plan lays out the week (now · 15 min · 4 h · 24 h · 3 d · 7 d). When a customer turns **interested** the general nurture
+stops and the interested journey takes its place (owner reminded first, a different message to the customer each time, a visit
+offered, a last word); it ends on a visit, a held unit, won, lost, an unsubscribe, or a person taking the conversation.
+
+- **Instant alerts** (new lead · hot · interested · visit asked · reservation · high value · SLA · automation failed · tracking): each names the
+  project and the source, opens that lead, and goes only to its owner (or this workspace's managers). Per person: instant, daily, weekly or off.
+- **Summaries**: the daily sales one at 08:00, the weekly marketing and executive ones on Sunday, the monthly one on the 1st — at 08:00 *where the
+  workspace is*, once each; every figure and list item opens the screen or lead it counts. An alert chosen "instant" is not repeated in a summary.
+- **Guards** on every automatic message: quiet hours, daily cap, cooldown, the same message never twice in a day, a person who has the lead, an
+  unsubscribe, an unreachable contact, a closed lead, a visit or a held unit.
+- **Email** leaves only through `MailerProvider` (a test fails the build if anything reaches for Laravel's mailer).
+- **Durable**: a scheduled step retries three times with backoff, a lock stops two workers running it, a step whose timer was lost is found by
+  `leadflow:sweep-scheduled` every ten minutes, and a step that dies is recorded as failed and the managers are told.
+
+| Item | State |
+| --- | --- |
+| Queue worker and scheduler running (§3) | EXTERNAL CONFIG REQUIRED — without them nothing waits, retries or digests |
+| A real mail provider (§4) — until then summaries and alerts are recorded as *logged* | EXTERNAL CONFIG REQUIRED |
+| **Meta-approved WhatsApp templates for the interested journey's four messages** (`interested`, `interested_follow_up`, `visit_invite`, `final`): a message that starts a conversation outside the 24-hour window must be an approved template; register each under Settings → Messages | EXTERNAL CONFIG REQUIRED per workspace |
+| The four new messages' wording | OPTIONAL — defaults are installed in every workspace and editable per project |
+
 ## P. Public pages: privacy, terms, data deletion, security, contact, about (READY; four values EXTERNAL CONFIG REQUIRED)
 
 The pages ship as drafts and invent nothing. Until a value is set they show a visible marker,

@@ -39,10 +39,12 @@ class ActivityLogger
             };
         }
 
-        // A booked visit ends the automatic follow-up: the rep has it from here.
-        if ($type === ActivityType::AppointmentCreated) {
+        // A booked visit, or a unit held for them, ends the automatic follow-up: the rep has it from here.
+        if (in_array($type, [ActivityType::AppointmentCreated, ActivityType::ReservationCreated], true)) {
             try {
-                app(FollowUpPlanner::class)->appointmentBooked($lead);
+                $type === ActivityType::AppointmentCreated
+                    ? app(FollowUpPlanner::class)->appointmentBooked($lead)
+                    : app(FollowUpPlanner::class)->reservationMade($lead);
             } catch (\Throwable $e) {
                 report($e);
             }

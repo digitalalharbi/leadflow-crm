@@ -3,7 +3,8 @@
 namespace App\Domain\Notifications;
 
 use App\Domain\Automation\Thresholds;
-use App\Enums\Role;
+use App\Domain\Leads\NextBestAction;
+use App\Enums\Platform;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
@@ -41,7 +42,7 @@ class ImportantAlerts
         }
     }
 
-    /** What the interest engine concluded: a lead reached "hot" or asked to reserve. Once per lead each. */
+    /** What the interest engine concluded: a lead became interested, reached "hot" or asked to reserve. Once per lead each. */
     public static function interestChanged(Lead $lead, string $to): void
     {
         try {
@@ -50,6 +51,7 @@ class ImportantAlerts
             }
 
             match ($to) {
+                'interested' => self::interestedLead($lead),
                 'hot' => self::hotLead($lead),
                 'reservation_ready' => self::reservationIntent($lead),
                 default => null,
@@ -66,8 +68,62 @@ class ImportantAlerts
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'hot_lead', 'عميل ساخن', "{$lead->full_name} أصبح ساخنًا — اتصل به الآن.", $lead->uuid, null, 'critical',
+            'hot_lead', 'عميل ساخن', "{$lead->full_name} أصبح ساخنًا".self::about($lead).' — اتصل به الآن.', $lead->uuid, null, 'critical',
         ));
+    }
+
+    /** The customer showed they are coming toward us: the owner should be the next voice they hear. Once per lead. */
+    public static function interestedLead(Lead $lead): void
+    {
+        if (! AlertGate::once("interested_lead:{$lead->id}")) {
+            return;
+        }
+
+        self::send(self::recipients($lead), new ImportantNotification(
+            'interested_lead', 'عميل مهتم', "{$lead->full_name} أبدى اهتمامًا".self::about($lead).' — تواصل معه قبل غيرك.'.self::suggestion($lead), $lead->uuid, null, 'warning',
+        ));
+    }
+
+    /**
+     * A lead has arrived and nobody owns it, so nobody has been told: the managers are, once. A lead that
+     * has an owner is told to that owner by the assignment itself, and the rest of the floor never hears.
+     */
+    public static function newLeadWithoutAnOwner(Lead $lead): void
+    {
+        try {
+            if ($lead->assigned_to !== null || $lead->status?->isClosed() || ! AlertGate::once("new_lead:{$lead->id}")) {
+                return;
+            }
+
+            self::send(self::managers($lead->tenant_id), new ImportantNotification(
+                'new_lead', 'عميل جديد بلا مسؤول', "{$lead->full_name}".self::about($lead).' — أسنده إلى مندوب.', $lead->uuid, null, 'warning',
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('important_alert_failed', ['lead' => $lead->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** What the system would do next with this lead, and why — a sentence, so the alert is also an instruction. */
+    private static function suggestion(Lead $lead): string
+    {
+        try {
+            $next = app(NextBestAction::class)->for($lead);
+            $reason = trim((string) ($next['reason'] ?? ''));
+
+            return $reason === '' ? '' : " الخطوة المقترحة: {$reason}";
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /** " — مشروع X · عبر ميتا": which project and where the customer came from, for every alert about a lead. */
+    public static function about(Lead $lead): string
+    {
+        $project = $lead->project_id ? ($lead->project?->name ?? Project::withoutGlobalScopes()->whereKey($lead->project_id)->value('name')) : null;
+        $platform = $lead->platform ? Platform::labelFor((string) ($lead->platform instanceof \BackedEnum ? $lead->platform->value : $lead->platform)) : null;
+        $parts = array_filter([$project ? "مشروع {$project}" : null, $platform ? "عبر {$platform}" : null]);
+
+        return $parts === [] ? '' : ' — '.implode(' · ', $parts);
     }
 
     public static function reservationIntent(Lead $lead): void
@@ -77,7 +133,7 @@ class ImportantAlerts
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'reservation_intent', 'عميل يريد الحجز', "{$lead->full_name} يريد حجز وحدة — أكمل معه الآن.", $lead->uuid, null, 'critical',
+            'reservation_intent', 'عميل يريد الحجز', "{$lead->full_name} يريد حجز وحدة".self::about($lead).' — أكمل معه الآن.', $lead->uuid, null, 'critical',
         ));
     }
 
@@ -110,7 +166,7 @@ class ImportantAlerts
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'appointment_requested', 'عميل يطلب موعدًا', "{$lead->full_name} طلب موعد زيارة — احجزه الآن.", $lead->uuid, null, 'critical',
+            'appointment_requested', 'عميل يطلب موعدًا', "{$lead->full_name} طلب موعد زيارة".self::about($lead).' — احجزه الآن.', $lead->uuid, null, 'critical',
         ));
     }
 
@@ -125,7 +181,7 @@ class ImportantAlerts
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'high_value_lead', 'عميل عالي القيمة', "{$lead->full_name} — ميزانية تتجاوز ".number_format($from).' ر.س.', $lead->uuid, null, 'warning',
+            'high_value_lead', 'عميل عالي القيمة', "{$lead->full_name}".self::about($lead).' — ميزانية تتجاوز '.number_format($from).' ر.س.', $lead->uuid, null, 'warning',
         ));
     }
 
@@ -146,13 +202,17 @@ class ImportantAlerts
     {
         $owner = $lead->assigned_to ? User::query()->where('tenant_id', $lead->tenant_id)->where('is_active', true)->find($lead->assigned_to) : null;
 
-        return $owner ? collect([$owner]) : self::managers();
+        return $owner ? collect([$owner]) : self::managers($lead->tenant_id);
     }
 
-    /** @return Collection<int,User> */
-    private static function managers(): Collection
+    /**
+     * This workspace's managers — the lead's when there is one, otherwise the one in context.
+     *
+     * @return Collection<int,User>
+     */
+    private static function managers(?int $tenantId = null): Collection
     {
-        return User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true)->get();
+        return User::query()->inWorkspace($tenantId)->managers()->get();
     }
 
     private static function send(Collection $users, ImportantNotification $notification): void

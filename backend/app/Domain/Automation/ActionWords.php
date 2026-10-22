@@ -17,6 +17,10 @@ class ActionWords
             'nurture' => 'متابعة',
             'qualification' => 'أسئلة التأهيل',
             'appointment' => 'موعد',
+            'interested' => 'اهتمام',
+            'interested_follow_up' => 'متابعة الاهتمام',
+            'visit_invite' => 'دعوة لزيارة',
+            'final' => 'كلمة أخيرة',
             null => 'رسالة',
             default => (string) $action['purpose'],
         };

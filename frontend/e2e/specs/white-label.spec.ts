@@ -79,7 +79,7 @@ test.describe('White label', () => {
   test('an unknown tenant falls back to the default identity rather than erroring', async ({ page }) => {
     await page.goto('/login?tenant=does-not-exist-at-all')
 
-    await expect(page.getByRole('heading', { name: 'مرحباً بعودتك' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'مرحبًا بعودتك' })).toBeVisible()
     await expect(page.getByLabel('البريد الإلكتروني')).toBeVisible()
   })
 

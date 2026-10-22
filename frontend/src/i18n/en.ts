@@ -36,7 +36,8 @@ export default {
     email: 'Email', password: 'Password', currentPassword: 'Current password',
     newPassword: 'New password', confirmPassword: 'Confirm password',
     changePassword: 'Change password', passwordChanged: 'Password updated.',
-    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to pick up where you left off',
+    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your مهتم workspace',
+    forgot: 'Forgot your password?', moreOrganizations: 'More than one organisation?', about: 'What is مهتم?',
     organization: 'Organisation', organizationHint: 'Leave blank if you only have one account',
   },
   nav: {
@@ -2702,12 +2703,14 @@ export default {
 
   brand: {
     tagline: 'Turn interest into opportunity',
-    subtext: 'Leads, qualification and follow-up in one place.',
+    links: { privacy: 'Privacy', terms: 'Terms' },
+    badge: 'The marketing and sales operating platform for real estate',
+    subtext: 'Gather leads, automate qualification and follow-up, and put your sales team on the most ready customers first — from the first click to the deal.',
     journey: { arrived: 'Arrived', contacted: 'Contacted', qualified: 'Qualified', appointment: 'Viewing', won: 'Deal' },
     pillars: {
-      ads: 'Every ad platform on one screen',
-      speed: 'Automatic first contact within minutes',
-      loop: 'Every deal traced back to the campaign that brought it',
+      ads: 'Every lead source in one place',
+      speed: 'Automatic follow-up and automation within minutes',
+      loop: 'Every deal tied to the source and campaign it came from',
     },
   },
 

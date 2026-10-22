@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
+import { ChevronDown, Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { apiGet, ApiError } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
@@ -11,6 +11,7 @@ import { applyLocale } from '@/i18n'
 import { Button, Input } from '@/components/ui'
 import type { Branding } from '@/types/api'
 import { Logo } from '@/components/brand'
+import { Journey } from '@/components/public/Journey'
 import markUrl from '@/assets/brand/logo/mono-black/mohtam-mark-mono-black.svg?url'
 import { cn } from '@/lib/cn'
 
@@ -94,47 +95,107 @@ export function LoginPage() {
   const systemName = branding?.system_name ?? t('common.appName')
   const logo = branding?.login_logo_url ?? branding?.logo_url
   /*
-   * One name for the question the whole brand panel turns on: is the picture
-   * the tenant's or ours? A photograph they uploaded keeps the dark, white-type
-   * treatment; our own drawing follows the theme.
+   * One name for the question the whole brand panel turns on: is the picture the tenant's or ours? A
+   * photograph they uploaded keeps the dark, white-type treatment; a workspace with its own name and logo
+   * gets its own heading; everyone else gets مهتم — the logo, the headline, the journey.
    */
   const ownBackground = Boolean(branding?.login_background_url)
+  const platformLook = !ownBackground && !branding?.company_name && !logo && !branding?.system_name
+  const journey = JOURNEY.map((key) => t(`brand.journey.${key}`))
+  // The organisation field is for the person with more than one; it opens by itself when a link names one.
+  const [organizationOpen, setOrganizationOpen] = useState(Boolean(tenant))
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
-      {/* Form side */}
-      <div className="flex flex-col bg-[var(--color-surface)] px-6 py-8 sm:px-10">
-        <div className="flex items-center justify-between">
-          {/* The official logo unless this workspace has an identity of its own; see BrandLockup. */}
-          {logo || branding?.system_name ? (
-            <div className="flex items-center gap-2.5">
-              {logo ? (
-                <img src={logo} alt="" className="size-9 rounded-[var(--radius-control)] object-contain" />
-              ) : (
-                <Logo variant="auto" layout="mark" height={32} />
-              )}
-              <span className="text-[1.0625rem] font-semibold">{systemName}</span>
-            </div>
-          ) : (
-            <Logo variant="auto" layout="horizontal" height={48} />
-          )}
+      {/* The brand panel: first in the markup, so it sits at the start edge — the right, in Arabic. */}
+      <div
+        className={cn('relative hidden overflow-hidden lg:block', ownBackground ? undefined : 'login-panel')}
+        style={ownBackground ? { background: `url(${branding?.login_background_url}) center/cover` } : undefined}
+        data-testid="login-brand-panel"
+      >
+        {/* The official mark, large and quiet, in the second pine: cut from the kit's own file and filled with a token. */}
+        {!ownBackground && (
+          <span
+            aria-hidden
+            data-testid="login-watermark"
+            className="pointer-events-none absolute -top-24 -end-28 size-[36rem] bg-[var(--chrome-2)]"
+            style={{ WebkitMask: `url("${markUrl}") center / contain no-repeat`, mask: `url("${markUrl}") center / contain no-repeat` }}
+          />
+        )}
+        {ownBackground && <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />}
+
+        <div className="relative flex h-full flex-col justify-between p-12 text-[var(--chrome-ink)]">
+          <div>{platformLook && <Logo variant="reverse" layout="horizontal" height={56} />}</div>
+
+          <div>
+            {platformLook ? (
+              <>
+                <p className="inline-flex rounded-full bg-[var(--chrome-2)] px-3.5 py-1 text-[0.9375rem] font-semibold text-[var(--accent-on-dark)]" data-testid="login-badge">{t('brand.badge')}</p>
+                <h2 className="mt-4 text-[2.625rem] leading-[1.2] font-bold" data-testid="login-headline">{t('brand.tagline')}</h2>
+                <p className="mt-3 max-w-md text-[1.0625rem] leading-relaxed text-[var(--chrome-ink)]/80" data-testid="login-description">{t('brand.subtext')}</p>
+                <Journey steps={journey} tone="dark" className="mt-7" testId="login-journey" />
+              </>
+            ) : (
+              <>
+                <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">{branding?.company_name ?? systemName}</h2>
+                {/* The tagline belongs to مهتم; a workspace's own name stands alone. */}
+                <p className="mt-2.5 text-[1.0625rem] font-medium text-[var(--chrome-ink)]/90">{t('auth.welcomeSubtitle')}</p>
+              </>
+            )}
+
+            {!ownBackground && (
+              <ul className="mt-8 space-y-2.5" data-testid="login-pillars">
+                {PILLARS.map(({ key, icon: Icon }) => (
+                  <li key={key} className="flex items-center gap-3 text-[1rem] font-medium">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--chrome-2)] text-[var(--chrome-muted)]" aria-hidden><Icon className="size-4" /></span>
+                    {t(`brand.pillars.${key}`)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* The form side: limestone, one white card, nothing else competing with it. */}
+      <div className="flex flex-col bg-[var(--color-canvas)] px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-10 lg:py-5">
+        <div className="flex items-center justify-between gap-3">
+          {/* The logo leads on a phone, where there is no brand panel; on a laptop the panel carries it. */}
+          <div className={cn(platformLook && 'lg:invisible')}>
+            {logo || branding?.system_name ? (
+              <div className="flex items-center gap-2.5">
+                {logo ? <img src={logo} alt="" className="size-9 rounded-[var(--radius-control)] object-contain" /> : <Logo variant="auto" layout="mark" height={32} />}
+                <span className="text-[1.0625rem] font-semibold">{systemName}</span>
+              </div>
+            ) : (
+              <Logo variant="auto" layout="horizontal" height={48} />
+            )}
+          </div>
 
           <button
             type="button"
             onClick={() => applyLocale(i18n.language.startsWith('ar') ? 'en' : 'ar')}
-            className="pressable flex items-center gap-1.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[0.9375rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+            className="pressable flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[0.9375rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-chrome-fill)] hover:text-[var(--color-ink)]"
           >
             <Globe className="size-4" aria-hidden />
             {i18n.language.startsWith('ar') ? 'English' : 'العربية'}
           </button>
         </div>
 
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-canvas)] p-7 sm:p-8" data-testid="login-card">
-            <h1 className="t-display">{t('auth.welcome')}</h1>
-            <p className="t-small mt-1.5 text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-4">
+          {/* On a phone the idea is one line above the card, not a panel beside it. */}
+          {platformLook && (
+            <div className="w-full max-w-md lg:hidden" data-testid="login-mobile-intro">
+              <p className="text-[1.5rem] font-bold leading-tight">{t('brand.tagline')}</p>
+              <p className="mt-1 text-[0.9375rem] text-[var(--color-ink-muted)]">{t('brand.badge')}</p>
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
+          <div className="w-full max-w-md rounded-[1.25rem] border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-[0_1px_2px_rgb(20_32_29/0.04)] sm:p-7" data-testid="login-card">
+            <h1 className="text-[1.75rem] leading-tight font-bold">{t('auth.welcome')}</h1>
+            <p className="mt-1.5 text-[1rem] text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
               <Input
                 type="email"
                 name="email"
@@ -146,30 +207,54 @@ export function LoginPage() {
                 error={fieldErrors.email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
+                className="h-12 text-[1rem]"
               />
 
-              <Input
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                required
-                dir="ltr"
-                label={t('auth.password')}
-                value={password}
-                error={fieldErrors.password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
+              <div>
+                <Input
+                  type="password"
+                  name="password"
+                  autoComplete="current-password"
+                  required
+                  dir="ltr"
+                  label={t('auth.password')}
+                  value={password}
+                  error={fieldErrors.password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-12 text-[1rem]"
+                />
+                {/* There is no self-service reset: this leads to the page that says who resets it, not to a form that would not work. */}
+                <Link to="/contact#password" className="mt-1 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
+                  {t('auth.forgot')}
+                </Link>
+              </div>
 
-              <Input
-                name="tenant"
-                dir="ltr"
-                label={t('auth.organization')}
-                hint={t('common.optional')}
-                value={tenant}
-                onChange={(e) => setTenant(e.target.value)}
-                placeholder="company"
-              />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setOrganizationOpen((value) => !value)}
+                  aria-expanded={organizationOpen}
+                  className="pressable flex min-h-11 items-center gap-1.5 text-[0.9375rem] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                  data-testid="login-organization-toggle"
+                >
+                  <ChevronDown className={cn('size-4 transition-transform', organizationOpen && 'rotate-180')} aria-hidden />
+                  {t('auth.moreOrganizations')}
+                </button>
+                {organizationOpen && (
+                  <Input
+                    name="tenant"
+                    dir="ltr"
+                    label={t('auth.organization')}
+                    hint={t('common.optional')}
+                    value={tenant}
+                    onChange={(e) => setTenant(e.target.value)}
+                    placeholder="company"
+                    className="h-12 text-[1rem]"
+                    containerClassName="mt-1"
+                  />
+                )}
+              </div>
 
               {error && (
                 <p
@@ -180,86 +265,28 @@ export function LoginPage() {
                 </p>
               )}
 
-              <Button type="submit" size="lg" loading={submitting} className="w-full">
+              <Button type="submit" size="lg" loading={submitting} className="h-12 w-full text-[1rem]">
                 {submitting ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
 
             {branding?.support_email && (
-              <p className="mt-6 text-center text-[0.875rem] text-[var(--color-ink-subtle)]">
-                {branding.support_email}
-              </p>
+              <p className="mt-5 text-center text-[0.875rem] text-[var(--color-ink-subtle)]">{branding.support_email}</p>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Brand side — hidden on small screens where it would only cost scroll. */}
-      <div
-        className={cn(
-          'relative hidden overflow-hidden lg:block',
-          /*
-           * A tenant's own photograph keeps the dark treatment it was always given: light type over
-           * an image needs the scrim. Everything else is the identity's pine — see `.login-panel`.
-           */
-          ownBackground ? undefined : 'login-panel',
-        )}
-        style={
-          ownBackground
-            ? { background: `url(${branding?.login_background_url}) center/cover` }
-            : undefined
-        }
-      >
-        {/*
-          The official mark, large and quiet, in the second pine: a shape cut from the kit's own file
-          and filled with a token, so it can never drift from the logo. No copper dot — one colour.
-        */}
-        {!ownBackground && (
-          <span
-            aria-hidden
-            data-testid="login-watermark"
-            className="pointer-events-none absolute -top-24 -end-28 size-[36rem] bg-[var(--chrome-2)]"
-            style={{ WebkitMask: `url("${markUrl}") center / contain no-repeat`, mask: `url("${markUrl}") center / contain no-repeat` }}
-          />
-        )}
+          {/* The journey, short, for the person on a phone. */}
+          {platformLook && (
+            <div className="w-full max-w-md rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 lg:hidden" data-testid="login-mobile-journey">
+              <Journey steps={journey} tone="light" testId="login-mobile-journey-steps" compact />
+            </div>
+          )}
 
-        {ownBackground && <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />}
-
-        <div className="relative flex h-full flex-col justify-between p-12 text-[var(--chrome-ink)]">
-          <div>
-            {!ownBackground && !branding?.company_name && <Logo variant="reverse" layout="horizontal" height={56} />}
-          </div>
-
-          <div>
-            {!ownBackground && !branding?.company_name ? (
-              <>
-                <h2 className="text-[2.5rem] leading-[1.2] font-bold" data-testid="login-headline">{t('brand.tagline')}</h2>
-                <p className="mt-3 max-w-sm text-[1.0625rem] leading-relaxed text-[var(--chrome-ink)]/80">{t('brand.subtext')}</p>
-                <JourneyPath />
-              </>
-            ) : (
-              <>
-                <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">
-                  {branding?.company_name ?? systemName}
-                </h2>
-                {/* The tagline belongs to مهتم; a tenant's own name stands alone. */}
-                <p className="mt-2.5 text-[1.0625rem] font-medium text-[var(--chrome-ink)]/90">{t('auth.welcomeSubtitle')}</p>
-              </>
-            )}
-
-            {!ownBackground && (
-              <ul className="mt-8 space-y-2.5" data-testid="login-pillars">
-                {PILLARS.map(({ key, icon: Icon }) => (
-                  <li key={key} className="flex items-center gap-3 text-[1rem] font-medium">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--chrome-2)] text-[var(--chrome-muted)]" aria-hidden>
-                      <Icon className="size-4" />
-                    </span>
-                    {t(`brand.pillars.${key}`)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <nav aria-label="مهتم" className="flex flex-wrap justify-center gap-x-1 text-[0.9375rem]">
+            <Link to="/welcome" className="inline-flex min-h-11 items-center rounded-lg px-2.5 font-medium text-[var(--brand-text)] hover:underline" data-testid="login-about">{t('auth.about')}</Link>
+            <Link to="/privacy" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-[var(--color-ink-muted)] hover:underline">{t('brand.links.privacy')}</Link>
+            <Link to="/terms" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-[var(--color-ink-muted)] hover:underline">{t('brand.links.terms')}</Link>
+          </nav>
         </div>
       </div>
     </div>
@@ -273,30 +300,3 @@ const PILLARS: Array<{ key: 'ads' | 'speed' | 'loop'; icon: LucideIcon }> = [
 ]
 
 const JOURNEY = ['arrived', 'contacted', 'qualified', 'appointment', 'won'] as const
-
-/**
- * The path a lead takes, said in five words before anyone signs in: وصل ← تواصل ← تأهّل ← موعد ←
- * صفقة. The last is the one that matters, so it alone wears the copper. No numbers on it on
- * purpose: a figure on a login screen reads as somebody's data, and this one would belong to nobody.
- */
-function JourneyPath() {
-  const { t, i18n } = useTranslation()
-  const arrow = i18n.dir() === 'rtl' ? '←' : '→'
-
-  return (
-    <ol className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-1 text-[1.0625rem] font-semibold" data-testid="login-journey">
-      {JOURNEY.map((key, index) => (
-        <li key={key} className="flex items-center gap-3">
-          <span className={index === JOURNEY.length - 1 ? 'text-[var(--accent-on-dark)]' : undefined} data-stage={key}>
-            {t(`brand.journey.${key}`)}
-          </span>
-          {index < JOURNEY.length - 1 && (
-            <span aria-hidden className="text-[var(--chrome-muted)]">
-              {arrow}
-            </span>
-          )}
-        </li>
-      ))}
-    </ol>
-  )
-}

@@ -1,10 +1,30 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
+
+/**
+ * Emits the service worker with a build id in it. The id is a hash of the file names of the bundle
+ * (which carry their own content hashes), so any change to the product is a change to sw.js: the
+ * browser notices, installs the new worker beside the old one, and the app offers the update.
+ */
+function serviceWorker(): Plugin {
+  return {
+    name: 'mahtam-service-worker',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      const id = createHash('sha256').update(Object.keys(bundle).sort().join('|')).digest('hex').slice(0, 12)
+      const source = readFileSync(path.resolve(__dirname, 'src/pwa/sw.template.js'), 'utf8').replace('__BUILD_ID__', id)
+
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source })
+    },
+  }
+}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), serviceWorker()],
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },

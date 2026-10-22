@@ -8,6 +8,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { LoginPage } from '@/pages/Login'
 import { DashboardPage } from '@/pages/Dashboard'
 import { Toaster, Skeleton } from '@/components/ui'
+import { PwaBanners } from '@/components/pwa/PwaBanners'
 
 // Everything past the dashboard is code-split: the first paint only pays for
 // what a user actually lands on.
@@ -213,6 +214,7 @@ export function App() {
       </Routes>
 
       <Toaster />
+      <PwaBanners />
     </>
   )
 }

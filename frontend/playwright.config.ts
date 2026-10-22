@@ -68,6 +68,16 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 768 } },
       testMatch: /density\.spec\.ts/,
     },
+    /*
+     * The same critical paths in the other engines — Firefox and Safari's WebKit — and on the two
+     * phones that matter: an iPhone (WebKit is the only engine there) and an Android. Only the
+     * cross-browser specs: the full suite is about the product's behaviour, which does not depend on
+     * the engine; these are about whether it draws and works in each.
+     */
+    { name: 'firefox', use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } }, testMatch: /cross\/.*\.spec\.ts/ },
+    { name: 'webkit', use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } }, testMatch: /cross\/.*\.spec\.ts/ },
+    { name: 'mobile-safari', use: { ...devices['iPhone 14'] }, testMatch: /cross\/.*\.spec\.ts/ },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 7'] }, testMatch: /cross\/.*\.spec\.ts/ },
     {
       // A sales rep works the phone far more than a desktop, so the layouts that
       // matter most get a second run. Deliberately narrow: re-running the whole

@@ -56,7 +56,16 @@ export const http: AxiosInstance = axios.create({
   timeout: 30_000,
 })
 
+/**
+ * With no connection, a change is refused here, before it is sent — not queued, not retried later.
+ * Reading falls through to the network and fails as it always did; writing (and signing in) never
+ * pretends to have happened. The app shows the offline notice; this is what makes it true.
+ */
 http.interceptors.request.use((config) => {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false && (config.method ?? 'get').toLowerCase() !== 'get') {
+    return Promise.reject(new ApiError('offline', 0))
+  }
+
   const token = tokenStorage.get()
 
   if (token) {
@@ -88,6 +97,7 @@ export function setUnauthenticatedHandler(handler: () => void) {
 }
 
 type ErrorKey =
+  | 'offline'
   | 'network'
   | 'timeout'
   | 'unauthenticated'
@@ -124,7 +134,12 @@ export function errorKeyForStatus(status: number): ErrorKey {
 
 http.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiEnvelope<unknown>>) => {
+  (error: AxiosError<ApiEnvelope<unknown>> | ApiError) => {
+    // Already translated (the offline guard above): pass it on as it is.
+    if (error instanceof ApiError) {
+      return Promise.reject(error)
+    }
+
     if (error.code === 'ECONNABORTED') {
       return Promise.reject(new ApiError('timeout', 0))
     }

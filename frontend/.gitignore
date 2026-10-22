@@ -29,3 +29,7 @@ dist-ssr
 /test-results
 /playwright-report
 /.auth
+
+# The production build the PWA specs drive, and their results.
+dist-pwa
+e2e/.results-pwa

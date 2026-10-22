@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\Access\AccessResolver;
 use App\Enums\Role;
 use App\Models\Concerns\HasUuid;
+use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -167,6 +168,23 @@ class User extends Authenticatable
     public function isAvailable(): bool
     {
         return $this->is_active && ($this->away_until === null || $this->away_until->isPast());
+    }
+
+    /**
+     * The people of one workspace. Users are not tenant-scoped, so a query that means "my managers" or
+     * "my sellers" has to say so itself; this fails closed — no tenant in hand matches nobody.
+     */
+    public function scopeInWorkspace($query, ?int $tenantId = null)
+    {
+        $id = $tenantId ?? app(TenantContext::class)->id();
+
+        return $id === null ? $query->whereRaw('1 = 0') : $query->where($query->getModel()->getTable().'.tenant_id', $id);
+    }
+
+    /** The people who answer for a workspace: active admins and managers. */
+    public function scopeManagers($query)
+    {
+        return $query->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true);
     }
 
     /** @param  Builder<self>  $query */

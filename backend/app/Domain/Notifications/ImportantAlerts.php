@@ -3,7 +3,6 @@
 namespace App\Domain\Notifications;
 
 use App\Domain\Automation\Thresholds;
-use App\Enums\Role;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
@@ -146,13 +145,17 @@ class ImportantAlerts
     {
         $owner = $lead->assigned_to ? User::query()->where('tenant_id', $lead->tenant_id)->where('is_active', true)->find($lead->assigned_to) : null;
 
-        return $owner ? collect([$owner]) : self::managers();
+        return $owner ? collect([$owner]) : self::managers($lead->tenant_id);
     }
 
-    /** @return Collection<int,User> */
-    private static function managers(): Collection
+    /**
+     * This workspace's managers — the lead's when there is one, otherwise the one in context.
+     *
+     * @return Collection<int,User>
+     */
+    private static function managers(?int $tenantId = null): Collection
     {
-        return User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true)->get();
+        return User::query()->inWorkspace($tenantId)->managers()->get();
     }
 
     private static function send(Collection $users, ImportantNotification $notification): void

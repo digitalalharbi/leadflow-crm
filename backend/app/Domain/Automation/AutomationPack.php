@@ -56,7 +56,7 @@ class AutomationPack
             'scoring' => ['done' => true, 'detail' => $project->scoring ? 'custom' : 'default'],
             'cadence' => ['done' => isset($mine['cadence']), 'detail' => $mine['cadence'] ?? null],
             'quiet_hours' => ['done' => isset($mine['quiet_hours']['enabled']) ? (bool) $mine['quiet_hours']['enabled'] : $workspaceQuiet, 'detail' => isset($mine['quiet_hours']['enabled']) ? 'project' : ($workspaceQuiet ? 'workspace' : null)],
-            'sales_team' => ['done' => $team > 0 || User::where('role', 'sales')->where('is_active', true)->exists(), 'detail' => $team > 0 ? 'project' : 'everyone'],
+            'sales_team' => ['done' => $team > 0 || User::query()->inWorkspace($project->tenant_id)->where('role', 'sales')->where('is_active', true)->exists(), 'detail' => $team > 0 ? 'project' : 'everyone'],
         ];
 
         return [

@@ -5,7 +5,6 @@ namespace App\Domain\Agents;
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Campaigns\CampaignSyncer;
 use App\Domain\Notifications\AlertGate;
-use App\Enums\Role;
 use App\Models\AdConnection;
 use App\Models\AgentThread;
 use App\Models\AutomationActionLog;
@@ -237,7 +236,7 @@ class Orchestrator
             return;
         }
 
-        User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])->where('is_active', true)->get()
+        User::query()->inWorkspace()->managers()->get()
             ->each(fn (User $u) => $u->notify(new AgentAlertNotification($agent, $title, $body, $link)));
     }
 }

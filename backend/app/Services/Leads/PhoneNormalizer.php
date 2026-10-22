@@ -120,6 +120,12 @@ class PhoneNormalizer
         return preg_replace('/\D+/', '', $raw) ?? '';
     }
 
+    /** ASCII digits in a string, converting Arabic-Indic numerals on the way. */
+    public function digits(string $raw): string
+    {
+        return $this->toAsciiDigits($raw);
+    }
+
     /** Digits only, for wa.me links. */
     public function toWhatsApp(?string $normalized): ?string
     {

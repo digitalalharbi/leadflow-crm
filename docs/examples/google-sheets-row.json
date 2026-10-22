@@ -1,0 +1,10 @@
+{
+  "_comment": "A row pulled from a Google Sheet. Header names become keys, so a tenant maps their own Arabic headers once in the Integrations screen.",
+  "الاسم": "بشاير العتيبي",
+  "رقم الجوال": "0501112233",
+  "البريد": "bashayer@example.com",
+  "المدينة": "بريدة",
+  "الحملة": "حملة الشقق العائلية",
+  "الميزانية": "1200000",
+  "provider_lead_id": "1A2b3C4d5E:14"
+}

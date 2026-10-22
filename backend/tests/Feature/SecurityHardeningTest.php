@@ -9,7 +9,6 @@ use App\Models\WebhookEndpoint;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -267,12 +266,108 @@ class SecurityHardeningTest extends TestCase
         );
     }
 
-    public function test_only_explicitly_trusted_proxies_are_honoured(): void
+    public function test_a_forged_forwarded_header_does_not_become_the_client_address(): void
     {
-        // Trusting '*' lets a caller forge X-Forwarded-For, which bypasses the
-        // login rate limiter and poisons the audit trail.
-        $proxies = (new TrustProxies)->proxies ?? null;
+        // Trusting every proxy lets a caller forge X-Forwarded-For, which bypasses
+        // the per-IP login limiter and writes a chosen address into the audit
+        // trail. Nothing is trusted here, so the socket address must win.
+        $t = $this->provisionTenant('Proxy Co');
 
-        $this->assertNotSame('*', $proxies);
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+            ->postJson('/api/v1/auth/login', [
+                'email' => $t['admin']->email,
+                'password' => 'password123',
+            ], ['X-Forwarded-For' => '203.0.113.9'])
+            ->assertSuccessful();
+
+        $entry = DB::table('audit_logs')->where('action', 'auth.login')->latest('id')->first();
+
+        $this->assertNotNull($entry);
+        $this->assertSame('127.0.0.1', $entry->ip);
+        $this->assertStringNotContainsString('203.0.113.9', (string) $entry->changes);
+    }
+
+    public function test_a_wildcard_proxy_setting_is_refused(): void
+    {
+        $trusted = $this->trustedProxiesFromEnv('*');
+
+        $this->assertSame([], $trusted);
+        $this->assertSame(['10.0.0.1'], $this->trustedProxiesFromEnv('10.0.0.1, *'));
+    }
+
+    /** Mirrors the filter in bootstrap/app.php. */
+    private function trustedProxiesFromEnv(string $value): array
+    {
+        return array_values(array_filter(
+            array_map('trim', explode(',', $value)),
+            fn (string $proxy) => $proxy !== '' && $proxy !== '*' && $proxy !== '**',
+        ));
+    }
+
+    public function test_an_unknown_email_costs_the_same_as_a_known_one(): void
+    {
+        // Refusing an unknown address without hashing anything answers in
+        // microseconds, which tells an attacker the address does not exist.
+        /*
+         * `integrations.login.*`, not `integrations.rate_limits.login.*`.
+         *
+         * The limiter reads the first and this set the second, so the override
+         * had never done anything — and the test survived only because it makes
+         * exactly five attempts per email, which is exactly the limit. Adding a
+         * sixth sample answers 429 and the timing becomes meaningless, which is
+         * how this was found.
+         */
+        config(['integrations.login.per_email_per_minute' => 1000]);
+        config(['integrations.login.per_ip_per_minute' => 1000]);
+
+        /*
+         * A real cost factor, for this test only.
+         *
+         * The suite runs at `BCRYPT_ROUNDS=4` so that everything else is fast,
+         * which left both paths here costing about a millisecond — and the
+         * assertion below, which assumes "bcrypt dominates", was comparing two
+         * numbers made almost entirely of scheduler noise. It failed whenever
+         * the machine was busy, on branches that had not touched authentication.
+         *
+         * Ten rounds puts roughly fifty milliseconds of real work in both paths,
+         * so the thing being measured is the thing the test is about. Set before
+         * the tenant is provisioned, because the admin's password has to be
+         * hashed at this cost too — a 4-round hash is cheap to verify however
+         * the config reads afterwards, and the comparison would tilt the other
+         * way.
+         */
+        config(['hashing.bcrypt.rounds' => 10]);
+
+        $t = $this->provisionTenant('Timing Co');
+
+        $known = $this->timeLogins(fn (int $i) => $t['admin']->email);
+        $unknown = $this->timeLogins(fn (int $i) => "ghost{$i}@nowhere.test");
+
+        // Bcrypt dominates both paths, so the gap should be small. A missing
+        // dummy hash shows up as an order of magnitude, not a few percent.
+        $this->assertGreaterThan(
+            $known * 0.4,
+            $unknown,
+            'An unknown email was answered far faster than a known one.',
+        );
+    }
+
+    /** Median wall time of a handful of failed logins, in seconds. */
+    private function timeLogins(callable $email): float
+    {
+        $samples = [];
+
+        for ($i = 0; $i < 5; $i++) {
+            $start = microtime(true);
+            $this->postJson('/api/v1/auth/login', [
+                'email' => $email($i),
+                'password' => 'definitely-not-the-password',
+            ])->assertStatus(422);
+            $samples[] = microtime(true) - $start;
+        }
+
+        sort($samples);
+
+        return $samples[2];
     }
 }

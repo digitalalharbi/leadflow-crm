@@ -6,6 +6,8 @@
 .env
 .env.*
 !.env.example
+# Per-environment templates are safe to track; the filled-in files are not.
+!.env.*.example
 *.pem
 *.key
 *.ppk
@@ -49,3 +51,15 @@ Thumbs.db
 
 # Local tooling
 /.claude
+/artifacts
+/frontend/e2e/.results-visual
+
+# Written inside the image at build time; never from the host.
+.release
+
+# Direct deploy configuration — real values, never committed.
+.deploy.env
+.verify-passed
+# Written by the on-server deploy scripts (the commit to roll back to).
+.last-good-commit
+.last-good-commit.tmp

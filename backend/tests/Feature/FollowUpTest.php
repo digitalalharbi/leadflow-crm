@@ -61,8 +61,14 @@ class FollowUpTest extends TestCase
 
     public function test_buckets_separate_overdue_today_and_upcoming(): void
     {
+        // Pinned to mid-morning. "Later today" written as `now()->addHours(2)`
+        // lands tomorrow whenever the suite runs after 22:00, which moved that
+        // follow-up into "upcoming" and failed this test for two hours of every
+        // day — on CI, at 23:43 UTC, for a commit that touched no PHP at all.
+        $this->travelTo(now()->startOfDay()->addHours(9));
+
         $this->makeFollowUp(now()->subDays(2));
-        $this->makeFollowUp(now()->setTime(14, 0));
+        $this->makeFollowUp(now()->addHours(2));   // genuinely later the same day
         $this->makeFollowUp(now()->addDays(3));
 
         $counts = $this->actingAs($this->t['admin'])->getJson('/api/v1/follow-ups/counts')->json('data');
@@ -75,19 +81,61 @@ class FollowUpTest extends TestCase
             ->getJson('/api/v1/follow-ups?bucket=overdue')->json('meta.total'));
     }
 
+    public function test_the_three_buckets_are_disjoint_and_cover_everything(): void
+    {
+        // Pinned for the same reason as the test above: both ends of "today" have
+        // to stay inside it, and -2h/+2h only do that away from midnight.
+        $this->travelTo(now()->startOfDay()->addHours(9));
+
+        // A follow-up due earlier today is overdue, not "today" — otherwise it is
+        // counted twice and the figures stop matching the work.
+        $this->makeFollowUp(now()->subHours(2));          // earlier today
+        $this->makeFollowUp(now()->subDays(2));           // earlier this week
+        $this->makeFollowUp(now()->addHours(2));          // later today
+        $this->makeFollowUp(now()->addDays(3));           // upcoming
+
+        $counts = $this->actingAs($this->t['admin'])->getJson('/api/v1/follow-ups/counts')->json('data');
+
+        $this->assertSame(2, $counts['overdue']);
+        $this->assertSame(1, $counts['today']);
+        $this->assertSame(1, $counts['upcoming']);
+
+        // Disjoint and exhaustive: every pending follow-up sits in exactly one.
+        $this->assertSame(
+            4,
+            $counts['overdue'] + $counts['today'] + $counts['upcoming'],
+        );
+    }
+
     public function test_completing_a_follow_up_clears_the_lead_marker_and_records_contact(): void
     {
         $followUp = $this->makeFollowUp(now()->addDay());
         $this->lead->forceFill(['next_follow_up_at' => $followUp->due_at])->saveQuietly();
 
         $this->actingAs($this->t['admin'])
-            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", ['outcome' => 'تم الاتصال'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", [
+                'outcome' => 'replied',
+                'outcome_note' => 'تم الاتصال',
+            ])
             ->assertOk()
             ->assertJsonPath('data.follow_up.status', 'completed');
 
         $this->lead->refresh();
         $this->assertNull($this->lead->next_follow_up_at);
         $this->assertNotNull($this->lead->last_contact_at);
+
+        // An outcome was recorded, so the timeline says what happened rather
+        // than only that something was ticked off.
+        $this->assertDatabaseHas('lead_activities', ['lead_id' => $this->lead->id, 'type' => 'follow_up_outcome']);
+    }
+
+    public function test_completing_without_an_outcome_still_records_the_completion(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete")
+            ->assertOk();
 
         $this->assertDatabaseHas('lead_activities', ['lead_id' => $this->lead->id, 'type' => 'follow_up_completed']);
     }
@@ -139,5 +187,90 @@ class FollowUpTest extends TestCase
             'created_by' => $this->t['admin']->id,
             'due_at' => $dueAt,
         ]));
+    }
+
+    public function test_an_outcome_is_recorded_and_moves_the_lead(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", ['outcome' => 'appointment'])
+            ->assertOk()
+            ->assertJsonPath('data.follow_up.outcome', 'appointment');
+
+        // "They want to come and see it" is the strongest buying signal a rep
+        // can record, so it has to reach the lead, not only the follow-up.
+        $lead = $this->lead->refresh();
+        $this->assertTrue($lead->appointment_interest);
+        $this->assertGreaterThan(0, $lead->score);
+    }
+
+    public function test_a_not_interested_outcome_is_recorded_too(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", ['outcome' => 'not_interested'])
+            ->assertOk();
+
+        $this->assertFalse($this->lead->refresh()->appointment_interest);
+    }
+
+    public function test_completing_one_follow_up_can_schedule_the_next(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", [
+                'outcome' => 'callback',
+                'next_due_at' => now()->addDays(3)->toIso8601String(),
+                'next_note' => 'يعاود الاتصال بعد 3 أيام',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('follow_ups', [
+            'lead_id' => $this->lead->id,
+            'status' => 'pending',
+            'note' => 'يعاود الاتصال بعد 3 أيام',
+        ]);
+
+        // The lead's marker points at the new one, not at nothing.
+        $this->assertNotNull($this->lead->refresh()->next_follow_up_at);
+    }
+
+    public function test_a_next_follow_up_in_the_past_is_refused(): void
+    {
+        $followUp = $this->makeFollowUp(now()->addDay());
+
+        $this->actingAs($this->t['admin'])
+            ->postJson("/api/v1/follow-ups/{$followUp->uuid}/complete", [
+                'next_due_at' => now()->subDay()->toIso8601String(),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('next_due_at');
+    }
+
+    /**
+     * "Missed" is not "overdue". Overdue is work still waiting; missed is work
+     * that will never happen now — a step cancelled because the lead closed, or
+     * because a rule stopped chasing. A manager asking "how much are we
+     * dropping" wants the second number, and before this the two were the same
+     * list.
+     */
+    public function test_missed_follow_ups_are_separate_from_overdue_ones(): void
+    {
+        $overdue = $this->makeFollowUp(now()->subDay());
+        $missed = $this->makeFollowUp(now()->subWeek());
+        $missed->update(['status' => FollowUp::CANCELLED]);
+
+        $missedIds = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/follow-ups?bucket=missed')->assertOk()->json('data.*.id');
+
+        $overdueIds = $this->actingAs($this->t['admin'])
+            ->getJson('/api/v1/follow-ups?bucket=overdue')->assertOk()->json('data.*.id');
+
+        $this->assertContains($missed->uuid, $missedIds);
+        $this->assertNotContains($overdue->uuid, $missedIds);
+        $this->assertNotContains($missed->uuid, $overdueIds);
     }
 }

@@ -4,9 +4,14 @@ namespace App\Services\Leads;
 
 use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
+use App\Domain\Campaigns\CampaignResolver;
+use App\Domain\Leads\DuplicateMatcher;
+use App\Domain\Tracking\Attribution;
+use App\Domain\Tracking\EventRecorder;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
-use App\Enums\LeadTemperature;
+use App\Events\LeadCreated;
+use App\Events\LeadSignal;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
@@ -26,12 +31,17 @@ use Illuminate\Support\Facades\Validator;
  */
 class LeadIngestionService
 {
+    /** Fields a workspace can gain from its sources without anybody creating them. */
+    private const MAX_AUTO_FIELDS = 150;
+
     public function __construct(
         private PhoneNormalizer $phones,
-        private LeadScorer $scorer,
+        private LeadScoringService $scoring,
         private LeadAssignmentService $assignment,
         private ActivityLogger $activities,
         private TenantContext $context,
+        private DuplicateMatcher $duplicates,
+        private CampaignResolver $campaigns,
     ) {}
 
     public function ingest(Tenant $tenant, IncomingLead $incoming): IngestionResult
@@ -48,9 +58,10 @@ class LeadIngestionService
             }
 
             return DB::transaction(function () use ($tenant, $incoming, $normalizedPhone, $settings) {
-                $existing = $normalizedPhone
-                    ? Lead::withTrashed()->where('phone_normalized', $normalizedPhone)->lockForUpdate()->first()
-                    : null;
+                // Phone alone missed the same person arriving from a second
+                // platform with a different number on the form. See
+                // DuplicateMatcher for why the order of signals matters.
+                $existing = $this->duplicates->find($incoming, $normalizedPhone);
 
                 if ($existing) {
                     return $this->reEngage($existing, $incoming, $normalizedPhone);
@@ -86,10 +97,25 @@ class LeadIngestionService
         return null;
     }
 
+    /**
+     * Put the lead on the trail it left, before any rule reads it. A failure here costs the
+     * attribution, never the lead: a customer who filled in a form is a customer first.
+     */
+    private function attribute(Lead $lead, IncomingLead $incoming): void
+    {
+        if (blank($incoming->visitorId) && blank($incoming->trackingToken)) {
+            return;
+        }
+
+        try {
+            DB::transaction(fn () => app(Attribution::class)->attachLead($lead, $incoming, app(EventRecorder::class)->link($incoming->trackingToken)));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     private function create(Tenant $tenant, IncomingLead $incoming, ?string $phone, $settings): IngestionResult
     {
-        $score = $this->scorer->scoreIncoming($incoming);
-
         $lead = Lead::create([
             'first_name' => $incoming->firstName,
             'last_name' => $incoming->lastName,
@@ -108,13 +134,13 @@ class LeadIngestionService
             'ad_id' => $incoming->adId,
             'form_name' => $incoming->formName,
             'form_id' => $incoming->formId,
+            'click_id' => $incoming->clickId,
+            'utm_source' => $incoming->utmSource,
+            'utm_medium' => $incoming->utmMedium,
+            'utm_campaign' => $incoming->utmCampaign,
+            'utm_term' => $incoming->utmTerm,
+            'utm_content' => $incoming->utmContent,
             'status' => LeadStatus::New,
-            'temperature' => LeadTemperature::fromScore(
-                $score,
-                $settings?->score_warm_threshold ?? 40,
-                $settings?->score_hot_threshold ?? 70,
-            ),
-            'score' => $score,
             // Resolved under the tenant scope: an id belonging to another tenant
             // simply is not there, so it lands as null instead of leaking.
             'project_id' => $this->resolveProjectId($incoming->projectId),
@@ -125,25 +151,57 @@ class LeadIngestionService
             'preferred_property_type' => $incoming->preferredPropertyType,
             'preferred_location' => $incoming->preferredLocation,
             'purchase_timeline' => $incoming->purchaseTimeline,
+        ] + $incoming->realEstate + [
             'provider' => $incoming->provider->value,
             'provider_lead_id' => $incoming->providerLeadId,
             'provider_payload' => $incoming->redactedPayload() ?: null,
         ]);
 
+        /*
+         * Scored after the row exists, by the same engine the qualification
+         * screen uses. Scoring the DTO separately meant an inbound lead and the
+         * same lead re-saved by a rep could disagree about its own temperature.
+         */
+        $this->scoring->apply($lead);
+        $lead->qualification_status = $this->scoring->qualificationStatus($lead);
+        $lead->saveQuietly();
+
         $this->recordSourceEvent($lead, $incoming, false);
+        $this->attribute($lead, $incoming);
         $this->storeCustomFields($lead, $incoming);
         $this->activities->log($lead, ActivityType::Created, null, null, ['provider' => $incoming->provider->value]);
 
         // Explicit assignment from the payload wins; otherwise fall back to tenant policy.
         $assignee = $incoming->assignedTo
             ? $tenant->users()->whereKey($incoming->assignedTo)->first()
-            : $this->assignment->pickAssignee($tenant);
+            // The lead goes too: a project with its own team takes its own leads.
+            : $this->assignment->pickAssignee($tenant, $lead);
 
         if ($assignee) {
             $this->assignment->assign($lead, $assignee);
         }
 
-        return IngestionResult::created($lead->refresh());
+        $lead->refresh();
+
+        // Tie the lead to its campaign, ad set and ad. Never allowed to cost the
+        // lead: in a savepoint, so a failure here rolls back only itself.
+        try {
+            DB::transaction(fn () => $this->campaigns->linkLead($lead));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        /*
+         * Announced after the lead is saved and assigned, never before: a rule
+         * that reads `is_assigned` must see the finished record, and a listener
+         * that fails must not be able to roll back the lead itself.
+         */
+        LeadCreated::dispatch($lead, null, [
+            'provider' => $incoming->provider->value,
+            'platform' => (string) $incoming->platform,
+        ]);
+
+        return IngestionResult::created($lead);
     }
 
     /**
@@ -153,7 +211,18 @@ class LeadIngestionService
      */
     private function reEngage(Lead $lead, IncomingLead $incoming, ?string $phone): IngestionResult
     {
-        if ($lead->trashed()) {
+        /*
+         * A deleted lead coming back is a restore, and it is recorded as one.
+         *
+         * Deletion is a deliberate act: somebody removed that record, and its
+         * notes, owner and history went with it. Bringing all of that back
+         * without saying so means the lead reappears in the list as though it
+         * had never gone, and the person who deleted it is told only that "this
+         * number already exists" — about a record they cannot see.
+         */
+        $restored = $lead->trashed();
+
+        if ($restored) {
             $lead->restore();
         }
 
@@ -181,9 +250,14 @@ class LeadIngestionService
         $this->activities->log($lead, ActivityType::ReEngaged, null, null, [
             'provider' => $incoming->provider->value,
             'campaign_name' => $incoming->campaignName,
+            // On the lead's own timeline, so the resurrection is answerable
+            // later: it is the only place that records the record came back.
+            'restored' => $restored,
         ]);
 
-        return IngestionResult::reEngaged($lead->refresh());
+        LeadSignal::dispatch($lead, 'lead.re_engaged', ['provider' => $incoming->provider->value, 'restored' => $restored]);
+
+        return IngestionResult::reEngaged($lead->refresh(), $restored);
     }
 
     /** Scoped lookup — a foreign or unknown project id resolves to null. */
@@ -221,13 +295,42 @@ class LeadIngestionService
             return;
         }
 
-        $fields = CustomField::where('is_active', true)
-            ->whereIn('key', array_keys($incoming->custom))
+        $fields = CustomField::whereIn('key', array_keys($incoming->custom))
             ->get()
             ->keyBy('key');
 
+        /*
+         * An answer to a question we have never seen — a new column in the
+         * sheet, a custom question on the form — becomes a field of its own,
+         * named the way its source named it. Dropping it would lose the one
+         * thing the customer told us that the form designer thought mattered.
+         * Capped, so a sheet with a column per day cannot mint fields forever.
+         */
+        $missing = array_diff(array_keys($incoming->custom), $fields->keys()->all());
+
+        if ($missing !== [] && $incoming->customLabels !== []) {
+            $room = max(0, self::MAX_AUTO_FIELDS - CustomField::count());
+            $order = (int) CustomField::max('sort_order');
+
+            foreach (array_slice(array_values($missing), 0, $room) as $key) {
+                if (! isset($incoming->customLabels[$key])) {
+                    continue;
+                }
+
+                $fields[$key] = CustomField::create([
+                    'key' => $key,
+                    'label' => mb_substr((string) $incoming->customLabels[$key], 0, 120),
+                    'type' => 'text',
+                    'is_active' => true,
+                    'is_required' => false,
+                    'sort_order' => ++$order,
+                ]);
+            }
+        }
+
         foreach ($incoming->custom as $key => $value) {
-            if (! $fields->has($key) || $value === null || $value === '') {
+            // A field somebody switched off stays off: its answers are not wanted.
+            if (! $fields->has($key) || ! $fields[$key]->is_active || $value === null || $value === '') {
                 continue;
             }
 

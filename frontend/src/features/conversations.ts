@@ -1,0 +1,142 @@
+import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
+import type {
+  CampaignQualityRow, Lead, LeadMessage, MessageTemplate, PaginationMeta,
+  QualificationInput, QualificationOptions, SalesPerformance, ScoreBreakdown,
+  WhatsappSettings,
+} from '@/types/api'
+
+/* ---------------------------------------------------------------- messages */
+
+export function fetchLeadMessages(leadId: string, page = 1) {
+  return apiGetPaginated<LeadMessage[]>(`/leads/${leadId}/messages`, { page, per_page: 30 }) as Promise<{
+    data: LeadMessage[]
+    meta: PaginationMeta | undefined
+  }>
+}
+
+export function sendLeadMessage(leadId: string, payload: { body?: string; template_uuid?: string }) {
+  return apiPost<{ message: LeadMessage }>(`/leads/${leadId}/messages`, payload)
+}
+
+export function previewTemplate(leadId: string, templateId: string) {
+  return apiPost<{ body: string }>(`/leads/${leadId}/messages/preview`, { template_uuid: templateId })
+}
+
+export function setWhatsappOptOut(leadId: string, optedOut: boolean) {
+  return apiPost<{ whatsapp_opt_out_at: string | null }>(`/leads/${leadId}/whatsapp-opt-out`, {
+    opted_out: optedOut,
+  })
+}
+
+/* --------------------------------------------------------------- templates */
+
+export function fetchMessageTemplates(all = false, channel: 'whatsapp' | 'email' = 'whatsapp') {
+  return apiGet<{ templates: MessageTemplate[]; variables: string[] }>('/message-templates', { all, channel })
+}
+
+export type TemplatePayload = {
+  name: string
+  body: string
+  is_active?: boolean
+  meta_template_name?: string | null
+  meta_language?: string | null
+  meta_parameters?: string[] | null
+  purpose?: string | null
+  project_id?: string | null
+  language?: string | null
+  stage?: string | null
+  audience?: string | null
+}
+
+export function createMessageTemplate(payload: TemplatePayload) {
+  return apiPost<{ template: MessageTemplate }>('/message-templates', payload)
+}
+
+export function updateMessageTemplate(id: string, payload: Partial<TemplatePayload>) {
+  return apiPatch<{ template: MessageTemplate }>(`/message-templates/${id}`, payload)
+}
+
+export function deleteMessageTemplate(id: string) {
+  return apiDelete(`/message-templates/${id}`)
+}
+
+/* ----------------------------------------------------------- qualification */
+
+export function fetchQualificationOptions() {
+  return apiGet<QualificationOptions>('/qualification/options')
+}
+
+export function fetchScoreBreakdown(leadId: string) {
+  return apiGet<ScoreBreakdown>(`/leads/${leadId}/qualification`)
+}
+
+export function saveQualification(leadId: string, payload: QualificationInput) {
+  return apiPatch<{
+    lead: Lead
+    scoring: ScoreBreakdown
+    changed: { score: boolean; temperature: boolean; qualification_status: boolean }
+  }>(`/leads/${leadId}/qualification`, payload)
+}
+
+/* ------------------------------------------------------- whatsapp settings */
+
+/** Just enough for the lead screen; readable by anyone who works leads. */
+export function fetchWhatsappCapability() {
+  return apiGet<{ can_send: boolean; mode: 'live' | 'mock' }>('/whatsapp/capability')
+}
+
+export function fetchWhatsappSettings() {
+  return apiGet<WhatsappSettings>('/integrations/whatsapp')
+}
+
+export function saveWhatsappSettings(payload: Record<string, unknown>) {
+  return apiPatch<WhatsappSettings>('/integrations/whatsapp', payload)
+}
+
+export function testWhatsappConnection() {
+  return apiPost<WhatsappSettings & { ok: boolean; detail: string }>('/integrations/whatsapp/test', {})
+}
+
+export function rotateVerifyToken() {
+  return apiPost<{ verify_token: string; notice: string }>('/integrations/whatsapp/rotate-verify-token', {})
+}
+
+export function disconnectWhatsapp() {
+  return apiDelete<WhatsappSettings>('/integrations/whatsapp')
+}
+
+/* ------------------------------------------------------------------ reports */
+
+export function fetchCampaignQuality(filters: Record<string, unknown> = {}) {
+  return apiGet<{ rows: CampaignQualityRow[]; totals: CampaignQualityRow; currency: string }>(
+    '/reports/campaign-quality',
+    filters,
+  )
+}
+
+export interface SalesTeamRow {
+  user_id: string | null
+  name: string
+  leads: number
+  contacted: number
+  replied: number
+  qualified: number
+  hot: number
+  appointments: number
+  won: number
+  lost: number
+  contact_rate: number
+  reply_rate: number
+  qualification_rate: number
+  appointment_rate: number
+  win_rate: number
+  avg_first_contact_seconds: number | null
+}
+
+export function fetchSalesTeam(filters: Record<string, unknown> = {}) {
+  return apiGet<{ rows: SalesTeamRow[] }>('/reports/sales-team', filters)
+}
+
+export function fetchSalesPerformance(filters: Record<string, unknown> = {}) {
+  return apiGet<SalesPerformance>('/reports/performance', filters)
+}

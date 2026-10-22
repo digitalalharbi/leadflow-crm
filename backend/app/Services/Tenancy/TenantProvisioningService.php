@@ -2,10 +2,12 @@
 
 namespace App\Services\Tenancy;
 
+use App\Domain\Automation\JourneyInstaller;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\LostReason;
+use App\Models\MessageTemplate;
 use App\Models\Tenant;
 use App\Models\TenantBranding;
 use App\Models\TenantSetting;
@@ -45,7 +47,9 @@ class TenantProvisioningService
             return $this->context->withTenant($tenant, function () use ($tenant, $data, $defaults) {
                 TenantBranding::create([
                     'company_name' => $data['company_name'],
-                    'system_name' => $data['system_name'] ?? $data['company_name'],
+                    // Not defaulted to the company name. A workspace that was never asked to
+                    // rename the product shows the product's own name, not its client's.
+                    'system_name' => filled($data['system_name'] ?? null) ? $data['system_name'] : null,
                     'logo_url' => $data['logo_url'] ?? null,
                     'primary_color' => $data['primary_color'] ?? '#2563eb',
                     'secondary_color' => $data['secondary_color'] ?? '#0f172a',
@@ -60,8 +64,40 @@ class TenantProvisioningService
                     'default_country_code' => $data['country_code'] ?? $defaults['country_code'],
                     'assignment_mode' => $data['assignment_mode'] ?? 'manual',
                     'whatsapp_template' => 'مرحباً {{name}}، معك {{agent}} من {{company}} بخصوص اهتمامك بمشروع {{project}}.',
-                    'onboarding' => $this->initialOnboarding(),
                 ]);
+
+                // A workspace with no saved messages has a composer nobody uses.
+                foreach (MessageTemplate::DEFAULTS as $index => $template) {
+                    MessageTemplate::create([
+                        'name' => $template['name'],
+                        'body' => $template['body'],
+                        'purpose' => $template['purpose'] ?? null,
+                        'channel' => 'whatsapp',
+                        'is_active' => true,
+                        'sort_order' => $index,
+                    ]);
+                }
+
+                foreach (MessageTemplate::EMAIL_DEFAULTS as $index => $template) {
+                    MessageTemplate::create([
+                        'name' => $template['name'],
+                        'subject' => $template['subject'],
+                        'body' => $template['body'],
+                        'purpose' => $template['purpose'] ?? null,
+                        'channel' => 'email',
+                        'is_active' => true,
+                        'sort_order' => $index,
+                    ]);
+                }
+
+                /*
+                 * The journey every lead starts on: welcome, brochure, the
+                 * project's questions, reminders, and a hand-off to a person
+                 * when it is a person's turn. Installed on, because a workspace
+                 * whose leads wait for a rep to start the conversation is the
+                 * thing this product exists to end.
+                 */
+                app(JourneyInstaller::class)->install($tenant);
 
                 foreach (LostReason::DEFAULTS as $index => $reason) {
                     LostReason::create([
@@ -102,17 +138,6 @@ class TenantProvisioningService
     }
 
     /** The short checklist the admin sees on first login. */
-    private function initialOnboarding(): array
-    {
-        return [
-            'branding' => true,       // provisioned above
-            'team' => false,
-            'project' => false,
-            'lead_source' => false,
-            'first_lead' => false,
-        ];
-    }
-
     public function uniqueSlug(string $candidate): string
     {
         $base = Str::slug(Str::ascii($candidate)) ?: 'tenant';

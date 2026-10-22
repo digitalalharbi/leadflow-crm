@@ -1,61 +1,26 @@
 import { NavLink } from 'react-router-dom'
-import {
-  BarChart3, Building2, Columns3, LayoutDashboard, Plug, Settings,
-  ShieldCheck, Users2, CalendarClock, Contact2, X,
-} from 'lucide-react'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
-import { apiGet } from '@/lib/api'
-import { can, useAuth } from '@/stores/auth'
+import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
+import { BrandLockup } from '@/components/brand'
+import { useNavigation } from './navigation'
 
-interface NavItem {
-  to: string
-  labelKey: string
-  Icon: typeof LayoutDashboard
-  visible: boolean
-  badge?: number
-}
-
+/**
+ * The phone drawer: every destination, labelled.
+ *
+ * Below the desktop breakpoint there is no icon rail and no pill track — an
+ * icon-only strip is the wrong tool on a thumb — so the same destinations, from
+ * the same source, open as a list that slides in from the start edge.
+ */
 export function Sidebar() {
   const { t } = useTranslation()
-  const user = useAuth((s) => s.user)
   const branding = useAuth((s) => s.branding)
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
   const sidebarOpen = useUi((s) => s.sidebarOpen)
   const setSidebarOpen = useUi((s) => s.setSidebarOpen)
-
-  // Overdue count sits next to "Follow-ups" — it is the number that should
-  // pull a rep back into the app.
-  const { data: counts } = useQuery({
-    queryKey: ['follow-up-counts'],
-    queryFn: () => apiGet<{ overdue: number; today: number; upcoming: number }>('/follow-ups/counts'),
-    enabled: !isSuperAdmin,
-    refetchInterval: 120_000,
-  })
-
-  const items: NavItem[] = isSuperAdmin
-    ? [{ to: '/platform', labelKey: 'nav.superAdmin', Icon: ShieldCheck, visible: true }]
-    : [
-        { to: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard, visible: true },
-        { to: '/leads', labelKey: 'nav.leads', Icon: Contact2, visible: true },
-        { to: '/pipeline', labelKey: 'nav.pipeline', Icon: Columns3, visible: true },
-        {
-          to: '/follow-ups',
-          labelKey: 'nav.followUps',
-          Icon: CalendarClock,
-          visible: true,
-          badge: (counts?.overdue ?? 0) + (counts?.today ?? 0),
-        },
-        { to: '/projects', labelKey: 'nav.projects', Icon: Building2, visible: true },
-        { to: '/reports', labelKey: 'nav.reports', Icon: BarChart3, visible: can.viewReports(user) },
-        { to: '/integrations', labelKey: 'nav.integrations', Icon: Plug, visible: can.manageIntegrations(user) },
-        { to: '/users', labelKey: 'nav.users', Icon: Users2, visible: can.seeAllLeads(user) },
-        { to: '/settings', labelKey: 'nav.settings', Icon: Settings, visible: true },
-      ]
-
-  const systemName = branding?.system_name ?? t('common.appName')
+  const { all: items } = useNavigation()
 
   return (
     <>
@@ -64,7 +29,7 @@ export function Sidebar() {
         <button
           type="button"
           aria-label={t('common.close')}
-          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-[var(--color-neutral-900)]/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -72,29 +37,25 @@ export function Sidebar() {
       <aside
         data-open={sidebarOpen}
         className={cn(
-          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[17rem] flex-col',
-          'border-e border-[var(--color-border)] bg-[var(--color-surface)]',
+          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[16rem] max-w-[85vw] flex-col lg:hidden print:hidden',
+          /*
+           * The canvas colour, not white.
+           *
+           * With a white rail against a white card there is nothing to see;
+           * the whole theme rests on cards being the only white things on the
+           * screen, so the chrome has to recede for them to read as objects.
+           */
+          'rounded-e-[var(--radius-panel)] bg-[var(--chrome-1)] text-[var(--chrome-ink)] shadow-[var(--shadow-pop)]',
         )}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-[var(--color-border)] px-4">
-          <div className="flex min-w-0 items-center gap-2.5">
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt="" className="size-8 shrink-0 rounded-lg object-contain" />
-            ) : (
-              <span
-                className="grid size-8 shrink-0 place-items-center rounded-lg text-[0.8125rem] font-bold text-white"
-                style={{ background: 'var(--brand)' }}
-                aria-hidden
-              >
-                {systemName.slice(0, 1)}
-              </span>
-            )}
-            <span className="truncate text-[0.9375rem] font-semibold">{systemName}</span>
-          </div>
+        <div className="flex h-16 items-center justify-between gap-2 px-3">
+          {/* One component decides whose identity this is — see BrandLockup. The drawer is pine, so the reverse logo. */}
+          <BrandLockup to="/" size="md" variant="reverse" onDark />
 
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-lg text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] lg:hidden"
+            aria-label={t('common.close')}
+            className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--chrome-muted)] hover:bg-[var(--chrome-2)] hover:text-[var(--chrome-ink)] lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="size-4" aria-hidden />
@@ -102,8 +63,18 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+          {/*
+           * The console says so in words as well as in colour. Colour alone is
+           * the kind of cue that stops working on the day it matters — a tired
+           * operator, a projector, a screenshot pasted into a ticket.
+           */}
+          {isSuperAdmin && (
+            <p className="label-caps px-3 pb-2 text-[var(--chrome-muted)]">
+              {t('nav.platformConsole')}
+            </p>
+          )}
+
           {items
-            .filter((item) => item.visible)
             .map(({ to, labelKey, Icon, badge }) => (
               <NavLink
                 key={to}
@@ -112,17 +83,28 @@ export function Sidebar() {
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-[0.875rem] font-medium transition-colors',
+                    'relative flex items-center gap-2.5 px-3 py-2 text-[0.9375rem] font-medium',
+                    'rounded-[var(--radius-pill)] transition-colors duration-[var(--duration-fast)]',
+                    /*
+                     * The active item is a white pill, which is the same
+                     * relationship every card on the canvas has — so "where am
+                     * I" is answered by the one visual rule the whole theme is
+                     * built on rather than by a second one invented here.
+                     *
+                     * The brand marker stays: a tenant whose colour is close to
+                     * the ink would otherwise have an active state nobody can
+                     * see, and that is the one state that must never be subtle.
+                     */
                     isActive
-                      ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
-                      : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]',
+                      ? 'bg-[var(--chrome-active)] font-semibold text-[var(--chrome-active-ink)]'
+                      : 'text-[var(--chrome-muted)] hover:bg-[var(--chrome-2)] hover:text-[var(--chrome-ink)]',
                   )
                 }
               >
                 <Icon className="size-[1.125rem] shrink-0" aria-hidden />
                 <span className="flex-1 truncate">{t(labelKey)}</span>
                 {badge !== undefined && badge > 0 && (
-                  <span className="tabular rounded-full bg-[var(--color-status-lost)] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white">
+                  <span className="tabular rounded-full bg-[var(--color-status-lost)] px-1.5 py-0.5 text-[0.8125rem] font-semibold text-white">
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}
@@ -131,8 +113,8 @@ export function Sidebar() {
         </nav>
 
         {branding?.support_email && (
-          <div className="border-t border-[var(--color-border)] p-3 text-[0.75rem] text-[var(--color-ink-subtle)]">
-            <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--color-ink)]">
+          <div className="border-t border-[var(--chrome-line)] p-3 text-[0.875rem] text-[var(--chrome-muted)]">
+            <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--chrome-ink)]">
               {branding.support_email}
             </a>
           </div>

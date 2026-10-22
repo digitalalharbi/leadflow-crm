@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios'
 import type { ApiEnvelope } from '@/types/api'
+import { useCompany } from '@/stores/company'
 
 /** Where the token lives. Kept in one place so logout can be exhaustive. */
 const TOKEN_KEY = 'leadflow.token'
@@ -55,11 +56,34 @@ export const http: AxiosInstance = axios.create({
   timeout: 30_000,
 })
 
+/**
+ * With no connection, a change is refused here, before it is sent — not queued, not retried later.
+ * Reading falls through to the network and fails as it always did; writing (and signing in) never
+ * pretends to have happened. The app shows the offline notice; this is what makes it true.
+ */
 http.interceptors.request.use((config) => {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false && (config.method ?? 'get').toLowerCase() !== 'get') {
+    return Promise.reject(new ApiError('offline', 0))
+  }
+
   const token = tokenStorage.get()
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+
+  /*
+   * The company being looked at, on every request but the one that lists
+   * companies. That list is how a stale choice gets noticed — a company that
+   * was deactivated, or that this person was taken out of — and a list that
+   * sent the stale choice would be refused for it, leaving no way to see
+   * that it is stale.
+   */
+  const company = useCompany.getState().selected
+  const isCompanyList = config.method === 'get' && config.url === '/companies'
+
+  if (company && !isCompanyList) {
+    config.headers['X-Company-Id'] = company
   }
 
   return config
@@ -73,6 +97,7 @@ export function setUnauthenticatedHandler(handler: () => void) {
 }
 
 type ErrorKey =
+  | 'offline'
   | 'network'
   | 'timeout'
   | 'unauthenticated'
@@ -109,7 +134,12 @@ export function errorKeyForStatus(status: number): ErrorKey {
 
 http.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiEnvelope<unknown>>) => {
+  (error: AxiosError<ApiEnvelope<unknown>> | ApiError) => {
+    // Already translated (the offline guard above): pass it on as it is.
+    if (error instanceof ApiError) {
+      return Promise.reject(error)
+    }
+
     if (error.code === 'ECONNABORTED') {
       return Promise.reject(new ApiError('timeout', 0))
     }
@@ -146,6 +176,11 @@ export async function apiGetPaginated<T>(url: string, params?: Record<string, un
 
 export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
   const { data } = await http.post<ApiEnvelope<T>>(url, body)
+  return data.data
+}
+
+export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.put<ApiEnvelope<T>>(url, body)
   return data.data
 }
 

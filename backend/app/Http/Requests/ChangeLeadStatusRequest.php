@@ -24,6 +24,13 @@ class ChangeLeadStatusRequest extends FormRequest
                 'uuid',
             ],
             'lost_note' => ['nullable', 'string', 'max:1000'],
+            /*
+             * Optional, even on a win. A sale recorded without its value is
+             * still a sale, and refusing to close one until somebody knows the
+             * final figure is how a CRM ends up with a stage people route
+             * around. In major units — what a person types.
+             */
+            'deal_value' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
         ];
     }
 

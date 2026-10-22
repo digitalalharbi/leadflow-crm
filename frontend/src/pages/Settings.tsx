@@ -4,8 +4,14 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
+import type { Thresholds } from '@/features/automation'
 import { useUi } from '@/stores/ui'
+import { SetupCheck } from '@/components/onboarding/SetupCheck'
+import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel'
+import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
+import { SelfApprovalPanel } from '@/components/settings/SelfApprovalPanel'
 import { useApiError } from '@/hooks/useApiError'
+import { TIMEZONES } from '@/lib/locales'
 import { formatDate } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, ErrorState, Input, Modal,
@@ -17,12 +23,29 @@ import { cn } from '@/lib/cn'
 interface SettingsResponse {
   branding: Branding
   settings: TenantSettings
+  thresholds?: Thresholds
   subscription: { plan: string; status: string; trial_ends_at: string | null; subscription_ends_at: string | null }
   lost_reasons: LostReason[]
   custom_fields: CustomField[]
 }
 
-type Tab = 'branding' | 'general' | 'lostReasons' | 'customFields' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'approvals' | 'delivery' | 'subscription'
+
+
+/**
+ * The week, in ISO numbers because `Carbon::dayOfWeekIso` is what reads them on
+ * the other side. Sunday is 7 and starts the list, which is the week here and
+ * the easiest thing to get wrong.
+ */
+const WEEK = [
+  { iso: 7, key: 'sun' },
+  { iso: 1, key: 'mon' },
+  { iso: 2, key: 'tue' },
+  { iso: 3, key: 'wed' },
+  { iso: 4, key: 'thu' },
+  { iso: 5, key: 'fri' },
+  { iso: 6, key: 'sat' },
+] as const
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
@@ -32,7 +55,7 @@ export function SettingsPage() {
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
-  const [tab, setTab] = useState<Tab>('branding')
+  const [tab, setTab] = useState<Tab>('general')
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['settings'],
@@ -41,7 +64,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['branding', 'general', 'lostReasons', 'customFields', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'approvals', 'delivery', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -57,17 +80,22 @@ export function SettingsPage() {
     <>
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
-      <div className="scroll-x mb-4 flex gap-1">
+      {/* A settings page is navigated, not scrolled: the sections are named
+          and switched rather than stacked into one long column. */}
+      <div className="scroll-x mb-4 flex gap-1 rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] p-1">
         {tabs.map((key) => (
           <button
             key={key}
             type="button"
+            data-testid={`settings-tab-${key}`}
+            aria-current={tab === key}
             onClick={() => setTab(key)}
             className={cn(
-              'rounded-lg px-3 py-1.5 text-[0.8125rem] font-medium whitespace-nowrap transition-colors',
+              'rounded-[calc(var(--radius-control)-0.125rem)] px-3 py-1.5',
+              'text-[0.9375rem] font-medium whitespace-nowrap transition-colors',
               tab === key
-                ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
-                : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
+                ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--shadow-card)]'
+                : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]',
             )}
           >
             {t(`settings.${key}`)}
@@ -91,8 +119,29 @@ export function SettingsPage() {
           )}
 
           {tab === 'general' && canManage && (
+            <div className="space-y-4">
+              <GeneralForm
+                settings={data.settings}
+                section="general"
+                onSaved={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['settings'] })
+                  toast(t('settings.saved'), 'success')
+                }}
+              />
+              {/*
+                Under the general settings, because this is the thing to do
+                after changing them: the only way to find out whether the
+                workspace is actually set up is to send a lead through it.
+              */}
+              <SetupCheck />
+            </div>
+          )}
+
+          {tab === 'scoring' && canManage && (
             <GeneralForm
               settings={data.settings}
+              thresholds={data.thresholds}
+              section="scoring"
               onSaved={() => {
                 void queryClient.invalidateQueries({ queryKey: ['settings'] })
                 toast(t('settings.saved'), 'success')
@@ -100,8 +149,19 @@ export function SettingsPage() {
             />
           )}
 
-          {tab === 'lostReasons' && canManage && <LostReasonsPanel reasons={data.lost_reasons} />}
-          {tab === 'customFields' && canManage && <CustomFieldsPanel fields={data.custom_fields} />}
+          {/* Lead settings: the two lists that shape how leads are recorded. */}
+          {tab === 'leads' && canManage && (
+            <div className="space-y-4">
+              <LostReasonsPanel reasons={data.lost_reasons} />
+              <CustomFieldsPanel fields={data.custom_fields} />
+            </div>
+          )}
+
+          {tab === 'alerts' && canManage && <AnomalySettingsPanel />}
+
+          {tab === 'approvals' && canManage && <SelfApprovalPanel />}
+
+          {tab === 'delivery' && canManage && <EmailDeliveryPanel />}
 
           {tab === 'subscription' && (
             <Card>
@@ -133,7 +193,7 @@ export function SettingsPage() {
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 text-[0.875rem]">
+    <div className="flex items-center justify-between gap-3 text-[1rem]">
       <span className="text-[var(--color-ink-muted)]">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
@@ -147,7 +207,8 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
 
   const [form, setForm] = useState({
     company_name: branding.company_name,
-    system_name: branding.system_name,
+    // Empty means "not renamed": the product shows its own name.
+    system_name: branding.system_name ?? '',
     logo_url: branding.logo_url ?? '',
     login_background_url: branding.login_background_url ?? '',
     primary_color: branding.primary_color,
@@ -196,6 +257,8 @@ function BrandingForm({ branding, onSaved }: { branding: Branding; onSaved: (b: 
             />
             <Input
               label={t('settings.systemName')}
+              hint={t('settings.systemNameHint')}
+              placeholder={t('common.appName')}
               value={form.system_name}
               onChange={(e) => setForm((prev) => ({ ...prev, system_name: e.target.value }))}
             />
@@ -261,14 +324,14 @@ function ColorInput({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-[0.8125rem] font-medium">{label}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-medium">{label}</p>
       <div className="flex items-center gap-2">
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
-          className="size-10 shrink-0 cursor-pointer rounded-lg border border-[var(--color-border-strong)] bg-transparent p-1"
+          className="size-10 shrink-0 cursor-pointer rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-transparent p-1"
         />
         <Input
           dir="ltr"
@@ -281,7 +344,22 @@ function ColorInput({
   )
 }
 
-function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved: () => void }) {
+/**
+ * Workspace basics and scoring share a form because they share one endpoint —
+ * splitting them into two requests would let a half-saved workspace end up
+ * with a currency from one submit and a threshold from another.
+ */
+function GeneralForm({
+  settings,
+  thresholds,
+  section,
+  onSaved,
+}: {
+  settings: TenantSettings
+  thresholds?: Thresholds
+  section: 'general' | 'scoring'
+  onSaved: () => void
+}) {
   const { t } = useTranslation()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
@@ -292,20 +370,57 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
     timezone: settings.timezone,
     default_country_code: settings.default_country_code,
     assignment_mode: settings.assignment_mode,
+    assignment_strategy: settings.assignment_strategy ?? 'workload',
+    sla_hot_minutes: settings.sla_hot_minutes ?? '',
+    sla_interested_minutes: settings.sla_interested_minutes ?? '',
+    sla_visit_minutes: settings.sla_visit_minutes ?? '',
+    sla_reservation_minutes: settings.sla_reservation_minutes ?? '',
     score_warm_threshold: settings.score_warm_threshold,
     score_hot_threshold: settings.score_hot_threshold,
+    score_priority_threshold: settings.score_priority_threshold ?? '',
+    high_value_from: settings.high_value_from ?? '',
+    stalled_after_days: settings.stalled_after_days ?? '',
+    first_contact_target_minutes: settings.first_contact_target_minutes ?? 30,
     whatsapp_template: settings.whatsapp_template ?? '',
+    work_days: settings.work_days ?? [],
+    work_starts_at: settings.work_starts_at?.slice(0, 5) ?? '09:00',
+    work_ends_at: settings.work_ends_at?.slice(0, 5) ?? '18:00',
+    quiet_hours_enabled: settings.quiet_hours_enabled ?? false,
+    quiet_hours_start: settings.quiet_hours_start?.slice(0, 5) ?? '21:00',
+    quiet_hours_end: settings.quiet_hours_end?.slice(0, 5) ?? '08:00',
+    max_contacts_per_day: settings.max_contacts_per_day ?? 6,
+    contact_cooldown_minutes: settings.contact_cooldown_minutes ?? 0,
   })
 
   const mutation = useMutation({
-    mutationFn: () => apiPatch('/settings', form),
+    mutationFn: () => apiPatch('/settings', {
+      ...form,
+      // A blank is "the default", sent as null so the server puts it back.
+      score_priority_threshold: form.score_priority_threshold === '' ? null : Number(form.score_priority_threshold),
+      high_value_from: form.high_value_from === '' ? null : Number(form.high_value_from),
+      stalled_after_days: form.stalled_after_days === '' ? null : Number(form.stalled_after_days),
+      sla_hot_minutes: form.sla_hot_minutes === '' ? null : Number(form.sla_hot_minutes),
+      sla_interested_minutes: form.sla_interested_minutes === '' ? null : Number(form.sla_interested_minutes),
+      sla_visit_minutes: form.sla_visit_minutes === '' ? null : Number(form.sla_visit_minutes),
+      sla_reservation_minutes: form.sla_reservation_minutes === '' ? null : Number(form.sla_reservation_minutes),
+      /*
+       * No days chosen means always open, and the hours go with it — sending
+       * times beside an empty week would store an opinion nobody expressed.
+       */
+      work_days: form.work_days.length ? form.work_days : null,
+      work_starts_at: form.work_days.length ? form.work_starts_at : null,
+      work_ends_at: form.work_days.length ? form.work_ends_at : null,
+    }),
     onSuccess: onSaved,
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
   return (
     <Card>
-      <CardHeader title={t('settings.general')} />
+      <CardHeader
+        title={t(section === 'general' ? 'settings.general' : 'settings.scoring')}
+        description={t(section === 'general' ? 'settings.generalHint' : 'settings.scoringHint')}
+      />
       <CardBody>
         <form
           onSubmit={(e) => {
@@ -314,6 +429,7 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
           }}
           className="space-y-4"
         >
+          {section === 'general' && (
           <div className="grid gap-4 sm:grid-cols-3">
             <Select
               label={t('settings.language')}
@@ -337,43 +453,279 @@ function GeneralForm({ settings, onSaved }: { settings: TenantSettings; onSaved:
               onChange={(e) => setForm((prev) => ({ ...prev, default_country_code: e.target.value }))}
             />
           </div>
+          )}
 
-          <Select
-            label={t('settings.assignmentMode')}
-            hint={t('settings.assignmentHint')}
-            value={form.assignment_mode}
-            onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
-          >
-            <option value="manual">{t('settings.manual')}</option>
-            <option value="round_robin">{t('settings.roundRobin')}</option>
-          </Select>
+          {/*
+            The timezone drives how every date in the app is read. It was
+            settable through the API but had no control here, so a tenant outside
+            Riyadh could not correct it without a support request.
+          */}
+          {section === 'general' && (
+            <Select
+              label={t('settings.timezone')}
+              value={form.timezone}
+              onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
+            >
+              {TIMEZONES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </Select>
+          )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              type="number"
-              min={1}
-              max={99}
-              label={t('settings.warmThreshold')}
-              value={form.score_warm_threshold}
-              onChange={(e) => setForm((prev) => ({ ...prev, score_warm_threshold: Number(e.target.value) }))}
-            />
-            <Input
-              type="number"
-              min={2}
-              max={100}
-              label={t('settings.hotThreshold')}
-              value={form.score_hot_threshold}
-              onChange={(e) => setForm((prev) => ({ ...prev, score_hot_threshold: Number(e.target.value) }))}
-            />
-          </div>
+          {section === 'general' ? (
+            <div className="space-y-4">
+              <Select
+                label={t('settings.assignmentMode')}
+                hint={t('settings.assignmentHint')}
+                value={form.assignment_mode}
+                onChange={(e) => setForm((prev) => ({ ...prev, assignment_mode: e.target.value as 'manual' | 'round_robin' }))}
+              >
+                <option value="manual">{t('settings.manual')}</option>
+                <option value="round_robin">{t('settings.roundRobin')}</option>
+              </Select>
+              {/* Who is chosen once the rules (project, language, city, deal type, who is in) have narrowed the team. */}
+              {form.assignment_mode === 'round_robin' && (
+                <Select
+                  label={t('settings.assignmentStrategy')}
+                  hint={t('settings.assignmentStrategyHint')}
+                  value={form.assignment_strategy}
+                  data-testid="assignment-strategy"
+                  onChange={(e) => setForm((prev) => ({ ...prev, assignment_strategy: e.target.value as 'workload' | 'round_robin' | 'performance' }))}
+                >
+                  <option value="workload">{t('settings.strategy.workload')}</option>
+                  <option value="round_robin">{t('settings.strategy.round_robin')}</option>
+                  <option value="performance">{t('settings.strategy.performance')}</option>
+                </Select>
+              )}
+            </div>
+          ) : (
+            <>
+              {/*
+                The thresholds decide what "hot" means in this workspace, which
+                is the number a manager sorts by — it belongs with scoring, not
+                buried under currency and timezone.
+              */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={99}
+                  label={t('settings.warmThreshold')}
+                  value={form.score_warm_threshold}
+                  onChange={(e) => setForm((prev) => ({ ...prev, score_warm_threshold: Number(e.target.value) }))}
+                />
+                <Input
+                  type="number"
+                  min={2}
+                  max={100}
+                  label={t('settings.hotThreshold')}
+                  value={form.score_hot_threshold}
+                  onChange={(e) => setForm((prev) => ({ ...prev, score_hot_threshold: Number(e.target.value) }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  label={t('thresholds.priority_from')}
+                  placeholder={String(thresholds?.priority_from.default ?? 88)}
+                  value={form.score_priority_threshold}
+                  data-testid="threshold-priority"
+                  onChange={(e) => setForm((prev) => ({ ...prev, score_priority_threshold: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  label={t('thresholds.high_value_from')}
+                  hint={t('thresholds.high_value_hint')}
+                  placeholder={String(thresholds?.high_value_from.default ?? 500000)}
+                  value={form.high_value_from}
+                  data-testid="threshold-high-value"
+                  onChange={(e) => setForm((prev) => ({ ...prev, high_value_from: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  max={90}
+                  label={t('thresholds.stalled_after_days')}
+                  hint={t('thresholds.stalled_hint')}
+                  placeholder={String(thresholds?.stalled_after_days.default ?? 3)}
+                  value={form.stalled_after_days}
+                  data-testid="threshold-stalled"
+                  onChange={(e) => setForm((prev) => ({ ...prev, stalled_after_days: e.target.value }))}
+                />
+                {/* How long an interested lead may wait for a person, by how far along they are. */}
+                {(['sla_reservation_minutes', 'sla_visit_minutes', 'sla_hot_minutes', 'sla_interested_minutes'] as const).map((key) => (
+                  <Input
+                    key={key}
+                    type="number"
+                    min={1}
+                    max={10_080}
+                    label={t(`thresholds.${key}`)}
+                    placeholder={String(thresholds?.[key]?.default ?? '')}
+                    value={form[key]}
+                    data-testid={`threshold-${key}`}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                  />
+                ))}
+                <Input
+                  type="number"
+                  min={1}
+                  max={10_080}
+                  label={t('settings.firstContactTarget')}
+                  hint={t('settings.firstContactHint')}
+                  value={form.first_contact_target_minutes}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, first_contact_target_minutes: Number(e.target.value) }))
+                  }
+                />
+              </div>
 
-          <Textarea
-            label={t('settings.whatsappTemplate')}
-            hint={t('settings.whatsappHint')}
-            value={form.whatsapp_template}
-            onChange={(e) => setForm((prev) => ({ ...prev, whatsapp_template: e.target.value }))}
-            rows={3}
-          />
+              {/*
+                When the business is open.
+
+                The response-time clock counted wall-clock minutes, so a lead
+                arriving at two in the morning was escalated to the management
+                before anybody could have called. Leaving every day unticked
+                means always open, which is where every workspace starts.
+              */}
+              <fieldset className="space-y-2">
+                <legend className="t-small mb-1 font-medium">{t('settings.workingHours')}</legend>
+                <p className="t-caption">{t('settings.workingHoursHint')}</p>
+
+                <div className="flex flex-wrap gap-2" data-testid="work-days">
+                  {WEEK.map(({ iso, key }) => {
+                    const on = form.work_days.includes(iso)
+
+                    return (
+                      <button
+                        key={iso}
+                        type="button"
+                        aria-pressed={on}
+                        data-testid={`work-day-${iso}`}
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            work_days: on
+                              ? prev.work_days.filter((d) => d !== iso)
+                              : [...prev.work_days, iso].sort((a, b) => a - b),
+                          }))
+                        }
+                        className={cn(
+                          'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
+                          on
+                            ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                            : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                        )}
+                      >
+                        {t(`settings.weekday.${key}`)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {form.work_days.length > 0 && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      type="time"
+                      dir="ltr"
+                      label={t('settings.workStarts')}
+                      value={form.work_starts_at}
+                      data-testid="work-starts-at"
+                      onChange={(e) => setForm((prev) => ({ ...prev, work_starts_at: e.target.value }))}
+                    />
+                    <Input
+                      type="time"
+                      dir="ltr"
+                      label={t('settings.workEnds')}
+                      value={form.work_ends_at}
+                      data-testid="work-ends-at"
+                      onChange={(e) => setForm((prev) => ({ ...prev, work_ends_at: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </fieldset>
+
+              {/*
+                What automation may not do to a person. Checked at the moment
+                of sending, so a rule written months ago still keeps to it.
+              */}
+              <fieldset className="space-y-3" data-testid="guardrails">
+                <legend className="t-small mb-1 font-medium">{t('settings.guardrails')}</legend>
+                <p className="t-caption">{t('settings.guardrailsHint')}</p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    aria-pressed={form.quiet_hours_enabled}
+                    data-testid="quiet-hours-toggle"
+                    onClick={() => setForm((prev) => ({ ...prev, quiet_hours_enabled: !prev.quiet_hours_enabled }))}
+                    className={cn(
+                      'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
+                      form.quiet_hours_enabled
+                        ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                        : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                    )}
+                  >
+                    {t('settings.quietHours')}
+                  </button>
+                  {form.quiet_hours_enabled && (
+                    <>
+                      <Input
+                        type="time"
+                        dir="ltr"
+                        aria-label={t('settings.quietFrom')}
+                        value={form.quiet_hours_start}
+                        data-testid="quiet-hours-start"
+                        onChange={(e) => setForm((prev) => ({ ...prev, quiet_hours_start: e.target.value }))}
+                      />
+                      <span className="t-caption">{t('settings.quietTo')}</span>
+                      <Input
+                        type="time"
+                        dir="ltr"
+                        aria-label={t('settings.quietTo')}
+                        value={form.quiet_hours_end}
+                        data-testid="quiet-hours-end"
+                        onChange={(e) => setForm((prev) => ({ ...prev, quiet_hours_end: e.target.value }))}
+                      />
+                    </>
+                  )}
+                </div>
+                <p className="t-caption">{t('settings.quietHoursHint')}</p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    label={t('settings.maxContacts')}
+                    value={form.max_contacts_per_day}
+                    data-testid="max-contacts"
+                    onChange={(e) => setForm((prev) => ({ ...prev, max_contacts_per_day: Number(e.target.value) }))}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1440}
+                    label={t('settings.cooldown')}
+                    hint={t('settings.cooldownHint')}
+                    value={form.contact_cooldown_minutes}
+                    data-testid="contact-cooldown"
+                    onChange={(e) => setForm((prev) => ({ ...prev, contact_cooldown_minutes: Number(e.target.value) }))}
+                  />
+                </div>
+              </fieldset>
+
+              <Textarea
+                label={t('settings.whatsappTemplate')}
+                hint={t('settings.whatsappHint')}
+                value={form.whatsapp_template}
+                onChange={(e) => setForm((prev) => ({ ...prev, whatsapp_template: e.target.value }))}
+                rows={3}
+              />
+            </>
+          )}
 
           <div className="flex justify-end">
             <Button type="submit" loading={mutation.isPending}>{t('common.save')}</Button>
@@ -412,7 +764,7 @@ function LostReasonsPanel({ reasons }: { reasons: LostReason[] }) {
         <ul className="divide-y divide-[var(--color-border)]">
           {reasons.map((reason) => (
             <li key={reason.id} className="flex items-center justify-between gap-3 py-2.5">
-              <span className={cn('text-[0.875rem]', !reason.is_active && 'text-[var(--color-ink-subtle)] line-through')}>
+              <span className={cn('text-[1rem]', !reason.is_active && 'text-[var(--color-ink-subtle)] line-through')}>
                 {reason.label}
               </span>
               <Button variant="ghost" size="sm" onClick={() => toggle.mutate(reason)}>
@@ -486,7 +838,7 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
         />
         <CardBody>
           {fields.length === 0 ? (
-            <p className="py-6 text-center text-[0.8125rem] text-[var(--color-ink-muted)]">
+            <p className="py-6 text-center text-[0.9375rem] text-[var(--color-ink-muted)]">
               {t('common.noResults')}
             </p>
           ) : (
@@ -494,8 +846,8 @@ function CustomFieldsPanel({ fields }: { fields: CustomField[] }) {
               {fields.map((field) => (
                 <li key={field.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="truncate text-[0.875rem] font-medium">{field.label}</p>
-                    <p className="text-[0.75rem] text-[var(--color-ink-subtle)]" dir="ltr">{field.key}</p>
+                    <p className="truncate text-[1rem] font-medium">{field.label}</p>
+                    <p className="text-[0.875rem] text-[var(--color-ink-subtle)]"><bdi dir="ltr">{field.key}</bdi></p>
                   </div>
                   <Badge>{t(`settings.type${field.type[0].toUpperCase()}${field.type.slice(1)}`, { defaultValue: field.type })}</Badge>
                 </li>

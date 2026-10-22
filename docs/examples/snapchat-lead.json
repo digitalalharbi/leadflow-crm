@@ -1,0 +1,13 @@
+{
+  "_comment": "Snapchat Lead Generation form. Snapchat sends a flat object, so the default aliases cover it without any mapping.",
+  "lead_id": "sc-01HQ8YV3K2M4N6P8R0T2V4X6Z8",
+  "ad_account_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "campaign_name": "حملة سناب - شقق التحلية",
+  "ad_squad_name": "سناب - ستوري",
+  "creative_name": "إعلان فيديو عمودي",
+  "platform": "snapchat",
+  "full_name": "ريم الغامدي",
+  "mobile_number": "0533221100",
+  "email": "reem@example.com",
+  "city": "الخبر"
+}

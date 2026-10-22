@@ -61,7 +61,10 @@ colour picker updates the running app immediately.
 
 ## Onboarding a customer
 
-One API call provisions everything:
+The platform console's **New customer** form is the whole process. It carries a
+client's entire identity — company name, system name, subdomain, logo, primary
+colour, language, currency and timezone — plus the first admin's credentials.
+The same thing over the API:
 
 ```bash
 POST /api/v1/super-admin/tenants
@@ -69,7 +72,11 @@ POST /api/v1/super-admin/tenants
   "company_name": "شركة ABC للتطوير العقاري",
   "system_name": "ABC Sales CRM",
   "subdomain": "abc",
+  "logo_url": "https://cdn.abc.sa/logo.png",
   "primary_color": "#aa00aa",
+  "locale": "ar",
+  "currency": "SAR",
+  "timezone": "Asia/Riyadh",
   "admin_name": "مدير ABC",
   "admin_email": "admin@abc.sa",
   "admin_password": "…"
@@ -84,7 +91,11 @@ In one transaction that creates:
 * the first admin user
 * a working inbound webhook endpoint, with its secret returned once
 
-The admin can sign in immediately. No code change, no migration, no deploy.
+The admin can sign in immediately, and can change any of it afterwards from
+their own settings. No code change, no migration, no deploy — and
+`tenant-onboarding.spec.ts` drives that whole path in a browser on every CI run,
+including that the identity the operator typed is the one the client's login
+screen shows.
 
 ## Subdomains
 

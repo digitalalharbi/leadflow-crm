@@ -38,7 +38,7 @@ export function Dropdown({ trigger, children, align = 'end', className }: Dropdo
       {open && (
         <div
           className={cn(
-            'absolute z-40 mt-1 min-w-48 overflow-hidden rounded-lg border border-[var(--color-border)]',
+            'absolute z-40 mt-1 min-w-48 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]',
             'bg-[var(--color-surface)] py-1 shadow-[var(--shadow-pop)]',
             align === 'end' ? 'end-0' : 'start-0',
             className,
@@ -56,18 +56,21 @@ export function DropdownItem({
   onClick,
   danger,
   icon,
+  testId,
 }: {
   children: ReactNode
   onClick?: () => void
   danger?: boolean
   icon?: ReactNode
+  testId?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
       className={cn(
-        'flex w-full items-center gap-2.5 px-3 py-2 text-start text-[0.8125rem]',
+        'flex w-full items-center gap-2.5 px-3 py-2 text-start text-[0.9375rem]',
         'hover:bg-[var(--color-surface-sunken)]',
         danger ? 'text-[var(--color-status-lost)]' : 'text-[var(--color-ink)]',
       )}

@@ -1,0 +1,23 @@
+{
+  "_comment": "Google Ads Lead Form extension. Google POSTs to a configured webhook URL and includes the shared google_key it was set up with.",
+  "lead_id": "CjAKEQiA-123456789abcdefghij",
+  "api_version": "1.0",
+  "form_id": 9876543210,
+  "campaign_id": 1234567890,
+  "campaign_name": "بحث جوجل - شقق للبيع الرياض",
+  "adgroup_id": 9988776655,
+  "gcl_id": "Cj0KCQiA-abcdefghijklmnop",
+  "google_key": "replace-with-the-key-configured-in-google-ads",
+  "platform": "google_ads",
+  "is_test": false,
+  "user_column_data": [
+    { "column_id": "FULL_NAME", "string_value": "ماجد الزهراني", "column_name": "Full Name" },
+    { "column_id": "PHONE_NUMBER", "string_value": "+966544332211", "column_name": "Phone Number" },
+    { "column_id": "EMAIL", "string_value": "majed@example.com", "column_name": "Email" },
+    { "column_id": "CITY", "string_value": "الدمام", "column_name": "City" }
+  ],
+  "full_name": "ماجد الزهراني",
+  "phone_number": "+966544332211",
+  "email": "majed@example.com",
+  "city": "الدمام"
+}

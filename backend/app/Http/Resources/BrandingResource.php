@@ -21,7 +21,10 @@ class BrandingResource extends JsonResource
             'tenant_id' => $tenant->uuid,
             'slug' => $tenant->slug,
             'company_name' => $branding?->company_name ?? $tenant->name,
-            'system_name' => $branding?->system_name ?? $tenant->name,
+            // Null when the customer has not named the product: the interface then
+            // shows مهتم. It used to fall back to the tenant's own name, which
+            // renamed the product for every workspace nobody had customised.
+            'system_name' => filled($branding?->system_name) ? $branding->system_name : null,
             'logo_url' => $branding?->logo_url,
             'login_logo_url' => $branding?->login_logo_url ?? $branding?->logo_url,
             'login_background_url' => $branding?->login_background_url,

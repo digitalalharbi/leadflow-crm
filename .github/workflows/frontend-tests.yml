@@ -1,16 +1,9 @@
 name: Frontend tests
 
 on:
-  pull_request:
-    branches: [main, develop]
-    paths: ['frontend/**', '.github/workflows/frontend-tests.yml']
-  # Called by the deploy workflows, which own the push path — running on push
-  # here as well would duplicate the work and cancel itself via `concurrency`.
+  # Called by CI (ci.yml), which owns every trigger: pull requests, pushes to develop and main.
   workflow_call:
 
-concurrency:
-  group: frontend-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   test:

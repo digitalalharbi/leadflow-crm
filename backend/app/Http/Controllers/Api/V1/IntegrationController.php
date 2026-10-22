@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Ingestion\IngestionInsights;
+use App\Domain\Integrations\IntegrationHealthReport;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IntegrationResource;
+use App\Jobs\ReconcileRepository;
+use App\Jobs\SyncSheetSource;
 use App\Models\Integration;
 use App\Models\Project;
+use App\Models\ProjectRepository;
+use App\Models\SheetSource;
 use App\Models\User;
 use App\Models\WebhookEndpoint;
 use App\Models\WebhookLog;
 use App\Services\AuditLogger;
+use App\Services\Integrations\LeadPuller;
 use App\Services\Integrations\ProviderRegistry;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
@@ -22,6 +29,52 @@ use Illuminate\Validation\ValidationException;
 
 class IntegrationController extends Controller
 {
+    /**
+     * Which integrations have ever actually worked.
+     *
+     * Implemented and externally verified are not the same claim. Every adapter
+     * here has tests, and tests prove the code does what we think when the
+     * other end behaves as we think — they cannot prove the other end exists.
+     * So this is computed from evidence: something real came through, or it has
+     * not yet.
+     */
+    /**
+     * Sweep everything that is pulled rather than pushed.
+     *
+     * Only those: a source that arrives by webhook has nothing to sync, and a
+     * button that appeared to sync one would be a button that looks like it did
+     * something. The count comes back so the screen can say what was queued
+     * instead of claiming success for an empty list.
+     */
+    public function syncAll(Request $request)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        $sheets = SheetSource::where('is_active', true)->get();
+
+        foreach ($sheets as $source) {
+            SyncSheetSource::dispatch($source->id, 'manual');
+        }
+
+        $repositories = ProjectRepository::all();
+
+        foreach ($repositories as $repository) {
+            ReconcileRepository::dispatch($repository->id);
+        }
+
+        return ApiResponse::success([
+            'sheets' => $sheets->count(),
+            'repositories' => $repositories->count(),
+        ], 'Sweep queued.');
+    }
+
+    public function health(Request $request, IntegrationHealthReport $report)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        return ApiResponse::success(['integrations' => $report->all()]);
+    }
+
     public function __construct(
         private ProviderRegistry $registry,
         private AuditLogger $audit,
@@ -105,6 +158,10 @@ class IntegrationController extends Controller
             return [
                 'provider' => $provider->value,
                 'required_credentials' => $driver->requiredCredentials(),
+                // Whether this source is polled or calls us. The screen needs
+                // it to decide between offering a webhook URL and offering a
+                // "sync now" button; they are not the same integration at all.
+                'pulls_leads' => $driver->pullsLeads(),
                 'status' => $this->resolveStatus($instance, $driver),
                 'integration' => $instance ? new IntegrationResource($instance) : null,
             ];
@@ -154,6 +211,7 @@ class IntegrationController extends Controller
     public function update(Request $request, string $uuid)
     {
         $integration = Integration::where('uuid', $uuid)->firstOrFail();
+        $this->guardAgainstDedicatedProvider($integration);
         $this->authorize('update', $integration);
 
         $data = $request->validate(array_merge([
@@ -190,6 +248,7 @@ class IntegrationController extends Controller
     public function destroy(Request $request, string $uuid)
     {
         $integration = Integration::where('uuid', $uuid)->firstOrFail();
+        $this->guardAgainstDedicatedProvider($integration);
         $this->authorize('delete', $integration);
 
         $this->audit->log('integration.deleted', $request->user(), $integration);
@@ -225,7 +284,9 @@ class IntegrationController extends Controller
     public function rotateWebhookSecret(Request $request, string $uuid)
     {
         $endpoint = WebhookEndpoint::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('update', $endpoint->integration ?? Integration::class);
+
+        abort_if($endpoint->integration === null, 404, 'Resource not found.');
+        $this->authorize('update', $endpoint->integration);
 
         $secret = Str::random(48);
         $endpoint->update(['secret_hash' => Hash::make($secret)]);
@@ -249,6 +310,62 @@ class IntegrationController extends Controller
         $this->audit->log('integration.webhook_disabled', $request->user(), $endpoint);
 
         return ApiResponse::success(null, 'Endpoint disabled.');
+    }
+
+    /**
+     * Whether leads are still arriving.
+     *
+     * The list of connected sources above this cannot answer it: a form that
+     * stopped posting eleven days ago still shows a green badge and a valid
+     * secret. The only evidence of arrival is arrivals.
+     *
+     * Readable by anyone who can see the integrations — the person who notices
+     * a quiet week is rarely the person who set the webhook up.
+     */
+    public function ingestion(Request $request, IngestionInsights $insights)
+    {
+        $this->authorize('viewAny', Integration::class);
+
+        $days = min(90, max(7, (int) $request->integer('days', 30)));
+
+        return ApiResponse::success([
+            'summary' => $insights->summary($days),
+            'daily' => $insights->daily($days),
+            'by_provider' => $insights->byProvider($days),
+        ]);
+    }
+
+    /**
+     * Ask this source for its leads now, rather than waiting for the poll.
+     *
+     * The button that makes a pasted access token mean something. Without it a
+     * workspace saves its credentials, sees nothing change, and has no way to
+     * tell a wrong token from a quiet afternoon until the next scheduled run —
+     * so the first thing anybody would do is paste it again.
+     */
+    public function sync(Request $request, string $uuid, LeadPuller $puller, TenantContext $context)
+    {
+        $integration = Integration::where('uuid', $uuid)->firstOrFail();
+
+        $this->authorize('update', $integration);
+
+        $tenant = $context->get();
+
+        if ($tenant === null) {
+            return ApiResponse::error('No workspace in context.', null, 422);
+        }
+
+        $result = $puller->pull($tenant, $integration->fresh());
+
+        $this->audit->log('integration.synced', $request->user(), $integration, [
+            'provider' => $integration->provider?->value,
+            'fetched' => $result['fetched'],
+        ]);
+
+        return ApiResponse::success(
+            ['result' => $result, 'integration' => new IntegrationResource($integration->fresh())],
+            $result['error'] === null ? null : 'The source could not be reached.'
+        );
     }
 
     /** Delivery log. Payloads stay hidden unless the viewer is an admin. */
@@ -301,5 +418,23 @@ class IntegrationController extends Controller
         }
 
         return $integration->is_active ? Integration::CONNECTED : Integration::NOT_CONNECTED;
+    }
+
+    /**
+     * Some providers have a screen of their own, and the generic one does not
+     * know how to handle them.
+     *
+     * WhatsApp is the case today: PATCH here threw on a field mapping that does
+     * not exist, and DELETE succeeded — which bypassed the proper disconnect,
+     * left the credentials on the row, and wrote the wrong action to the audit
+     * trail. From here that integration simply is not found.
+     */
+    private function guardAgainstDedicatedProvider(Integration $integration): void
+    {
+        abort_if(
+            $integration->provider === IntegrationProvider::Whatsapp,
+            404,
+            'Resource not found.',
+        );
     }
 }

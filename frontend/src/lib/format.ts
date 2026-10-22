@@ -35,6 +35,59 @@ export function formatRelative(iso: string | null | undefined, lang = 'ar'): str
   return formatDistanceToNowStrict(date, { addSuffix: true, locale })
 }
 
+/**
+ * When something last happened, as a label that stands on its own.
+ *
+ * `formatRelative` renders today as a bare clock, which is right inside a
+ * timeline where the day is already established and wrong in a column headed
+ * "last lead" — "22:56" there reads as a duration, a count, or nothing at all.
+ */
+export function formatLastSeen(iso: string | null | undefined, lang = 'ar'): string {
+  if (!iso) return '—'
+
+  const date = parseISO(iso)
+
+  if (isToday(date)) {
+    return `${lang.startsWith('ar') ? 'اليوم' : 'Today'} ${format(date, 'HH:mm')}`
+  }
+
+  return formatRelative(iso, lang)
+}
+
+/** How long ago, as a bare duration — "3 دقائق", "2 days" — for a sentence that supplies its own "since". */
+export function formatElapsed(iso: string | null | undefined, lang = 'ar'): string {
+  if (!iso) return '—'
+
+  return formatDistanceToNowStrict(parseISO(iso), { locale: resolveLocale(lang) })
+}
+
+/** Just the clock, for pairing with a relative label that carries the day. */
+export function formatClock(iso: string | null | undefined): string {
+  return iso ? format(parseISO(iso), 'HH:mm') : '—'
+}
+
+/**
+ * A due time that says whether it has passed.
+ *
+ * `formatRelative` renders anything due today as a bare clock time, so an
+ * overdue follow-up read as "23:53" — a number, with no hint that it is late.
+ * On a work queue, late is the only thing that matters.
+ */
+export function formatDue(
+  iso: string | null | undefined,
+  lang = 'ar',
+  overdue = false,
+): string {
+  if (!iso) return '—'
+
+  if (!overdue) return formatRelative(iso, lang)
+
+  return formatDistanceToNowStrict(parseISO(iso), {
+    addSuffix: true,
+    locale: resolveLocale(lang),
+  })
+}
+
 /** Money with the tenant's currency, Latin numerals in both locales. */
 export function formatCurrency(
   value: number | null | undefined,
@@ -107,4 +160,26 @@ export function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0])
     .join('')
+}
+
+/** 1.2M, 450K — for a number that has to fit in a card, not a ledger. */
+export function formatCompact(value: number | null | undefined, lang = 'ar'): string {
+  if (value === null || value === undefined) return '—'
+
+  return new Intl.NumberFormat(lang.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
+/** SAR 120K, $42K — money that has to fit in a card. */
+export function formatMoneyCompact(value: number | null | undefined, currency = 'SAR', lang = 'ar'): string {
+  if (value === null || value === undefined) return '—'
+
+  return new Intl.NumberFormat(lang.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US', {
+    style: 'currency',
+    currency,
+    notation: Math.abs(value) >= 10_000 ? 'compact' : 'standard',
+    maximumFractionDigits: Math.abs(value) >= 10_000 ? 1 : 0,
+  }).format(value)
 }

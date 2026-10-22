@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Leads\PipelineOverview;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadListResource;
 use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -17,13 +19,17 @@ use Illuminate\Support\Facades\DB;
  */
 class PipelineController extends Controller
 {
-    public function __construct(private LeadQueryBuilder $queries) {}
+    public function __construct(private LeadQueryBuilder $queries, private TenantContext $context) {}
 
     public function index(Request $request)
     {
         $this->authorize('viewAny', Lead::class);
 
-        $limit = min((int) $request->input('per_column', 50), 100);
+        // A column shows about six cards before it scrolls, so fetching fifty was
+        // sending a 200KB payload to render a fraction of it. Twenty-five keeps
+        // scrolling smooth at roughly half the bytes; the true total is reported
+        // separately, so nothing is hidden from the user.
+        $limit = min((int) $request->input('per_column', 25), 100);
 
         // One grouped count for every column, rather than a count per column.
         $totals = $this->queries->build($request, $request->user())
@@ -51,7 +57,10 @@ class PipelineController extends Controller
             ->get()
             ->groupBy(fn (Lead $lead) => $lead->status->value);
 
-        $columns = collect(LeadStatus::cases())->map(fn (LeadStatus $status) => [
+        // Stages only. "Invalid" and "no response" are outcomes a lead exits
+        // through, not places work waits — a column for either would invite
+        // someone to drag a lead into it as though that were progress.
+        $columns = collect(LeadStatus::pipeline())->map(fn (LeadStatus $status) => [
             'status' => $status->value,
             'position' => $status->position(),
             'total' => (int) ($totals[$status->value] ?? 0),
@@ -59,5 +68,18 @@ class PipelineController extends Controller
         ])->all();
 
         return ApiResponse::success(['columns' => $columns]);
+    }
+
+    /** The pipeline as a picture: funnel, stages, health, classification, watchlists, workload. */
+    public function overview(Request $request)
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $leads = $this->queries->build($request, $request->user());
+
+        return ApiResponse::success((new PipelineOverview($leads))->build() + [
+            // So a value is never drawn in a currency the screen guessed.
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+        ]);
     }
 }

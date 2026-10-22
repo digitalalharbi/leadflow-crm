@@ -20,7 +20,28 @@ enum ActivityType: string
     case Won = 'won';
     case Lost = 'lost';
     case ReEngaged = 're_engaged';
+    case WhatsappSent = 'whatsapp_sent';
+    case WhatsappReceived = 'whatsapp_received';
+    case QualificationUpdated = 'qualification_updated';
+    case ScoreChanged = 'score_changed';
+    case FollowUpOutcomeRecorded = 'follow_up_outcome';
+    case WhatsappOptedOut = 'whatsapp_opted_out';
+    case EmailOptedOut = 'email_opted_out';
+    case FileShared = 'file_shared';
     case Updated = 'updated';
+    /** Automation handed the lead to a person, and the note says why. */
+    case HandedOff = 'handed_off';
+    case Merged = 'merged';
+    case EmailReceived = 'email_received';
+    case EmailBounced = 'email_bounced';
+    /** A person said whether the lead is interested, over what the numbers say. */
+    case InterestChanged = 'interest_changed';
+    /** A rep put a unit on hold for the lead. */
+    case ReservationCreated = 'reservation_created';
+    /** A visit was asked for, confirmed, moved, done, missed or cancelled. */
+    case VisitUpdated = 'visit_updated';
+    /** A reservation was confirmed, cancelled, expired or turned into a sale. */
+    case ReservationUpdated = 'reservation_updated';
 
     public static function values(): array
     {

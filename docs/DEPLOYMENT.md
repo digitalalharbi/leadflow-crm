@@ -7,8 +7,13 @@ GitHub is the source of truth. The VPS is never edited by hand. Every deploy is
 on GitHub.
 
 ```
-local → commit → push → GitHub → Actions → tests → VPS → live
+local → push → PR → CI → merge to develop → staging (when configured)
+      → release (merge to main) → "Deploy production" workflow, run from main (when approved)
 ```
+
+CI (`ci.yml`) decides whether the code is healthy; the deploy workflows only ship what CI passed and
+never decide health. See [`GITHUB_FLOW.md`](GITHUB_FLOW.md) for the branches, the workflows and the
+status words (GREEN / AMBER / BLOCKED / RED).
 
 ## Environments
 
@@ -49,7 +54,8 @@ Per-tenant subdomains need a wildcard certificate (DNS-01 challenge).
 
 ## Staging deploy
 
-Triggered by any push to `develop`.
+Triggered by a push to `develop`, and only ships a commit CI has passed. With no staging server
+configured it ends with **STAGING NOT CONFIGURED** — a state, not a failure.
 
 ```
 backend tests  ─┐
@@ -75,7 +81,8 @@ A failed health check triggers an automatic rollback to the previous commit.
 
 ## Production deploy
 
-Triggered by any push to `main`, with three extra gates:
+Started by hand (`workflow_dispatch`, type `deploy`) — never by a push — and only when
+`PRODUCTION_ENABLED=true`; otherwise it ends with **PRODUCTION NOT CONFIGURED**. Extra gates:
 
 1. **Pre-flight job** — installs production dependencies, caches config, routes
    and events, and applies every migration to an empty database. A broken config
@@ -135,7 +142,7 @@ a backup.
 
 ## Zero-downtime
 
-Staging and production run php-fpm, queue, Horizon and the scheduler as separate
+Staging and production run php-fpm, Horizon and the scheduler as separate
 containers. `docker compose up -d` replaces containers one service at a time, and
 only the migration step enters maintenance mode. For a true zero-downtime
 production, run two API replicas behind the host Nginx; the compose file is
@@ -145,8 +152,18 @@ structured so adding `deploy.replicas` is the only change.
 
 The `scheduler` container runs `schedule:work`, which dispatches:
 
-* `leadflow:follow-up-reminders` — hourly
-* `horizon:snapshot` — every five minutes
+| Command | Every | Without it |
+| --- | --- | --- |
+| `leadflow:pull-leads` | 5 min | **Pull-based sources deliver nothing.** TikTok, Snapchat, LinkedIn, Google Sheets and Meta-in-API-mode are polled by this command and by nothing else. A valid token with no scheduler looks exactly like a wrong token. |
+| `leadflow:sweep-sla` | 5 min | First-contact SLAs are never enforced: no reminder, no escalation, no reassignment. |
+| `leadflow:follow-up-reminders` | hourly | "Due today" and "overdue" counters drift, and nobody is told. |
+| `leadflow:sweep-conversions` | 15 min | Conversions are never exported back to the ad platforms, so campaign optimisation never gets the feedback. |
+| `horizon:snapshot` | 5 min | The queue dashboard has no metrics. |
+
+Each is `withoutOverlapping()`. If the scheduler is down, the product keeps
+serving requests and quietly stops doing all of the above — which is why
+`leadflow:pull-leads` exits non-zero when a source could not be reached, so a
+cron that only checks exit status still notices.
 
 ## Troubleshooting
 

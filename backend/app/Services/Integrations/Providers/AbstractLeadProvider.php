@@ -45,6 +45,12 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
         return [];
     }
 
+    /** Push by default: the source calls us, and there is nothing to poll. */
+    public function pullsLeads(): bool
+    {
+        return false;
+    }
+
     /**
      * Apply the tenant's field mapping, then the provider's own aliases.
      * Mapping is stored as { "incoming_key": "canonical_key" }.
@@ -80,6 +86,54 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
         return $mapped;
     }
 
+    /**
+     * Meta-style lead forms answer as a list of {name, values[]} rather than a
+     * flat object. Understood by every provider, not just the Meta one, because
+     * these payloads commonly arrive at a generic endpoint via Zapier or Make.
+     */
+    protected function normaliseAnswerList(array $payload): array
+    {
+        $answers = $payload['field_data'] ?? $payload['form_response'] ?? null;
+
+        if (! is_array($answers)) {
+            return $payload;
+        }
+
+        $flat = [];
+
+        foreach ($answers as $field) {
+            if (! is_array($field)) {
+                continue;
+            }
+
+            $name = Arr::get($field, 'name') ?? Arr::get($field, 'key');
+            $value = Arr::get($field, 'values.0') ?? Arr::get($field, 'value');
+
+            if (is_string($name) && $value !== null && ! is_array($value)) {
+                $flat[$name] = $value;
+            }
+        }
+
+        if ($flat === []) {
+            return $payload;
+        }
+
+        unset($payload['field_data'], $payload['form_response']);
+
+        // In this envelope `id` is the provider's own lead id, which is what makes
+        // a retried delivery traceable. Outside it, `id` is too generic to trust.
+        foreach (['id', 'lead_id'] as $candidate) {
+            if (filled($payload[$candidate] ?? null) && blank($payload['provider_lead_id'] ?? null)) {
+                $payload['provider_lead_id'] = $payload[$candidate];
+                break;
+            }
+        }
+
+        // The envelope's own fields (campaign, ad, form) still apply; the answers
+        // win where both carry the same key.
+        return $flat + $payload;
+    }
+
     /** Dot-flatten so nested provider payloads can be mapped with simple keys. */
     protected function flatten(array $payload): array
     {
@@ -91,9 +145,17 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
                 continue;
             }
             $result[$key] = $value;
-            // also expose the leaf name on its own ("lead.phone" => "phone")
-            $leaf = substr(strrchr($key, '.') ?: $key, 1) ?: $key;
-            if (! isset($result[$leaf])) {
+
+            // Also expose the leaf of a nested key on its own ("lead.phone" =>
+            // "phone"). A key with no dot has no leaf: taking one anyway would
+            // let "xcity" pass itself off as "city".
+            if (! str_contains($key, '.')) {
+                continue;
+            }
+
+            $leaf = substr($key, strrpos($key, '.') + 1);
+
+            if ($leaf !== '' && ! isset($result[$leaf])) {
                 $result[$leaf] = $value;
             }
         }
@@ -132,6 +194,19 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
             'ad' => 'ad_name',
             'creative_name' => 'ad_name',
             'form' => 'form_name',
+            /*
+             * The source's own id for this row, which is the only thing that
+             * survives us editing, merging or re-engaging the lead. Without it
+             * a poll cannot tell a row it has already taken from a new one, so
+             * every five-minute poll re-recorded the same leads as duplicates.
+             *
+             * `lead_id` and `leadgen_id` are named enough to trust; a bare `id`
+             * is not, and is only read inside an answer envelope where it
+             * unambiguously means the lead.
+             */
+            'lead_id' => 'provider_lead_id',
+            'leadgen_id' => 'provider_lead_id',
+            'external_id' => 'provider_lead_id',
             'budget' => 'budget_max',
             'utm_source' => 'source',
             'utm_campaign' => 'campaign_name',
@@ -157,8 +232,20 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
             'provider_lead_id',
             'purchase_purpose', 'payment_method', 'preferred_property_type',
             'preferred_location', 'purchase_timeline', 'budget_min', 'budget_max',
+            // What the customer wants, in real estate terms.
+            'transaction_type', 'preferred_district', 'bedrooms', 'area_sqm', 'nationality', 'preferred_channel', 'reservation_intent',
         ];
     }
+
+    /**
+     * What a landing page's own script adds to a form post: who the visitor is, the link they came
+     * through, and where they came from. Carried as-is — these are identifiers and context, never
+     * something a payload is allowed to point at another workspace's rows with.
+     */
+    private const TRACKING_KEYS = [
+        'visitor_id', 'mt_vid', 'tracking_token', 'mt_t', 'referrer', 'landing_url', 'device', 'browser',
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'click_id', 'gclid', 'fbclid', 'ttclid', 'sccid',
+    ];
 
     /** Fields an incoming payload may be mapped onto. */
     public function mappableKeys(): array
@@ -179,10 +266,20 @@ abstract class AbstractLeadProvider implements LeadProviderInterface
 
     public function toIncomingLead(array $payload, ?Integration $integration = null): IncomingLead
     {
+        $payload = $this->normaliseAnswerList($payload);
+
         $mapped = $this->applyMapping($payload, $integration);
 
         if (! isset($mapped['platform'])) {
             $mapped['platform'] = $this->provider()->defaultPlatform()->value;
+        }
+
+        // `utm_source` and friends are aliased onto `source` and `campaign_name` above, which is right
+        // for a human reading the lead and loses the UTM set; keep the originals too.
+        foreach (self::TRACKING_KEYS as $key) {
+            if (isset($payload[$key]) && is_scalar($payload[$key]) && ! isset($mapped[$key])) {
+                $mapped[$key] = (string) $payload[$key];
+            }
         }
 
         return IncomingLead::fromArray($this->provider(), $mapped, $payload);

@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProcessLeadImport implements ShouldQueue
 {
@@ -24,6 +25,47 @@ class ProcessLeadImport implements ShouldQueue
     public int $timeout = 900;
 
     public function __construct(public int $importId, public int $tenantId) {}
+
+    /**
+     * An import that crashed has to say so, and must not keep the file.
+     *
+     * `$tries = 1`, so there is no retry to preserve the upload for: without
+     * this, a job that threw anywhere outside the per-row `try` left the import
+     * showing "جارٍ المعالجة" for the rest of the workspace's life, and left the
+     * customer's CSV — names, numbers, every row of it — sitting in storage.
+     * The success path deletes it and says why; the failure path did neither.
+     *
+     * No tenant context here: `failed()` runs after the job has been torn down,
+     * and the scope fails closed outside a request, so a scoped lookup would
+     * find nothing and silently do none of this.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $import = Import::withoutGlobalScopes()->find($this->importId);
+
+        if (! $import) {
+            return;
+        }
+
+        $reference = (string) Str::uuid();
+
+        Log::error('import.failed', [
+            'import' => $import->uuid,
+            'reference' => $reference,
+            // The class and a reference, never the message: an exception from a
+            // parser can repeat the row that broke it, and that row is a
+            // customer's name and phone number.
+            'exception' => $exception::class,
+            'at' => $exception->getFile().':'.$exception->getLine(),
+        ]);
+
+        $import->update([
+            'status' => Import::FAILED,
+            'error' => 'تعذّرت معالجة الملف. الرقم المرجعي: '.$reference,
+        ]);
+
+        Storage::delete($import->getRawOriginal('path'));
+    }
 
     public function handle(LeadIngestionService $ingestion, TenantContext $context): void
     {

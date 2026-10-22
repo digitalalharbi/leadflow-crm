@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\AccessResolver;
+use App\Domain\Access\Permissions;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\BrandingResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -47,6 +50,18 @@ class AuthController extends Controller
         $user = $candidates->first(fn (User $candidate) => Hash::check($password, $candidate->password));
 
         if (! $user) {
+            /*
+             * No candidate matched — which includes the case where the email is
+             * unknown and no hash was computed at all. Answering that in a few
+             * microseconds tells an attacker the address does not exist, so do
+             * the work anyway before refusing.
+             */
+            if ($candidates->isEmpty()) {
+                // Hashing costs the same as the check we did not get to perform,
+                // and tracks the configured cost factor on its own.
+                Hash::make($password);
+            }
+
             // Identical message either way — never reveal whether an email exists.
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
@@ -65,14 +80,12 @@ class AuthController extends Controller
             ]);
         }
 
+        $user->loadMissing('tenant.branding', 'tenant.settings');
+
         // One token per device; logging in again elsewhere does not kill this session.
         $token = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8))->plainTextToken;
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
-
-        // Guard against a timing side-channel from the loop above: the work done
-        // is the same whether or not an account matched.
-        unset($candidates);
 
         $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
 
@@ -81,6 +94,23 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            // What this person may do (the interface hides the rest; the API refuses it), and which
+            // projects they are limited to (null: all of them).
+            'permissions' => Permissions::forUser($user),
+            'hidden_data' => Permissions::hiddenData($user),
+            'hidden_elements' => Permissions::hiddenElements($user),
+            'access_role' => AccessResolver::customRole($user)?->uuid,
+            'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
+            /*
+             * The language this workspace itself works in, read off its default
+             * country code by the same table that reads a customer's number.
+             *
+             * The interface uses it to stay quiet: a Riyadh team does not need
+             * every lead labelled "Arabic", and the one labelled "Urdu" is the
+             * one worth seeing.
+             */
+            'workspace_language' => app(PhoneLanguage::class)
+                ->forCallingCode($user->tenant?->settings?->default_country_code),
         ]);
     }
 
@@ -92,7 +122,20 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
-            'onboarding' => $user->tenant?->settings?->onboarding,
+            // What this person may do (the interface hides the rest; the API refuses it), and which
+            // projects they are limited to (null: all of them).
+            'permissions' => Permissions::forUser($user),
+            'hidden_data' => Permissions::hiddenData($user),
+            'hidden_elements' => Permissions::hiddenElements($user),
+            'access_role' => AccessResolver::customRole($user)?->uuid,
+            'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
+            // The language this workspace itself works in — see login, which
+            // sends the same field; the SPA re-hydrates from here on reload.
+            'workspace_language' => app(PhoneLanguage::class)
+                ->forCallingCode($user->tenant?->settings?->default_country_code),
+            // Lets the SPA offer the sales-demo helpers. False in production, so
+            // the controls simply do not exist for a real customer.
+            'demo_mode' => ! app()->environment('production'),
         ]);
     }
 

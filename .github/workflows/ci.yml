@@ -1,0 +1,57 @@
+name: CI
+
+# CI decides whether the code is healthy — and nothing else. Deploying is a separate
+# workflow (deploy-staging, deploy-production) that asks CI's answer; it never
+# decides it. Same shape as CampaignsHub and digitalSmart: one workflow named CI,
+# backend / frontend / end-to-end, on every pull request and on the integration branch.
+#
+#   feat/*  ->  PR to develop  ->  CI  ->  merge to develop  ->  CI again on develop
+#   main is touched only for a release.
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop, main]
+  # Re-run by hand, e.g. after GitHub Actions billing is restored.
+  workflow_dispatch:
+
+# A superseded run on the same ref is wasted compute.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Pint, migrations, PHPUnit, tenant isolation)
+    uses: ./.github/workflows/backend-tests.yml
+
+  frontend:
+    name: Frontend (lint, typecheck, Vitest, build)
+    uses: ./.github/workflows/frontend-tests.yml
+
+  e2e:
+    name: End-to-end (Playwright)
+    uses: ./.github/workflows/e2e-tests.yml
+
+  # The one check that says whether CI as a whole passed. Failing means a real
+  # job failed; it never goes green on a job that did not pass.
+  result:
+    name: CI result
+    needs: [backend, frontend, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every job passed
+        env:
+          BACKEND: ${{ needs.backend.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "backend=$BACKEND frontend=$FRONTEND e2e=$E2E"
+          for r in "$BACKEND" "$FRONTEND" "$E2E"; do
+            [ "$r" = "success" ] || { echo "::error title=CI did not pass::backend=$BACKEND frontend=$FRONTEND e2e=$E2E"; exit 1; }
+          done

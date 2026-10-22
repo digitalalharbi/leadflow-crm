@@ -31,6 +31,17 @@ class IncomingLead
         public readonly ?string $formName = null,
         public readonly ?string $formId = null,
         public readonly ?string $providerLeadId = null,
+        /*
+         * The platform's own id for the click. It is what lets a sale be
+         * credited back to the ad that produced it — campaign and ad names tell
+         * a human which campaign a lead came from and tell Meta nothing.
+         */
+        public readonly ?string $clickId = null,
+        public readonly ?string $utmSource = null,
+        public readonly ?string $utmMedium = null,
+        public readonly ?string $utmCampaign = null,
+        public readonly ?string $utmTerm = null,
+        public readonly ?string $utmContent = null,
         public readonly ?int $projectId = null,
         public readonly ?int $assignedTo = null,
         public readonly ?string $purchasePurpose = null,
@@ -41,7 +52,24 @@ class IncomingLead
         public readonly ?float $budgetMin = null,
         public readonly ?float $budgetMax = null,
         public readonly array $custom = [],
+        /**
+         * The real estate facts, keyed by lead column: transaction_type, preferred_district,
+         * bedrooms, area_sqm, nationality, preferred_channel, reservation_intent. Kept as one
+         * array because they are carried, not interpreted, between a form and the lead.
+         *
+         * @var array<string,mixed>
+         */
+        public readonly array $realEstate = [],
+        /** The identity a landing page handed the visitor, and the link they came through. */
+        public readonly ?string $visitorId = null,
+        public readonly ?string $trackingToken = null,
+        public readonly ?string $referrer = null,
+        public readonly ?string $landingUrl = null,
+        public readonly ?string $device = null,
+        public readonly ?string $browser = null,
         public readonly array $rawPayload = [],
+        /** What each custom key was called where it came from — a header, a form question. */
+        public readonly array $customLabels = [],
     ) {}
 
     /**
@@ -84,6 +112,22 @@ class IncomingLead
             formName: Arr::get($data, 'form_name'),
             formId: Arr::get($data, 'form_id'),
             providerLeadId: Arr::get($data, 'provider_lead_id'),
+            /*
+             * Each platform names its click id differently, and a landing page
+             * that forwards one usually forwards it under the platform's own
+             * name. Accepting all four costs nothing and is the difference
+             * between a sale that can be credited and one that cannot.
+             */
+            clickId: Arr::get($data, 'click_id')
+                ?? Arr::get($data, 'gclid')
+                ?? Arr::get($data, 'fbclid')
+                ?? Arr::get($data, 'ttclid')
+                ?? Arr::get($data, 'sccid'),
+            utmSource: Arr::get($data, 'utm_source'),
+            utmMedium: Arr::get($data, 'utm_medium'),
+            utmCampaign: Arr::get($data, 'utm_campaign'),
+            utmTerm: Arr::get($data, 'utm_term'),
+            utmContent: Arr::get($data, 'utm_content'),
             projectId: Arr::get($data, 'project_id'),
             assignedTo: Arr::get($data, 'assigned_to'),
             purchasePurpose: Arr::get($data, 'purchase_purpose'),
@@ -94,8 +138,44 @@ class IncomingLead
             budgetMin: is_numeric(Arr::get($data, 'budget_min')) ? (float) Arr::get($data, 'budget_min') : null,
             budgetMax: is_numeric(Arr::get($data, 'budget_max')) ? (float) Arr::get($data, 'budget_max') : null,
             custom: Arr::get($data, 'custom', []),
+            realEstate: self::realEstateFacts($data),
+            visitorId: Arr::get($data, 'visitor_id') ?? Arr::get($data, 'mt_vid'),
+            trackingToken: Arr::get($data, 'tracking_token') ?? Arr::get($data, 'mt_t'),
+            referrer: Arr::get($data, 'referrer'),
+            landingUrl: Arr::get($data, 'landing_url'),
+            device: Arr::get($data, 'device'),
+            browser: Arr::get($data, 'browser'),
             rawPayload: $raw ?: $data,
+            customLabels: Arr::get($data, 'custom_labels', []),
         );
+    }
+
+    /** @return array<string,mixed> */
+    private static function realEstateFacts(array $data): array
+    {
+        $facts = [];
+
+        foreach (['transaction_type', 'preferred_district', 'nationality', 'preferred_channel'] as $key) {
+            if (filled(Arr::get($data, $key))) {
+                $facts[$key] = (string) Arr::get($data, $key);
+            }
+        }
+
+        foreach (['bedrooms'] as $key) {
+            if (is_numeric(Arr::get($data, $key))) {
+                $facts[$key] = (int) Arr::get($data, $key);
+            }
+        }
+
+        if (is_numeric(Arr::get($data, 'area_sqm'))) {
+            $facts['area_sqm'] = (float) Arr::get($data, 'area_sqm');
+        }
+
+        if (Arr::has($data, 'reservation_intent')) {
+            $facts['reservation_intent'] = filter_var(Arr::get($data, 'reservation_intent'), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $facts;
     }
 
     public function hasIdentity(): bool

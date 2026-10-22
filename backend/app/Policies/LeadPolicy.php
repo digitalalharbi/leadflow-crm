@@ -36,10 +36,25 @@ class LeadPolicy
         return $this->view($user, $lead);
     }
 
+    /** Merging two records is a manager's call: it cannot be cleanly undone. */
+    public function merge(User $user, Lead $lead): bool
+    {
+        return $user->belongsToTenant($lead->tenant_id) && $user->seesAllLeads();
+    }
+
     /** Only managers and admins move a lead between reps. */
     public function assign(User $user, Lead $lead): bool
     {
         return $user->belongsToTenant($lead->tenant_id) && $user->seesAllLeads();
+    }
+
+    /**
+     * Naming an owner for a lead that does not exist yet. Same rule as assign(),
+     * minus the tenant check there is no record to make.
+     */
+    public function assignOnCreate(User $user): bool
+    {
+        return $user->seesAllLeads();
     }
 
     public function delete(User $user, Lead $lead): bool

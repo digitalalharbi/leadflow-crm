@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Automation\Thresholds;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BrandingResource;
 use App\Models\CustomField;
@@ -28,11 +29,36 @@ class SettingsController extends Controller
                 'timezone' => $tenant->settings?->timezone,
                 'default_country_code' => $tenant->settings?->default_country_code,
                 'assignment_mode' => $tenant->settings?->assignment_mode,
+                'assignment_strategy' => $tenant->settings?->assignment_strategy,
                 'score_warm_threshold' => $tenant->settings?->score_warm_threshold,
                 'score_hot_threshold' => $tenant->settings?->score_hot_threshold,
+                'first_contact_target_minutes' => $tenant->settings?->first_contact_target_minutes,
                 'whatsapp_template' => $tenant->settings?->whatsapp_template,
-                'onboarding' => $tenant->settings?->onboarding,
+                /*
+                 * When the business is open. Null means always, which is where
+                 * every workspace starts — the response-time clock only stops
+                 * once somebody says when they work.
+                 */
+                'work_days' => $tenant->settings?->work_days,
+                'work_starts_at' => $tenant->settings?->work_starts_at,
+                'work_ends_at' => $tenant->settings?->work_ends_at,
+                // What automation may and may not do to a person. See Guardrails.
+                'quiet_hours_enabled' => (bool) $tenant->settings?->quiet_hours_enabled,
+                'quiet_hours_start' => $tenant->settings?->quiet_hours_start ?? '21:00',
+                'quiet_hours_end' => $tenant->settings?->quiet_hours_end ?? '08:00',
+                'max_contacts_per_day' => $tenant->settings?->max_contacts_per_day ?? 6,
+                'contact_cooldown_minutes' => $tenant->settings?->contact_cooldown_minutes ?? 0,
+                // Raw, so a blank can mean "the default"; the value in force is under `thresholds`.
+                'score_priority_threshold' => $tenant->settings?->score_priority_threshold,
+                'high_value_from' => $tenant->settings?->high_value_from,
+                'stalled_after_days' => $tenant->settings?->stalled_after_days,
+                // How long an interested lead may wait for a person, by level. Raw: blank means the default.
+                'sla_hot_minutes' => $tenant->settings?->sla_hot_minutes,
+                'sla_interested_minutes' => $tenant->settings?->sla_interested_minutes,
+                'sla_visit_minutes' => $tenant->settings?->sla_visit_minutes,
+                'sla_reservation_minutes' => $tenant->settings?->sla_reservation_minutes,
             ],
+            'thresholds' => Thresholds::describe($tenant->settings),
             'subscription' => [
                 'plan' => $tenant->plan,
                 'status' => $tenant->subscription_status,
@@ -57,7 +83,8 @@ class SettingsController extends Controller
 
         $data = $request->validate([
             'company_name' => ['sometimes', 'string', 'max:255'],
-            'system_name' => ['sometimes', 'string', 'max:255'],
+            // Null or blank is "use the platform's name" — the way back from a rename.
+            'system_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
             'login_logo_url' => ['nullable', 'url', 'max:2048'],
             'login_background_url' => ['nullable', 'url', 'max:2048'],
@@ -85,32 +112,48 @@ class SettingsController extends Controller
             'timezone' => ['sometimes', 'timezone'],
             'default_country_code' => ['sometimes', 'string', 'max:5'],
             'assignment_mode' => ['sometimes', 'in:manual,round_robin'],
+            'assignment_strategy' => ['sometimes', 'in:workload,round_robin,performance'],
             'score_warm_threshold' => ['sometimes', 'integer', 'min:1', 'max:99'],
             'score_hot_threshold' => ['sometimes', 'integer', 'min:2', 'max:100', 'gt:score_warm_threshold'],
+            // How long a new lead may sit untouched before the dashboard calls
+            // it neglected. A week is the ceiling; past that it is not a target.
+            'first_contact_target_minutes' => ['sometimes', 'integer', 'min:1', 'max:10080'],
             'whatsapp_template' => ['nullable', 'string', 'max:1000'],
+
+            /*
+             * When the business is open, in its own timezone.
+             *
+             * Null is "always", which is what the response-time clock has
+             * always assumed. Days are ISO weekday numbers because
+             * `dayOfWeekIso` is what reads them — 7 is Sunday, which is the
+             * start of the week here and the easiest thing to get wrong.
+             */
+            'work_days' => ['sometimes', 'nullable', 'array', 'max:7'],
+            'work_days.*' => ['integer', 'min:1', 'max:7'],
+            'work_starts_at' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'work_ends_at' => ['sometimes', 'nullable', 'date_format:H:i', 'after:work_starts_at'],
+
+            // Automation guardrails. The quiet window may cross midnight, so
+            // there is no "end after start" rule here.
+            'quiet_hours_enabled' => ['sometimes', 'boolean'],
+            'quiet_hours_start' => ['sometimes', 'date_format:H:i'],
+            'quiet_hours_end' => ['sometimes', 'date_format:H:i'],
+            'max_contacts_per_day' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'contact_cooldown_minutes' => ['sometimes', 'integer', 'min:0', 'max:1440'],
+            // The three lines that were constants. Null puts back the default.
+            'score_priority_threshold' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
+            'high_value_from' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:1000000000'],
+            'stalled_after_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:90'],
+            'sla_hot_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'sla_interested_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'sla_visit_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+            'sla_reservation_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
         ]);
 
         $tenant->settings->update($data);
         $this->audit->log('tenant.settings_updated', $request->user(), $tenant, ['fields' => array_keys($data)]);
 
         return ApiResponse::success(['settings' => $tenant->settings->fresh()]);
-    }
-
-    /** Marks an onboarding checklist item done; the UI hides the card when all are. */
-    public function completeOnboardingStep(Request $request)
-    {
-        $tenant = $request->user()->tenant;
-        $this->authorize('update', $tenant);
-
-        $data = $request->validate([
-            'step' => ['required', 'in:branding,team,project,lead_source,first_lead'],
-        ]);
-
-        $onboarding = $tenant->settings->onboarding ?? [];
-        $onboarding[$data['step']] = true;
-        $tenant->settings->update(['onboarding' => $onboarding]);
-
-        return ApiResponse::success(['onboarding' => $onboarding]);
     }
 
     public function storeLostReason(Request $request)

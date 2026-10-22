@@ -1,52 +1,109 @@
 import { cn } from '@/lib/cn'
 import type { LeadStatus, LeadTemperature } from '@/types/api'
+import { Star } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 /**
  * Status and temperature are the two things a rep scans for, so they get a
  * consistent colour everywhere — table, board, detail header, dashboard.
  */
+/*
+ * Built from the stage tokens rather than Tailwind's palette, so a badge, a
+ * pipeline column header and a chart segment are the same colour by
+ * construction — and so dark mode is one variable swap, not sixty classes.
+ */
+function toneFor(variable: string): string {
+  return [
+    `bg-[color-mix(in_srgb,var(${variable})_12%,transparent)]`,
+    `text-[color-mix(in_srgb,var(${variable})_82%,var(--color-ink))]`,
+    `ring-[color-mix(in_srgb,var(${variable})_24%,transparent)]`,
+  ].join(' ')
+}
+
 const statusTone: Record<LeadStatus, string> = {
-  new: 'bg-blue-50 text-blue-700 ring-blue-600/15',
-  contacted: 'bg-violet-50 text-violet-700 ring-violet-600/15',
-  qualified: 'bg-cyan-50 text-cyan-700 ring-cyan-600/15',
-  appointment: 'bg-amber-50 text-amber-700 ring-amber-600/15',
-  won: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
-  lost: 'bg-red-50 text-red-700 ring-red-600/15',
+  new: toneFor('--color-status-new'),
+  contacted: toneFor('--color-status-contacted'),
+  replied: toneFor('--color-status-replied'),
+  qualified: toneFor('--color-status-qualified'),
+  appointment: toneFor('--color-status-appointment'),
+  negotiation: toneFor('--color-status-negotiation'),
+  won: toneFor('--color-status-won'),
+  lost: toneFor('--color-status-lost'),
+  invalid: toneFor('--color-status-invalid'),
+  no_response: toneFor('--color-status-no_response'),
 }
 
 const tempTone: Record<LeadTemperature, string> = {
-  hot: 'bg-red-50 text-red-700 ring-red-600/15',
-  warm: 'bg-amber-50 text-amber-700 ring-amber-600/15',
-  cold: 'bg-sky-50 text-sky-700 ring-sky-600/15',
+  hot: toneFor('--color-temp-hot'),
+  warm: toneFor('--color-temp-warm'),
+  cold: toneFor('--color-temp-cold'),
 }
 
-const base =
-  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.75rem] font-medium ring-1 ring-inset whitespace-nowrap'
+/*
+ * A tinted token, not an outline.
+ *
+ * The ring was doing the work of saying "this is a thing"; a soft fill says it
+ * more quietly and survives being next to five others, which is what a status
+ * column actually is.
+ */
+const base = [
+  'inline-flex items-center gap-1.5 whitespace-nowrap',
+  'rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[0.875rem] font-medium',
+  'ring-1 ring-inset',
+].join(' ')
 
-export function StatusBadge({ status, className }: { status: LeadStatus; className?: string }) {
-  const { t } = useTranslation()
-
-  return <span className={cn(base, statusTone[status], className)}>{t(`status.${status}`)}</span>
-}
-
-export function TemperatureBadge({
-  temperature,
+export function StatusBadge({
+  status,
   className,
+  testId,
 }: {
-  temperature: LeadTemperature
+  status: LeadStatus
   className?: string
+  testId?: string
 }) {
   const { t } = useTranslation()
 
   return (
-    <span className={cn(base, tempTone[temperature], className)}>
+    <span className={cn(base, statusTone[status], className)} data-testid={testId}>
+      {t(`status.${status}`)}
+    </span>
+  )
+}
+
+export function TemperatureBadge({
+  temperature,
+  priority = false,
+  className,
+  testId,
+}: {
+  temperature: LeadTemperature
+  /** Hot and the one to call first. Shown instead of "hot", never beside it. */
+  priority?: boolean
+  className?: string
+  testId?: string
+}) {
+  const { t } = useTranslation()
+
+  if (priority) {
+    return (
+      <span
+        className={cn(base, tempTone.hot, 'font-semibold', className)}
+        data-testid={testId ?? 'priority-badge'}
+      >
+        <Star className="size-3 fill-current" aria-hidden />
+        {t('temperature.priority')}
+      </span>
+    )
+  }
+
+  return (
+    <span className={cn(base, tempTone[temperature], className)} data-testid={testId}>
       <span
         className={cn(
           'size-1.5 rounded-full',
-          temperature === 'hot' && 'bg-red-500',
-          temperature === 'warm' && 'bg-amber-500',
-          temperature === 'cold' && 'bg-sky-500',
+          temperature === 'hot' && 'bg-[var(--color-temp-hot)]',
+          temperature === 'warm' && 'bg-[var(--color-temp-warm)]',
+          temperature === 'cold' && 'bg-[var(--color-temp-cold)]',
         )}
         aria-hidden
       />
@@ -59,18 +116,25 @@ export function Badge({
   children,
   tone = 'neutral',
   className,
+  testId,
 }: {
   children: React.ReactNode
   tone?: 'neutral' | 'success' | 'warning' | 'danger' | 'info'
   className?: string
+  testId?: string
 }) {
   const tones = {
-    neutral: 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] ring-[var(--color-border)]',
-    success: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
-    warning: 'bg-amber-50 text-amber-700 ring-amber-600/15',
-    danger: 'bg-red-50 text-red-700 ring-red-600/15',
-    info: 'bg-blue-50 text-blue-700 ring-blue-600/15',
+    neutral: 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] ring-[var(--color-line)]',
+    // The kit's own pair: healthy is pale green on emerald, a warning or backlog pale copper on dark copper.
+    success: 'bg-[var(--brand-soft)] text-[var(--brand-text)] ring-[color-mix(in_srgb,var(--brand-text)_22%,transparent)]',
+    warning: 'bg-[var(--status-warn-bg)] text-[var(--status-warn-ink)] ring-[color-mix(in_srgb,var(--status-warn-ink)_22%,transparent)]',
+    danger: toneFor('--color-status-lost'),
+    info: toneFor('--color-status-new'),
   }
 
-  return <span className={cn(base, tones[tone], className)}>{children}</span>
+  return (
+    <span className={cn(base, tones[tone], className)} data-testid={testId}>
+      {children}
+    </span>
+  )
 }

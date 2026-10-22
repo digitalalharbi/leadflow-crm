@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Analytics\ConversionInsights;
+use App\Domain\Analytics\ReportInsights;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Services\Leads\LeadQueryBuilder;
 use App\Support\ApiResponse;
+use App\Support\CsvWriter;
 use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -49,6 +52,46 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * The headline: what moved, what is best and where the funnel leaks.
+     *
+     * Over the leads this person may see — a manager's reports are the whole
+     * workspace's, and the company the screen is looking at narrows them like
+     * every other number.
+     */
+    public function insights(Request $request, ReportInsights $insights)
+    {
+        $this->authorize('export', Lead::class);
+
+        $target = (int) ($request->user()->tenant?->settings?->first_contact_target_minutes ?? 30);
+
+        return ApiResponse::success(['insights' => $insights->all($target)]);
+    }
+
+    /**
+     * Whether the things we measure actually predict a sale.
+     *
+     * Every other report measures effort — how fast the team called, what the
+     * scoring engine thought, how many leads a platform sent. None of them says
+     * whether the effort paid, and a workspace cannot act on a speed figure
+     * until it knows that speed is worth paying for.
+     *
+     * Honours the same filters as the rest of the reports, so "does speed
+     * matter" can be asked of one project or one rep rather than only of the
+     * whole workspace.
+     */
+    public function drivers(Request $request, ConversionInsights $insights)
+    {
+        $this->authorize('export', Lead::class);
+
+        $base = fn () => $this->queries->build($request, $request->user())->reorder();
+
+        return ApiResponse::success([
+            'speed' => $insights->bySpeed($base()),
+            'score' => $insights->byScore($base()),
+        ]);
+    }
+
     public function export(Request $request): StreamedResponse
     {
         $this->authorize('export', Lead::class);
@@ -64,13 +107,14 @@ class ReportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Label', 'Total Leads', 'Qualified', 'Appointments', 'Won', 'Lost', 'Conversion %']);
+            $csv = CsvWriter::open($out);
+            $csv->writeRow(['Label', 'Total Leads', 'Qualified', 'Appointments', 'Won', 'Lost', 'Conversion %', 'Share %']);
 
             foreach ($rows as $row) {
-                fputcsv($out, [
+                $csv->writeRow([
                     $row['label'], $row['total'], $row['qualified'],
-                    $row['appointments'], $row['won'], $row['lost'], $row['conversion_rate'],
+                    $row['appointments'], $row['won'], $row['lost'],
+                    $row['conversion_rate'], $row['share'],
                 ]);
             }
 
@@ -131,6 +175,11 @@ class ReportController extends Controller
             ->limit(200)
             ->get();
 
+        // Share of the whole report, which is the number that matters on a lost
+        // analysis: "budget" meaning 8% of losses and meaning 60% are different
+        // problems with different answers.
+        $grandTotal = (int) $rows->sum('total');
+
         return $rows->map(fn ($row) => [
             'key' => (string) $row->label,
             'label' => (string) $row->label,
@@ -140,6 +189,7 @@ class ReportController extends Controller
             'won' => (int) $row->won,
             'lost' => (int) $row->lost,
             'conversion_rate' => $row->total > 0 ? round($row->won / $row->total * 100, 1) : 0.0,
+            'share' => $grandTotal > 0 ? round($row->total / $grandTotal * 100, 1) : 0.0,
         ])->all();
     }
 

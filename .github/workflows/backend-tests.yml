@@ -1,16 +1,9 @@
 name: Backend tests
 
 on:
-  pull_request:
-    branches: [main, develop]
-    paths: ['backend/**', '.github/workflows/backend-tests.yml']
-  # Called by the deploy workflows, which own the push path — running on push
-  # here as well would duplicate the work and cancel itself via `concurrency`.
+  # Called by CI (ci.yml), which owns every trigger: pull requests, pushes to develop and main.
   workflow_call:
 
-concurrency:
-  group: backend-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   test:
@@ -79,6 +72,12 @@ jobs:
       - name: Check code style
         run: ./vendor/bin/pint --test
         continue-on-error: false
+
+      # Before the suite, not inside it: a test class that shadows PHPUnit's
+      # final run() aborts at class load and takes every other test with it,
+      # so no test can catch this one.
+      - name: Check test helpers
+        run: ./scripts/check-test-helpers.sh
 
       - name: Run migrations
         env:

@@ -1,0 +1,20 @@
+{
+  "_comment": "Meta (Facebook / Instagram) Lead Ads. Answers arrive as field_data, not a flat object; MetaLeadProvider flattens it before the standard mapping runs.",
+  "id": "l:1234567890123456",
+  "created_time": "2026-10-01T09:14:22+0000",
+  "form_id": "f:987654321",
+  "form_name": "نموذج التسجيل - مشروع النرجس",
+  "campaign_id": "23859000111222",
+  "campaign_name": "حملة إطلاق مشروع النرجس",
+  "adset_id": "23860000111222",
+  "adset_name": "انستقرام - ستوري",
+  "ad_id": "23861000111222",
+  "ad_name": "فيديو جولة المشروع",
+  "platform": "meta",
+  "field_data": [
+    { "name": "full_name", "values": ["نورة الشمري"] },
+    { "name": "phone_number", "values": ["+966512345678"] },
+    { "name": "email", "values": ["noura@example.com"] },
+    { "name": "city", "values": ["جدة"] }
+  ]
+}

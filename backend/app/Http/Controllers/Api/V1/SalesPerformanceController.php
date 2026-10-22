@@ -1,0 +1,381 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Enums\LeadStatus;
+use App\Enums\LeadTemperature;
+use App\Enums\QualificationStatus;
+use App\Http\Controllers\Controller;
+use App\Models\CampaignSpend;
+use App\Models\Lead;
+use App\Services\Leads\LeadQueryBuilder;
+use App\Support\ApiResponse;
+use App\Support\CsvWriter;
+use App\Support\TenantContext;
+use Illuminate\Database\Query\Expression;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+/**
+ * The two reports a developer actually buys this product for.
+ *
+ * "Campaign quality" answers which spend brings buyers rather than clicks: a
+ * campaign with 500 leads and one appointment is worse than one with 300 leads
+ * and fifteen, and nothing in a lead count shows that.
+ *
+ * "Performance" answers how fast and how well the team works what arrives.
+ */
+class SalesPerformanceController extends Controller
+{
+    public function __construct(
+        private LeadQueryBuilder $queries,
+        private TenantContext $context,
+    ) {}
+
+    public function campaignQuality(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $rows = $this->campaignRows($request);
+
+        return ApiResponse::success([
+            'rows' => $rows,
+            'totals' => $this->summarise($rows),
+            // So a cost is never rendered in a currency the screen guessed.
+            'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
+        ]);
+    }
+
+    public function exportCampaignQuality(Request $request): StreamedResponse
+    {
+        $this->authorize('export', Lead::class);
+
+        $rows = $this->campaignRows($request);
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            $csv = CsvWriter::open($out);
+            $csv->writeRow([
+                'Platform', 'Campaign', 'Leads', 'Contacted', 'Replied',
+                'Qualified', 'Hot', 'Appointments', 'Won',
+                'Contact %', 'Reply %', 'Qualification %', 'Appointment %', 'Win %',
+            ]);
+
+            foreach ($rows as $row) {
+                $csv->writeRow([
+                    $row['platform'], $row['campaign'], $row['leads'], $row['contacted'], $row['replied'],
+                    $row['qualified'], $row['hot'], $row['appointments'], $row['won'],
+                    $row['contact_rate'], $row['reply_rate'], $row['qualification_rate'],
+                    $row['appointment_rate'], $row['win_rate'],
+                ]);
+            }
+
+            fclose($out);
+        }, 'campaign-quality-'.now()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** Headline numbers plus the rates and the average time to first contact. */
+    public function performance(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $row = $this->queries->build($request, $request->user())->reorder()
+            ->select($this->countExpressions())
+            ->selectRaw(
+                // Seconds from the lead arriving to someone first reaching out.
+                // Averaged over the leads that were contacted at all — including
+                // the untouched ones as zero would flatter a slow team.
+                'avg(extract(epoch from (leads.first_contact_at - leads.created_at)))
+                   filter (where leads.first_contact_at is not null) as avg_first_contact_seconds,
+                 avg(extract(epoch from (leads.first_response_at - leads.first_contact_at)))
+                   filter (where leads.first_response_at is not null and leads.first_contact_at is not null) as avg_first_reply_seconds'
+            )
+            ->first();
+
+        $counts = $this->normaliseCounts($row);
+
+        return ApiResponse::success([
+            'counts' => $counts,
+            'rates' => $this->rates($counts),
+            'timing' => [
+                'avg_first_contact_seconds' => $row->avg_first_contact_seconds !== null
+                    ? (int) round((float) $row->avg_first_contact_seconds) : null,
+                'avg_first_reply_seconds' => $row->avg_first_reply_seconds !== null
+                    ? (int) round((float) $row->avg_first_reply_seconds) : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Per-rep metrics — measurements, deliberately not a ranking.
+     *
+     * A league table of people is easy to build and corrosive to use: it
+     * rewards whoever got the best leads that month and tells a manager
+     * nothing about why. These are the same funnel measures the rest of the
+     * product uses, per owner, plus how fast each one answers — which is the
+     * one number a rep genuinely controls.
+     */
+    public function salesTeam(Request $request)
+    {
+        $this->authorize('export', Lead::class);
+
+        $tenantId = $request->user()->tenant_id;
+
+        $rows = $this->queries->build($request, $request->user())->reorder()
+            ->leftJoin('users', function ($join) use ($tenantId) {
+                $join->on('users.id', '=', 'leads.assigned_to')
+                    ->where('users.tenant_id', '=', $tenantId)
+                    ->whereNull('users.deleted_at');
+            })
+            ->select([
+                DB::raw("coalesce(users.name, '—') as name"),
+                DB::raw('users.uuid as user_id'),
+                ...$this->countExpressions(),
+            ])
+            ->selectRaw(
+                'avg(extract(epoch from (leads.first_contact_at - leads.created_at)))
+                   filter (where leads.first_contact_at is not null) as avg_first_contact_seconds'
+            )
+            ->groupBy('users.name', 'users.uuid')
+            ->orderByDesc(DB::raw('count(*)'))
+            ->limit(50)
+            ->get();
+
+        return ApiResponse::success([
+            'rows' => $rows->map(function ($row) {
+                $counts = $this->normaliseCounts($row);
+
+                return array_merge([
+                    'user_id' => $row->user_id,
+                    'name' => (string) $row->name,
+                    'avg_first_contact_seconds' => $row->avg_first_contact_seconds !== null
+                        ? (int) round((float) $row->avg_first_contact_seconds)
+                        : null,
+                ], $counts, $this->rates($counts));
+            })->all(),
+        ]);
+    }
+
+    private function campaignRows(Request $request): array
+    {
+        $rows = $this->queries->build($request, $request->user())->reorder()
+            ->select([
+                DB::raw("coalesce(leads.platform, '—') as platform"),
+                DB::raw("coalesce(leads.campaign_name, '—') as campaign"),
+                ...$this->countExpressions(),
+            ])
+            ->groupBy(DB::raw("coalesce(leads.platform, '—'), coalesce(leads.campaign_name, '—')"))
+            ->orderByDesc(DB::raw('count(*)'))
+            ->limit(200)
+            ->get();
+
+        $spend = $this->spendByCampaign($request);
+
+        return $rows->map(function ($row) use ($spend) {
+            $counts = $this->normaliseCounts($row);
+            $platform = (string) $row->platform;
+            $campaign = (string) $row->campaign;
+
+            return array_merge([
+                'platform' => $platform,
+                'campaign' => $campaign,
+            ], $counts, $this->rates($counts), $this->costs($spend["{$platform}|{$campaign}"] ?? null, $counts));
+        })->all();
+    }
+
+    /**
+     * Spend per campaign over the same period the leads were counted in.
+     *
+     * Keyed the way the rows are grouped — platform and campaign, with the same
+     * '—' for an unnamed one — so a campaign whose spend was entered without a
+     * name still matches the leads that arrived without one.
+     *
+     * @return array<string, int> minor units, keyed "platform|campaign"
+     */
+    private function spendByCampaign(Request $request): array
+    {
+        $query = CampaignSpend::query();
+
+        // The report's own date filters, applied to the day the money was
+        // spent. A cost per lead that divides a month of spend by a week of
+        // leads is not a number anybody should see.
+        if ($from = $request->date('date_from')) {
+            $query->where('spend_date', '>=', $from);
+        }
+
+        if ($to = $request->date('date_to')) {
+            $query->where('spend_date', '<=', $to);
+        }
+
+        return $query
+            ->selectRaw("coalesce(platform, '—') as platform")
+            ->selectRaw("coalesce(campaign_name, '—') as campaign")
+            ->selectRaw('sum(amount_minor) as total')
+            ->groupBy('platform', 'campaign')
+            ->get()
+            ->mapWithKeys(fn ($row) => ["{$row->platform}|{$row->campaign}" => (int) $row->total])
+            ->all();
+    }
+
+    /**
+     * What each lead cost, and what each qualified lead cost.
+     *
+     * Null rather than zero when no spend was entered. A campaign nobody has
+     * costed is not free, and a column of 0.00 beside a real 41.20 invites
+     * exactly the wrong conclusion about which campaign to scale.
+     *
+     * There is deliberately no ROAS here. It needs the value of a closed deal
+     * and this product records a buyer's budget, not what they paid — so the
+     * honest options were to omit it or to invent a revenue figure.
+     *
+     * @return array{spend: ?float, cost_per_lead: ?float, cost_per_qualified: ?float}
+     */
+    private function costs(?int $spendMinor, array $counts): array
+    {
+        $revenueMinor = $counts['revenue_minor'];
+        $revenue = $revenueMinor > 0 ? round($revenueMinor / 100, 2) : null;
+
+        if ($spendMinor === null) {
+            return [
+                'spend' => null, 'cost_per_lead' => null, 'cost_per_qualified' => null,
+                'revenue' => $revenue, 'roas' => null,
+            ];
+        }
+
+        $per = fn (int $divisor) => $divisor > 0 ? round($spendMinor / $divisor / 100, 2) : null;
+
+        return [
+            'spend' => round($spendMinor / 100, 2),
+            'cost_per_lead' => $per($counts['leads']),
+            // Null, not the whole spend, when a campaign qualified nobody. The
+            // cost of nothing is not a cost per unit; it is the finding itself,
+            // and the leads column beside it already says so.
+            'cost_per_qualified' => $per($counts['qualified']),
+            'revenue' => $revenue,
+            /*
+             * Return on ad spend, and null unless both halves are real.
+             *
+             * A campaign that sold nothing has a return of zero, which is a
+             * finding and is reported as 0. A campaign whose sales nobody
+             * valued has no return that can be computed at all — reporting
+             * that as 0 would read as "this campaign loses money" when the
+             * truth is "nobody typed the price in", and those two deserve
+             * opposite decisions.
+             */
+            'roas' => $spendMinor > 0 && $this->anySaleValued($counts)
+                ? round($revenueMinor / $spendMinor, 2)
+                : null,
+        ];
+    }
+
+    /**
+     * Did any won deal in this campaign carry a value?
+     *
+     * Without this, a campaign with three unvalued sales reports a return of
+     * zero — indistinguishable from one that genuinely sold nothing.
+     */
+    private function anySaleValued(array $counts): bool
+    {
+        return $counts['won'] === 0 || $counts['revenue_minor'] > 0;
+    }
+
+    /** @return array<int, Expression> */
+    private function countExpressions(): array
+    {
+        return [
+            DB::raw('count(*) as leads'),
+            /*
+             * Reached, not recorded. A rep who drags a lead to "contacted"
+             * without the system ever stamping a first-contact time has still
+             * contacted them, and counting only the stamp put a rate of 0% on
+             * the same screen as a funnel reading 74% — two numbers, one word,
+             * both claiming to be the truth.
+             */
+            DB::raw(sprintf(
+                "count(*) filter (where leads.first_contact_at is not null or leads.status <> '%s') as contacted",
+                LeadStatus::New->value,
+            )),
+            // Replies are the exception: there is no "replied" stage to reach,
+            // so an inbound message is the only evidence there is.
+            DB::raw('count(*) filter (where leads.first_response_at is not null) as replied'),
+            DB::raw(sprintf(
+                "count(*) filter (where leads.qualification_status = '%s'
+                   or leads.status in ('%s', '%s', '%s')) as qualified",
+                QualificationStatus::Qualified->value,
+                LeadStatus::Qualified->value,
+                LeadStatus::Appointment->value,
+                LeadStatus::Won->value,
+            )),
+            DB::raw(sprintf(
+                "count(*) filter (where leads.temperature = '%s' and leads.status not in ('%s', '%s')) as hot",
+                LeadTemperature::Hot->value,
+                LeadStatus::Won->value,
+                LeadStatus::Lost->value,
+            )),
+            // Reaching the appointment stage, not sitting in it: a lead that was
+            // booked and then bought must still count as an appointment, or the
+            // best campaigns would show the fewest.
+            DB::raw(sprintf(
+                "count(*) filter (where leads.status in ('%s', '%s')) as appointments",
+                LeadStatus::Appointment->value,
+                LeadStatus::Won->value,
+            )),
+            DB::raw(sprintf("count(*) filter (where leads.status = '%s') as won", LeadStatus::Won->value)),
+            DB::raw(sprintf("count(*) filter (where leads.status = '%s') as lost", LeadStatus::Lost->value)),
+            /*
+             * What the won deals actually closed for — not the buyers' stated
+             * budgets, which is a qualification signal and would make every
+             * return figure a number somebody typed into a form before anybody
+             * showed them anything.
+             */
+            DB::raw('coalesce(sum(leads.deal_value_minor), 0) as revenue_minor'),
+        ];
+    }
+
+    private function normaliseCounts(object $row): array
+    {
+        return [
+            'revenue_minor' => (int) ($row->revenue_minor ?? 0),
+            'leads' => (int) $row->leads,
+            'contacted' => (int) $row->contacted,
+            'replied' => (int) $row->replied,
+            'qualified' => (int) $row->qualified,
+            'hot' => (int) $row->hot,
+            'appointments' => (int) $row->appointments,
+            'won' => (int) $row->won,
+            'lost' => (int) $row->lost,
+        ];
+    }
+
+    private function rates(array $c): array
+    {
+        $rate = fn (int $part) => $c['leads'] > 0 ? round($part / $c['leads'] * 100, 1) : 0.0;
+
+        return [
+            'contact_rate' => $rate($c['contacted']),
+            'reply_rate' => $rate($c['replied']),
+            'qualification_rate' => $rate($c['qualified']),
+            'appointment_rate' => $rate($c['appointments']),
+            'win_rate' => $rate($c['won']),
+        ];
+    }
+
+    private function summarise(array $rows): array
+    {
+        $sum = fn (string $key) => array_sum(array_column($rows, $key));
+
+        $counts = [
+            'leads' => $sum('leads'),
+            'contacted' => $sum('contacted'),
+            'replied' => $sum('replied'),
+            'qualified' => $sum('qualified'),
+            'hot' => $sum('hot'),
+            'appointments' => $sum('appointments'),
+            'won' => $sum('won'),
+            'lost' => $sum('lost'),
+        ];
+
+        return array_merge($counts, $this->rates($counts));
+    }
+}

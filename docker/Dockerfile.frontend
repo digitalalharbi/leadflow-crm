@@ -17,6 +17,18 @@ COPY frontend/ ./
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 
+# What the public pages (privacy, terms, contact) say about who runs the service. Public by nature:
+# they are compiled into the bundle. Left empty, the pages show a plain "to be added before launch"
+# marker instead of an invented company or mailbox.
+ARG VITE_PUBLIC_LEGAL_NAME=
+ARG VITE_PUBLIC_CONTACT_EMAIL=
+ARG VITE_PUBLIC_ADDRESS=
+ARG VITE_PUBLIC_PROCESSORS=
+ENV VITE_PUBLIC_LEGAL_NAME=$VITE_PUBLIC_LEGAL_NAME \
+    VITE_PUBLIC_CONTACT_EMAIL=$VITE_PUBLIC_CONTACT_EMAIL \
+    VITE_PUBLIC_ADDRESS=$VITE_PUBLIC_ADDRESS \
+    VITE_PUBLIC_PROCESSORS=$VITE_PUBLIC_PROCESSORS
+
 RUN npm run build
 
 # ---------------------------------------------------------------------------

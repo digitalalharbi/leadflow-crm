@@ -1,28 +1,35 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check, Copy, FileUp, Plug, Upload, Webhook,
+  Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload, Rocket,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { apiGet, apiPost, http } from '@/lib/api'
+import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
+import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel'
+import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
+import { SheetSources } from '@/components/integrations/SheetSources'
+import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
+import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
 import {
-  Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState,
-  Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr,
+  Badge, Button, Card, CardBody, CardHeader, Drawer, EmptyState, ErrorState,
+  Modal, PageHeader, Select, Skeleton, Table, TableWrap, Td, Th, Tr, Tabs,
 } from '@/components/ui'
-import type { IntegrationCard } from '@/types/api'
+import type { IntegrationCard, SyncResult } from '@/types/api'
 import { cn } from '@/lib/cn'
-
-const STATUS_TONE = {
-  connected: 'success',
-  not_connected: 'neutral',
-  configuration_required: 'warning',
-  error: 'danger',
-} as const
+import { ProviderMark } from '@/components/integrations/ProviderMark'
+import { MessageTemplates } from '@/components/whatsapp/MessageTemplates'
+import { WhatsappSettingsCard } from '@/components/whatsapp/WhatsappSettingsCard'
+import { EmailSettingsCard } from '@/components/email/EmailSettingsCard'
+import { ChartCard, IngestionChart, IngestionSources } from '@/components/charts'
+import { fetchIngestion } from '@/features/ingestion'
+import { useIntegrationStates } from '@/features/integrationState'
 
 const STATUS_LABEL = {
+  // Fallback only. See the card: this word is not used when a state exists.
   connected: 'integrations.connected',
   not_connected: 'integrations.notConnected',
   configuration_required: 'integrations.configurationRequired',
@@ -37,8 +44,66 @@ export function IntegrationsPage() {
 
   const [secret, setSecret] = useState<{ url: string; secret: string } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [view, setView] = useState<'sources' | 'ads'>('sources')
+  /** Detail starts closed: the grid above is the answer, this is the evidence. */
+  const [detailOpen, setDetailOpen] = useState(false)
+  const demoMode = useAuth((s) => s.demoMode)
+  const user = useAuth((s) => s.user)
+  const states = useIntegrationStates()
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  /*
+   * What came back from Google.
+   *
+   * The consent screen is on Google's domain and the callback lands on the
+   * API, so the only way the answer reaches the interface is in this query
+   * string. Read once and then removed, so a refresh does not re-announce a
+   * connection somebody made ten minutes ago.
+   */
+  const [params, setParams] = useSearchParams()
+  const googleResult = params.get('google')
+
+  useEffect(() => {
+    if (!googleResult) return
+
+    if (googleResult === 'connected') {
+      toast(t('sheets.googleConnected'), 'success')
+      void queryClient.invalidateQueries({ queryKey: ['sheets'] })
+    } else {
+      const reason = params.get('reason') ?? 'refused'
+
+      // The reason is named, because the three that matter are three different
+      // people's jobs: ours, the customer's, and nobody's.
+      toast(t(`sheets.googleError.${reason}`, { defaultValue: t('sheets.googleError.refused') }), 'error')
+    }
+
+    const next = new URLSearchParams(params)
+
+    next.delete('google')
+    next.delete('reason')
+    setParams(next, { replace: true })
+  }, [googleResult, params, setParams, toast, t, queryClient])
+
+  /*
+   * Sales-demo helper. Pushes a lead through the real ingestion pipeline so a
+   * prospect watches it appear in the CRM, rather than being told it would.
+   * The button only exists outside production; the route does too.
+   */
+  const simulate = useMutation({
+    mutationFn: () =>
+      apiPost<{ leads: Array<{ campaign_name: string }> }>('/demo/simulate-lead', {}),
+    onSuccess: (result) => {
+      const campaign = result.leads[0]?.campaign_name ?? ''
+      toast(t('integrations.simulated', { campaign }), 'success')
+
+      void queryClient.invalidateQueries({ queryKey: ['leads'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['webhook-logs'] })
+      void queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const { data: cards, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['integrations'],
     queryFn: () => apiGet<{ integrations: IntegrationCard[] }>('/integrations').then((r) => r.integrations),
   })
@@ -52,6 +117,26 @@ export function IntegrationsPage() {
           id: string; provider: string; status: string; error: string | null
           received_at: string; lead: { id: string; full_name: string } | null
         }[]),
+  })
+
+  const [credentialsFor, setCredentialsFor] = useState<IntegrationCard | null>(null)
+  const [syncResult, setSyncResult] = useState<{ provider: string; result: SyncResult } | null>(null)
+
+  /**
+   * Ask the source now, rather than waiting for the five-minute poll.
+   *
+   * Without it a workspace saves a token, sees nothing change, and cannot tell
+   * a wrong token from a quiet afternoon — so the first thing anybody does is
+   * paste it again.
+   */
+  const sync = useMutation({
+    mutationFn: (id: string) => apiPost<{ result: SyncResult }>(`/integrations/${id}/sync`, {}),
+    onSuccess: (response, id) => {
+      const card = cards?.find((c) => c.integration?.id === id)
+      setSyncResult({ provider: card?.provider ?? '', result: response.result })
+      void queryClient.invalidateQueries({ queryKey: ['integrations'] })
+      void queryClient.invalidateQueries({ queryKey: ['ingestion', 30] })
+    },
   })
 
   const connect = useMutation({
@@ -78,11 +163,124 @@ export function IntegrationsPage() {
         title={t('integrations.title')}
         subtitle={t('integrations.subtitle')}
         actions={
-          <Button variant="outline" icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
-            {t('integrations.importCsv')}
-          </Button>
+          <>
+            {/* The view switch lives in the header, so it costs the grid no height. */}
+            <Tabs
+              testId="integrations-tabs"
+              value={view}
+              onChange={setView}
+              items={[
+                { key: 'sources', label: t('integrations.view.sources') },
+                { key: 'ads', label: t('integrations.view.ads') },
+              ]}
+            />
+            {demoMode && (
+              <Button
+                variant="outline"
+                icon={<Sparkles className="size-4" />}
+                loading={simulate.isPending}
+                onClick={() => simulate.mutate()}
+                title={t('integrations.simulateHint')}
+                data-testid="simulate-lead"
+              >
+                {simulate.isPending ? t('integrations.simulating') : t('integrations.simulate')}
+              </Button>
+            )}
+            <Button variant="outline" icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
+              {t('integrations.importCsv')}
+            </Button>
+            {/* Readiness lives here, not in the main menu: it is the technical
+                view of the same question this page answers for people. */}
+            <Link to="/readiness" data-testid="open-readiness">
+              <Button variant="ghost" icon={<Rocket className="size-4" />}>{t('nav.readiness')}</Button>
+            </Link>
+          </>
         }
       />
+
+      {/*
+        Two kinds of connection, two views: where leads come from, and the ad
+        accounts campaigns are managed through. They need different keys and
+        answer different questions, and the first is the one opened daily.
+      */}
+
+      {view === 'ads' ? (
+        <AdConnectionsPanel />
+      ) : (
+      <>
+      {/* Leads that arrive in a spreadsheet, on the same page as every other
+          source — because that is what it is. */}
+      <div className="mb-2">
+        <SheetSources onImportFile={() => setImportOpen(true)} />
+      </div>
+
+      {/* Every source on one screen, above everything else: the question
+          anybody opens this page with is whether anything is still arriving. */}
+      <div className="mb-2">
+        <IntegrationGrid />
+      </div>
+
+
+      {/*
+        Everything below is detail, and detail is one press away rather than a
+        screen to scroll past.
+
+        The question anybody opens this page with is whether leads are still
+        arriving, and the grid above answers it in the first viewport. The
+        chart, the connection cards, the webhook secrets and the delivery log
+        are what you open *after* the grid has told you something is wrong —
+        so they start closed.
+      */}
+      <div className="mb-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setDetailOpen((open) => !open)}
+          data-testid="toggle-integration-detail"
+          aria-expanded={detailOpen}
+        >
+          {detailOpen ? t('integrations.hideDetail') : t('integrations.showDetail')}
+        </Button>
+      </div>
+
+      {detailOpen && (
+        <div className="space-y-3" data-testid="integration-detail">
+      {/*
+        Arrivals come first, above the list of connections.
+        The list cannot answer the question anybody actually opens this page
+        with — is anything still coming in? A form that stopped posting eleven
+        days ago still shows a green badge and a valid secret.
+      */}
+      <div className="mb-4">
+        <IngestionCard />
+      </div>
+
+      {/* WhatsApp is the only integration a customer configures themselves end
+          to end, so it gets a full card rather than a tile in the grid. */}
+      <div className="mb-4">
+        <WhatsappSettingsCard />
+      </div>
+
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <EmailSettingsCard />
+        </div>
+      )}
+
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <CallSettingsCard />
+        </div>
+      )}
+
+      {/* What the workspace says, and which of it may open a conversation.
+          Admin-only like the card above: the same screen is where a number is
+          connected and where its messages are approved. */}
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <MessageTemplates />
+        </div>
+      )}
 
       {isError ? (
         <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
@@ -92,62 +290,175 @@ export function IntegrationsPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {data?.map((card) => (
-            <Card key={card.provider} className="flex flex-col">
+          {cards?.map((card) => (
+            /*
+              `min-w-0`, or the page scrolls sideways on a phone.
+
+              A grid item's automatic minimum size is its min-content width, and
+              one of these cards holds a webhook URL that does not wrap. The
+              single column grew to 689px inside a 343px screen, so the whole
+              integrations page scrolled horizontally and the cards sat mostly
+              off-screen. The `truncate` on the URL could not help: the column
+              had already been sized to fit it.
+            */
+            <Card key={card.provider} className="flex min-w-0 flex-col">
               <CardBody className="flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-9 place-items-center rounded-lg bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]">
-                      {card.provider === 'generic_webhook' ? (
-                        <Webhook className="size-[1.125rem]" aria-hidden />
-                      ) : (
-                        <Plug className="size-[1.125rem]" aria-hidden />
-                      )}
-                    </span>
-                    <h3 className="text-[0.9375rem] font-semibold">
-                      {t(`platforms.${card.provider}`, {
-                        defaultValue: card.provider === 'generic_webhook' ? 'Webhook' : card.provider,
-                      })}
-                    </h3>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <ProviderMark provider={card.provider} />
+                    <div className="min-w-0">
+                      <h3 className="t-card-title truncate">
+                        {t(`platforms.${card.provider}`, {
+                          defaultValue: card.provider === 'generic_webhook' ? 'Webhook' : card.provider,
+                        })}
+                      </h3>
+                      {/* Status as words next to the name, not only as a chip —
+                          "needs setup" is the thing an admin is scanning for. */}
+                      <p className="t-caption" data-testid={`card-state-${card.provider}`}>
+                        {/*
+                          The ladder state when the server has one. The raw status
+                          said "connected" for a row that merely existed, beside a
+                          demo provider — so it is only the fallback now.
+                        */}
+                        {states.get(card.provider)
+                          ? t(`integrationState.${states.get(card.provider)}`)
+                          : t(STATUS_LABEL[card.status])}
+                      </p>
+                    </div>
                   </div>
-                  <Badge tone={STATUS_TONE[card.status]}>{t(STATUS_LABEL[card.status])}</Badge>
+                  <span
+                    className={cn(
+                      'mt-1 size-2 shrink-0 rounded-full',
+                      card.status === 'connected' && 'bg-[var(--color-success)]',
+                      card.status === 'configuration_required' && 'bg-[var(--color-warning)]',
+                      card.status === 'error' && 'bg-[var(--color-danger)]',
+                      card.status === 'not_connected' && 'bg-[var(--color-border-strong)]',
+                    )}
+                    aria-hidden
+                  />
                 </div>
 
                 {card.integration && (
-                  <p className="tabular mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]">
-                    {card.integration.leads_received} {t('integrations.leadsReceived')}
+                  <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+                    <div>
+                      <dt className="t-caption text-[0.8125rem]">{t('integrations.leadsReceived')}</dt>
+                      <dd className="tabular text-[1.0625rem] font-semibold" dir="ltr">
+                        {formatNumber(card.integration.leads_received, i18n.language)}
+                      </dd>
+                    </div>
+                    {card.integration.last_synced_at && (
+                      <div>
+                        <dt className="t-caption text-[0.8125rem]">{t('integrations.lastSync')}</dt>
+                        <dd className="t-small">
+                          {formatLastSeen(card.integration.last_synced_at, i18n.language)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+
+                {/*
+                  Why it is failing, on the page whose job is to say so.
+
+                  The card showed a red dot and the word "خطأ" and nothing else,
+                  so an admin learned that something was wrong and had to go to
+                  the data-quality screen to find out what. The provider's own
+                  words, not ours: "invalid OAuth access token" tells somebody
+                  what to go and fix, and anything we paraphrase it into does not.
+                */}
+                {card.integration?.last_error && (
+                  <p
+                    /*
+                      `auto`, so the browser takes the direction from the text
+                      itself. A provider's message is almost always English, and
+                      inside an RTL paragraph its trailing full stop jumps to the
+                      front of the wrapped line — "…has expired" / ".on Monday,
+                      06-Oct-26" — which reads as a typo in our product rather
+                      than as Meta's own words. An Arabic message still reads
+                      right-to-left.
+                    */
+                    dir="auto"
+                    className="notice notice-danger mt-3 text-start text-[0.875rem]"
+                    data-testid={`integration-error-${card.provider}`}
+                  >
+                    {card.integration.last_error}
                   </p>
                 )}
 
                 {card.required_credentials.length > 0 && card.status !== 'connected' && (
-                  <p className="mt-2 text-[0.75rem] text-[var(--color-ink-subtle)]">
+                  <p className="mt-2 text-[0.875rem] text-[var(--color-ink-subtle)]">
                     {t('integrations.credentialsNeeded')}: {card.required_credentials.join(', ')}
                   </p>
                 )}
 
                 {card.integration?.webhook_endpoints?.map((endpoint) => (
-                  <div key={endpoint.id} className="mt-3 rounded-lg bg-[var(--color-surface-muted)] p-2.5">
-                    <p className="text-[0.6875rem] font-medium text-[var(--color-ink-muted)]">
+                  <div key={endpoint.id} className="mt-3 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-2.5">
+                    <p className="text-[0.8125rem] font-medium text-[var(--color-ink-muted)]">
                       {t('integrations.webhookUrl')}
                     </p>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <code className="min-w-0 flex-1 truncate text-[0.6875rem]" dir="ltr">{endpoint.url}</code>
+                      <code className="min-w-0 flex-1 truncate text-[0.8125rem]" dir="ltr">{endpoint.url}</code>
                       <CopyButton value={endpoint.url} />
                     </div>
                   </div>
                 ))}
               </CardBody>
 
-              <div className="border-t border-[var(--color-border)] p-3">
-                <Button
-                  variant={card.integration ? 'outline' : 'primary'}
-                  size="sm"
-                  className="w-full"
-                  loading={connect.isPending && connect.variables === card.provider}
-                  onClick={() => connect.mutate(card.provider)}
-                >
-                  {card.integration ? t('integrations.generateEndpoint') : t('integrations.connect')}
-                </Button>
+              <div className="border-t border-[var(--color-line)] p-3">
+                {/*
+                  Outline, not primary. Eight full-width accent buttons turned
+                  the page into a wall of green shouting at an admin who is
+                  reading status, not deciding to connect eight networks at once.
+                */}
+                <div className="space-y-2">
+                  {/*
+                    A pulled source has no webhook URL to hand out, so offering
+                    one is noise; a pushed source has nothing to poll, so a
+                    "sync now" button on it would do nothing and say nothing.
+                    They are different integrations and they get different
+                    buttons.
+                  */}
+                  {!card.pulls_leads && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      loading={connect.isPending && connect.variables === card.provider}
+                      onClick={() => connect.mutate(card.provider)}
+                    >
+                      {card.integration ? t('integrations.generateEndpoint') : t('integrations.connect')}
+                    </Button>
+                  )}
+
+                  {card.required_credentials.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      icon={<KeyRound className="size-4" />}
+                      onClick={() => setCredentialsFor(card)}
+                      data-testid={`credentials-${card.provider}`}
+                    >
+                      {card.integration?.configured_credentials.length
+                        ? t('integrations.editCredentials')
+                        : t('integrations.addCredentials')}
+                    </Button>
+                  )}
+
+                  {card.pulls_leads && card.integration && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      icon={<RefreshCw className="size-4" />}
+                      loading={sync.isPending && sync.variables === card.integration.id}
+                      onClick={() => sync.mutate(card.integration!.id)}
+                      data-testid={`sync-${card.provider}`}
+                    >
+                      {t('integrations.syncNow')}
+                    </Button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
@@ -183,7 +494,7 @@ export function IntegrationsPage() {
                         {log.status}
                       </Badge>
                       {log.error && (
-                        <p className="mt-0.5 max-w-60 truncate text-[0.75rem] text-[var(--color-ink-muted)]">
+                        <p className="mt-0.5 max-w-60 truncate text-[0.875rem] text-[var(--color-ink-muted)]">
                           {log.error}
                         </p>
                       )}
@@ -197,7 +508,59 @@ export function IntegrationsPage() {
         )}
       </Card>
 
+        </div>
+      )}
+
       {/* The secret is shown exactly once; the dialog says so plainly. */}
+      <CredentialsModal
+        card={credentialsFor}
+        onClose={() => setCredentialsFor(null)}
+        onSaved={() => {
+          setCredentialsFor(null)
+          void queryClient.invalidateQueries({ queryKey: ['integrations'] })
+        }}
+      />
+
+      </>
+      )}
+
+      <Modal
+        open={Boolean(syncResult)}
+        onClose={() => setSyncResult(null)}
+        title={t('integrations.syncResult')}
+        footer={<Button onClick={() => setSyncResult(null)}>{t('common.close')}</Button>}
+      >
+        {syncResult && (
+          <div className="space-y-3">
+            <p className="t-small">
+              {t(`platforms.${syncResult.provider}`, { defaultValue: syncResult.provider })}
+            </p>
+
+            {syncResult.result.error ? (
+              /*
+                The provider's own words, not ours. "Could not connect" sends an
+                admin to their network; "(#190) access token expired" sends them
+                to the one place that can fix it.
+              */
+              <p className="t-small rounded-[var(--radius-control)] bg-[var(--color-danger-soft)] p-3 text-[var(--color-danger)]">
+                {syncResult.result.error}
+              </p>
+            ) : (
+              <dl className="grid grid-cols-2 gap-3">
+                {(['fetched', 'created', 'duplicates', 'skipped', 'rejected', 'failed'] as const).map((key) => (
+                  <div key={key}>
+                    <dt className="t-caption">{t(`integrations.sync_${key}`)}</dt>
+                    <dd className="tabular text-[1.0625rem] font-semibold" dir="ltr">
+                      {formatNumber(syncResult.result[key], i18n.language)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        )}
+      </Modal>
+
       <Modal
         open={Boolean(secret)}
         onClose={() => setSecret(null)}
@@ -210,7 +573,7 @@ export function IntegrationsPage() {
           <Field label={t('integrations.webhookSecret')} value={secret?.secret ?? ''} />
           <pre
             dir="ltr"
-            className="overflow-x-auto rounded-lg bg-[var(--color-ink)] p-3 text-[0.6875rem] leading-relaxed text-slate-100"
+            className="overflow-x-auto rounded-[var(--radius-control)] bg-[var(--color-ink)] p-3 text-[0.8125rem] leading-relaxed text-[var(--color-ink-inverted)]"
           >
 {`curl -X POST '${secret?.url ?? ''}' \\
   -H 'Content-Type: application/json' \\
@@ -225,14 +588,177 @@ export function IntegrationsPage() {
   )
 }
 
+/**
+ * Whether leads are still arriving, and how many of them are the same lead.
+ *
+ * The headline is the count and the duplicate share side by side. A rate on
+ * its own is unreadable — 50% of two events is not the same problem as 50% of
+ * four hundred — so the total is stated beside it rather than under a hover.
+ */
+function IngestionCard() {
+  const { t, i18n } = useTranslation()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['ingestion', 30],
+    queryFn: () => fetchIngestion(30),
+  })
+
+  const summary = data?.summary
+  const empty = !isLoading && (summary?.total ?? 0) === 0
+
+  return (
+    <ChartCard
+      title={t('charts.ingestion.title')}
+      description={t('charts.ingestion.hint')}
+      height={200}
+      loading={isLoading}
+      empty={empty}
+      emptyMessage={t('charts.ingestion.empty')}
+      testId="ingestion-card"
+      table={
+        data && {
+          head: [t('charts.journey.when'), t('charts.ingestion.accepted'), t('charts.ingestion.duplicates')],
+          rows: data.daily.map((day) => [day.date, day.accepted, day.duplicates]),
+        }
+      }
+      footer={
+        summary && summary.total > 0 ? (
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <span className="t-caption">
+              {t('charts.ingestion.total')}{' '}
+              <span className="tabular t-body font-medium" dir="ltr">
+                {formatNumber(summary.total, i18n.language)}
+              </span>
+            </span>
+            <span className="t-caption">
+              {t('charts.ingestion.duplicateRate')}{' '}
+              <span className="tabular t-body font-medium" dir="ltr">
+                {summary.duplicate_rate === null
+                  ? t('charts.ingestion.noRate')
+                  : `${summary.duplicate_rate}%`}
+              </span>
+            </span>
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="space-y-2">
+        <IngestionChart days={data?.daily ?? []} />
+        {data && data.by_provider.length > 0 && (
+          <div className="border-t border-[var(--color-line)] pt-3">
+            <p className="t-card-title px-5 pb-0.5">{t('charts.ingestion.sources')}</p>
+            <p className="t-caption px-5 pb-2">{t('charts.ingestion.sourcesHint')}</p>
+            <IngestionSources sources={data.by_provider} />
+          </div>
+        )}
+      </div>
+    </ChartCard>
+  )
+}
+
+/**
+ * Where an access token is actually entered.
+ *
+ * The page named the credentials each source needs and offered no way to
+ * supply them, so every pull-based provider — TikTok, Snapchat, LinkedIn,
+ * Google Sheets — could be "connected" and could never deliver a lead. The
+ * only route in was an API call the customer was never told about.
+ *
+ * Values are write-only. The server returns which keys are set and never what
+ * they are, so a saved secret shows as saved and an empty field means "leave
+ * it alone" rather than "clear it".
+ */
+function CredentialsModal({
+  card,
+  onClose,
+  onSaved,
+}: {
+  card: IntegrationCard | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { t } = useTranslation()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const [values, setValues] = useState<Record<string, string>>({})
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const filled = Object.fromEntries(
+        Object.entries(values).filter(([, value]) => value.trim() !== ''),
+      )
+
+      // A provider with no integration row yet has to be created before it can
+      // be given anything to hold.
+      const id =
+        card?.integration?.id ??
+        (await apiPost<{ integration: { id: string } }>('/integrations', { provider: card?.provider }))
+          .integration.id
+
+      return apiPatch(`/integrations/${id}`, { credentials: filled })
+    },
+    onSuccess: () => {
+      setValues({})
+      toast(t('integrations.credentialsSaved'), 'success')
+      onSaved()
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  return (
+    /*
+      A source's settings are a drawer, not a dialog: the grid of sources stays
+      visible beside it, which is how somebody checks one source's keys against
+      the state of the rest without losing their place.
+    */
+    <Drawer
+      open={Boolean(card)}
+      onClose={onClose}
+      testId="credentials-drawer"
+      title={t('integrations.credentialsTitle')}
+      description={t('integrations.credentialsHint')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button loading={save.isPending} onClick={() => save.mutate()} data-testid="save-credentials">
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {card?.required_credentials.map((key) => {
+          const stored = card.integration?.configured_credentials.includes(key)
+
+          return (
+            <label key={key} className="block">
+              <span className="t-small mb-1 block font-medium" dir="ltr">{key}</span>
+              <input
+                type="password"
+                autoComplete="off"
+                dir="ltr"
+                data-testid={`credential-${key}`}
+                placeholder={stored ? t('integrations.credentialStored') : ''}
+                value={values[key] ?? ''}
+                onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
+              />
+            </label>
+          )
+        })}
+      </div>
+    </Drawer>
+  )
+}
+
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="mb-1.5 text-[0.8125rem] font-medium">{label}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-medium">{label}</p>
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.875rem]"
         >
           {value}
         </code>
@@ -256,8 +782,8 @@ function CopyButton({ value }: { value: string }) {
         setTimeout(() => setCopied(false), 1800)
       }}
       className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)]',
-        copied ? 'text-emerald-600' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
+        'grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--color-border)]',
+        copied ? 'text-[var(--color-status-won)]' : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]',
       )}
     >
       {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
@@ -378,17 +904,17 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           >
             {t('imports.upload')}
           </Button>
-          <p className="mt-3 text-[0.8125rem] text-[var(--color-ink-muted)]">{t('imports.uploadHint')}</p>
+          <p className="mt-3 text-[0.9375rem] text-[var(--color-ink-muted)]">{t('imports.uploadHint')}</p>
         </div>
       )}
 
       {step === 'map' && (
         <div className="space-y-3">
-          <p className="text-[0.8125rem] text-[var(--color-ink-muted)]">{t('imports.mappingHint')}</p>
+          <p className="text-[0.9375rem] text-[var(--color-ink-muted)]">{t('imports.mappingHint')}</p>
 
           {headers.map((header) => (
             <div key={header} className="flex items-center gap-3">
-              <code className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]">
+              <code className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.9375rem]">
                 {header}
               </code>
               <Select
@@ -416,21 +942,21 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
       {step === 'done' && result && (
         <div className="py-6 text-center">
-          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-[color-mix(in_srgb,var(--color-status-won)_12%,transparent)] text-[var(--color-status-won)]">
             <Check className="size-6" aria-hidden />
           </div>
-          <h3 className="text-[0.9375rem] font-semibold">{t('imports.done')}</h3>
-          <div className="mt-4 flex justify-center gap-6 text-[0.8125rem]">
+          <h3 className="text-[1.0625rem] font-semibold">{t('imports.done')}</h3>
+          <div className="mt-4 flex justify-center gap-6 text-[0.9375rem]">
             <div>
-              <p className="tabular text-xl font-semibold text-emerald-600">{result.imported}</p>
+              <p className="tabular text-xl font-semibold text-[var(--color-status-won)]">{result.imported}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.imported')}</p>
             </div>
             <div>
-              <p className="tabular text-xl font-semibold text-blue-600">{result.duplicates}</p>
+              <p className="tabular text-xl font-semibold text-[var(--color-status-new)]">{result.duplicates}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.duplicates')}</p>
             </div>
             <div>
-              <p className="tabular text-xl font-semibold text-red-600">{result.failed}</p>
+              <p className="tabular text-xl font-semibold text-[var(--color-status-lost)]">{result.failed}</p>
               <p className="text-[var(--color-ink-muted)]">{t('imports.failed')}</p>
             </div>
           </div>

@@ -1,31 +1,85 @@
 import {
-  CalendarCheck, CalendarPlus, Check, Flame, MessageCircle, Phone, PhoneOff,
-  RefreshCw, Sparkles, StickyNote, UserPlus, X, Mail, Pencil,
+  Ban, CalendarCheck, CalendarPlus, Check, ClipboardCheck, Flame, MessageCircle,
+  Phone, PhoneOff, RefreshCw, Send, Sparkles, StickyNote, TrendingUp, UserPlus,
+  X, Mail, Pencil,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { formatRelative } from '@/lib/format'
 import { EmptyState } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { LeadActivity } from '@/types/api'
 
 /** Icon + tone per activity type, so the timeline is scannable without reading. */
+/**
+ * Icon + tone per activity type, so the timeline is scannable without reading.
+ *
+ * Tones are mixed from the status tokens rather than taken from a palette:
+ * the same swap that gives the app a dark mode gives the timeline one, and a
+ * tenant's stage colours stay consistent with their badges.
+ */
+function dot(variable: string): string {
+  return `bg-[color-mix(in_srgb,var(${variable})_14%,transparent)] text-[color-mix(in_srgb,var(${variable})_85%,var(--color-ink))]`
+}
+
+const NEUTRAL = 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)]'
+
 const STYLES: Record<string, { Icon: typeof Check; tone: string }> = {
-  created: { Icon: Sparkles, tone: 'bg-blue-50 text-blue-600' },
-  assigned: { Icon: UserPlus, tone: 'bg-violet-50 text-violet-600' },
-  status_changed: { Icon: RefreshCw, tone: 'bg-slate-100 text-slate-600' },
-  temperature_changed: { Icon: Flame, tone: 'bg-amber-50 text-amber-600' },
-  note_added: { Icon: StickyNote, tone: 'bg-slate-100 text-slate-600' },
-  called: { Icon: Phone, tone: 'bg-cyan-50 text-cyan-600' },
-  no_answer: { Icon: PhoneOff, tone: 'bg-slate-100 text-slate-500' },
-  whatsapp_clicked: { Icon: MessageCircle, tone: 'bg-emerald-50 text-emerald-600' },
-  email_sent: { Icon: Mail, tone: 'bg-slate-100 text-slate-600' },
-  follow_up_created: { Icon: CalendarPlus, tone: 'bg-indigo-50 text-indigo-600' },
-  follow_up_completed: { Icon: CalendarCheck, tone: 'bg-emerald-50 text-emerald-600' },
-  appointment_created: { Icon: CalendarCheck, tone: 'bg-amber-50 text-amber-600' },
-  won: { Icon: Check, tone: 'bg-emerald-50 text-emerald-600' },
-  lost: { Icon: X, tone: 'bg-red-50 text-red-600' },
-  re_engaged: { Icon: RefreshCw, tone: 'bg-blue-50 text-blue-600' },
-  updated: { Icon: Pencil, tone: 'bg-slate-100 text-slate-500' },
+  created: { Icon: Sparkles, tone: dot('--color-status-new') },
+  assigned: { Icon: UserPlus, tone: dot('--color-status-contacted') },
+  status_changed: { Icon: RefreshCw, tone: NEUTRAL },
+  temperature_changed: { Icon: Flame, tone: dot('--color-temp-warm') },
+  note_added: { Icon: StickyNote, tone: NEUTRAL },
+  called: { Icon: Phone, tone: dot('--color-status-qualified') },
+  no_answer: { Icon: PhoneOff, tone: NEUTRAL },
+  whatsapp_clicked: { Icon: MessageCircle, tone: dot('--color-status-won') },
+  whatsapp_sent: { Icon: Send, tone: dot('--color-status-won') },
+  whatsapp_received: { Icon: MessageCircle, tone: dot('--color-status-won') },
+  whatsapp_opted_out: { Icon: Ban, tone: dot('--color-status-lost') },
+  email_sent: { Icon: Mail, tone: NEUTRAL },
+  follow_up_created: { Icon: CalendarPlus, tone: dot('--color-status-contacted') },
+  follow_up_completed: { Icon: CalendarCheck, tone: dot('--color-status-won') },
+  follow_up_outcome: { Icon: CalendarCheck, tone: dot('--color-status-won') },
+  appointment_created: { Icon: CalendarCheck, tone: dot('--color-status-appointment') },
+  qualification_updated: { Icon: ClipboardCheck, tone: dot('--color-status-qualified') },
+  score_changed: { Icon: TrendingUp, tone: dot('--color-temp-warm') },
+  won: { Icon: Check, tone: dot('--color-status-won') },
+  lost: { Icon: X, tone: dot('--color-status-lost') },
+  re_engaged: { Icon: RefreshCw, tone: dot('--color-status-new') },
+  updated: { Icon: Pencil, tone: NEUTRAL },
+}
+
+/**
+ * Who did it — including when the answer is "nobody".
+ *
+ * An automated change carries no user, so the line simply started at the
+ * timestamp and a stage moved by a rule read exactly like a stage moved by a
+ * colleague. The backend has marked these `by: automation` all along and the
+ * interface never showed it, which left the first question anybody asks about
+ * an automatic change — which rule did this? — answerable only by opening the
+ * automation log and matching timestamps by eye.
+ */
+function actorOf(activity: LeadActivity, t: TFunction): string {
+  if (activity.user?.name) {
+    return `${activity.user.name} · `
+  }
+
+  // The response-time sweeper is the other thing that acts without a person,
+  // and it is worth naming separately: "the system did this" and "nobody
+  // contacted this lead in time" are different answers to the same question.
+  if (activity.meta?.by === 'sla') {
+    return `${t('automation.bySla')} · `
+  }
+
+  if (activity.meta?.by !== 'automation') {
+    return ''
+  }
+
+  const rule = activity.meta?.rule_name
+
+  return typeof rule === 'string' && rule !== ''
+    ? `${t('automation.byRule', { name: rule })} · `
+    : `${t('automation.byAutomation')} · `
 }
 
 export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
@@ -36,7 +90,7 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
   }
 
   return (
-    <ol className="relative space-y-0 p-5">
+    <ol className="relative space-y-0 p-5" data-testid="activity-timeline">
       {activities.map((activity, index) => {
         const style = STYLES[activity.type] ?? STYLES.updated
         const Icon = style.Icon
@@ -60,11 +114,19 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
             </span>
 
             <div className="min-w-0 flex-1 pt-1">
-              <p className="text-[0.875rem]">
+              <p className="text-[1rem]">
                 <span className="font-medium">
-                  {t(`activity.${activity.type}`, {
-                    defaultValue: t(`status.${activity.type}`, { defaultValue: activity.type }),
-                  })}
+                  {/*
+                    A re-engagement that brought a deleted record back is a
+                    different event from one that did not, and this timeline is
+                    the only place that can answer "why is this lead here again"
+                    months later. The name, notes and owner came back with it.
+                  */}
+                  {activity.type === 're_engaged' && activity.meta?.restored
+                    ? t('activity.re_engaged_restored')
+                    : t(`activity.${activity.type}`, {
+                        defaultValue: t(`status.${activity.type}`, { defaultValue: activity.type }),
+                      })}
                 </span>
                 {activity.type === 'status_changed' && from && to && (
                   <span className="text-[var(--color-ink-muted)]">
@@ -72,14 +134,33 @@ export function LeadTimeline({ activities }: { activities: LeadActivity[] }) {
                     {t(`status.${from}`, { defaultValue: from })} → {t(`status.${to}`, { defaultValue: to })}
                   </span>
                 )}
+
+                {/* A score that moved is only interesting with both numbers;
+                    delivery receipts are deliberately not here at all — they
+                    live on the message itself, or they bury everything else. */}
+                {activity.type === 'score_changed' && (
+                  <span dir="ltr" className="tabular text-[var(--color-ink-muted)]">
+                    {' '}
+                    {String(activity.meta?.from ?? '')} → {String(activity.meta?.to ?? '')}
+                  </span>
+                )}
+
+                {activity.type === 'follow_up_outcome' && Boolean(activity.meta?.outcome) && (
+                  <span className="text-[var(--color-ink-muted)]">
+                    {' '}
+                    {t(`outcomes.${String(activity.meta?.outcome)}`, {
+                      defaultValue: String(activity.meta?.outcome),
+                    })}
+                  </span>
+                )}
               </p>
 
               {activity.description && (
-                <p className="mt-0.5 text-[0.8125rem] text-[var(--color-ink-muted)]">{activity.description}</p>
+                <p className="mt-0.5 text-[0.9375rem] text-[var(--color-ink-muted)]">{activity.description}</p>
               )}
 
-              <p className="mt-0.5 text-[0.75rem] text-[var(--color-ink-subtle)]">
-                {activity.user?.name ? `${activity.user.name} · ` : ''}
+              <p className="mt-0.5 text-[0.875rem] text-[var(--color-ink-subtle)]">
+                {actorOf(activity, t)}
                 {formatRelative(activity.created_at, i18n.language)}
               </p>
             </div>

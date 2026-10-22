@@ -13,7 +13,25 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    /*
+     * The platform's own name, used wherever nothing more specific applies —
+     * the mail "from" name, the Slack log username, the cache and session
+     * prefixes. A deployment that forgets APP_NAME should still not introduce
+     * itself as the framework it was built with.
+     *
+     * This is the default identity, not a tenant's: anything a customer sees
+     * under their own branding reads `system_name` instead, and must keep
+     * doing so.
+     */
+    'name' => env('APP_NAME', 'مهتم'),
+
+    /*
+     * Shared with the deploy pipeline only. It unlocks one field on the health
+     * endpoint — the commit currently serving — so a deploy can prove over HTTP
+     * that the new build is live rather than trusting that the container
+     * restarted. Empty means the field is never returned to anyone.
+     */
+    'deploy_secret' => env('DEPLOY_SECRET', ''),
 
     /*
     |--------------------------------------------------------------------------

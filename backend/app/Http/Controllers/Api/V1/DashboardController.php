@@ -10,7 +10,9 @@ use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Analytics\DashboardAnalytics;
 use App\Support\ApiResponse;
+use App\Support\Uuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,8 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardController extends Controller
 {
+    public function __construct(private DashboardAnalytics $analytics) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Lead::class);
@@ -40,7 +44,55 @@ class DashboardController extends Controller
         $qualified = (int) ($statusCounts[LeadStatus::Qualified->value] ?? 0);
         $appointments = (int) ($statusCounts[LeadStatus::Appointment->value] ?? 0);
 
-        $followUps = FollowUp::query()->visibleTo($user);
+        /*
+         * One pass for the remaining lead figures. These were four separate
+         * COUNT queries over the same filtered set; aggregate FILTER gets them
+         * in a single scan, which matters because this is the most-hit endpoint
+         * in the product and the set grows with the tenant.
+         */
+        $targetMinutes = (int) ($user->tenant?->settings?->first_contact_target_minutes ?? 30);
+        $cutoff = now()->subMinutes($targetMinutes);
+
+        $tallies = (clone $base())
+            ->selectRaw(
+                'count(*) filter (where temperature = ? and status not in (?, ?)) as hot,
+                 count(*) filter (where assigned_to is null) as unassigned,
+                 count(*) filter (where created_at >= ?) as new_today,
+                 count(*) filter (where first_contact_at is null and status = ? and created_at <= ?)
+                   as awaiting_contact',
+                [
+                    LeadTemperature::Hot->value,
+                    LeadStatus::Won->value,
+                    LeadStatus::Lost->value,
+                    today(),
+                    LeadStatus::New->value,
+                    $cutoff,
+                ],
+            )
+            ->first();
+
+        /*
+         * Leads nobody has touched yet, past the workspace's own target. This is
+         * the panel that earns the product its keep: an ad lead answered inside
+         * half an hour is a conversation, and the same lead answered tomorrow is
+         * a cold call. The count rides along with the other tallies above; only
+         * the short list below needs its own pass.
+         */
+        $awaitingQuery = fn () => (clone $base())
+            ->whereNull('first_contact_at')
+            ->where('status', LeadStatus::New->value)
+            ->where('leads.created_at', '<=', $cutoff);
+
+        // Likewise for the follow-up buckets: one grouped query, not three counts.
+        $followUpCounts = FollowUp::query()
+            ->visibleTo($user)
+            ->pending()
+            ->selectRaw(
+                'count(*) filter (where due_at < ?) as overdue,
+                 count(*) filter (where due_at >= ? and due_at <= ?) as due_today',
+                [now(), now(), now()->endOfDay()],
+            )
+            ->first();
 
         return ApiResponse::success([
             'summary' => [
@@ -53,16 +105,40 @@ class DashboardController extends Controller
                 'lost' => (int) ($statusCounts[LeadStatus::Lost->value] ?? 0),
                 // Conversion = won / everything that entered the funnel.
                 'conversion_rate' => $total > 0 ? round($won / $total * 100, 1) : 0.0,
-                'hot_leads' => (clone $base())->where('temperature', LeadTemperature::Hot->value)
-                    ->whereNotIn('status', [LeadStatus::Won->value, LeadStatus::Lost->value])->count(),
-                'unassigned' => (clone $base())->whereNull('assigned_to')->count(),
+                'hot_leads' => (int) ($tallies->hot ?? 0),
+                'unassigned' => (int) ($tallies->unassigned ?? 0),
             ],
             'today' => [
-                'new_leads' => (clone $base())->whereDate('created_at', today())->count(),
-                'follow_ups_today' => (clone $followUps)->dueToday()->count(),
-                'follow_ups_overdue' => (clone $followUps)->overdue()->count(),
-                'appointments' => (clone $base())->where('status', LeadStatus::Appointment->value)->count(),
+                'new_leads' => (int) ($tallies->new_today ?? 0),
+                'follow_ups_today' => (int) ($followUpCounts->due_today ?? 0),
+                'follow_ups_overdue' => (int) ($followUpCounts->overdue ?? 0),
+                'appointments' => $appointments,
+                'awaiting_first_contact' => (int) ($tallies->awaiting_contact ?? 0),
+                'first_contact_target_minutes' => $targetMinutes,
             ],
+            /*
+             * Everything the charts need, in the same request as the figures
+             * above. Each is one query against the same filtered base, so the
+             * whole screen agrees with itself and costs one round trip.
+             */
+            'funnel' => $this->analytics->funnel($base()),
+            'velocity' => $this->analytics->velocity($base()),
+            /*
+             * Not filtered by the date range, deliberately. A thirty-day line
+             * inside a seven-day filter is a thirty-day line; cropping it to
+             * the filter would leave four points and call itself a trend.
+             */
+            'timeline' => $this->analytics->timeline(
+                $this->baseQuery($request, withDates: false),
+                (int) $request->integer('timeline_days', 30),
+            ),
+            'quality' => $this->analytics->quality($base()),
+            'response_time' => $this->analytics->responseTime($base()),
+            'comparison' => $this->analytics->comparison(
+                $request,
+                fn ($from, $to) => $this->baseQuery($request, withDates: false)
+                    ->whereBetween('leads.created_at', [$from, $to]),
+            ),
             'charts' => [
                 'by_platform' => $this->groupCount($base(), 'platform'),
                 'by_status' => LeadStatus::values() === [] ? [] : collect(LeadStatus::cases())
@@ -79,6 +155,11 @@ class DashboardController extends Controller
                     ->whereNotIn('status', [LeadStatus::Won->value, LeadStatus::Lost->value])
                     ->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
                     ->orderByDesc('score')->limit(5)->get()
+            ),
+            'awaiting_contact_leads' => LeadListResource::collection(
+                $awaitingQuery()
+                    ->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
+                    ->orderBy('leads.created_at')->limit(5)->get()
             ),
             'overdue_leads' => LeadListResource::collection(
                 (clone $base())->overdueFollowUp()
@@ -97,24 +178,30 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function baseQuery(Request $request): Builder
+    /**
+     * @param  bool  $withDates  false for the comparison window, which supplies
+     *                           its own range — applying the viewed period as
+     *                           well intersects the two into nothing, and every
+     *                           previous-period figure comes back zero.
+     */
+    private function baseQuery(Request $request, bool $withDates = true): Builder
     {
         $query = Lead::query()->visibleTo($request->user());
 
-        if ($request->filled('date_from')) {
+        if ($withDates && $request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date('date_from'));
         }
 
-        if ($request->filled('date_to')) {
+        if ($withDates && $request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date('date_to'));
         }
 
         if ($request->filled('project_id')) {
-            $query->whereHas('project', fn ($p) => $p->where('uuid', $request->input('project_id')));
+            $query->whereHas('project', fn ($p) => $p->whereIn('uuid', Uuid::onlyValid($request->input('project_id'))));
         }
 
         if ($request->filled('assigned_to') && $request->user()->seesAllLeads()) {
-            $query->whereHas('assignee', fn ($u) => $u->where('uuid', $request->input('assigned_to')));
+            $query->whereHas('assignee', fn ($u) => $u->whereIn('uuid', Uuid::onlyValid($request->input('assigned_to'))));
         }
 
         return $query;

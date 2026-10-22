@@ -2,18 +2,29 @@
 
 namespace Tests;
 
+use App\Domain\Access\AccessResolver;
+use App\Domain\Automation\JourneyInstaller;
+use App\Domain\Automation\Thresholds;
+use App\Domain\Mail\MailerRegistry;
 use App\Enums\Role;
+use App\Models\AutomationRule;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantProvisioningService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Mockery;
+use Tests\Support\FakeMailer;
 
 abstract class TestCase extends BaseTestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Static caches must not outlive the app they were read in.
+        Thresholds::flush();
+        AccessResolver::flush();
 
         // Each test starts with no tenant bound; middleware or the helper sets it.
         app(TenantContext::class)->clear();
@@ -49,6 +60,45 @@ abstract class TestCase extends BaseTestCase
             'role' => $role,
             'is_active' => true,
         ], $attributes));
+    }
+
+    /**
+     * This process as a production deployment: told it is production, at an
+     * HTTPS address on a public name. The integration ladder will not say
+     * "live" for anything less, so a test that asserts live runs here.
+     */
+    protected function asProductionDeployment(): void
+    {
+        $this->app['env'] = 'production';
+        config(['app.url' => 'https://app.muhtam-production.example.sa']);
+    }
+
+    /**
+     * A workspace without the lead journey every workspace now starts with.
+     *
+     * For tests about the rule engine's own mechanics — ordering, delays,
+     * tenancy, the trace — which read "the rules in this workspace" and are
+     * about the rules they write themselves, not the ones installed for them.
+     */
+    protected function withoutJourney(Tenant $tenant): void
+    {
+        $this->asTenant($tenant, fn () => AutomationRule::whereIn('template_key', JourneyInstaller::RULES)->forceDelete());
+    }
+
+    /**
+     * The product's one mail door, replaced by a provider the test can read: every email that any
+     * path sends — a report, a digest, an alert, a lead's message — lands in `$fake->sent`.
+     */
+    protected function fakeMailer(bool $delivers = false): FakeMailer
+    {
+        $fake = new FakeMailer('fake', $delivers);
+        $registry = Mockery::mock(MailerRegistry::class);
+        $registry->shouldReceive('current')->andReturn($fake);
+        $registry->shouldReceive('get')->andReturn($fake);
+        $registry->shouldReceive('all')->andReturn([$fake]);
+        $this->app->instance(MailerRegistry::class, $registry);
+
+        return $fake;
     }
 
     /** Runs a closure with the tenant context bound, for direct model work in tests. */

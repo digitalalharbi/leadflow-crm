@@ -1,16 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, Check, Copy, Plus } from 'lucide-react'
+import { Building2, Check, Copy, Plus, Search, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatDate, formatNumber } from '@/lib/format'
+import { useDebounced } from '@/hooks/useDebounced'
+import { formatDate, formatNumber, formatLastSeen, initials } from '@/lib/format'
+import { CURRENCIES, TIMEZONES } from '@/lib/locales'
+import { MetricCard, DistributionBar, foldSeries } from '@/components/charts'
 import {
   Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
-  Pagination, SkeletonCards, SkeletonTable, StatCard, Table, TableWrap, Td, Th, Tr,
+  Pagination, Select, SkeletonCards, SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
-import type { PaginationMeta, TenantSummary } from '@/types/api'
+import { cn } from '@/lib/cn'
+import type { PaginationMeta, TenantSummary, UserRole } from '@/types/api'
 
 interface PlatformStats {
   tenants: number
@@ -19,13 +23,43 @@ interface PlatformStats {
   users: number
   leads: number
   leads_last_30_days: number
+  trials_ending_soon: number
+  suspended: number
+  by_plan: Array<{ key: string; count: number }>
 }
 
+interface TenantUser {
+  id: string
+  name: string
+  email: string
+  role: UserRole | null
+  is_active: boolean
+  last_login_at: string | null
+}
+
+type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled'
+
+const SUBSCRIPTION_TONE: Record<SubscriptionStatus, 'info' | 'success' | 'warning' | 'danger'> = {
+  trialing: 'info',
+  active: 'success',
+  past_due: 'warning',
+  cancelled: 'danger',
+}
+
+/*
+ * Everything a client's identity is made of, set here once. Onboarding a
+ * customer is this form and nothing else — no code change, no migration, no
+ * deploy. The tenant's admin can change any of it later in their own settings.
+ */
 const EMPTY_FORM = {
   company_name: '',
   system_name: '',
   subdomain: '',
-  primary_color: '#2563eb',
+  logo_url: '',
+  primary_color: '#1D5E52',
+  locale: 'ar',
+  currency: 'SAR',
+  timezone: 'Asia/Riyadh',
   admin_name: '',
   admin_email: '',
   admin_password: '',
@@ -38,10 +72,15 @@ export function PlatformPage() {
   const translateError = useApiError()
 
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [created, setCreated] = useState<{ url: string; secret: string } | null>(null)
+  const [inspecting, setInspecting] = useState<TenantSummary | null>(null)
+
+  const debouncedSearch = useDebounced(search)
 
   const { data: stats } = useQuery({
     queryKey: ['platform-stats'],
@@ -49,12 +88,14 @@ export function PlatformPage() {
   })
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['platform-tenants', page],
+    queryKey: ['platform-tenants', page, debouncedSearch, status],
     queryFn: () =>
-      apiGetPaginated<TenantSummary[]>('/super-admin/tenants', { page, per_page: 25 }) as Promise<{
-        data: TenantSummary[]
-        meta: PaginationMeta | undefined
-      }>,
+      apiGetPaginated<TenantSummary[]>('/super-admin/tenants', {
+        page,
+        per_page: 25,
+        search: debouncedSearch || undefined,
+        status: status || undefined,
+      }) as Promise<{ data: TenantSummary[]; meta: PaginationMeta | undefined }>,
     placeholderData: (previous) => previous,
   })
 
@@ -64,6 +105,7 @@ export function PlatformPage() {
         ...form,
         system_name: form.system_name || undefined,
         subdomain: form.subdomain || undefined,
+        logo_url: form.logo_url || undefined,
       }),
     onSuccess: (result) => {
       setOpen(false)
@@ -86,16 +128,6 @@ export function PlatformPage() {
     },
   })
 
-  const toggleActive = useMutation({
-    mutationFn: (tenant: TenantSummary) =>
-      apiPatch(`/super-admin/tenants/${tenant.id}`, { is_active: !tenant.is_active }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
-      toast(t('settings.saved'), 'success')
-    },
-    onError: (caught) => toast(translateError(caught), 'error'),
-  })
-
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setFieldErrors({})
@@ -103,6 +135,12 @@ export function PlatformPage() {
   }
 
   const tenants = data?.data ?? []
+  const filtered = Boolean(debouncedSearch || status)
+
+  // Usage bars are read against the busiest account on the page, not against a
+  // platform-wide maximum — otherwise every small tenant is an empty bar and
+  // the column says nothing.
+  const busiest = Math.max(1, ...tenants.map((tenant) => tenant.leads_last_30_days ?? 0))
 
   return (
     <>
@@ -116,29 +154,144 @@ export function PlatformPage() {
         }
       />
 
+      {/*
+       * Four numbers, each already judged. "12 tenants" needs a reader to
+       * remember what normal is; "12 active of 14, 2 suspended" does not.
+       */}
       {stats ? (
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
-          <StatCard label={t('superAdmin.totalTenants')} value={formatNumber(stats.tenants, i18n.language)} />
-          <StatCard label={t('superAdmin.activeTenants')} value={formatNumber(stats.active_tenants, i18n.language)} tone="success" />
-          <StatCard label={t('superAdmin.trialing')} value={formatNumber(stats.trialing, i18n.language)} tone="warning" />
-          <StatCard label={t('superAdmin.totalUsers')} value={formatNumber(stats.users, i18n.language)} />
-          <StatCard label={t('superAdmin.totalLeads')} value={formatNumber(stats.leads, i18n.language)} />
-          <StatCard label={t('superAdmin.leadsLast30')} value={formatNumber(stats.leads_last_30_days, i18n.language)} tone="brand" />
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MetricCard
+            label={t('superAdmin.activeTenants')}
+            value={stats.active_tenants}
+            tone="brand"
+            hint={
+              stats.suspended > 0
+                ? t('superAdmin.ofTotalSuspended', { total: stats.tenants, suspended: stats.suspended })
+                : t('superAdmin.ofTotal', { total: stats.tenants })
+            }
+            testId="platform-active-tenants"
+          />
+          <MetricCard
+            label={t('superAdmin.trialing')}
+            value={stats.trialing}
+            tone={stats.trials_ending_soon > 0 ? 'warning' : 'neutral'}
+            hint={
+              stats.trials_ending_soon > 0
+                ? t('superAdmin.endingSoon', { count: stats.trials_ending_soon })
+                : t('superAdmin.noneEndingSoon')
+            }
+            testId="platform-trialing"
+          />
+          <MetricCard
+            label={t('superAdmin.totalUsers')}
+            value={stats.users}
+            hint={t('superAdmin.acrossTenants', { count: stats.tenants })}
+          />
+          <MetricCard
+            label={t('superAdmin.leadsLast30')}
+            value={stats.leads_last_30_days}
+            hint={t('superAdmin.ofAllTime', { total: formatNumber(stats.leads, i18n.language) })}
+            testId="platform-leads-30"
+          />
         </div>
       ) : (
-        <div className="mb-5"><SkeletonCards count={6} /></div>
+        <div className="mb-5"><SkeletonCards count={4} /></div>
+      )}
+
+      {/* Which plans the book of business actually sits in. */}
+      {stats && stats.by_plan.length > 1 && (
+        <Card className="mb-5">
+          <div className="border-b border-[var(--color-line)] px-4 py-3">
+            <h2 className="t-card-title">{t('superAdmin.byPlan')}</h2>
+          </div>
+          {/*
+            Folded, not cycled. `SERIES[i % SERIES.length]` gave the sixth plan
+            the first plan's colour — two entities, one colour, no warning. The
+            tail is now one honest "Other" segment that still carries its total.
+          */}
+          <DistributionBar
+            testId="platform-plan-split"
+            segments={foldSeries(stats.by_plan, {
+              key: (row) => row.key,
+              label: (row) => row.key,
+              value: (row) => row.count,
+              otherLabel: t('superAdmin.otherPlans'),
+            }).map((slice) => ({
+              key: slice.key,
+              label: slice.label,
+              count: slice.value,
+              share: Math.round((slice.value / Math.max(stats.tenants, 1)) * 100),
+              color: slice.color,
+            }))}
+          />
+        </Card>
       )}
 
       <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-line)] p-3">
+          <div className="relative min-w-0 flex-1 sm:max-w-xs">
+            <Search
+              className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-ink-subtle)]"
+              aria-hidden
+            />
+            <Input
+              className="ps-9"
+              placeholder={t('superAdmin.searchPlaceholder')}
+              aria-label={t('superAdmin.searchPlaceholder')}
+              data-testid="tenant-search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+            />
+          </div>
+
+          <Select
+            className="w-auto"
+            aria-label={t('superAdmin.subscription')}
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">{t('superAdmin.allSubscriptions')}</option>
+            <option value="trialing">{t('superAdmin.status.trialing')}</option>
+            <option value="active">{t('superAdmin.status.active')}</option>
+            <option value="past_due">{t('superAdmin.status.past_due')}</option>
+            <option value="cancelled">{t('superAdmin.status.cancelled')}</option>
+          </Select>
+
+          <span className="t-caption ms-auto tabular">
+            {t('superAdmin.tenantCount', { count: data?.meta?.total ?? tenants.length })}
+          </span>
+        </div>
+
         {isError ? (
           <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
         ) : isLoading ? (
-          <SkeletonTable rows={6} cols={6} />
+          <SkeletonTable rows={6} cols={5} />
         ) : tenants.length === 0 ? (
           <EmptyState
             icon={<Building2 className="size-6" />}
-            title={t('superAdmin.tenants')}
-            actions={<Button onClick={() => setOpen(true)}>{t('superAdmin.createTenant')}</Button>}
+            title={filtered ? t('superAdmin.noMatches') : t('superAdmin.tenants')}
+            body={filtered ? t('superAdmin.noMatchesBody') : undefined}
+            actions={
+              filtered ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch('')
+                    setStatus('')
+                  }}
+                >
+                  {t('common.clearFilters')}
+                </Button>
+              ) : (
+                <Button onClick={() => setOpen(true)}>{t('superAdmin.createTenant')}</Button>
+              )
+            }
           />
         ) : (
           <>
@@ -146,57 +299,62 @@ export function PlatformPage() {
               <Table>
                 <thead>
                   <tr>
-                    <Th>{t('superAdmin.companyName')}</Th>
-                    <Th className="hidden sm:table-cell">{t('superAdmin.subdomain')}</Th>
-                    <Th className="hidden md:table-cell">{t('superAdmin.plan')}</Th>
-                    <Th>{t('superAdmin.users')}</Th>
-                    <Th>{t('superAdmin.leads')}</Th>
-                    <Th className="hidden lg:table-cell">{t('superAdmin.createdAt')}</Th>
-                    <Th>{t('common.status')}</Th>
-                    <Th className="text-end">{t('common.actions')}</Th>
+                    <Th>{t('superAdmin.tenant')}</Th>
+                    <Th>{t('superAdmin.subscription')}</Th>
+                    <Th className="hidden md:table-cell">{t('superAdmin.usage')}</Th>
+                    <Th className="hidden lg:table-cell">{t('superAdmin.size')}</Th>
+                    <Th className="text-end">{t('common.status')}</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {tenants.map((tenant) => (
-                    <Tr key={tenant.id}>
+                    <Tr
+                      key={tenant.id}
+                      className="cursor-pointer"
+                      onClick={() => setInspecting(tenant)}
+                      data-testid={`tenant-row-${tenant.slug}`}
+                    >
                       <Td>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="size-6 shrink-0 rounded"
-                            style={{ background: tenant.primary_color ?? '#2563eb' }}
-                            aria-hidden
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{tenant.name}</p>
-                            {tenant.system_name && (
-                              <p className="truncate text-[0.75rem] text-[var(--color-ink-subtle)]">
-                                {tenant.system_name}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        <TenantIdentity tenant={tenant} />
                       </Td>
-                      <Td className="hidden sm:table-cell" dir="ltr">{tenant.slug}</Td>
-                      <Td className="hidden md:table-cell">{tenant.plan}</Td>
-                      <Td className="tabular">{formatNumber(tenant.users_count ?? 0, i18n.language)}</Td>
-                      <Td className="tabular">{formatNumber(tenant.leads_count ?? 0, i18n.language)}</Td>
-                      <Td className="hidden whitespace-nowrap lg:table-cell">
-                        {formatDate(tenant.created_at, i18n.language)}
-                      </Td>
+
+                      {/* Plan and the date that decides whether it keeps paying. */}
                       <Td>
-                        <Badge tone={tenant.is_active ? 'success' : 'danger'}>
-                          {tenant.is_active ? t('common.active') : t('common.inactive')}
+                        <Badge tone={SUBSCRIPTION_TONE[tenant.subscription_status as SubscriptionStatus] ?? 'neutral'}>
+                          {t(`superAdmin.status.${tenant.subscription_status}`, tenant.subscription_status)}
                         </Badge>
+                        {/* Plan and expiry are two facts, so they get two
+                            lines rather than one that breaks mid-phrase. */}
+                        <span className="t-caption mt-1 block whitespace-nowrap">{tenant.plan}</span>
+                        {tenant.trial_ends_at && (
+                          <span className="t-caption block whitespace-nowrap">
+                            {t('superAdmin.trialEnds', { date: formatDate(tenant.trial_ends_at, i18n.language) })}
+                          </span>
+                        )}
                       </Td>
+
+                      <Td className="hidden md:table-cell">
+                        <UsageBar value={tenant.leads_last_30_days ?? 0} peak={busiest} />
+                        <span className="t-caption mt-1 block whitespace-nowrap">
+                          {tenant.last_lead_at
+                            ? t('superAdmin.lastLead', { when: formatLastSeen(tenant.last_lead_at, i18n.language) })
+                            : t('superAdmin.noLeadsYet')}
+                        </span>
+                      </Td>
+
+                      <Td className="hidden lg:table-cell">
+                        <span className="tabular block whitespace-nowrap text-[0.9375rem]">
+                          {t('superAdmin.usersCount', { count: tenant.users_count ?? 0 })}
+                        </span>
+                        <span className="t-caption tabular mt-1 block whitespace-nowrap">
+                          {t('superAdmin.leadsCount', { count: tenant.leads_count ?? 0 })}
+                        </span>
+                      </Td>
+
                       <Td className="text-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={toggleActive.isPending}
-                          onClick={() => toggleActive.mutate(tenant)}
-                        >
-                          {tenant.is_active ? t('superAdmin.suspend') : t('superAdmin.activate')}
-                        </Button>
+                        <Badge tone={tenant.is_active ? 'success' : 'danger'}>
+                          {tenant.is_active ? t('common.active') : t('superAdmin.suspended')}
+                        </Badge>
                       </Td>
                     </Tr>
                   ))}
@@ -208,6 +366,8 @@ export function PlatformPage() {
           </>
         )}
       </Card>
+
+      <TenantPanel tenant={inspecting} onClose={() => setInspecting(null)} />
 
       <Modal
         open={open}
@@ -246,6 +406,75 @@ export function PlatformPage() {
               }
             />
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              dir="ltr"
+              type="url"
+              label={t('superAdmin.logoUrl')}
+              hint={t('common.optional')}
+              placeholder="https://"
+              value={form.logo_url}
+              error={fieldErrors.logo_url}
+              onChange={(e) => setForm((prev) => ({ ...prev, logo_url: e.target.value }))}
+            />
+            {/* A colour picker alone hides the value; the operator usually has a
+                brand hex to paste, so show both and keep them in step. */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--color-ink)]">
+                {t('superAdmin.primaryColor')}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label={t('superAdmin.primaryColor')}
+                  className="h-10 w-12 shrink-0 cursor-pointer rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] p-1"
+                  value={form.primary_color}
+                  onChange={(e) => setForm((prev) => ({ ...prev, primary_color: e.target.value }))}
+                />
+                <Input
+                  dir="ltr"
+                  className="flex-1"
+                  value={form.primary_color}
+                  error={fieldErrors.primary_color}
+                  onChange={(e) => setForm((prev) => ({ ...prev, primary_color: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Select
+              label={t('settings.language')}
+              value={form.locale}
+              onChange={(e) => setForm((prev) => ({ ...prev, locale: e.target.value }))}
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </Select>
+            <Select
+              label={t('settings.currency')}
+              value={form.currency}
+              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
+            >
+              {CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label={t('settings.timezone')}
+              value={form.timezone}
+              onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))}
+            >
+              {TIMEZONES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </Select>
+          </div>
+
           <Input
             required
             label={t('superAdmin.adminName')}
@@ -294,17 +523,230 @@ export function PlatformPage() {
   )
 }
 
+/** Colour chip, trade name, subdomain — enough to recognise an account. */
+function TenantIdentity({ tenant }: { tenant: TenantSummary }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] text-[0.8125rem] font-semibold text-white"
+        style={{ background: tenant.primary_color ?? 'var(--brand)' }}
+        aria-hidden
+      >
+        {initials(tenant.system_name || tenant.name)}
+      </span>
+      <div className="min-w-0">
+        <p className="truncate font-medium">{tenant.name}</p>
+        <p className="t-caption truncate">
+          <bdi dir="ltr">{tenant.slug}</bdi>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Thirty days of inbound, as a length rather than a number alone.
+ *
+ * The operator's real question scanning this column is "which of these accounts
+ * has gone quiet?", and a column of bare integers makes that a reading task
+ * instead of a glance.
+ */
+function UsageBar({ value, peak }: { value: number; peak: number }) {
+  const { i18n } = useTranslation()
+
+  /*
+   * Square-rooted, not linear. One enterprise account with a hundred times the
+   * volume of the rest would flatten every other bar to nothing on a linear
+   * scale, and a column of empty tracks answers no question at all. The exact
+   * figure is printed beside it, so the bar only has to carry the ordering.
+   */
+  const width = value === 0 ? 0 : Math.max(4, Math.round(Math.sqrt(value / peak) * 100))
+
+  return (
+    <span className="flex items-center gap-2">
+      <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
+        <span className="block h-full rounded-full bg-[var(--brand)]" style={{ width: `${width}%` }} />
+      </span>
+      <span className="tabular text-[0.9375rem] font-medium">{formatNumber(value, i18n.language)}</span>
+    </span>
+  )
+}
+
+/**
+ * One account, opened.
+ *
+ * The list answers "how is the platform doing"; this answers "what is going on
+ * with this customer, and what can I do about it" — the subscription fields the
+ * API will accept, and the people who can actually log in.
+ */
+function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClose: () => void }) {
+  const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['platform-tenant', tenant?.id],
+    queryFn: () =>
+      apiGet<{ tenant: TenantSummary; users: TenantUser[] }>(`/super-admin/tenants/${tenant?.id}`),
+    enabled: Boolean(tenant),
+  })
+
+  const save = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => apiPatch(`/super-admin/tenants/${tenant?.id}`, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-stats'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenant', tenant?.id] })
+      toast(t('settings.saved'), 'success')
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const current = data?.tenant ?? tenant
+
+  return (
+    <Modal
+      open={Boolean(tenant)}
+      onClose={onClose}
+      title={current?.name ?? ''}
+      description={current ? t('superAdmin.createdOn', { date: formatDate(current.created_at, i18n.language) }) : undefined}
+      footer={<Button variant="ghost" onClick={onClose}>{t('common.close')}</Button>}
+    >
+      {current && (
+        <div className="space-y-5">
+          <SubscriptionForm
+            tenant={current}
+            pending={save.isPending}
+            onSave={(payload) => save.mutate(payload)}
+          />
+
+          {/*
+           * Suspension is the one destructive control here, so it is separated
+           * from the form it would otherwise sit inside and says what it does.
+           */}
+          <div
+            className={cn(
+              'flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] p-3',
+              current.is_active
+                ? 'bg-[var(--color-surface-sunken)]'
+                : 'bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)]',
+            )}
+          >
+            <div className="min-w-0">
+              <p className="text-[0.9375rem] font-medium">
+                {current.is_active ? t('superAdmin.suspendTitle') : t('superAdmin.activateTitle')}
+              </p>
+              <p className="t-caption mt-0.5">
+                {current.is_active ? t('superAdmin.suspendHint') : t('superAdmin.activateHint')}
+              </p>
+            </div>
+            <Button
+              variant={current.is_active ? 'danger' : 'secondary'}
+              size="sm"
+              disabled={save.isPending}
+              onClick={() => save.mutate({ is_active: !current.is_active })}
+            >
+              {current.is_active ? t('superAdmin.suspend') : t('superAdmin.activate')}
+            </Button>
+          </div>
+
+          <div>
+            <h3 className="label-caps mb-2 flex items-center gap-1.5">
+              <ShieldCheck className="size-3.5" aria-hidden />
+              {t('superAdmin.tenantUsers')}
+            </h3>
+
+            {isLoading ? (
+              <SkeletonTable rows={3} cols={2} />
+            ) : (
+              <ul className="divide-y divide-[var(--color-line)] rounded-[var(--radius-card)] border border-[var(--color-line)]">
+                {(data?.users ?? []).map((user) => (
+                  <li key={user.id} className="flex items-center gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[0.9375rem] font-medium">{user.name}</p>
+                      <p className="t-caption truncate"><bdi dir="ltr">{user.email}</bdi></p>
+                    </div>
+                    <span className="t-caption shrink-0">{user.role ? t(`roles.${user.role}`) : '—'}</span>
+                    <span className="t-caption w-20 shrink-0 text-end">
+                      {user.last_login_at ? formatLastSeen(user.last_login_at, i18n.language) : t('superAdmin.neverLoggedIn')}
+                    </span>
+                    {!user.is_active && <Badge tone="neutral">{t('common.inactive')}</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+/** Plan, status and the two dates billing actually turns on. */
+function SubscriptionForm({
+  tenant,
+  pending,
+  onSave,
+}: {
+  tenant: TenantSummary
+  pending: boolean
+  onSave: (payload: Record<string, unknown>) => void
+}) {
+  const { t } = useTranslation()
+  const [plan, setPlan] = useState(tenant.plan)
+  const [status, setStatus] = useState(tenant.subscription_status)
+  const [trialEnds, setTrialEnds] = useState(tenant.trial_ends_at?.slice(0, 10) ?? '')
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSave({
+          plan,
+          subscription_status: status,
+          trial_ends_at: trialEnds || null,
+        })
+      }}
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Input label={t('superAdmin.plan')} value={plan} onChange={(e) => setPlan(e.target.value)} />
+        <Select
+          label={t('superAdmin.subscription')}
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="trialing">{t('superAdmin.status.trialing')}</option>
+          <option value="active">{t('superAdmin.status.active')}</option>
+          <option value="past_due">{t('superAdmin.status.past_due')}</option>
+          <option value="cancelled">{t('superAdmin.status.cancelled')}</option>
+        </Select>
+        <Input
+          type="date"
+          dir="ltr"
+          label={t('superAdmin.trialEndsLabel')}
+          value={trialEnds}
+          onChange={(e) => setTrialEnds(e.target.value)}
+        />
+      </div>
+
+      <Button type="submit" size="sm" loading={pending}>{t('common.save')}</Button>
+    </form>
+  )
+}
+
 function CopyField({ label, value }: { label: string; value: string }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
   return (
     <div>
-      <p className="mb-1.5 text-[0.8125rem] font-medium">{label}</p>
+      <p className="mb-1.5 text-[0.9375rem] font-medium">{label}</p>
       <div className="flex items-center gap-2">
         <code
           dir="ltr"
-          className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.75rem]"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.875rem]"
         >
           {value}
         </code>
@@ -316,9 +758,9 @@ function CopyField({ label, value }: { label: string; value: string }) {
             setCopied(true)
             setTimeout(() => setCopied(false), 1800)
           }}
-          className="grid size-8 shrink-0 place-items-center rounded-lg border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
+          className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)]"
         >
-          {copied ? <Check className="size-4 text-emerald-600" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+          {copied ? <Check className="size-4 text-[var(--color-status-won)]" aria-hidden /> : <Copy className="size-4" aria-hidden />}
         </button>
       </div>
     </div>

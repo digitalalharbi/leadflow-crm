@@ -2,23 +2,29 @@
 
 namespace App\Services\Leads;
 
+use App\Domain\Leads\WorkloadBalancer;
 use App\Enums\ActivityType;
 use App\Enums\Role;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\LeadAssignedNotification;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class LeadAssignmentService
 {
-    public function __construct(private ActivityLogger $activities) {}
+    public function __construct(
+        private ActivityLogger $activities,
+        private WorkloadBalancer $workload,
+    ) {}
 
     /**
-     * Pick the next sales user for a tenant. Manual mode returns null — the lead
-     * lands unassigned in the queue and a manager distributes it.
+     * The tenant's default policy for a lead arriving with nobody named on it.
+     * Honours `assignment_mode`, so a workspace that wants to triage by hand
+     * keeps doing that.
      */
-    public function pickAssignee(Tenant $tenant): ?User
+    public function pickAssignee(Tenant $tenant, ?Lead $lead = null): ?User
     {
         $settings = $tenant->settings;
 
@@ -26,12 +32,282 @@ class LeadAssignmentService
             return null;
         }
 
-        $candidates = User::query()
+        return $this->byStrategy($tenant, $lead);
+    }
+
+    /**
+     * The workspace's chosen strategy, used wherever a lead needs an owner and
+     * no particular person was named.
+     */
+    public function byStrategy(Tenant $tenant, ?Lead $lead = null): ?User
+    {
+        /*
+         * Narrowing, not a list of competing strategies.
+         *
+         * Each step below answers "is there a smaller group that should have
+         * this lead?" and gets out of the way when it has no opinion. A
+         * workspace that has set none of them lands exactly where it did
+         * before — whoever is least busy — which is the only honest default for
+         * something that decides who talks to a customer.
+         *
+         * The order is deliberate. Knowing the project beats speaking the
+         * language beats covering the city: a rep on the النرجس team should get
+         * a النرجس lead even if somebody in Riyadh is nominally closer to it,
+         * because what the customer asks about is the project — and sharing a
+         * language beats sharing a city, because a rep who cannot be understood
+         * is no nearer for being in the same place.
+         */
+        $everyone = $this->assignable($tenant);
+
+        if ($everyone->isEmpty()) {
+            return null;
+        }
+
+        /*
+         * Every narrowing that actually changed the set is written down, so "why did this rep
+         * get it?" has an answer that is not a guess: the rules that applied, the strategy that
+         * chose among what was left, and how many were left.
+         */
+        $rules = [];
+        $candidates = $everyone;
+
+        foreach ([
+            'project' => fn ($c) => $this->whoKnowsTheProject($c, $lead),
+            'language' => fn ($c) => $this->whoSpeaksTheLanguage($c, $lead),
+            'region' => fn ($c) => $this->whoSellsThere($c, $lead),
+            'type' => fn ($c) => $this->whoTakesTheType($c, $lead),
+        ] as $rule => $narrow) {
+            $narrowed = $narrow($candidates);
+
+            if ($narrowed !== null) {
+                $candidates = $narrowed;
+                $rules[] = $rule;
+            }
+        }
+
+        $strategy = match ($tenant->settings?->assignment_strategy) {
+            'round_robin' => 'round_robin',
+            'performance' => 'performance',
+            // Workload is the default: taking turns lets one rep's backlog grow
+            // while another sits idle, and keeps feeding leads to someone away.
+            default => 'workload',
+        };
+
+        $picked = match ($strategy) {
+            'round_robin' => $this->rotateAmong($tenant, $candidates),
+            'performance' => $this->workload->pickByPerformance($tenant, $candidates),
+            default => $this->workload->pick($tenant, $candidates),
+        };
+
+        $this->lastWhy = $picked ? [
+            'user_id' => $picked->id,
+            'rules' => $rules,
+            'strategy' => $strategy,
+            'candidates' => $candidates->count(),
+            // Someone was away: the choice was made among those who are in.
+            'availability' => $everyone->count() < User::where('tenant_id', $tenant->id)->whereIn('role', [Role::Sales->value, Role::Manager->value])->where('is_active', true)->count(),
+        ] : null;
+
+        return $picked;
+    }
+
+    /** The reasons behind the most recent pick, until `assign()` writes them onto the lead's story. */
+    private ?array $lastWhy = null;
+
+    /**
+     * The reps who take this kind of deal. Null when the lead has not said, nobody has said what
+     * they take, or nobody left takes it — the lead still needs an owner.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoTakesTheType(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        if (blank($lead?->transaction_type)) {
+            return null;
+        }
+
+        $takers = $candidates->filter(fn (User $user) => $user->handlesType($lead->transaction_type))->values();
+
+        return $takers->isEmpty() || $takers->count() === $candidates->count() ? null : $takers;
+    }
+
+    /**
+     * Everyone who can take a lead right now, falling back to the whole team
+     * when all of them are away — a lead that belongs to nobody is worse than
+     * one waiting on a rep who is back on Sunday.
+     *
+     * @return Collection<int,User>
+     */
+    private function assignable(Tenant $tenant): Collection
+    {
+        $base = fn () => User::query()
             ->where('tenant_id', $tenant->id)
-            ->where('is_active', true)
             ->whereIn('role', [Role::Sales->value, Role::Manager->value])
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        $available = $base()->available()->get();
+
+        return $available->isNotEmpty() ? $available : $base()->where('is_active', true)->get();
+    }
+
+    /**
+     * The project's own team, when the lead belongs to a project that has one.
+     *
+     * A developer selling three compounds does not have one sales team, it has
+     * three: the rep who knows النرجس can answer what the service charge covers,
+     * and the rep who does not has to go and ask.
+     *
+     * Null means no opinion — no project, no team, or nobody on it available —
+     * and the lead falls through rather than being held.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoKnowsTheProject(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        if (! $lead?->project_id) {
+            return null;
+        }
+
+        $onProject = User::query()
+            ->whereIn('id', $candidates->pluck('id'))
+            ->whereHas('projects', fn ($q) => $q->where('projects.id', $lead->project_id))
+            ->pluck('id')
+            ->all();
+
+        $team = $candidates->whereIn('id', $onProject)->values();
+
+        return $team->isEmpty() ? null : $team;
+    }
+
+    /**
+     * The reps who can talk to this lead.
+     *
+     * The language comes from the lead's own number — a +92 number is dialled
+     * from Pakistan, and whoever on the team speaks Urdu will have a better
+     * first call than whoever is least busy. Nothing on a lead form says this;
+     * the country code is the only field that comes from somewhere real.
+     *
+     * Null when the number says nothing, when nobody has said what they speak,
+     * or when nobody left speaks it — a lead whose language nobody on the team
+     * has claimed still needs an owner, and a rep reaching for an interpreter
+     * is better than a lead nobody calls.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoSpeaksTheLanguage(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        $language = $lead?->language();
+
+        if ($language === null) {
+            return null;
+        }
+
+        $speakers = $candidates->filter(fn (User $user) => $user->speaksLanguage($language))->values();
+
+        /*
+         * Everybody "speaks" every language until somebody claims otherwise, so
+         * a set that did not shrink is a set nobody has an opinion about —
+         * return null and let the next step work on the original rather than a
+         * copy of it.
+         */
+        return $speakers->isEmpty() || $speakers->count() === $candidates->count()
+            ? null
+            : $speakers;
+    }
+
+    /**
+     * The reps who sell in the lead's city.
+     *
+     * Null when the lead has no city, or when nobody has said which cities they
+     * cover, or when none of the remaining candidates covers it — a lead from a
+     * city nobody claims still needs an owner, and giving it to somebody is
+     * better than giving it to no one.
+     *
+     * @param  Collection<int,User>  $candidates
+     * @return Collection<int,User>|null
+     */
+    private function whoSellsThere(Collection $candidates, ?Lead $lead): ?Collection
+    {
+        if (blank($lead?->city)) {
+            return null;
+        }
+
+        $covering = $candidates->filter(fn (User $user) => $user->coversCity($lead->city))->values();
+
+        /*
+         * Everybody "covers" a city when nobody has set coverage, so this only
+         * narrows anything once somebody has. Returning null in that case keeps
+         * the next step working on the same set rather than a copy.
+         */
+        return $covering->isEmpty() || $covering->count() === $candidates->count()
+            ? null
+            : $covering;
+    }
+
+    /**
+     * Takes turns, counting a rep with a weight of three as three places in the
+     * rotation — so the weight means the same thing under either strategy.
+     *
+     * @param  Collection<int,User>  $candidates
+     */
+    private function rotateAmong(Tenant $tenant, Collection $candidates): ?User
+    {
+        $settings = $tenant->settings;
+
+        if (! $settings || $candidates->isEmpty()) {
+            return null;
+        }
+
+        $slots = $candidates->flatMap(
+            fn (User $user) => array_fill(0, $user->assignmentWeight(), $user)
+        )->values();
+
+        // Advance the cursor atomically so two concurrent webhooks never pick the
+        // same rep twice in a row.
+        return DB::transaction(function () use ($slots, $settings) {
+            $fresh = $settings->newQuery()->lockForUpdate()->find($settings->id);
+            $index = $fresh->round_robin_cursor % $slots->count();
+            $fresh->increment('round_robin_cursor');
+
+            return $slots[$index];
+        });
+    }
+
+    /**
+     * Round robin regardless of the tenant's default mode.
+     *
+     * An automation rule that says "assign" is an instruction, not a
+     * preference: letting `assignment_mode: manual` veto it would mean a rule
+     * the tenant wrote themselves silently does nothing, which is the worst
+     * failure an automation product has.
+     */
+    public function roundRobin(Tenant $tenant): ?User
+    {
+        $settings = $tenant->settings;
+
+        if (! $settings) {
+            return null;
+        }
+
+        /*
+         * Whoever can take a lead right now, falling back to the whole team
+         * when everybody is away — an unassigned lead belongs to nobody and
+         * appears on nobody's queue, which is worse than one waiting for a rep
+         * who is back on Sunday.
+         */
+        $base = fn () => User::query()
+            ->where('tenant_id', $tenant->id)
+            ->whereIn('role', [Role::Sales->value, Role::Manager->value])
+            ->orderBy('id');
+
+        $candidates = $base()->available()->get();
+
+        if ($candidates->isEmpty()) {
+            $candidates = $base()->where('is_active', true)->get();
+        }
 
         if ($candidates->isEmpty()) {
             return null;
@@ -51,6 +327,8 @@ class LeadAssignmentService
     public function assign(Lead $lead, ?User $assignee, ?User $actor = null, bool $notify = true): Lead
     {
         $previous = $lead->assigned_to;
+        $why = $this->lastWhy;
+        $this->lastWhy = null;
 
         $lead->assigned_to = $assignee?->id;
         $lead->assigned_at = $assignee ? now() : null;
@@ -62,7 +340,8 @@ class LeadAssignmentService
                 ActivityType::Assigned,
                 $actor,
                 null,
-                ['assigned_to' => $assignee->id, 'assigned_to_name' => $assignee->name, 'from' => $previous],
+                ['assigned_to' => $assignee->id, 'assigned_to_name' => $assignee->name, 'from' => $previous]
+                + ($why && $why['user_id'] === $assignee->id ? ['why' => $why] : []),
             );
 
             if ($notify) {

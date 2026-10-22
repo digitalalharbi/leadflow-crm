@@ -50,8 +50,18 @@ COPY backend/composer.json backend/composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 
 COPY backend/ ./
+
+# The commit this image was built from, baked in rather than mounted.
+#
+# A deploy needs to prove over HTTP that the new build is the one answering,
+# and the only honest way to do that is to ask the image about itself: a
+# container that silently failed to restart still carries the previous value,
+# which is exactly the failure a health check otherwise misses. Written last so
+# it never invalidates the composer layers above it.
+ARG APP_RELEASE=""
 RUN composer dump-autoload --optimize --classmap-authoritative \
  && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
+ && printf '%s\n' "$APP_RELEASE" > .release \
  && chown -R www-data:www-data storage bootstrap/cache
 
 USER www-data

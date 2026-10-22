@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Production deploy. Deliberately more conservative than staging:
+# Production deploy. Runs ON THE VPS; the "Deploy production" workflow invokes it over SSH.
+# Deliberately more conservative than staging:
+#   - only `main`, and only a commit GitHub has on `main`;
+#   - a server whose working tree is not clean is refused before anything changes;
 #   - a verified backup is taken BEFORE any migration;
 #   - migrations are shown before they run;
 #   - the app goes into maintenance mode only while migrations run;
@@ -19,15 +22,46 @@ say() { printf '\n\033[1;36m==>\033[0m %s\n' "$1"; }
 
 cd "$DEPLOY_PATH"
 
+# shellcheck source=lib/worktree-guard.sh
+. "$DEPLOY_PATH/scripts/lib/worktree-guard.sh"
+
 compose() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
+
+# DEPLOY_SECRET is read from the environment file rather than passed from CI:
+# it belongs to the server, and sending it on the SSH command line would put it
+# in the process list for every user on the box. Only this one variable is
+# lifted out, so sourcing the file cannot clobber the script's own state.
+if [ -f "$ENV_FILE" ]; then
+  DEPLOY_SECRET=$(sed -n 's/^DEPLOY_SECRET=//p' "$ENV_FILE" | tail -1 | tr -d "\"'")
+  export DEPLOY_SECRET
+fi
 
 PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 BACKUP_PATH=""
 
+# ---------------------------------------------------------------------------
+# Refusals. All of them come BEFORE the rollback trap is armed: a deploy that is
+# refused has changed nothing, so there is nothing to roll back — and a rollback
+# would itself rebuild and restart the containers.
+# ---------------------------------------------------------------------------
+[ "$BRANCH" = "main" ] || { echo "ABORT DEPLOY — production deploys only from main (asked for '${BRANCH}')." >&2; exit 1; }
+
+require_clean_worktree || exit 1
+
+say "Fetching ${BRANCH} from GitHub"
+git fetch --prune origin "$BRANCH"
+
+# The exact commit asked for must be one GitHub has on main. A SHA from a feature
+# branch, or one that does not exist, never reaches the build.
+if [ -n "$COMMIT" ]; then
+  git cat-file -e "${COMMIT}^{commit}" 2>/dev/null || { echo "ABORT DEPLOY — ${COMMIT} is not a commit fetched from origin/${BRANCH}." >&2; exit 1; }
+  git merge-base --is-ancestor "$COMMIT" "origin/${BRANCH}" || { echo "ABORT DEPLOY — ${COMMIT} is not on origin/${BRANCH}." >&2; exit 1; }
+fi
+
 rollback() {
   say "Deploy failed — rolling back to ${PREVIOUS_COMMIT:0:8}"
   git reset --hard "$PREVIOUS_COMMIT"
-  compose up -d --build
+  DEPLOY_COMMIT="$PREVIOUS_COMMIT" compose up -d --build
   compose exec -T backend php artisan up || true
 
   cat >&2 <<EOF
@@ -44,12 +78,13 @@ EOF
 }
 trap rollback ERR
 
-say "Fetching ${BRANCH}"
-git fetch --prune origin "$BRANCH"
 git reset --hard "${COMMIT:-origin/$BRANCH}"
 say "Now at $(git rev-parse --short HEAD) — $(git log -1 --pretty=%s)"
 
 say "Building images"
+# Exported before the build so the image carries its own commit; see the
+# APP_RELEASE arg in docker/php/Dockerfile.
+export DEPLOY_COMMIT="$(git rev-parse HEAD)"
 compose build --pull
 
 say "Starting data services"
@@ -85,20 +120,45 @@ compose exec -T backend php artisan up
 
 say "Restarting workers onto the new code"
 compose exec -T backend php artisan horizon:terminate || true
-compose restart queue horizon scheduler
+compose restart horizon scheduler
 
-say "Health check"
+say "Verifying the deployed release over HTTP"
+# "Something answered" is not a deploy. A container that failed to restart
+# answers every check perfectly while serving the previous build, so the gate
+# is that the commit just shipped is the commit replying — asserted through the
+# same HTTP path a customer takes.
+EXPECTED="$(git rev-parse HEAD)"
+SERVING=""
+
 for attempt in $(seq 1 45); do
-  if curl -fsS "$HEALTH_URL" | grep -q '"status":"healthy"'; then
-    say "Healthy after ${attempt}s"
-    trap - ERR
-    echo "$PREVIOUS_COMMIT" > .last-good-commit
-    say "Production is live at https://${PRODUCTION_DOMAIN:-app.example.com}"
-    exit 0
+  BODY="$(curl -fsS -H "X-Deploy-Secret: ${DEPLOY_SECRET:-}" "$HEALTH_URL" 2>/dev/null || true)"
+
+  if printf '%s' "$BODY" | grep -q '"status":"healthy"'; then
+    SERVING="$(printf '%s' "$BODY" | sed -n 's/.*"release":"\([0-9a-f]\{40\}\)".*/\1/p')"
+
+    if [ -z "${DEPLOY_SECRET:-}" ]; then
+      say "Healthy after ${attempt}s (DEPLOY_SECRET unset — release not asserted)"
+      break
+    fi
+
+    if [ "$SERVING" = "$EXPECTED" ]; then
+      say "Healthy after ${attempt}s, serving ${EXPECTED:0:8}"
+      break
+    fi
   fi
+
+  SERVING=""
   sleep 1
 done
 
-echo "Health check never passed." >&2
-compose logs --tail=50 backend >&2
-false
+if [ -n "${DEPLOY_SECRET:-}" ] && [ "$SERVING" != "$EXPECTED" ]; then
+  echo "The deployed release never became live." >&2
+  echo "  expected ${EXPECTED:0:8}, serving ${SERVING:-<none>}" >&2
+  compose logs --tail=50 backend >&2
+  false
+fi
+
+trap - ERR
+echo "$PREVIOUS_COMMIT" > .last-good-commit
+say "Production is live${PRODUCTION_DOMAIN:+ at https://$PRODUCTION_DOMAIN}"
+exit 0

@@ -1,23 +1,28 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, Pencil, Plus } from 'lucide-react'
+import { AlarmClock, Building2, CalendarCheck, Flame, Pencil, Plus, Star, Target, Trophy, Users } from 'lucide-react'
+import { Donut, KpiCard, brandRamp, type DonutSegment } from '@/components/visual'
 import { useTranslation } from 'react-i18next'
 import { apiPatch, apiPost, ApiError } from '@/lib/api'
-import { fetchProjects } from '@/features/leads'
+import { useCompanies } from '@/features/companies'
+import { fetchAssignableUsers, fetchProjectsWithMetrics } from '@/features/leads'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
+import { Link } from 'react-router-dom'
 import { formatCurrency, formatNumber } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import {
-  Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader,
-  Select, SkeletonTable, Table, TableWrap, Td, Th, Tr,
+  Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, PageHeader,
+  Select, SkeletonTable,
 } from '@/components/ui'
-import type { Project } from '@/types/api'
+import { MiniTrend } from '@/components/charts/MiniTrend'
+import type { Project, ProjectMetrics } from '@/types/api'
 
 const EMPTY = { name: '', developer_name: '', location: '', starting_price: '', status: 'active' }
 
 export function ProjectsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
   const branding = useAuth((s) => s.branding)
@@ -27,11 +32,20 @@ export function ProjectsPage() {
   const [editing, setEditing] = useState<Project | null>(null)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY)
+  const [team, setTeam] = useState<string[]>([])
+  const [companyId, setCompanyId] = useState('')
+  const { data: companyData } = useCompanies()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const { data: projects = [], isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['projects'],
-    queryFn: fetchProjects,
+    queryFn: fetchProjectsWithMetrics,
+  })
+
+  // Only people a lead can actually be given to.
+  const { data: assignees = [] } = useQuery({
+    queryKey: ['assignable-users'],
+    queryFn: fetchAssignableUsers,
   })
 
   const mutation = useMutation({
@@ -42,6 +56,9 @@ export function ProjectsPage() {
         location: form.location || null,
         starting_price: form.starting_price ? Number(form.starting_price) : null,
         status: form.status,
+        team,
+        // Null puts the project back with the holding.
+        company_id: companyId || null,
       }
 
       return editing ? apiPatch(`/projects/${editing.id}`, payload) : apiPost('/projects', payload)
@@ -67,6 +84,8 @@ export function ProjectsPage() {
   function openCreate() {
     setEditing(null)
     setForm(EMPTY)
+    setTeam([])
+    setCompanyId('')
     setFieldErrors({})
     setOpen(true)
   }
@@ -80,6 +99,8 @@ export function ProjectsPage() {
       starting_price: project.starting_price?.toString() ?? '',
       status: project.status,
     })
+    setTeam((project.team ?? []).map((member) => member.id))
+    setCompanyId(project.company?.id ?? '')
     setFieldErrors({})
     setOpen(true)
   }
@@ -88,6 +109,8 @@ export function ProjectsPage() {
     setOpen(false)
     setEditing(null)
     setForm(EMPTY)
+    setTeam([])
+    setCompanyId('')
   }
 
   function handleSubmit(event: FormEvent) {
@@ -98,6 +121,9 @@ export function ProjectsPage() {
 
   const canManage = can.manageProjects(user)
   const currency = branding?.currency ?? 'SAR'
+
+  const projects = data?.projects ?? []
+  const metricsById = new Map((data?.metrics ?? []).map((row) => [row.id, row]))
 
   return (
     <>
@@ -112,6 +138,12 @@ export function ProjectsPage() {
           ) : undefined
         }
       />
+
+      {/*
+        All projects at a glance before the cards: how many leads, how many
+        qualified, booked and sold, and which project brings them.
+      */}
+      {(data?.metrics?.length ?? 0) > 0 && <ProjectsSummary projects={projects} metrics={data!.metrics} />}
 
       <Card className="overflow-hidden">
         {isError ? (
@@ -132,62 +164,34 @@ export function ProjectsPage() {
             }
           />
         ) : (
-          <TableWrap>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t('projects.name')}</Th>
-                  <Th className="hidden sm:table-cell">{t('projects.developer')}</Th>
-                  <Th className="hidden md:table-cell">{t('projects.location')}</Th>
-                  <Th className="hidden lg:table-cell">{t('projects.startingPrice')}</Th>
-                  <Th>{t('projects.leadsCount')}</Th>
-                  <Th>{t('common.status')}</Th>
-                  {canManage && <Th className="text-end">{t('common.actions')}</Th>}
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((project) => (
-                  <Tr key={project.id}>
-                    <Td className="font-medium">{project.name}</Td>
-                    <Td className="hidden sm:table-cell">{project.developer_name ?? '—'}</Td>
-                    <Td className="hidden md:table-cell">{project.location ?? '—'}</Td>
-                    <Td className="tabular hidden whitespace-nowrap lg:table-cell">
-                      {formatCurrency(project.starting_price, currency, i18n.language)}
-                    </Td>
-                    <Td className="tabular">{formatNumber(project.leads_count ?? 0, i18n.language)}</Td>
-                    <Td>
-                      <Badge
-                        tone={
-                          project.status === 'active' ? 'success' : project.status === 'paused' ? 'warning' : 'neutral'
-                        }
-                      >
-                        {t(
-                          project.status === 'active'
-                            ? 'projects.statusActive'
-                            : project.status === 'paused'
-                              ? 'projects.statusPaused'
-                              : 'projects.statusSoldOut',
-                        )}
-                      </Badge>
-                    </Td>
-                    {canManage && (
-                      <Td className="text-end">
-                        <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => openEdit(project)}>
-                          <Pencil className="size-4" />
-                        </Button>
-                      </Td>
-                    )}
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrap>
+          /*
+            Cards rather than a table. A project is a business unit, and the
+            question a developer has is which of theirs is selling — a row of
+            one-line facts answers "what is it called", which nobody is asking.
+          */
+          <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                metrics={metricsById.get(project.id)}
+                currency={currency}
+                canManage={canManage}
+                onEdit={() => openEdit(project)}
+              />
+            ))}
+          </div>
         )}
       </Card>
 
-      <Modal
+      {/*
+        A drawer: this is a project's details, and it opens over the grid of
+        projects somebody is comparing it against.
+      */}
+      <Drawer
         open={open}
         onClose={close}
+        testId="project-drawer"
         title={editing ? t('common.edit') : t('projects.addProject')}
         footer={
           <>
@@ -204,6 +208,21 @@ export function ProjectsPage() {
             error={fieldErrors.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
+          {(companyData?.companies.length ?? 0) > 0 && (
+            <Select
+              label={t('company.title')}
+              hint={t('company.projectHint')}
+              value={companyId}
+              data-testid="project-company"
+              onChange={(e) => setCompanyId(e.target.value)}
+            >
+              <option value="">{t('company.holdingOwn')}</option>
+              {companyData?.companies.map((company) => (
+                <option key={company.id} value={company.id}>{company.name}</option>
+              ))}
+            </Select>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label={t('projects.developer')}
@@ -238,8 +257,337 @@ export function ProjectsPage() {
               <option value="sold_out">{t('projects.statusSoldOut')}</option>
             </Select>
           </div>
+
+          {/*
+            Who works this project.
+
+            A developer selling three compounds does not have one sales team, it
+            has three: the rep who knows النرجس can answer what the service
+            charge covers, and the rep who does not has to go and ask. Leaving
+            it empty means anybody, which is what every workspace starts as —
+            nothing about assignment changes until somebody fills this in.
+          */}
+          <fieldset className="space-y-2">
+            <legend className="t-small mb-1 font-medium">{t('projects.team')}</legend>
+            <p className="t-caption">{t('projects.teamHint')}</p>
+
+            {assignees.length === 0 ? (
+              <p className="t-caption">{t('projects.teamNobody')}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2" data-testid="project-team">
+                {assignees.map((person) => {
+                  const chosen = team.includes(person.id)
+
+                  return (
+                    <button
+                      key={person.id}
+                      type="button"
+                      aria-pressed={chosen}
+                      data-testid={`project-team-${person.id}`}
+                      onClick={() =>
+                        setTeam((previous) =>
+                          chosen
+                            ? previous.filter((id) => id !== person.id)
+                            : [...previous, person.id],
+                        )
+                      }
+                      className={cn(
+                        'pressable rounded-full border px-3 py-1 text-[0.9375rem]',
+                        chosen
+                          ? 'border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-ink)]'
+                          : 'border-[var(--color-border)] text-[var(--color-ink-muted)]',
+                      )}
+                    >
+                      {person.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </fieldset>
         </form>
-      </Modal>
+      </Drawer>
     </>
+  )
+}
+
+/**
+ * One project, as the numbers that say whether it is working.
+ *
+ * Every metric is a link into the leads it counts, so the card is a way in
+ * rather than a summary to read and leave.
+ */
+function ProjectCard({
+  project,
+  metrics,
+  currency,
+  canManage,
+  onEdit,
+}: {
+  project: Project
+  metrics?: ProjectMetrics
+  currency: string
+  canManage: boolean
+  onEdit: () => void
+}) {
+  const { t, i18n } = useTranslation()
+
+  const leads = metrics?.leads ?? 0
+  const qualified = metrics?.qualified ?? 0
+  const appointments = metrics?.appointments ?? 0
+  const won = metrics?.won ?? 0
+  const rate = metrics?.qualification_rate ?? 0
+
+  const tone =
+    project.status === 'active' ? 'success' : project.status === 'paused' ? 'warning' : 'neutral'
+
+  const statusLabel = t(
+    project.status === 'active'
+      ? 'projects.statusActive'
+      : project.status === 'paused'
+        ? 'projects.statusPaused'
+        : 'projects.statusSoldOut',
+  )
+
+  return (
+    <article
+      className="relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
+      data-testid="project-card"
+    >
+      {/* The company's colour, or the workspace's: a card's owner at a glance,
+          and a quiet reason for a row of cards to look like a family. */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ background: project.company?.color ?? 'var(--brand)' }}
+      />
+      <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-4 py-3">
+        <div className="min-w-0">
+          {/* The name is the way in: everything about a project that is not on
+              this card — its development activity, its own tabs — lives behind
+              it, and a card with no link is a dead end people stop clicking. */}
+          <Link to={`/projects/${project.id}`} className="t-card-title truncate hover:underline">
+            {project.name}
+          </Link>
+          <p className="t-caption mt-0.5 truncate">
+            {project.company && (
+              <span className="me-1.5 inline-flex items-center gap-1 font-medium text-[var(--color-ink)]" data-testid="project-company-chip">
+                <span aria-hidden className="size-1.5 rounded-full" style={{ background: project.company.color ?? 'var(--brand)' }} />
+                {project.company.name}
+                {' · '}
+              </span>
+            )}
+            {[project.location, project.developer_name].filter(Boolean).join(' · ') || '—'}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <Badge tone={tone}>{statusLabel}</Badge>
+          {canManage && (
+            <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={onEdit}>
+              <Pencil className="size-4" />
+            </Button>
+          )}
+        </div>
+      </header>
+
+      <div className="flex items-baseline justify-between gap-3 px-4 pt-3">
+        <Link
+          to={`/leads?project_id=${project.id}`}
+          className="group min-w-0"
+          data-testid="project-leads"
+        >
+          <span className="t-metric block group-hover:text-[var(--brand)]">
+            {formatNumber(leads, i18n.language)}
+          </span>
+          <span className="t-caption">{t('projects.leadsCount')}</span>
+        </Link>
+
+        {/* Whether it is moving: the last fortnight, drawn small. */}
+        {metrics?.trend && (
+          <MiniTrend
+            values={metrics.trend}
+            color={project.company?.color ?? 'var(--brand)'}
+            label={t('projects.trend', { count: metrics.trend.reduce((sum, n) => sum + n, 0) })}
+          />
+        )}
+
+        {project.starting_price != null && (
+          <span className="text-end">
+            <span className="tabular block text-[1.0625rem] font-semibold" dir="ltr">
+              {formatCurrency(project.starting_price, currency, i18n.language)}
+            </span>
+            <span className="t-caption">{t('projects.startingPrice')}</span>
+          </span>
+        )}
+      </div>
+
+      {/* The conversion in one bar: how much of this project's interest is
+          real, and how much of that closed. */}
+      <div className="px-4 pt-3">
+        <div className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
+          <span
+            className="h-full transition-[width] duration-[var(--duration-slow)]"
+            style={{
+              width: `${leads > 0 ? (qualified / leads) * 100 : 0}%`,
+              background: 'var(--chart-1)',
+            }}
+          />
+          <span
+            className="h-full transition-[width] duration-[var(--duration-slow)]"
+            style={{
+              width: `${leads > 0 ? (won / leads) * 100 : 0}%`,
+              background: 'var(--color-success)',
+            }}
+          />
+        </div>
+      </div>
+
+      <dl className="grid grid-cols-3 gap-2 px-4 py-3">
+        <ProjectMetric
+          label={t('campaignQuality.qualified')}
+          value={qualified}
+          hint={`${rate}%`}
+          to={`/leads?project_id=${project.id}&qualification_status=qualified`}
+          testId="project-qualified"
+        />
+        <ProjectMetric
+          label={t('campaignQuality.appointments')}
+          value={appointments}
+          to={`/leads?project_id=${project.id}&status[]=appointment`}
+        />
+        <ProjectMetric
+          label={t('campaignQuality.won')}
+          value={won}
+          to={`/leads?project_id=${project.id}&status[]=won`}
+        />
+      </dl>
+
+      {/*
+        What needs somebody, and only that. A card that lists four things that
+        are fine is a card nobody reads; when nothing is waiting it says so in
+        one quiet line, which is the answer a manager is glad to get.
+      */}
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-line)] px-4 py-2.5" data-testid="project-attention">
+        {(metrics?.priority ?? 0) > 0 && (
+          <AttentionChip tone="danger" icon={<Star className="size-3 fill-current" />} to={`/leads?project_id=${project.id}&priority=1`}>
+            {t('projects.attention.priority', { count: metrics?.priority })}
+          </AttentionChip>
+        )}
+        {(metrics?.awaiting_contact ?? 0) > 0 && (
+          <AttentionChip tone="danger" icon={<AlarmClock className="size-3" />} to={`/leads?project_id=${project.id}&awaiting_contact=1`}>
+            {t('projects.attention.awaiting', { count: metrics?.awaiting_contact })}
+          </AttentionChip>
+        )}
+        {(metrics?.hot ?? 0) > 0 && (
+          <AttentionChip tone="warning" icon={<Flame className="size-3" />} to={`/leads?project_id=${project.id}&temperature[]=hot`}>
+            {t('projects.attention.hot', { count: metrics?.hot })}
+          </AttentionChip>
+        )}
+        {!(metrics?.priority || metrics?.awaiting_contact || metrics?.hot) && (
+          <span className="t-caption">{t('projects.attention.none')}</span>
+        )}
+
+        <span className="ms-auto flex items-center gap-3 text-[0.8125rem] text-[var(--color-ink-subtle)]">
+          <Link to={`/projects/${project.id}`} className="hover:text-[var(--brand)]" data-testid="project-files-count">
+            {t('projects.filesCount', { count: metrics?.files ?? 0 })}
+          </Link>
+          <Link to={`/projects/${project.id}`} className="hover:text-[var(--brand)]">
+            {t('projects.questionsCount', { count: metrics?.questions ?? 0 })}
+          </Link>
+        </span>
+      </div>
+    </article>
+  )
+}
+
+function ProjectMetric({
+  label,
+  value,
+  hint,
+  to,
+  testId,
+}: {
+  label: string
+  value: number
+  hint?: string
+  to: string
+  testId?: string
+}) {
+  const { i18n } = useTranslation()
+
+  return (
+    <Link
+      to={to}
+      data-testid={testId}
+      className="rounded-[var(--radius-control)] px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-sunken)]"
+    >
+      <dt className="t-caption truncate text-[0.8125rem]">{label}</dt>
+      <dd className="mt-0.5 flex items-baseline gap-1.5">
+        <span className="t-metric-sm">{formatNumber(value, i18n.language)}</span>
+        {hint && (
+          <span className="tabular text-[0.8125rem] text-[var(--color-ink-subtle)]" dir="ltr">
+            {hint}
+          </span>
+        )}
+      </dd>
+    </Link>
+  )
+}
+
+function AttentionChip({
+  tone, icon, to, children,
+}: {
+  tone: 'danger' | 'warning'
+  icon: React.ReactNode
+  to: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'pressable inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.875rem] font-medium',
+        tone === 'danger'
+          ? 'bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]'
+          : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]',
+      )}
+    >
+      {icon}
+      {children}
+    </Link>
+  )
+}
+
+/** The portfolio in one row: four totals and a donut of leads by project. */
+function ProjectsSummary({ projects, metrics }: { projects: Project[]; metrics: ProjectMetrics[] }) {
+  const { t, i18n } = useTranslation()
+  const sum = (key: 'leads' | 'qualified' | 'appointments' | 'won') => metrics.reduce((total, row) => total + (row[key] ?? 0), 0)
+  const names = new Map(projects.map((p) => [p.id, p]))
+  const segments: DonutSegment[] = metrics
+    .filter((row) => row.leads > 0)
+    .map((row, index) => ({
+      key: row.id,
+      label: names.get(row.id)?.name ?? '—',
+      value: row.leads,
+      color: names.get(row.id)?.company?.color ?? brandRamp(Math.max(3, metrics.length))[index % Math.max(3, metrics.length)],
+      href: `/projects/${row.id}`,
+    }))
+
+  return (
+    <div className="mb-3 grid gap-3 lg:grid-cols-12" data-testid="projects-summary">
+      <div className="grid min-w-0 grid-cols-2 gap-3 lg:col-span-7 [&>*]:min-w-0">
+        <KpiCard label={t('projects.summary.leads')} icon={Users} value={formatNumber(sum('leads'), i18n.language)} />
+        <KpiCard label={t('projects.summary.qualified')} icon={Target} tone="good" value={formatNumber(sum('qualified'), i18n.language)} />
+        <KpiCard label={t('projects.summary.appointments')} icon={CalendarCheck} tone="warn" value={formatNumber(sum('appointments'), i18n.language)} />
+        <KpiCard label={t('projects.summary.won')} icon={Trophy} tone="good" value={formatNumber(sum('won'), i18n.language)} />
+      </div>
+      <Card className="min-w-0 lg:col-span-5">
+        <CardBody>
+          <h2 className="t-card-title mb-3">{t('projects.summary.byProject')}</h2>
+          <Donut size={128} thickness={15} legend="side" segments={segments} centerValue={formatNumber(sum('leads'), i18n.language)} testId="projects-donut" />
+        </CardBody>
+      </Card>
+    </div>
   )
 }

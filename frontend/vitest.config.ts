@@ -10,5 +10,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Unit tests only. The e2e/ specs are Playwright's — they import its runner
+    // and drive a real browser, so vitest must not try to load them.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules', 'dist', 'e2e/**'],
   },
 })

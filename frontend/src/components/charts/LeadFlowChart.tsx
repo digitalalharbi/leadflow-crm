@@ -134,7 +134,7 @@ export function LeadFlowChart({
         <defs>
           {/* The reference's diagonal hatching: a texture, not a gradient. */}
           <pattern id="flow-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="7" stroke="var(--brand-deep)" strokeWidth="1.4" opacity="0.22" />
+            <line x1="0" y1="0" x2="0" y2="7" stroke="var(--chart-seq-latest)" strokeWidth="1.4" opacity="0.22" />
           </pattern>
         </defs>
 
@@ -178,7 +178,7 @@ export function LeadFlowChart({
                     width={geometry.barWidth}
                     height={barHeight}
                     rx={geometry.barWidth / 2}
-                    fill={isPeak ? 'var(--brand-deep)' : 'var(--brand-tint)'}
+                    fill={isPeak ? 'var(--chart-seq-latest)' : index < buckets.length / 3 ? 'var(--chart-seq-old)' : 'var(--chart-seq-mid)'}
                     opacity={hover === null || hover === index ? 1 : 0.7}
                   />
                   <rect
@@ -195,11 +195,11 @@ export function LeadFlowChart({
               {/* The peak, announced: a dot on the bar and the change into it. */}
               {isPeak && (
                 <g>
-                  <circle cx={geometry.x(index)} cy={geometry.y(0) - barHeight} r={6} fill="var(--brand-deep)" stroke="var(--color-surface)" strokeWidth={3} />
+                  <circle cx={geometry.x(index)} cy={geometry.y(0) - barHeight} r={6} fill="var(--chart-seq-latest)" stroke="var(--color-surface)" strokeWidth={3} />
                   {peakChange !== null && (
                     <g transform={`translate(${geometry.x(index)} ${geometry.y(0) - barHeight - 18})`}>
-                      <rect x={-27} y={-12} width={54} height={22} rx={11} fill="var(--brand)" />
-                      <text textAnchor="middle" y={3} className="fill-white text-[0.8125rem] font-medium tabular-nums">
+                      <rect x={-27} y={-12} width={54} height={22} rx={11} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={1} />
+                      <text textAnchor="middle" y={3} className="fill-[var(--accent-text)] text-[0.8125rem] font-semibold tabular-nums">
                         {peakChange > 0 ? '+' : ''}
                         {peakChange}%
                       </text>
@@ -238,7 +238,7 @@ export function LeadFlowChart({
       <p className="mt-1 flex items-center justify-center gap-1.5 text-[0.875rem] text-[var(--color-ink-muted)]" dir="auto">
         <span
           data-chart-mark
-          className="size-2.5 rounded-full bg-[var(--brand-deep)] [print-color-adjust:exact]"
+          className="size-2.5 rounded-full bg-[var(--chart-seq-latest)] [print-color-adjust:exact]"
           style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
           aria-hidden
         />

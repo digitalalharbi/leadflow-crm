@@ -14,7 +14,7 @@ const variants: Record<Variant, string> = {
   primary: [
     'bg-[var(--brand)] text-[var(--brand-contrast)]',
     'shadow-[inset_0_1px_0_0_rgb(255_255_255/0.16),var(--shadow-card)]',
-    'hover:brightness-[1.07] active:brightness-95',
+    'hover:bg-[var(--brand-hover)] active:brightness-95',
   ].join(' '),
   secondary: [
     'bg-[var(--color-surface-sunken)] text-[var(--color-ink)]',

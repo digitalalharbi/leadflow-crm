@@ -125,8 +125,9 @@ export function Badge({
 }) {
   const tones = {
     neutral: 'bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] ring-[var(--color-line)]',
-    success: toneFor('--color-status-won'),
-    warning: toneFor('--color-status-appointment'),
+    // The kit's own pair: healthy is pale green on emerald, a warning or backlog pale copper on dark copper.
+    success: 'bg-[var(--brand-soft)] text-[var(--brand-text)] ring-[color-mix(in_srgb,var(--brand-text)_22%,transparent)]',
+    warning: 'bg-[var(--status-warn-bg)] text-[var(--status-warn-ink)] ring-[color-mix(in_srgb,var(--status-warn-ink)_22%,transparent)]',
     danger: toneFor('--color-status-lost'),
     info: toneFor('--color-status-new'),
   }

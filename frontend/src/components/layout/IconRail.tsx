@@ -6,12 +6,12 @@ import { cn } from '@/lib/cn'
 import { useNavigation, type NavItem } from './navigation'
 
 /**
- * The compact vertical navigation: rounded white capsules of outline icons.
+ * The compact vertical navigation: rounded pine capsules of outline icons.
  *
  * Icon-only, so every destination carries its name three ways — an accessible
  * name for screen readers, a tooltip for the pointer, and the same on keyboard
- * focus. The active destination is a filled green circle with a white glyph;
- * everything else is a quiet grey outline that warms on hover.
+ * focus. The active destination is a filled emerald circle with a white glyph;
+ * everything else is a soft-green outline that lightens on hover.
  *
  * Positioned by the layout grid, not by `left`/`right`, so in Arabic it sits at
  * the start edge natively rather than by mirroring.
@@ -39,14 +39,14 @@ export function IconRail() {
       data-testid="icon-rail"
     >
       {groups.map((group, index) => (
-        <nav key={index} className="rail-group flex flex-col items-center gap-1 rounded-[var(--radius-panel)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-card)]">
+        <nav key={index} className="rail-group flex flex-col items-center gap-1 rounded-[var(--radius-panel)] p-1.5">
           {group.map((item) => (
             <RailLink key={item.to} item={item} />
           ))}
         </nav>
       ))}
 
-      <div className="rail-group flex flex-col items-center gap-1 rounded-[var(--radius-panel)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-card)]">
+      <div className="rail-group flex flex-col items-center gap-1 rounded-[var(--radius-panel)] p-1.5">
         {settings && <RailLink item={settings} />}
         <button
           type="button"

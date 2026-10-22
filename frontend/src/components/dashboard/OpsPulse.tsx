@@ -69,13 +69,13 @@ export function OpsPulse() {
               key={key}
               to={to}
               data-testid={`ops-${key}`}
-              className={cn('pressable flex flex-col gap-1 rounded-xl px-2.5 py-2 shadow-[var(--shadow-card)]', hot ? 'bg-[color-mix(in_srgb,var(--color-danger)_9%,var(--color-surface))]' : 'bg-[var(--color-surface)]')}
+              className={cn('pressable flex flex-col gap-1 rounded-xl border border-[var(--color-line)] px-2.5 py-2 shadow-[var(--shadow-card)]', hot ? 'bg-[color-mix(in_srgb,var(--color-danger)_9%,var(--color-surface))]' : 'bg-[var(--color-surface)]', (key === 'revenue_today' || key === 'won_today') && 'border-t-[3px] border-t-[var(--accent)]')}
             >
               <Icon className={cn('size-4', hot ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink-muted)]')} aria-hidden />
               <span className={cn('text-[1.375rem] font-extrabold leading-none tabular-nums', hot && 'text-[var(--color-danger)]')} dir="ltr" data-testid={`ops-${key}-value`}>
                 {key === 'revenue_today' ? formatMoneyCompact(value, 'SAR', i18n.language) : num(value)}
               </span>
-              <span className="t-caption truncate">{t(`ops.answer.${key}`)}</span>
+              <span className={cn('t-caption truncate', (key === 'revenue_today' || key === 'won_today') && 'font-medium !text-[var(--accent-text)]')}>{t(`ops.answer.${key}`)}</span>
             </Link>
           )
         })}

@@ -56,7 +56,7 @@ const EMPTY_FORM = {
   system_name: '',
   subdomain: '',
   logo_url: '',
-  primary_color: '#12a594',
+  primary_color: '#1D5E52',
   locale: 'ar',
   currency: 'SAR',
   timezone: 'Asia/Riyadh',

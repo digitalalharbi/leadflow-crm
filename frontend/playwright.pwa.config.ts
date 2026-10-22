@@ -43,7 +43,7 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: 300_000,
-    env: { VITE_PROXY_TARGET: API_URL, VITE_BUILD_LABEL: 'v1', VITE_PWA_DWELL_MS: '600', VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true' },
+    env: { VITE_PROXY_TARGET: API_URL, VITE_BUILD_LABEL: 'v1', VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true' },
   },
 
   metadata: { apiUrl: API_URL },

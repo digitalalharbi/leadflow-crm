@@ -33,9 +33,11 @@ test.describe('Screen sizes', () => {
         await expectNoSidewaysScroll(page, `${size.name} ${path}`)
       }
 
-      // Below the laptop breakpoint the navigation is a drawer, and there is a button for it.
+      // Below the laptop breakpoint the navigation is a tab bar with "More" for the drawer; above it, the header's own track.
       await page.goto('/')
-      if (size.width < 1024) await expect(page.getByTestId('app-header').getByRole('button').first()).toBeVisible()
+      await expect(page.getByTestId('page-title').or(page.getByRole('heading', { level: 1 })).first()).toBeVisible()
+      if (size.width < 1024) await expect(page.getByTestId('bottom-nav-more')).toBeVisible()
+      else await expect(page.getByTestId('bottom-nav')).toBeHidden()
 
       const { token } = await makeSharedReport(ALPHA.admin.email, `تقرير ${size.name}`)
       const stranger = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'ar-SA' })

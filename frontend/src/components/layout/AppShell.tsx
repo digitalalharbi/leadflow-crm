@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { PageHeaderSlotProvider } from '@/components/ui/PageHeader'
 import { useLiveFeed } from '@/hooks/useLiveFeed'
 import { useAuth } from '@/stores/auth'
+import { BottomNav } from './BottomNav'
 import { IconRail } from './IconRail'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -16,8 +17,9 @@ import { Topbar } from './Topbar'
  * in Arabic the rail is on the start edge because the grid says so, not because
  * anything was mirrored after the fact.
  *
- * Below the desktop breakpoint the frame gives its margin back and the rail
- * becomes a drawer — a phone has no use for a floating window on a table.
+ * Below the desktop breakpoint the frame gives its margin back, the header becomes a flat app bar,
+ * the rail becomes a drawer and a tab bar sits at the thumb — a phone has no use for a floating
+ * window on a table, and should feel like an app, not a shrunken website.
  */
 export function AppShell() {
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
@@ -45,7 +47,7 @@ export function AppShell() {
       data-console={isSuperAdmin ? 'platform' : undefined}
     >
       <div
-        className="app-frame mx-auto flex min-h-dvh w-full max-w-[112rem] flex-col gap-4 bg-[var(--color-canvas)] p-2 sm:min-h-[calc(100dvh-1.5rem)] sm:rounded-[var(--radius-frame)] sm:p-3 lg:min-h-[calc(100dvh-2.5rem)] lg:p-4 print:min-h-0 print:p-0"
+        className="app-frame mx-auto flex min-h-dvh w-full max-w-[112rem] flex-col gap-4 bg-[var(--color-canvas)] p-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:min-h-[calc(100dvh-1.5rem)] sm:rounded-[var(--radius-frame)] sm:p-3 lg:min-h-[calc(100dvh-2.5rem)] lg:p-4 lg:pb-4 print:min-h-0 print:p-0"
       >
         <Topbar />
 
@@ -65,6 +67,9 @@ export function AppShell() {
       {/* After the frame in the DOM: on a desktop it is not rendered at all, and
           the first brand mark on the page must be the header's. */}
       <Sidebar />
+
+      {/* The phone's tab bar. After the drawer's scrim in the order of things that float, below the drawer itself. */}
+      <BottomNav />
     </div>
   )
 }

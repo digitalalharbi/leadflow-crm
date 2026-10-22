@@ -1269,3 +1269,102 @@ input[type='file']::-webkit-file-upload-button {
   color: var(--color-ink);
   cursor: pointer;
 }
+
+
+/* ───────────── The phone: made to feel like an app ─────────────
+   Unlayered, like the block above, so none of it loses to a utility on the same element. */
+
+/* The tab bar. A fixed height plus the home indicator's room; each tab is a thumb-sized target. */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+.bottom-tab {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  height: 3.75rem;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  transition: color var(--duration-fast), transform var(--duration-fast);
+}
+
+.bottom-tab-active {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* A short bar of brand colour above the active tab: the one cue that does not rest on hue alone. */
+.bottom-tab-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 1.75rem;
+  height: 0.1875rem;
+  border-radius: 0 0 0.25rem 0.25rem;
+  background: var(--brand);
+}
+
+.bottom-tab:active {
+  transform: scale(0.94);
+}
+
+/* Phone type scale: the numbers and the title shrink with the screen, the 0.75rem floor of the system does not. */
+@media (max-width: 639.98px) {
+  .t-page-title { font-size: 1.625rem; }
+  .t-display { font-size: 1.875rem; }
+  .t-metric { font-size: 1.875rem; }
+}
+
+/* The app bar's own room at a notch, when the page is opened from a home-screen icon. */
+@media (max-width: 639.98px) {
+  .app-bar {
+    padding-top: env(safe-area-inset-top);
+    height: calc(3.5rem + env(safe-area-inset-top));
+  }
+}
+
+@media (pointer: coarse) {
+  /* Chrome you press is not text you select: no grey selection boxes and no callout on a long press. */
+  .bottom-nav,
+  .app-bar,
+  .app-sidebar,
+  button,
+  [role='tab'],
+  [role='button'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Pressing anything says so at once. */
+  button:not(:disabled):active,
+  [role='button']:active,
+  a.pressable:active {
+    transition: transform var(--duration-fast);
+  }
+
+  /* No double-tap-to-zoom delay on controls. */
+  button,
+  a,
+  [role='tab'],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+/* Opened from a home-screen icon there is no browser bar to pull down, so the page must not rubber-band like a document. */
+html[data-standalone] body {
+  overscroll-behavior-y: none;
+}

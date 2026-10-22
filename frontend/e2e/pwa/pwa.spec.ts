@@ -5,8 +5,8 @@ import { previewServer, rebuild } from './build'
 
 /**
  * The installable app, on a production build: the manifest, the icons, the service worker, what it
- * will and will not cache, the offline page, the offline notice with changes refused, the install
- * prompt, the iPhone instructions, and an update arriving while the app is open.
+ * will and will not cache, the offline page, the offline notice with changes refused, no install
+ * nagging, and an update arriving while the app is open.
  */
 
 /** A service worker is active and in control of the page. */
@@ -175,58 +175,22 @@ test.describe('Installable app', () => {
     expect(manifest.icons.some((i) => i.purpose === 'maskable')).toBe(true)
   })
 
-  test('the install prompt appears after a while, installs on a press, and is not asked again once put away', async ({ page, browserName, isMobile }) => {
-    test.skip(browserName !== 'chromium', 'only Chromium engines offer an install event; iPhone has its own instructions below')
-
+  test('nobody is nagged to install: the browser’s install offer produces no banner of ours, on any engine', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/')
     await expect(page.getByTestId('page-title')).toBeVisible()
 
-    const offer = () => page.evaluate(() => {
-      const event = new Event('beforeinstallprompt', { cancelable: true }) as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
-      event.prompt = async () => { (window as unknown as { __prompted?: boolean }).__prompted = true }
-      event.userChoice = Promise.resolve({ outcome: 'accepted' })
+    // What Chrome would fire once the app qualifies; our page must neither hide it nor show anything for it.
+    const prevented = await page.evaluate(() => {
+      const event = new Event('beforeinstallprompt', { cancelable: true })
       window.dispatchEvent(event)
+
+      return event.defaultPrevented
     })
+    expect(prevented).toBe(false)
 
-    await offer()
-    await expect(page.getByTestId('pwa-install')).toBeVisible({ timeout: 15_000 })
-
-    // Put away: gone, and still gone after a reload and another offer.
-    await page.getByTestId('pwa-install-dismiss').click()
-    await expect(page.getByTestId('pwa-install')).toHaveCount(0)
-    await page.reload()
-    await expect(page.getByTestId('page-title')).toBeVisible()
-    await offer()
     await page.waitForTimeout(1500)
     await expect(page.getByTestId('pwa-install')).toHaveCount(0)
-
-    // Forgetting the choice (as two weeks would), it is offered again and pressing install shows the browser's own prompt.
-    await page.evaluate(() => localStorage.removeItem('mahtam.pwa.dismissed'))
-    await page.reload()
-    await expect(page.getByTestId('page-title')).toBeVisible()
-    await offer()
-    await expect(page.getByTestId('pwa-install')).toBeVisible({ timeout: 15_000 })
-    await page.getByTestId('pwa-install-accept').click()
-    await expect.poll(() => page.evaluate(() => (window as unknown as { __prompted?: boolean }).__prompted)).toBe(true)
-    await expect(page.getByTestId('pwa-install')).toHaveCount(0)
-    expect(isMobile !== undefined).toBe(true)
-  })
-
-  test('on an iPhone the person is told how to add it to the home screen — once', async ({ page }) => {
-    const iphone = await page.evaluate(() => /iPhone/.test(navigator.userAgent))
-    test.skip(!iphone, 'the iPhone instructions are for Safari on iOS')
-
-    await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
-    await expect(page.getByTestId('pwa-ios-hint')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('pwa-ios-hint')).toContainText('إضافة إلى الشاشة الرئيسية')
-    await page.getByTestId('pwa-ios-dismiss').click()
-    await expect(page.getByTestId('pwa-ios-hint')).toHaveCount(0)
-
-    await page.reload()
-    await expect(page.getByTestId('page-title')).toBeVisible()
-    await page.waitForTimeout(1500)
     await expect(page.getByTestId('pwa-ios-hint')).toHaveCount(0)
   })
 

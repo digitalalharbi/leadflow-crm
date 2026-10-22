@@ -50,8 +50,6 @@ export default {
   pwa: {
     offline: 'أنت غير متصل بالإنترنت. ما تراه قد لا يكون محدّثًا، ولن تُنفَّذ أي تغييرات حتى يعود الاتصال.',
     updateReady: 'يتوفر إصدار أحدث من «مهتم».', updateNow: 'حدّث الآن',
-    installTitle: 'ثبّت «مهتم» على جهازك', installBody: 'يفتح بنقرة من الشاشة الرئيسية، بنافذته الخاصة.', install: 'تثبيت', notNow: 'ليس الآن',
-    iosSteps: 'في Safari اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية».', gotIt: 'فهمت',
   },
   errors: {
     offline: 'لا يوجد اتصال بالإنترنت، فلم يُنفَّذ التغيير. أعد المحاولة حين يعود الاتصال.',
@@ -87,6 +85,10 @@ export default {
     access: 'الصلاحيات',
     menu: 'القائمة',
     primary: 'التنقل الرئيسي',
+    more: 'المزيد',
+    tabs: 'التنقل السريع',
+    /** The tab bar has room for a word, not a phrase: only the destinations whose name is longer say so here. */
+    short: { leads: 'العملاء' },
     readiness: 'جاهزية الإنتاج',
     companies: 'الشركات',
     dashboard: 'الرئيسية',

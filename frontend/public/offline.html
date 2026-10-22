@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#12A594" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>مهتم — لا يوجد اتصال</title>
+    <style>
+      /* Self-contained on purpose: this page is shown when nothing else can be fetched. */
+      :root { color-scheme: light dark; --brand: #12a594; --ink: #14212b; --muted: #5b6b78; --bg: #f3f5f7; --card: #ffffff; }
+      @media (prefers-color-scheme: dark) { :root { --ink: #eef3f6; --muted: #9bacb8; --bg: #0f171d; --card: #17222a; } }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; background: var(--bg); color: var(--ink);
+        font-family: "IBM Plex Sans Arabic", "Noto Sans Arabic", Tahoma, system-ui, sans-serif;
+        padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+      }
+      main { max-width: 26rem; width: 100%; text-align: center; background: var(--card); border-radius: 1.5rem; padding: 2rem 1.5rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
+      .mark { width: 4.5rem; height: 4.5rem; margin: 0 auto 1.25rem; display: block; }
+      h1 { font-size: 1.375rem; margin: 0 0 0.5rem; }
+      p { margin: 0 0 1.5rem; color: var(--muted); line-height: 1.8; font-size: 1rem; }
+      button {
+        appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; background: var(--brand); color: #fff; font: inherit; font-weight: 700;
+        padding: 0.75rem 1.75rem; min-height: 2.75rem; cursor: pointer;
+      }
+      button:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 40%, transparent); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main role="main">
+      <svg class="mark" viewBox="0 0 32 32" role="img" aria-label="مهتم">
+        <rect width="32" height="32" rx="7.5" fill="#12A594" />
+        <g transform="translate(0.158 1.372) scale(0.92)" fill="none" stroke="#fff" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.96 7.75 A6.9 6.9 0 1 0 21.87 12.80 M13.57 20.15 Q14.00 23.80 9.60 25.60" />
+          <circle cx="24.79" cy="7.75" r="3.2" fill="#fff" stroke="none" />
+        </g>
+      </svg>
+      <h1 data-testid="offline-title">لا يوجد اتصال بالإنترنت</h1>
+      <p>لا يعمل «مهتم» دون اتصال، حتى لا تُنفَّذ تغييرات أو تُعرض أرقام قديمة. عد إلى الاتصال ثم حاول من جديد.</p>
+      <button type="button" id="retry" data-testid="offline-retry">إعادة المحاولة</button>
+    </main>
+    <script>
+      document.getElementById('retry').addEventListener('click', function () { location.reload() })
+      // The moment the connection returns, go back to the app.
+      window.addEventListener('online', function () { location.reload() })
+    </script>
+  </body>
+</html>

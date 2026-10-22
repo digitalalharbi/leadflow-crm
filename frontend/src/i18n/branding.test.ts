@@ -84,7 +84,7 @@ describe('the product has one name', () => {
  * and that is where it has to be checked.
  */
 const chrome: Record<string, string> = import.meta.glob(
-  ['/index.html', '/public/site.webmanifest', '/src/hooks/useBrandingTheme.ts'],
+  ['/index.html', '/public/manifest.webmanifest', '/src/hooks/useBrandingTheme.ts'],
   { query: '?raw', import: 'default', eager: true },
 )
 
@@ -92,7 +92,7 @@ describe('the browser chrome', () => {
   it('reads the files it claims to check', () => {
     expect(Object.keys(chrome).sort()).toEqual([
       '/index.html',
-      '/public/site.webmanifest',
+      '/public/manifest.webmanifest',
       '/src/hooks/useBrandingTheme.ts',
     ])
   })
@@ -109,7 +109,7 @@ describe('the browser chrome', () => {
 
   /** An installed app keeps whatever the manifest said, so it has to say this. */
   it('ships a manifest whose default identity is the platform', () => {
-    const manifest = JSON.parse(chrome['/public/site.webmanifest'])
+    const manifest = JSON.parse(chrome['/public/manifest.webmanifest'])
 
     expect(manifest.name).toBe('مهتم')
     expect(manifest.short_name).toBe('مهتم')

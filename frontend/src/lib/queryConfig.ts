@@ -34,6 +34,13 @@ export const queryConfig: QueryClientConfig = {
         return failureCount < 2
       },
     },
-    mutations: { retry: false },
+    /*
+     * `networkMode: 'always'` for changes. TanStack's default ('online') quietly PAUSES a mutation
+     * while the browser is offline and fires it when the connection returns — a save pressed on a
+     * train would complete minutes later, unseen, possibly over someone else's newer edit. We
+     * refuse instead: the request guard in `lib/api.ts` rejects a non-GET while offline, so the
+     * person is told at once that nothing was saved.
+     */
+    mutations: { retry: false, networkMode: 'always' },
   },
 }

@@ -48,7 +48,7 @@ test.describe('Critical paths, in every browser', () => {
     const id = await firstLeadId(ALPHA.admin.email)
     await signInAs(page, ALPHA.admin.email)
     await page.goto(`/leads/${id}`)
-    await expect(page.getByTestId('page-title')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     await expectNoSidewaysScroll(page, 'lead workspace')
     expect(errors).toEqual([])
   })

@@ -15,8 +15,8 @@ export default {
   },
   pwa: {
     offline: 'You are offline. What you see may be out of date, and nothing can be changed until the connection is back.',
-    updateReady: 'A newer version of Mohtam is ready.', updateNow: 'Update now',
-    installTitle: 'Install Mohtam on your device', installBody: 'Opens in one tap from the home screen, in its own window.', install: 'Install', notNow: 'Not now',
+    updateReady: 'A newer version of مهتم is ready.', updateNow: 'Update now',
+    installTitle: 'Install مهتم on your device', installBody: 'Opens in one tap from the home screen, in its own window.', install: 'Install', notNow: 'Not now',
     iosSteps: 'In Safari, tap the Share button, then “Add to Home Screen”.', gotIt: 'Got it',
   },
   errors: {

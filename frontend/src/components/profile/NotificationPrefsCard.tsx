@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BellRing, MailWarning } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody, CardHeader, Skeleton } from '@/components/ui'
@@ -18,6 +18,7 @@ export function NotificationPrefsCard() {
   const { t } = useTranslation()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
+  const queryClient = useQueryClient()
 
   const query = useQuery({ queryKey: ['notification-prefs'], queryFn: fetchNotificationPrefs, staleTime: Infinity })
 
@@ -36,9 +37,16 @@ export function NotificationPrefsCard() {
     mutationKey: ['notification-prefs'],
     scope: { id: 'notification-prefs' },
     mutationFn: saveNotificationPrefs,
+    // The cache is never shown; it only remembers the last thing the server confirmed, for the case below.
+    onSuccess: (confirmed) => queryClient.setQueryData(['notification-prefs'], confirmed),
     onError: (caught) => {
       toast(translateError(caught), 'error')
-      void query.refetch().then((fresh) => fresh.data && setData(fresh.data))
+      // Put the server's truth back. If the server cannot be reached (offline), the last confirmed copy
+      // is the truth — never leave on screen a choice that was refused.
+      void query.refetch().then((fresh) => {
+        const truth = fresh.data ?? queryClient.getQueryData<NotificationPrefs>(['notification-prefs'])
+        if (truth) setData(truth)
+      })
     },
   })
 

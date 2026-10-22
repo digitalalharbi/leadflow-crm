@@ -37,7 +37,8 @@ export function PwaBanners() {
   useEffect(() => {
     if (!user) return
 
-    const timer = window.setTimeout(() => setSettled(true), 15_000)
+    // Fifteen seconds in the product; a test build shortens it (VITE_PWA_DWELL_MS) instead of faking a clock.
+    const timer = window.setTimeout(() => setSettled(true), Number(import.meta.env.VITE_PWA_DWELL_MS ?? 15_000))
 
     return () => window.clearTimeout(timer)
   }, [user])

@@ -14,7 +14,6 @@ const BASE_URL = `http://127.0.0.1:${PORT}`
 export default defineConfig({
   testDir: './e2e/pwa',
   outputDir: './e2e/.results-pwa',
-  globalSetup: './e2e/pwa/build.ts',
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,
@@ -38,12 +37,13 @@ export default defineConfig({
     { name: 'android', use: { ...devices['Pixel 7'] } },
   ],
 
+  // Build version 1, then serve it. Never reuse a running server: the update spec leaves version 2 on disk.
   webServer: {
-    command: `npx vite preview --outDir dist-pwa --port ${PORT} --host 127.0.0.1 --strictPort`,
+    command: `npx vite build --outDir dist-pwa --emptyOutDir && npx vite preview --outDir dist-pwa --port ${PORT} --host 127.0.0.1 --strictPort`,
     url: BASE_URL,
-    reuseExistingServer: true,
-    timeout: 60_000,
-    env: { VITE_PROXY_TARGET: API_URL },
+    reuseExistingServer: false,
+    timeout: 300_000,
+    env: { VITE_PROXY_TARGET: API_URL, VITE_BUILD_LABEL: 'v1', VITE_PWA_DWELL_MS: '600', VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true' },
   },
 
   metadata: { apiUrl: API_URL },

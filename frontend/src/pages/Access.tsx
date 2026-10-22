@@ -82,7 +82,7 @@ function RolesTab({ state }: { state: AccessState }) {
   const role = state.roles.find((r) => r.key === selected) ?? state.roles[0]
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[16rem_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <Card>
         <CardBody className="space-y-1" data-testid="access-role-list">
           {state.roles.map((r) => (

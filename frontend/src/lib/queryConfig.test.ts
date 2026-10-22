@@ -63,4 +63,9 @@ describe('query defaults', () => {
   it('does not retry mutations, which are not safe to repeat', () => {
     expect(queryConfig.defaultOptions?.mutations?.retry).toBe(false)
   })
+
+  /** Offline, a change must be refused out loud — not paused by the library and fired minutes later, unseen. */
+  it('runs mutations even when the browser says it is offline, so the offline guard can refuse them', () => {
+    expect(queryConfig.defaultOptions?.mutations?.networkMode).toBe('always')
+  })
 })

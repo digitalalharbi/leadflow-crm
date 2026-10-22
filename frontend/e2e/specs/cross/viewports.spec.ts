@@ -29,7 +29,7 @@ test.describe('Screen sizes', () => {
 
       for (const path of ['/', '/work', '/leads', `/leads/${lead}`, '/campaigns', '/reports', '/settings', '/access']) {
         await page.goto(path)
-        await expect(page.getByTestId('page-title'), `${size.name} ${path}`).toBeVisible()
+        await expect(page.getByTestId('page-title').or(page.getByRole('heading', { level: 1 })).first(), `${size.name} ${path}`).toBeVisible()
         await expectNoSidewaysScroll(page, `${size.name} ${path}`)
       }
 

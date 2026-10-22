@@ -145,8 +145,8 @@
   --chart-4: var(--mh-green-300);
   --chart-5: var(--mh-brass-200);
   --chart-other: color-mix(in srgb, var(--mh-slate) 55%, var(--mh-line));
-  /* A trend or a run of bars: old, middle, latest — pale to deep, in the brand's own greens. */
-  --chart-seq-old: var(--mh-green-100);
+  /* A trend or a run of bars: old, middle, latest — neutral stone, then soft green, then emerald: green is the highlight, not the field. */
+  --chart-seq-old: var(--mh-stone);
   --chart-seq-mid: var(--mh-green-300);
   --chart-seq-latest: var(--mh-green-700);
 
@@ -243,27 +243,29 @@
 }
 
 /*
- * Dark is the identity's own dark: pine for the page, a half-step lighter pine for cards, limestone
- * for text, soft green for secondary text and the lifted emerald for the primary. Cards lift by
- * getting lighter than the page; borders become limestone at low opacity; nothing is pure black.
- * `data-theme="dark"` (set beside the class) also switches the kit's own `--mh-*` semantic tokens.
+ * Dark is a neutral warm charcoal, built from the kit's ink and limestone — not from pine. A page, a
+ * card and a table in pine would make every screen green, which the identity is not: the identity is
+ * neutral surfaces, emerald as the accent and copper as the highlight. Pine appears only where it is
+ * chosen: the sidebar and rail, the attention card and the login panel (see --chrome-1).
+ * Cards lift by getting lighter than the page; borders are limestone at low opacity; nothing is pure
+ * black. `data-theme="dark"` (set beside the class) also switches the kit's own `--mh-*` tokens.
  */
 .dark {
-  --color-outer: color-mix(in srgb, var(--mh-pine-900) 78%, black);
-  --color-canvas: var(--mh-pine-900);
-  --color-surface: var(--mh-pine-800);
-  --color-surface-raised: color-mix(in srgb, var(--mh-pine-800) 88%, var(--mh-limestone));
-  --color-surface-muted: color-mix(in srgb, var(--mh-pine-900) 70%, var(--mh-pine-800));
-  --color-surface-sunken: color-mix(in srgb, var(--mh-pine-900) 80%, black);
+  --color-outer: color-mix(in srgb, var(--mh-ink) 55%, black);
+  --color-canvas: var(--mh-ink);
+  --color-surface: color-mix(in srgb, var(--mh-ink) 90%, var(--mh-limestone));
+  --color-surface-raised: color-mix(in srgb, var(--mh-ink) 84%, var(--mh-limestone));
+  --color-surface-muted: color-mix(in srgb, var(--mh-ink) 96%, var(--mh-limestone));
+  --color-surface-sunken: color-mix(in srgb, var(--mh-ink) 72%, black);
   --color-border: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
   --color-border-strong: color-mix(in srgb, var(--mh-limestone) 22%, transparent);
-  --color-chrome-fill: color-mix(in srgb, var(--mh-pine-800) 80%, var(--mh-limestone));
+  --color-chrome-fill: color-mix(in srgb, var(--mh-ink) 82%, var(--mh-limestone));
   --color-line: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
 
   --color-ink: var(--mh-limestone);
-  --color-ink-muted: var(--mh-green-300);
-  --color-ink-subtle: color-mix(in srgb, var(--mh-green-300) 90%, var(--mh-pine-800));
-  --color-ink-inverted: var(--mh-pine-900);
+  --color-ink-muted: color-mix(in srgb, var(--mh-limestone) 74%, var(--mh-ink));
+  --color-ink-subtle: color-mix(in srgb, var(--mh-limestone) 66%, var(--mh-ink));
+  --color-ink-inverted: var(--mh-ink);
   --color-ink-strong: var(--mh-limestone);
 
   /*
@@ -285,7 +287,7 @@
   --color-temp-warm: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
   --color-temp-cold: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
 
-  --status-warn-bg: color-mix(in srgb, var(--mh-brass-400) 16%, var(--mh-pine-800));
+  --status-warn-bg: color-mix(in srgb, var(--mh-brass-400) 16%, var(--color-surface));
   --status-warn-ink: var(--mh-brass-400);
 
   --color-success: color-mix(in srgb, var(--mh-success) 65%, var(--mh-limestone));
@@ -293,8 +295,8 @@
   --color-danger: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
   --color-info: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
 
-  --color-brand-50: color-mix(in srgb, var(--mh-green-500) 14%, var(--mh-pine-900));
-  --color-brand-100: color-mix(in srgb, var(--mh-green-500) 24%, var(--mh-pine-900));
+  --color-brand-50: color-mix(in srgb, var(--mh-green-500) 14%, var(--color-surface));
+  --color-brand-100: color-mix(in srgb, var(--mh-green-500) 24%, var(--color-surface));
 
   /* The series on pine: stepped against the dark card (see palette.test.ts), never flipped from light. */
   --chart-1: var(--mh-green-300);
@@ -303,21 +305,21 @@
   --chart-4: var(--mh-green-500);
   --chart-5: var(--mh-brass-200);
   --chart-other: color-mix(in srgb, var(--mh-slate) 55%, var(--mh-limestone));
-  --chart-seq-old: color-mix(in srgb, var(--mh-green-500) 30%, var(--mh-pine-800));
+  --chart-seq-old: color-mix(in srgb, var(--mh-limestone) 18%, var(--mh-ink));
   --chart-seq-mid: var(--mh-green-500);
   --chart-seq-latest: var(--mh-green-300);
 
   --accent: var(--mh-brass-400);
   --accent-text: var(--mh-brass-400);
-  --accent-soft: color-mix(in srgb, var(--mh-brass-400) 16%, var(--mh-pine-800));
+  --accent-soft: color-mix(in srgb, var(--mh-brass-400) 16%, var(--color-surface));
 
   --chrome-1: color-mix(in srgb, var(--mh-pine-900) 82%, black);
   --chrome-2: var(--mh-pine-800);
 
   --brand: var(--mh-green-500);
   --brand-hover: color-mix(in srgb, var(--mh-green-500) 78%, var(--mh-limestone));
-  --brand-soft: color-mix(in srgb, var(--mh-green-500) 24%, var(--mh-pine-800));
-  --brand-softer: color-mix(in srgb, var(--mh-green-500) 12%, var(--mh-pine-800));
+  --brand-soft: color-mix(in srgb, var(--mh-green-500) 24%, var(--color-surface));
+  --brand-softer: color-mix(in srgb, var(--mh-green-500) 12%, var(--color-surface));
   --brand-ring: color-mix(in srgb, var(--mh-green-300) 40%, transparent);
   --brand-tint: var(--mh-green-500);
   --brand-bright: var(--mh-green-300);

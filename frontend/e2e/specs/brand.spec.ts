@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ALPHA } from '../fixtures/data'
+import { ALPHA, PLATFORM_TITLE } from '../fixtures/data'
 import { signInAs } from '../fixtures/pages'
 
 /**
@@ -26,7 +26,7 @@ test.describe('The product has one name', () => {
   test('a workspace that has not renamed it shows مهتم in the chrome', async ({ page }) => {
     // The brand sits in the floating header now, not in a sidebar.
     await expect(page.getByRole('banner')).toContainText('مهتم')
-    await expect(page).toHaveTitle('مهتم')
+    await expect(page).toHaveTitle(PLATFORM_TITLE)
   })
 
   for (const route of ROUTES) {

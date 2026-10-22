@@ -39,7 +39,8 @@ describe('chart palette', () => {
     expect(kitColour('--mh-green-300')).toBe(LIGHT_HEXES[3])
     expect(kitColour('--mh-brass-200')).toBe(LIGHT_HEXES[4])
     expect(LIGHT_SURFACE).toBe('#ffffff')
-    expect(DARK_SURFACE).toBe(kitColour('--mh-pine-800'))
+    // The dark card is the kit's ink lifted 10% toward limestone (index.css `.dark --color-surface`): charcoal, not pine.
+    expect(DARK_SURFACE).toBe('#2B3532')
   })
 
   /*

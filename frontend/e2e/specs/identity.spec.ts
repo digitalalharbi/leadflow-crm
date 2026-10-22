@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ALPHA, BETA } from '../fixtures/data'
+import { ALPHA, BETA, PLATFORM_TITLE } from '../fixtures/data'
 import { authenticateAs, signInAs } from '../fixtures/pages'
 
 /** What the browser chrome itself says about whose product this is. */
@@ -19,7 +19,7 @@ test.describe('Product identity', () => {
 
     const before = await identity(page)
 
-    expect(before.title).toBe('مهتم')
+    expect(before.title).toBe(PLATFORM_TITLE)
     expect(before.icon).toBe('/favicon.svg')
   })
 
@@ -28,7 +28,8 @@ test.describe('Product identity', () => {
 
     const applied = await identity(page)
 
-    expect(applied.title).toBe(ALPHA.systemName)
+    // This workspace has not renamed the product, so the tab carries the platform's own title.
+    expect(applied.title).toBe(PLATFORM_TITLE)
     expect(applied.brand.toLowerCase()).toBe(ALPHA.primaryColor)
     // The phone's browser chrome follows the customer too.
     expect(applied.theme?.toLowerCase()).toBe(ALPHA.primaryColor)

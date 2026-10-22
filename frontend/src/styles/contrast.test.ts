@@ -63,7 +63,11 @@ const inkSubtle = mix(slate, 0.94, white)
 const brandTextDark = mix(green500, 0.38, limestone)
 const infoDark = mix(hex('mh-info'), 0.62, limestone)
 const dangerDark = mix(hex('mh-danger'), 0.5, limestone)
-const inkSubtleDark = mix(green300, 0.9, pine800)
+// The dark theme's neutral charcoal (index.css `.dark`): the kit's ink lifted toward limestone — never pine.
+const darkPage = ink
+const darkCard = mix(ink, 0.9, limestone)
+const inkMutedDark = mix(limestone, 0.74, ink)
+const inkSubtleDark = mix(limestone, 0.66, ink)
 
 describe('text on the identity’s surfaces — AA, 4.5:1', () => {
   const text: Array<[string, string, string]> = [
@@ -103,15 +107,16 @@ describe('text on the identity’s surfaces — AA, 4.5:1', () => {
 
 describe('text in the dark theme — AA, 4.5:1', () => {
   const text: Array<[string, string, string]> = [
-    ['body text on a card', limestone, pine800],
-    ['body text on the page', limestone, pine900],
-    ['secondary text on a card', green300, pine800],
-    ['the lightest secondary text on a card', inkSubtleDark, pine800],
-    ['brand as text on a card', brandTextDark, pine800],
+    ['body text on a card', limestone, darkCard],
+    ['body text on the page', limestone, darkPage],
+    ['secondary text on a card', inkMutedDark, darkCard],
+    ['the lightest secondary text on a card', inkSubtleDark, darkCard],
+    ['the lightest secondary text on the page', inkSubtleDark, darkPage],
+    ['brand as text on a card', brandTextDark, darkCard],
     ['the primary button label (white on the lifted emerald)', white, green500],
-    ['copper text on a card', brass400, pine800],
-    ['info on a card', infoDark, pine800],
-    ['danger on a card', dangerDark, pine800],
+    ['copper text on a card', brass400, darkCard],
+    ['info on a card', infoDark, darkCard],
+    ['danger on a card', dangerDark, darkCard],
   ]
 
   it.each(text)('%s', (_where, foreground, background) => {
@@ -126,7 +131,7 @@ describe('graphics and controls — 3:1', () => {
     ['the active tab marker on white', emerald, white],
     ['copper bright (a rule, a large figure) on white', brass500, white],
     ['the logo ring on a light surface', emerald, limestone],
-    ['the lifted brand on a dark card (a focus ring or an icon)', brandTextDark, pine800],
+    ['the lifted brand on a dark card (a focus ring or an icon)', brandTextDark, darkCard],
   ]
 
   it.each(graphics)('%s', (_where, foreground, background) => {

@@ -23,7 +23,7 @@
  *
  * So the second encoding is not optional: every chart carries a legend, four or fewer series are
  * also labelled directly, fills are separated by a 2px gap, and `ChartCard` ships a table view. Dark
- * is stepped separately for the pine card rather than flipped from light — the blue is lifted toward
+ * is stepped separately for the charcoal card rather than flipped from light — the blue is lifted toward
  * limestone until it separates from the soft green, the emerald is replaced by the lifted soft green.
  */
 
@@ -45,7 +45,7 @@ export const DARK_HEXES = ['#8DB9AE', '#C9A26E', '#6990AB', '#2E7D6E', '#E3C99F'
  * be checking a palette nobody ships.
  */
 export const LIGHT_SURFACE = '#ffffff'
-export const DARK_SURFACE = '#133B34'
+export const DARK_SURFACE = '#2B3532'
 
 /**
  * Fixed order, never cycled. A sixth series is not a generated hue — it folds

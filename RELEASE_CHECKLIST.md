@@ -121,8 +121,24 @@ for a plain `npm run build`.
 - Nothing from `/api/` is ever stored by the worker. With no connection the app shows a notice, pages fall back to an offline page, and every change (save, send, approve) is refused out loud — nothing is queued.
 - Tested in Chromium (Chrome and Edge share the engine), Firefox, WebKit (Safari engine), an iPhone 14 profile and a Pixel 7 profile, at 375, 390, 430, 768 and 1366×768. **Not** tested on a real iPhone, a real Android phone, or Microsoft Edge itself; add-to-home-screen on iOS is a manual step the app explains on screen.
 
-## Gates run on this RC (2026-10-22, `develop`)
+## Gates run on this RC (2026-10-23, `develop`)
 
-- Backend: full `php artisan test` — see the final report for the exact count.
-- Pint, `npm run typecheck`, `npm run lint`, `vitest run` — green.
-- Playwright: full suite, single worker, isolated database; any failure rerun ×3 and classified.
+All local; no CI/CD is wired. Nothing has been run against a real server, a real phone, or Microsoft Edge itself.
+
+| Gate | Result |
+| --- | --- |
+| Backend, full `php artisan test` | 2122 passed (9217 assertions) |
+| Pint | passed |
+| `npm run typecheck` · `npm run lint` | clean · exit 0 (warnings only) |
+| Vitest, full | 333 passed (32 files) |
+| Playwright, full, one worker, all five engines | 726 passed, 62 skipped by design, 11 failed — all 11 passed ×3 on separate reruns (machine load average 37 from other projects' builds; 50 s page timeouts), recorded as flaky/environmental |
+| PWA production build + `playwright.pwa.config.ts` (Chromium, Firefox, WebKit, iPhone 14, Pixel 7) | 39 passed, 6 skipped by design |
+
+Found and fixed during the gate (not features): the sales-team report returned a 500 on any date range (an ambiguous
+`created_at` in the shared lead date filter); `agent_messages` had no index on its thread (additive migration);
+a sales rep was shown a link to `/automation` on the dashboard (now shown only with `automation.view`); the bottom
+tab bar's `tab-*` test ids collided with the pages' own tab strips (now `bottom-tab-*`).
+
+Database: 103 migrations, none destructive in `up()` except `drop_stored_onboarding_flags` (drops a column nothing writes; reversible; back up before `migrate`). The one new migration is an index and reverses cleanly. Seven tenant tables have no index led by `tenant_id`; each is only read through its parent key, which is indexed.
+
+Left to you: the four public-page values (§P), the server (§2) and the credentials in §4–§7.

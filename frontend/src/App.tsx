@@ -25,6 +25,14 @@ const DesignSystemPage = import.meta.env.DEV
 const AccessPage = lazy(() => import('@/pages/Access').then((m) => ({ default: m.AccessPage })))
 const WorkPage = lazy(() => import('@/pages/Work').then((m) => ({ default: m.WorkPage })))
 // A phone gets the sales flow's own screens, as chunks of their own: the desktop lead page and its charts are never downloaded there.
+// The public pages: no session, no app chrome, each its own small chunk.
+const LandingPage = lazy(() => import('@/pages/public/Landing').then((m) => ({ default: m.LandingPage })))
+const PrivacyPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.PrivacyPage })))
+const TermsPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.TermsPage })))
+const DataDeletionPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.DataDeletionPage })))
+const SecurityPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.SecurityPage })))
+const ContactPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.ContactPage })))
+const AboutPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.AboutPage })))
 const MobileWork = lazy(() => import('@/components/mobile/MobileWork').then((m) => ({ default: m.MobileWork })))
 const MobileLeadScreen = lazy(() => import('@/components/mobile/MobileLeadScreen').then((m) => ({ default: m.MobileLeadScreen })))
 const DataQualityPage = lazy(() => import('@/pages/DataQuality').then((m) => ({ default: m.DataQualityPage })))
@@ -157,6 +165,14 @@ export function App() {
     <>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Public, no session: what مهتم is, and the pages a visitor, a customer's lead or a platform reviewer expects to find. */}
+        <Route path="/welcome" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
+        <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPage /></Suspense>} />
+        <Route path="/terms" element={<Suspense fallback={<PageFallback />}><TermsPage /></Suspense>} />
+        <Route path="/data-deletion" element={<Suspense fallback={<PageFallback />}><DataDeletionPage /></Suspense>} />
+        <Route path="/security" element={<Suspense fallback={<PageFallback />}><SecurityPage /></Suspense>} />
+        <Route path="/contact" element={<Suspense fallback={<PageFallback />}><ContactPage /></Suspense>} />
+        <Route path="/about" element={<Suspense fallback={<PageFallback />}><AboutPage /></Suspense>} />
         {/* A live report behind a link: no session, no app chrome. */}
         <Route path="/reports/share/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
 

@@ -1353,3 +1353,12 @@ html[data-standalone] body {
 [role='dialog'] > div:last-child {
   scroll-padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ───────────── Public pages ───────────── */
+
+/* A link to a section glides there — unless the visitor has asked their device for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

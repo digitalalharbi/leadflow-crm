@@ -340,6 +340,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/tracking/links', [TrackingLinkController::class, 'store']);
             Route::get('/tracking/links/{uuid}', [TrackingLinkController::class, 'show'])->whereUuid('uuid');
             Route::get('/tracking/links/{uuid}/qr', [TrackingLinkController::class, 'qr'])->whereUuid('uuid');
+            Route::get('/tracking/links/{uuid}/analytics', [TrackingLinkController::class, 'analytics'])->whereUuid('uuid');
             Route::get('/partners', [PartnerController::class, 'index']);
             Route::post('/partners', [PartnerController::class, 'store']);
             Route::patch('/partners/{uuid}', [PartnerController::class, 'update'])->whereUuid('uuid');

@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
+use App\Domain\Tracking\EventType;
+use App\Domain\Tracking\LinkAnalytics;
+use App\Domain\Tracking\LinkHealth;
 use App\Domain\Tracking\LinkStats;
 use App\Domain\Tracking\QrCode;
 use App\Domain\Tracking\TrackingLinks;
@@ -35,7 +39,7 @@ class TrackingLinkController extends Controller
 {
     private const WITH = ['landingForm:id,uuid,name,status', 'partner:id,uuid,name,type', 'project:id,uuid,name', 'property:id,uuid,code', 'campaign:id,uuid,name', 'ad:id,uuid,name', 'creative:id,uuid,name', 'rep:id,uuid,name'];
 
-    public function __construct(private TrackingLinks $links, private LinkStats $stats, private AuditLogger $audit) {}
+    public function __construct(private TrackingLinks $links, private LinkStats $stats, private AuditLogger $audit, private LinkAnalytics $analytics, private LinkHealth $health) {}
 
     public function index(Request $request)
     {
@@ -105,6 +109,31 @@ class TrackingLinkController extends Controller
             'Cache-Control' => 'private, max-age=300',
             'Content-Disposition' => $request->boolean('download') ? 'attachment; filename="'.$file.'"' : null,
         ]));
+    }
+
+    /** Everything this link did — the counts, the rates, the funnel, the trend — and whether it can be trusted. */
+    public function analytics(Request $request, string $uuid)
+    {
+        $link = TrackingLink::where('uuid', $uuid)->with(self::WITH)->firstOrFail();
+        $this->authorize('viewAnalytics', $link);
+
+        $days = (int) ($request->validate(['days' => ['nullable', 'integer', 'min:1', 'max:365']])['days'] ?? 30);
+        $from = now()->subDays($days - 1)->startOfDay();
+        $to = now()->endOfDay();
+
+        $recent = TrackingEvent::where('tracking_link_id', $link->id)->latest('occurred_at')->latest('id')->limit(20)->get()
+            ->map(fn (TrackingEvent $e) => [
+                'event' => EventType::from($e->event_type)->canonical(), 'at' => $e->occurred_at->toIso8601String(), 'device' => $e->device,
+                'lead_id' => $e->lead_id ? $e->lead()->withoutGlobalScopes()->value('uuid') : null,
+            ]);
+
+        return ApiResponse::success([
+            'link' => (new TrackingLinkResource($link))->resolve(),
+            'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'days' => $days],
+            'analytics' => $this->analytics->forLinks([$link->id], $from, $to, Permissions::has($request->user(), 'revenue.view')),
+            'health' => $this->health->for($link),
+            'recent' => $recent,
+        ]);
     }
 
     public function store(Request $request)

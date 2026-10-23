@@ -85,6 +85,8 @@ class TrackingRedirectController extends Controller
                     'utm_content' => $link->utm_content,
                     'click_id' => ClickIds::primary($clickIds),
                     'ip_hash' => Visitor::ipHash($request->ip()),
+                    // A click on the link itself — whatever it opens (a page, a chat, a call) — is a click on the link.
+                    'meta' => ['via' => 'link'],
                 ] + $agent);
 
                 return $session->session_id;

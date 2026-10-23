@@ -68,6 +68,7 @@ use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
+use App\Http\Controllers\Api\V1\TrackingDestinationController;
 use App\Http\Controllers\Api\V1\TrackingHealthController;
 use App\Http\Controllers\Api\V1\TrackingLinkController;
 use App\Http\Controllers\Api\V1\TwilioStatusController;
@@ -347,6 +348,13 @@ Route::prefix('v1')->group(function () {
             Route::delete('/partners/{uuid}/commission-payments/{payment}', [PartnerController::class, 'voidPayment'])->whereUuid('uuid');
             Route::post('/partners/{uuid}/statement-link', [PartnerController::class, 'statementLink'])->whereUuid('uuid');
             Route::delete('/partners/{uuid}', [PartnerController::class, 'destroy'])->whereUuid('uuid');
+            // Where events can go: GA4, Meta, TikTok, a GTM container, a webhook… configuration and readiness only.
+            Route::get('/tracking/destinations/catalogue', [TrackingDestinationController::class, 'catalogue']);
+            Route::get('/tracking/destinations', [TrackingDestinationController::class, 'index']);
+            Route::post('/tracking/destinations', [TrackingDestinationController::class, 'store']);
+            Route::get('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'show'])->whereUuid('uuid');
+            Route::patch('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'destroy'])->whereUuid('uuid');
             // The landing pages a link can open, and the form on each.
             Route::get('/tracking/forms/presets', [LandingFormController::class, 'presets']);
             Route::get('/tracking/forms', [LandingFormController::class, 'index']);

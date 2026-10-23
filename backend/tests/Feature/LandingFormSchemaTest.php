@@ -53,7 +53,7 @@ class LandingFormSchemaTest extends TestCase
             'a condition on a field that is not there' => [[$this->field('a', ['visible_if' => ['field' => 'ghost', 'equals' => 'x']])], 'a'],
             'a label of nothing' => [[$this->field('a', ['label' => ''])], 'a'],
             'a hidden field the visitor must fill' => [[$this->field('a', ['hidden' => true, 'required' => true])], 'a'],
-            'too many fields' => [array_map(fn ($i) => $this->field("f{$i}"), range(1, 41)), 'f41'],
+            'too many fields' => [array_map(fn ($i) => $this->field("f{$i}"), range(1, 61)), 'f61'],
         ];
 
         foreach ($cases as $name => [$fields, $key]) {

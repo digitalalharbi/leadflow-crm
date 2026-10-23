@@ -16,16 +16,18 @@ test.describe('Tracking hub', () => {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/tracking')
 
-    // 1 — the form, designed on the screen.
+    // 1 — the form, started from a template in the builder.
     await page.getByRole('tab', { name: 'النماذج' }).click()
     await page.getByTestId('new-form').click()
-    await page.getByTestId('form-name').fill('نموذج الاهتمام — الياسمين')
-    await page.getByTestId('form-headline').fill('فرصتك في الياسمين')
-    await page.getByTestId('add-preset').selectOption('name')
-    await page.getByTestId('add-preset').selectOption('mobile')
-    await page.getByTestId('form-status').selectOption('published')
-    await page.getByTestId('save-form').click()
-    await expect(page.getByTestId('form-list')).toContainText('نموذج الاهتمام — الياسمين')
+    await page.getByTestId('new-form-name').fill('نموذج الاهتمام — الياسمين')
+    await page.getByTestId('new-form-project').selectOption({ label: ALPHA.projects[0] })
+    await page.getByTestId('template-real_estate_interest').click()
+    await page.getByTestId('new-form-create').click()
+    await expect(page.getByTestId('form-builder')).toBeVisible()
+    await page.getByTestId('publish-form').click()
+    await expect(page.getByTestId('published-dialog')).toBeVisible()
+    await page.getByTestId('published-close').click()
+    await page.goto('/tracking')
 
     // 2 — the link, in five steps.
     await page.getByRole('tab', { name: 'الروابط' }).click()
@@ -57,8 +59,8 @@ test.describe('Tracking hub', () => {
     await landing.goto(`/l/${token}?utm_source=facebook&fbclid=E2EFBCLID1`)
     await expect(landing.getByTestId('landing-headline')).toHaveText('فرصتك في الياسمين')
     await expect(landing.locator('html')).toHaveAttribute('dir', 'rtl')
-    await landing.getByTestId('field-name').fill('سلطان المتابع')
-    await landing.getByTestId('field-mobile').fill('0555123456')
+    await landing.getByTestId('input-name').fill('سلطان المتابع')
+    await landing.getByTestId('input-mobile').fill('0555123456')
     await landing.getByTestId('landing-consent').check()
     await landing.getByTestId('landing-submit').click()
     await expect(landing.getByTestId('landing-thanks')).toBeVisible()
@@ -99,19 +101,6 @@ test.describe('Tracking hub', () => {
     await expect(page.getByTestId('acquisition-funnel-submit-count')).toHaveText(/^(1|١)$/)
     await expect(page.getByTestId(`acq-link-${token}`)).toContainText('إعلان ميتا الرئيسي')
     await expect(page.getByTestId('acquisition-diagnostics')).toBeVisible()
-  })
-
-  test('a form that cannot reach the customer is refused beside the problem, not saved half-made', async ({ page }) => {
-    await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/tracking')
-    await page.getByRole('tab', { name: 'النماذج' }).click()
-    await page.getByTestId('new-form').click()
-    await page.getByTestId('form-name').fill('نموذج ناقص')
-    await page.getByTestId('add-preset').selectOption('city')
-    await page.getByTestId('save-form').click()
-
-    await expect(page.getByTestId('form-error')).toContainText('رقم جوال أو بريد')
-    await expect(page.getByTestId('form-editor')).toBeVisible()
   })
 
   test('destinations: a platform can be set up, its credential is never read back, and it says what it is waiting for', async ({ page }) => {

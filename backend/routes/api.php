@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\EmailDeliveryController;
 use App\Http\Controllers\Api\V1\EmailSettingsController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\FollowUpPlanController;
+use App\Http\Controllers\Api\V1\FormAssetController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
@@ -35,7 +36,6 @@ use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\JourneyController;
-use App\Http\Controllers\Api\V1\FormAssetController;
 use App\Http\Controllers\Api\V1\LandingFormController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
@@ -102,12 +102,12 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
     // What a landing page tells us a visitor did. Public; the link token says whose it is.
-    Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:240,1')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:landing-beacon')->where('token', '[A-Za-z0-9]{6,24}');
 
     // The landing page a tracking link opens, and its form. Public by nature; the token is the only thing the visitor holds.
-    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:240,1')->where('name', '[a-f0-9]{32}\.(png|jpg|webp)');
-    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:120,1')->where('token', '[A-Za-z0-9]{6,24}');
-    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:landing-asset')->where('name', '[a-f0-9]{32}\.(png|jpg|webp)');
+    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:landing-view')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9]{6,24}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');

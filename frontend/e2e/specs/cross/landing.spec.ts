@@ -58,8 +58,8 @@ test.describe('Landing page', () => {
     await page.getByTestId('landing-submit').click()
     await expect(page.getByTestId('landing-thanks')).toHaveCount(0)
 
-    await page.getByTestId('field-name').fill('نورة المتابعة')
-    await page.getByTestId('field-mobile').fill('0544001122')
+    await page.getByTestId('input-name').fill('نورة المتابعة')
+    await page.getByTestId('input-mobile').fill('0544001122')
     await page.getByTestId('landing-submit').click()
     await expect(page.getByTestId('landing-consent-error')).toBeVisible()
 

@@ -31,15 +31,15 @@ export function Canvas({ draft, selection, onSelect, onDrop, onFieldOp, onRowOp,
     try { return JSON.parse(e.dataTransfer.getData(DRAG_TYPE)) as DragPayload } catch { return null }
   }
   const zone = (target: Target) => ({
-    onDragOver: (e: React.DragEvent) => { if (dragging) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } },
+    // Always willing: whether what arrives can be dropped is decided on the drop (a drag from outside this page carries no payload and is ignored).
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' },
     onDrop: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setDragging(false); const p = read(e); if (p) onDrop(p, target) },
   })
 
+  // A drop zone never changes the size of anything while a drag is under way: a layout that moves under the pointer cannot be dropped on.
   const rowZone = (section: LayoutSection, at: number) => (
-    <div key={`z${at}`} {...zone({ section: section.id, newRowAt: at })} data-testid={`drop-row-${section.id}-${at}`}
-      className={cn('transition-all', dragging ? 'my-1 flex h-9 items-center justify-center rounded-lg border-2 border-dashed border-[var(--brand)] bg-[var(--brand-soft)] text-[0.8125rem] font-semibold text-[var(--brand-text)]' : 'h-1.5')}>
-      {dragging && t('hub.builder.canvas.dropRow')}
-    </div>
+    <div key={`z${at}`} {...zone({ section: section.id, newRowAt: at })} data-testid={`drop-row-${section.id}-${at}`} aria-hidden
+      className={cn('h-3 rounded-full transition-colors', dragging ? 'bg-[var(--brand-soft)] outline-1 outline-dashed outline-[var(--brand)]' : '')} />
   )
 
   const card = (f: FormField, section: LayoutSection, row: LayoutRow, colId: string, index: number) => {
@@ -48,7 +48,7 @@ export function Canvas({ draft, selection, onSelect, onDrop, onFieldOp, onRowOp,
 
     return (
       <div key={f.key} {...zone({ section: section.id, row: row.id, column: colId, index })} data-testid={`canvas-field-${f.key}`} data-selected={selected || undefined}
-        className={cn('group rounded-lg border bg-[var(--color-surface)]', selected ? 'border-[var(--brand)] ring-2 ring-[var(--brand-ring)]' : 'border-[var(--color-border)]')}>
+        className={cn('group min-w-0 rounded-lg border bg-[var(--color-surface)]', selected ? 'border-[var(--brand)] ring-2 ring-[var(--brand-ring)]' : 'border-[var(--color-border)]')}>
         <div draggable onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind: 'field', key: f.key } satisfies DragPayload)); e.dataTransfer.effectAllowed = 'move'; setDragging(true) }} onDragEnd={() => setDragging(false)}
           className="flex items-center gap-1.5 p-1.5">
           <GripVertical className="size-4 shrink-0 cursor-grab text-[var(--color-ink-subtle)]" aria-hidden />
@@ -70,13 +70,13 @@ export function Canvas({ draft, selection, onSelect, onDrop, onFieldOp, onRowOp,
   }
 
   return (
-    <div className="space-y-4" data-testid="canvas" onDragEnd={() => setDragging(false)} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false) }}
+    <div className="min-w-0 space-y-4" data-testid="canvas" onDragEnd={() => setDragging(false)} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false) }}
       onDragEnter={() => setDragging(true)}>
       {draft.layout.sections.map((section, si) => {
         const sectionSelected = selection?.kind === 'section' && selection.id === section.id
 
         return (
-          <section key={section.id} data-testid={`canvas-section-${si}`} className={cn('rounded-2xl border p-3', sectionSelected ? 'border-[var(--brand)]' : 'border-[var(--color-border)]')}>
+          <section key={section.id} data-testid={`canvas-section-${si}`} className={cn('min-w-0 rounded-2xl border p-3', sectionSelected ? 'border-[var(--brand)]' : 'border-[var(--color-border)]')}>
             <div className="mb-2 flex items-center justify-between gap-2">
               <button type="button" onClick={() => onSelect({ kind: 'section', id: section.id })} aria-pressed={sectionSelected} data-testid={`select-section-${si}`} className="min-w-0 text-start">
                 <span className="block truncate text-[0.8125rem] font-bold text-[var(--color-ink-subtle)]">{multi ? t('hub.builder.canvas.step', { n: si + 1 }) : t('hub.builder.canvas.section', { n: si + 1 })}</span>
@@ -114,9 +114,9 @@ export function Canvas({ draft, selection, onSelect, onDrop, onFieldOp, onRowOp,
                     </div>
                     <div className={cn('grid gap-2', row.columns.length > 1 && 'sm:grid-cols-[repeat(var(--cols),minmax(0,1fr))]')} style={{ ['--cols' as string]: row.columns.length }}>
                       {row.columns.map((col) => (
-                        <div key={col.id} data-testid={`canvas-col-${col.id}`} className="min-h-12 space-y-1.5" {...zone({ section: section.id, row: row.id, column: col.id, index: col.fields.length })}>
+                        <div key={col.id} data-testid={`canvas-col-${col.id}`} className="min-h-12 min-w-0 space-y-1.5" {...zone({ section: section.id, row: row.id, column: col.id, index: col.fields.length })}>
                           {col.fields.map((k, i) => (byKey.get(k) ? card(byKey.get(k)!, section, row, col.id, i) : null))}
-                          {(col.fields.length === 0 || dragging) && (
+                          {col.fields.length === 0 && (
                             <div data-testid={`drop-col-${col.id}`} className={cn('grid min-h-10 place-items-center rounded-lg border-2 border-dashed text-[0.75rem] text-[var(--color-ink-subtle)]', dragging ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-text)]' : 'border-[var(--color-border)]')}>
                               {t('hub.builder.canvas.dropHere')}
                             </div>

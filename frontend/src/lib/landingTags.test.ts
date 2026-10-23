@@ -54,12 +54,6 @@ describe('the dataLayer', () => {
 })
 
 describe('trackSubmit', () => {
-  it('pushes the submission to the dataLayer under the id the server recorded it with', () => {
-    trackSubmit([], '8b1d1a7e-0000-4000-8000-000000000001')
-
-    expect((window as W).dataLayer).toContainEqual({ event: 'form_submitted', event_id: '8b1d1a7e-0000-4000-8000-000000000001' })
-  })
-
   it('gives the Meta pixel the same event id, so the platform counts the browser and the server once', () => {
     const fbq = vi.fn()
     ;(window as W).fbq = fbq

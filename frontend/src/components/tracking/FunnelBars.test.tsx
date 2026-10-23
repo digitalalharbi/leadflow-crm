@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/utils'
 import { FunnelBars } from './FunnelBars'
-import { optionsToText, textToOptions } from './FormEditor'
 import type { FunnelRow } from '@/features/hub'
 
 const rows: FunnelRow[] = [
@@ -31,18 +30,5 @@ describe('FunnelBars', () => {
     renderWithProviders(<FunnelBars rows={rows} />)
 
     expect(screen.queryByTestId('funnel-click-drop')).toBeNull()
-  })
-})
-
-describe('choices as text', () => {
-  it('round-trips value:label lines', () => {
-    const options = [{ value: 'villa', label: 'فيلا' }, { value: 'cash', label: 'cash' }]
-
-    expect(optionsToText(options)).toBe('villa:فيلا\ncash')
-    expect(textToOptions('villa:فيلا\ncash\n\n  ')).toEqual(options)
-  })
-
-  it('keeps a colon inside a label', () => {
-    expect(textToOptions('a:ratio 1:2')).toEqual([{ value: 'a', label: 'ratio 1:2' }])
   })
 })

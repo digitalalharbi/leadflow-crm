@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { renderWithProviders } from '@/test/utils'
-import type { PublicLanding } from '@/features/hub'
-import { fieldProblem, LeadPage } from './LeadPage'
+import { DEFAULT_DESIGN, DEFAULT_SETTINGS, type FormField, type PublicLanding } from '@/features/hub'
+import { LeadPage } from './LeadPage'
 
 const submit = vi.fn()
 const landing = vi.fn()
@@ -15,49 +15,49 @@ vi.mock('@/features/hub', async (importOriginal) => ({
   submitLanding: (...a: unknown[]) => submit(...a),
 }))
 
-vi.mock('@/lib/api', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/api')>()),
-  http: { post: vi.fn().mockResolvedValue({}) },
-}))
+const f = (key: string, over: Partial<FormField> = {}): FormField => ({ key, type: 'text', label: key, required: false, hidden: false, mapping: 'none', ...over })
+
+const FIELDS: FormField[] = [
+  f('name', { label: 'الاسم', required: true, mapping: 'lead.full_name' }),
+  f('mobile', { type: 'phone', label: 'رقم الجوال', required: true, mapping: 'lead.phone' }),
+  f('purpose', { type: 'radio', label: 'الغرض', mapping: 'lead.purchase_purpose', options: [{ value: 'residence', label: 'سكن' }, { value: 'investment', label: 'استثمار' }] }),
+  f('yield', { label: 'العائد المتوقع', show_when: { match: 'all', conditions: [{ field: 'purpose', op: 'equals', value: 'investment' }] } }),
+  f('source', { type: 'hidden', label: 'المصدر', hidden: true, mapping: 'tracking.source', default: '@source' }),
+]
+
+const layoutOf = (keys: string[][], steps?: string[][][]) => ({
+  sections: (steps ?? [keys.map((k) => [k[0]])]).map((rows, i) => ({
+    id: `s${i + 1}`, title: null, description: null, step_title: null, show_when: null, hide_when: null,
+    rows: rows.map((cols, ri) => ({ id: `r${i}${ri}`, show_when: null, hide_when: null, columns: cols.map((k, ci) => ({ id: `c${ci}`, fields: [k] })) })),
+  })),
+})
 
 const page = (over: Partial<PublicLanding['landing']> = {}): PublicLanding => ({
   landing: {
-    token: 'abc123', headline: 'فلل الياسمين', description: null, benefits: ['قرب من المدارس'], cta_label: null, logo_url: null, image_url: null,
+    token: 'abc123', version: 1, headline: 'فلل الياسمين', description: null, benefits: ['قرب من المدارس'], cta_label: null, logo_url: null, image_url: null,
     thank_you: { title: null, message: null }, project: { name: 'الياسمين' }, steps: 1,
     consent: { required: true, text: null, privacy_url: null }, tags: [],
-    fields: [
-      { key: 'name', type: 'text', label: 'الاسم', required: true, hidden: false, mapping: 'lead.full_name', step: 1 },
-      { key: 'mobile', type: 'phone', label: 'رقم الجوال', required: true, hidden: false, mapping: 'lead.phone', step: 1 },
-      { key: 'purpose', type: 'radio', label: 'الغرض', required: false, hidden: false, mapping: 'lead.purchase_purpose', step: 1, options: [{ value: 'residence', label: 'سكن' }, { value: 'investment', label: 'استثمار' }] },
-      { key: 'yield', type: 'text', label: 'العائد المتوقع', required: false, hidden: false, mapping: 'none', step: 1, visible_if: { field: 'purpose', equals: 'investment' } },
-      { key: 'source', type: 'hidden', label: 'المصدر', required: false, hidden: true, mapping: 'tracking.source', step: 1, default: '@source' },
-    ],
+    fields: FIELDS, layout: layoutOf([], [FIELDS.filter((x) => !x.hidden).map((x) => [x.key])]), design: DEFAULT_DESIGN, settings: { mode: 'single', default_country: 'SA', thanks: DEFAULT_SETTINGS.thanks, gtm: { events: true } },
     ...over,
   },
   tracking: { visitor_id: 'v1', session_id: 's1', view_event_id: 'e0', datalayer: { event: 'landing_viewed', event_id: 'e0' } },
 })
 
+const done = { ok: true, duplicate: false, event_id: 'ev', thank_you: { title: null, message: null, actions: [], redirect_url: null, redirect_delay: 5 }, datalayer: { event_id: 'ev', source: 'meta' } }
 const open = () => renderWithProviders(<Routes><Route path="/l/:token" element={<LeadPage />} /></Routes>, { route: '/l/abc123?utm_source=facebook&fbclid=FB1' })
 
 beforeEach(() => {
-  submit.mockReset().mockResolvedValue(undefined)
+  localStorage.clear()
+  submit.mockReset().mockResolvedValue(done)
   landing.mockReset().mockResolvedValue(page())
+  ;(window as unknown as { dataLayer?: unknown[] }).dataLayer = []
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({}))
 })
 
-describe('fieldProblem', () => {
-  it.each([
-    [{ type: 'text', required: true }, '', 'required'],
-    [{ type: 'text', required: false }, '', null],
-    [{ type: 'phone', required: true }, '12', 'phone'],
-    [{ type: 'phone', required: true }, '+966 50 123 4567', null],
-    [{ type: 'email', required: false }, 'nope', 'email'],
-    [{ type: 'email', required: false }, 'a@b.sa', null],
-    [{ type: 'number', required: false }, 'abc', 'number'],
-    [{ type: 'checkbox', required: true }, false, 'required'],
-  ] as const)('%j with %j → %s', (shape, value, expected) => {
-    expect(fieldProblem({ key: 'k', label: 'K', hidden: false, mapping: 'none', ...shape } as never, value)).toBe(expected)
-  })
-})
+const fill = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.type(await screen.findByTestId('input-name'), 'سعد')
+  await user.type(screen.getByTestId('input-mobile'), '0501234567')
+}
 
 describe('the landing page', () => {
   it('shows the project, the headline, the selling points and the form — never the hidden field', async () => {
@@ -94,18 +94,16 @@ describe('the landing page', () => {
     expect(submit).not.toHaveBeenCalled()
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
 
-    await user.type(screen.getByTestId('field-name'), 'سعد')
-    await user.type(screen.getByTestId('field-mobile'), '0501234567')
+    await fill(user)
     await user.click(screen.getByTestId('landing-submit'))
     expect(await screen.findByTestId('landing-consent-error')).toBeInTheDocument()
     expect(submit).not.toHaveBeenCalled()
   })
 
-  it('sends the answers once with one submission id, the click ids and the consent — and shows the thanks', async () => {
+  it('sends the answers once — the phone with its country, the click ids, the consent, only what was shown — and shows the thanks', async () => {
     const user = userEvent.setup()
     open()
-    await user.type(await screen.findByTestId('field-name'), 'سعد')
-    await user.type(screen.getByTestId('field-mobile'), '0501234567')
+    await fill(user)
     await user.click(screen.getByTestId('landing-consent'))
     await user.click(screen.getByTestId('landing-submit'))
 
@@ -113,22 +111,43 @@ describe('the landing page', () => {
     expect(submit).toHaveBeenCalledTimes(1)
     const [token, body] = submit.mock.calls[0]
     expect(token).toBe('abc123')
-    expect(body).toMatchObject({ consent: true, visitor_id: 'v1', session_id: 's1', click_ids: { fbclid: 'FB1' }, utm_source: 'facebook', answers: { name: 'سعد', mobile: '0501234567' } })
+    expect(body).toMatchObject({ consent: true, visitor_id: 'v1', session_id: 's1', click_ids: { fbclid: 'FB1' }, utm_source: 'facebook', answers: { name: 'سعد', mobile: { country: 'SA', number: '0501234567' } } })
     expect(body.submission_id).toMatch(/^[0-9a-f-]{36}$/)
-    // A question that was never shown is not an answer.
     expect(body.answers).not.toHaveProperty('yield')
     expect(body.answers).not.toHaveProperty('source')
+    expect(body.answers).not.toHaveProperty('website')
   })
 
-  it('keeps the same submission id when the network failed and the visitor tries again', async () => {
+  it('announces the conversion only after the server has kept the lead, with no customer in it', async () => {
+    const user = userEvent.setup()
+    let resolve: (v: typeof done) => void = () => undefined
+    submit.mockReturnValue(new Promise((r) => { resolve = r }))
+    open()
+    await fill(user)
+    await user.click(screen.getByTestId('landing-consent'))
+    await user.click(screen.getByTestId('landing-submit'))
+
+    const layer = () => (window as unknown as { dataLayer: { event?: string }[] }).dataLayer.map((e) => e.event)
+    await waitFor(() => expect(layer()).toContain('form_submit'))
+    expect(layer()).not.toContain('form_success')
+
+    resolve(done)
+    await screen.findByTestId('landing-thanks')
+    expect(layer()).toContain('form_success')
+    const success = (window as unknown as { dataLayer: Record<string, unknown>[] }).dataLayer.find((e) => e.event === 'form_success')!
+    expect(success.event_id).toBe('ev')
+    expect(JSON.stringify(success)).not.toMatch(/سعد|0501234567/)
+  })
+
+  it('keeps the same submission id when the network failed and the visitor tries again — and keeps what they typed', async () => {
     const user = userEvent.setup()
     submit.mockRejectedValueOnce(new Error('offline'))
     open()
-    await user.type(await screen.findByTestId('field-name'), 'سعد')
-    await user.type(screen.getByTestId('field-mobile'), '0501234567')
+    await fill(user)
     await user.click(screen.getByTestId('landing-consent'))
     await user.click(screen.getByTestId('landing-submit'))
     await screen.findByTestId('landing-failed')
+    expect(screen.getByTestId('input-name')).toHaveValue('سعد')
     await user.click(screen.getByTestId('landing-submit'))
     await screen.findByTestId('landing-thanks')
 
@@ -136,22 +155,43 @@ describe('the landing page', () => {
     expect(submit.mock.calls[1][1].submission_id).toBe(submit.mock.calls[0][1].submission_id)
   })
 
-  it('walks a multi-step form one step at a time', async () => {
+  it('resumes where the visitor left off, and forgets once the lead is kept', async () => {
     const user = userEvent.setup()
-    landing.mockResolvedValue(page({ steps: 2, fields: [
-      { key: 'name', type: 'text', label: 'الاسم', required: true, hidden: false, mapping: 'lead.full_name', step: 1 },
-      { key: 'mobile', type: 'phone', label: 'رقم الجوال', required: true, hidden: false, mapping: 'lead.phone', step: 2 },
-    ] }))
+    const first = open()
+    await user.type(await screen.findByTestId('input-name'), 'سعد')
+    first.unmount()
+
+    open()
+    expect(await screen.findByTestId('input-name')).toHaveValue('سعد')
+
+    await user.type(screen.getByTestId('input-mobile'), '0501234567')
+    await user.click(screen.getByTestId('landing-consent'))
+    await user.click(screen.getByTestId('landing-submit'))
+    await screen.findByTestId('landing-thanks')
+    expect(localStorage.getItem('mt:form:abc123:1')).toBeNull()
+  })
+
+  it('walks a multi-step form one step at a time, with progress, and reports each finished step', async () => {
+    const user = userEvent.setup()
+    const fields = [f('name', { label: 'الاسم', required: true, mapping: 'lead.full_name' }), f('mobile', { type: 'phone', label: 'رقم الجوال', required: true, mapping: 'lead.phone' })]
+    landing.mockResolvedValue(page({ fields, steps: 2, layout: layoutOf([], [[['name']], [['mobile']]]), settings: { ...page().landing.settings, mode: 'multi' } }))
     open()
     await screen.findByTestId('landing-step')
 
-    expect(screen.queryByTestId('field-mobile')).toBeNull()
+    expect(screen.queryByTestId('input-mobile')).toBeNull()
+    expect(screen.getByTestId('form-progress')).toHaveAttribute('aria-valuenow', '1')
     await user.click(screen.getByTestId('landing-submit'))
-    expect(screen.queryByTestId('field-mobile')).toBeNull()
-    await user.type(screen.getByTestId('field-name'), 'سعد')
+    expect(screen.queryByTestId('input-mobile')).toBeNull()
+    await user.type(screen.getByTestId('input-name'), 'سعد')
     await user.click(screen.getByTestId('landing-submit'))
-    await waitFor(() => expect(screen.getByTestId('field-mobile')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('input-mobile')).toBeInTheDocument())
+    expect(screen.getByTestId('form-progress')).toHaveAttribute('aria-valuenow', '2')
     expect(submit).not.toHaveBeenCalled()
+
+    const sent = (vi.mocked(fetch).mock.calls as unknown[][]).map((c) => JSON.parse(String((c[1] as RequestInit).body)))
+    expect(sent.map((b) => b.event)).toEqual(['form_start', 'form_step'])
+    expect(sent[1].meta).toEqual({ step: '1' })
+    expect(await screen.findByTestId('landing-back')).toBeInTheDocument()
   })
 
   it('says a page that is not there is not available — one answer for every reason', async () => {
@@ -159,5 +199,17 @@ describe('the landing page', () => {
     open()
 
     expect(await screen.findByTestId('landing-unavailable')).toBeInTheDocument()
+  })
+
+  it('shows what the server refused beside the field it was about, and goes back to the step it was on', async () => {
+    const user = userEvent.setup()
+    const { ApiError } = await import('@/lib/api')
+    submit.mockRejectedValueOnce(new ApiError('x', 422, { 'answers.mobile': ['invalid_phone'] }))
+    open()
+    await fill(user)
+    await user.click(screen.getByTestId('landing-consent'))
+    await user.click(screen.getByTestId('landing-submit'))
+
+    expect(await within(await screen.findByTestId('field-mobile')).findByRole('alert')).toBeInTheDocument()
   })
 })

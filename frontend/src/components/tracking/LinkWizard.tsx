@@ -46,7 +46,7 @@ const BLANK: Draft = {
  * Each step says what it needs before the next one opens; nothing is created until the last. When it is made, the link is already in
  * your hand — to copy, to print as a code, to try, to watch.
  */
-export function LinkWizard({ open, onClose, onAnalytics, onQr }: { open: boolean; onClose: () => void; onAnalytics: (link: TrackingLink) => void; onQr: (link: TrackingLink) => void }) {
+export function LinkWizard({ open, onClose, onAnalytics, onQr, preset }: { open: boolean; onClose: () => void; onAnalytics: (link: TrackingLink) => void; onQr: (link: TrackingLink) => void; preset?: { project_id?: string; landing_form_id?: string } }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
@@ -65,12 +65,13 @@ export function LinkWizard({ open, onClose, onAnalytics, onQr }: { open: boolean
 
   useEffect(() => {
     if (!open) return
-    setStep('project')
-    setDraft(BLANK)
+    // Started from a form: its project and the form itself are already chosen, so the first question is the source.
+    setStep(preset?.project_id ? 'source' : 'project')
+    setDraft({ ...BLANK, ...(preset?.project_id ? { project_id: preset.project_id } : {}), ...(preset?.landing_form_id ? { landing_form_id: preset.landing_form_id, mode: 'landing' as const } : {}) })
     setMade(null)
     setError(null)
     setTouchedUtm(false)
-  }, [open])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }))
   const project = projects?.find((p) => p.id === draft.project_id)

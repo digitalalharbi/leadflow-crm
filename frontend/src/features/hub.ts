@@ -3,8 +3,26 @@ import type { TrackingLink } from '@/features/tracking'
 
 /* ------------------------------------------------------------------ smart forms */
 
-export const FIELD_TYPES = ['text', 'phone', 'email', 'number', 'select', 'multi_select', 'radio', 'checkbox', 'date', 'textarea', 'hidden'] as const
+export const FIELD_TYPES = [
+  'text', 'phone', 'email', 'number', 'textarea', 'select', 'multi_select', 'radio', 'checkbox', 'date', 'time', 'hidden',
+  'heading', 'paragraph', 'divider', 'consent', 'matrix', 'repeater',
+] as const
 export type FieldType = (typeof FIELD_TYPES)[number]
+
+/** A condition: `{match: all|any, conditions: [{field, op, value?}]}`. The server and the page run the same vectors. */
+export const LOGIC_OPS = ['equals', 'not_equals', 'contains', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'] as const
+export type LogicOp = (typeof LOGIC_OPS)[number]
+export interface LogicCondition { field: string; op: LogicOp; value?: string | number | boolean | null }
+export interface LogicGroup { match: 'all' | 'any'; conditions: LogicCondition[] }
+
+export interface MatrixDef { rows: FieldOption[]; columns: FieldOption[]; multiple: boolean; require_all_rows: boolean; min_answers: number }
+export interface RepeaterSubfield { key: string; type: 'text' | 'phone' | 'email' | 'number' | 'select' | 'date' | 'time' | 'textarea'; label: string; required?: boolean; options?: FieldOption[]; placeholder?: string | null }
+export interface RepeaterDef { subfields: RepeaterSubfield[]; min_rows: number; max_rows: number; default_rows: number; add_label?: string | null }
+
+export interface LayoutColumn { id: string; fields: string[] }
+export interface LayoutRow { id: string; show_when?: LogicGroup | null; hide_when?: LogicGroup | null; columns: LayoutColumn[] }
+export interface LayoutSection { id: string; title?: string | null; description?: string | null; step_title?: string | null; show_when?: LogicGroup | null; hide_when?: LogicGroup | null; rows: LayoutRow[] }
+export interface FormLayout { sections: LayoutSection[] }
 
 export interface FieldOption { value: string; label: string }
 
@@ -20,11 +38,53 @@ export interface FormField {
   options?: FieldOption[]
   step?: number
   order?: number
-  validation?: Record<string, string | number>
+  validation?: { min?: number; max?: number; min_length?: number; max_length?: number; pattern?: string; message?: string }
   /** `lead.phone`, `tracking.source`, `custom.x` or `none`. */
   mapping: string
   visible_if?: { field: string; equals?: string } | null
+  show_when?: LogicGroup | null
+  hide_when?: LogicGroup | null
+  require_when?: LogicGroup | null
+  matrix?: MatrixDef | null
+  repeater?: RepeaterDef | null
 }
+
+/* ------------------------------------------------------------------ design and settings (closed lists, never CSS) */
+
+export const HEADER_LAYOUTS = ['minimal', 'centered', 'split', 'cover', 'project_card'] as const
+export type HeaderLayout = (typeof HEADER_LAYOUTS)[number]
+export const PALETTE = ['emerald', 'teal', 'blue', 'indigo', 'violet', 'rose', 'amber', 'slate', 'stone'] as const
+export type PaletteToken = (typeof PALETTE)[number]
+
+export interface FormDesign {
+  header: {
+    layout: HeaderLayout; show_logo: boolean; logo_size: 'sm' | 'md' | 'lg'; logo_align: 'start' | 'center' | 'end'; show_project_name: boolean
+    background: 'none' | 'soft' | 'brand' | 'image'; location: string | null; price_from: number | null; trust_note: string | null
+  }
+  style: {
+    surface: 'card' | 'flat'; radius: 'none' | 'sm' | 'md' | 'lg' | 'xl'; field_spacing: 'tight' | 'normal' | 'loose'; section_spacing: 'tight' | 'normal' | 'loose'
+    input_size: 'compact' | 'comfortable' | 'large'; button: 'full' | 'auto'; theme: 'light' | 'brand' | 'neutral'; primary: PaletteToken; accent: PaletteToken
+  }
+}
+
+export const THANK_ACTIONS = ['whatsapp', 'call', 'appointment', 'project', 'brochure'] as const
+export type ThankActionType = (typeof THANK_ACTIONS)[number]
+export interface ThankAction { type: ThankActionType; label: string; value: string }
+export interface SignalRule { id: string; label: string; points: number; when: LogicGroup }
+
+export interface PublicSettings {
+  mode: 'single' | 'multi'
+  default_country: string
+  thanks: { actions: ThankAction[]; redirect_url: string | null; redirect_delay: number }
+  gtm: { events: boolean }
+}
+export interface FormSettings extends PublicSettings { signals: SignalRule[]; variant: { key: string; group: string | null } }
+
+export const DEFAULT_DESIGN: FormDesign = {
+  header: { layout: 'centered', show_logo: true, logo_size: 'md', logo_align: 'center', show_project_name: true, background: 'none', location: null, price_from: null, trust_note: null },
+  style: { surface: 'card', radius: 'lg', field_spacing: 'normal', section_spacing: 'normal', input_size: 'comfortable', button: 'full', theme: 'light', primary: 'emerald', accent: 'amber' },
+}
+export const DEFAULT_SETTINGS: FormSettings = { mode: 'single', default_country: 'SA', thanks: { actions: [], redirect_url: null, redirect_delay: 5 }, gtm: { events: true }, signals: [], variant: { key: 'A', group: null } }
 
 export interface LandingForm {
   id: string
@@ -43,11 +103,16 @@ export interface LandingForm {
   consent_text: string | null
   privacy_url: string | null
   fields: FormField[]
+  layout: FormLayout
+  design: FormDesign
+  settings: FormSettings
   steps: number
+  published_version: { id: string; version: number; published_at: string } | null
+  has_unpublished_changes: boolean
   links_count: number | null
 }
 
-export type FormInput = Partial<Omit<LandingForm, 'id' | 'project' | 'steps' | 'links_count'>> & { project_id?: string | null }
+export type FormInput = Partial<Omit<LandingForm, 'id' | 'project' | 'steps' | 'links_count' | 'published_version' | 'has_unpublished_changes'>> & { project_id?: string | null; template?: string }
 
 export interface FormPresets {
   presets: FormField[]
@@ -61,17 +126,6 @@ export const createForm = (input: FormInput) => apiPost<{ form: LandingForm }>('
 export const updateForm = (id: string, input: FormInput) => apiPatch<{ form: LandingForm }>(`/tracking/forms/${id}`, input)
 export const deleteForm = (id: string) => apiDelete(`/tracking/forms/${id}`)
 
-/** Is this field shown, given what has been answered so far? One rule, shared by the builder preview and the public page. */
-export function isVisible(field: FormField, answers: Record<string, unknown>): boolean {
-  if (field.hidden || field.type === 'hidden') return false
-  const c = field.visible_if
-  if (!c) return true
-  const given = answers[c.field]
-  const text = Array.isArray(given) ? given.join(',') : String(given ?? '')
-  if (c.equals === undefined || c.equals === '') return text !== ''
-  return Array.isArray(given) ? given.includes(c.equals) : text === c.equals
-}
-
 /* ------------------------------------------------------------------ the public landing page */
 
 export interface LandingTag { kind: string; id: string }
@@ -79,6 +133,7 @@ export interface LandingTag { kind: string; id: string }
 export interface PublicLanding {
   landing: {
     token: string
+    version: number
     headline: string | null
     description: string | null
     benefits: string[]
@@ -88,6 +143,9 @@ export interface PublicLanding {
     thank_you: { title: string | null; message: string | null }
     project: { name: string } | null
     fields: FormField[]
+    layout: FormLayout
+    design: FormDesign
+    settings: PublicSettings
     steps: number
     consent: { required: boolean; text: string | null; privacy_url: string | null }
     tags: LandingTag[]
@@ -119,9 +177,20 @@ export interface LandingSubmitInput {
   utm_content?: string
 }
 
-export async function submitLanding(token: string, input: LandingSubmitInput): Promise<void> {
+export interface LandingSubmitResult {
+  ok: boolean
+  duplicate: boolean
+  event_id: string
+  thank_you: { title: string | null; message: string | null; actions: ThankAction[]; redirect_url: string | null; redirect_delay: number }
+  /** Ids and campaign names only: never a customer's name, number or address. */
+  datalayer: Record<string, string | number>
+}
+
+export async function submitLanding(token: string, input: LandingSubmitInput): Promise<LandingSubmitResult> {
   const { http } = await import('@/lib/api')
-  await http.post(`/public/landing/${token}/submit`, input)
+  const response = await http.post<{ data: LandingSubmitResult }>(`/public/landing/${token}/submit`, input)
+
+  return response.data.data
 }
 
 /* ------------------------------------------------------------------ link analytics */
@@ -269,3 +338,35 @@ export function utmSlug(text: string): string {
 
 /** A custom parameter's name must be one a URL and a report can carry: a word, no spaces. */
 export const validParamName = (name: string): boolean => /^[a-z][a-z0-9_]{0,31}$/i.test(name)
+
+/* ------------------------------------------------------------------ the builder's own calls */
+
+export interface FormTemplateInfo { key: string; name: string; description: string; fields: number; steps: number }
+export interface FormVersionInfo { id: string; version: number; variant: string; published_at: string; published_by: string | null; is_live: boolean; submissions: number }
+
+export const fetchFormTemplates = () => apiGet<{ templates: FormTemplateInfo[] }>('/tracking/forms/templates').then((r) => r.templates)
+export const publishForm = (id: string) => apiPost<{ form: LandingForm }>(`/tracking/forms/${id}/publish`, {})
+export const duplicateForm = (id: string) => apiPost<{ form: LandingForm }>(`/tracking/forms/${id}/duplicate`, {})
+export const fetchFormVersions = (id: string) => apiGet<{ versions: FormVersionInfo[] }>(`/tracking/forms/${id}/versions`).then((r) => r.versions)
+export const fetchForm = (id: string) => apiGet<{ form: LandingForm }>(`/tracking/forms/${id}`).then((r) => r.form)
+
+export async function uploadFormAsset(file: File): Promise<{ url: string; width: number; height: number }> {
+  const { http } = await import('@/lib/api')
+  const body = new FormData()
+  body.append('file', file)
+  const response = await http.post<{ data: { url: string; width: number; height: number } }>('/tracking/forms/assets', body, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+  return response.data.data
+}
+
+export interface FormAnalyticsData {
+  form: { id: string; name: string }
+  range: { from: string; to: string; days: number }
+  totals: { views: number; starts: number; submits: number; completion_rate: number | null; abandonment_rate: number | null; avg_completion_seconds: number | null }
+  steps: { step: number; entered: number; completed: number; drop_off: number | null }[]
+  abandoned_at: { field: string | null; step: number | null; count: number }[]
+  matrix: { field: string; label: string; columns: FieldOption[]; rows: { row: string; label: string; counts: Record<string, number>; answered: number }[] }[]
+  versions: { version: number; variant: string; submits: number; is_live: boolean }[]
+}
+
+export const fetchFormAnalytics = (id: string, days: number) => apiGet<FormAnalyticsData>(`/tracking/forms/${id}/analytics`, { days })

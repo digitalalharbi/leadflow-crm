@@ -191,6 +191,44 @@ that needs a machine, a name or a secret only you hold is **EXTERNAL CONFIG REQU
 | Google (Sheets, Ads) | OAuth / developer credentials per workspace (§6, §7) |
 | TikTok, Snapchat, LinkedIn, X | app credentials per workspace (§7) |
 
+## Production deployment status — waiting for a server (2026-10-24)
+
+**v0.5.1 is the release for production and is not deployed.** `main` = tag `v0.5.1` = `f2068c9` is the only source of truth for
+production. The Tracking Hub and the advanced form builder are on `develop` only (`3e0a1dd`) and are **not** part of this release:
+`develop` is not merged to `main`, and there is no v0.6.0 until v0.5.1 runs on a server. Product freeze stays on.
+
+The attempt stopped at the first step: no server is named anywhere. Nothing is deployed until all five exist:
+
+| Needed | Where it goes | State |
+| --- | --- | --- |
+| `VPS_HOST` | GitHub → Settings → Secrets | missing |
+| `VPS_USER` | GitHub → Settings → Secrets | missing |
+| `VPS_SSH_KEY` | GitHub → Settings → Secrets (the private half of the deploy key) | missing |
+| `PRODUCTION_PATH` | GitHub → Settings → Secrets | missing |
+| `PRODUCTION_DOMAIN` | GitHub → Settings → Variables (with its DNS A/AAAA record pointing at the server) | missing |
+
+The scripts are ready (present, executable, parse cleanly, identical on `main` and `develop`): `provision-server.sh`,
+`deploy-production.sh` (deploys only a commit GitHub has on `main`, refuses a dirty server, backs up before migrating),
+`verify-production.sh`, `smoke-production.sh`, `backup-db.sh`, `restore-check.sh`.
+
+When the five values exist, in this order — none of it waits for the external credentials below:
+
+1. Provision the VPS: `provision-server.sh` as root, taken from the **`main`** branch (or the `v0.5.1` tag), not `develop`.
+2. DNS and HTTPS for `PRODUCTION_DOMAIN` (both origins: web and API), certificate auto-renewal on.
+3. `.env.production` on the server from `.env.production.example`: `APP_ENV=production`, `APP_DEBUG=false`, a generated `APP_KEY`,
+   database, Redis, queue, cache, session, logging, CORS/Sanctum origins. No value is invented; anything missing is listed below.
+4. PostgreSQL (database, user, permissions, UTF-8, timezone) and Redis — the compose services.
+5. Queue (Horizon) and the scheduler as supervised services that restart on crash and after a reboot.
+6. Backups: `backup-db.sh` on a schedule, a copy off the box, then `restore-check.sh` once (`RESTORE CHECK: PASS`).
+7. Deploy `v0.5.1` with `deploy-production.sh` (it takes a verified backup before migrating).
+8. `verify-production.sh` (health, readiness, queue, scheduler, Redis, backup) and `smoke-production.sh`.
+9. The smoke paths by hand: sign-in → dashboard; Work Now → lead → outcome; a test lead (no real customer contacted); a report and its
+   share link; admin / sales / partner roles; tenant A cannot see tenant B; a phone at 390 px; the installed app and its offline page.
+
+Still **EXTERNAL CONFIG REQUIRED**, and none of it blocks the deploy above: the four public values (§P), a mail provider (§4;
+until then email is recorded as *logged*), WhatsApp credentials and Meta-approved templates (§5), Google OAuth (§6), the ad platforms'
+credentials (§7), a Sentry DSN (§9).
+
 ## Gates run for v0.5.1 (2026-10-23, `develop` at 372f9f0)
 
 All local; no CI/CD is wired. Nothing has been run against a real server, a real phone, or Microsoft Edge itself.

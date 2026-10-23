@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\JourneyController;
+use App\Http\Controllers\Api\V1\FormAssetController;
 use App\Http\Controllers\Api\V1\LandingFormController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
@@ -104,6 +105,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:240,1')->where('token', '[A-Za-z0-9]{6,24}');
 
     // The landing page a tracking link opens, and its form. Public by nature; the token is the only thing the visitor holds.
+    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:240,1')->where('name', '[a-f0-9]{32}\.(png|jpg|webp)');
     Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:120,1')->where('token', '[A-Za-z0-9]{6,24}');
     Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{6,24}');
 
@@ -361,6 +363,11 @@ Route::prefix('v1')->group(function () {
             Route::delete('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'destroy'])->whereUuid('uuid');
             // The landing pages a link can open, and the form on each.
             Route::get('/tracking/forms/presets', [LandingFormController::class, 'presets']);
+            Route::get('/tracking/forms/templates', [LandingFormController::class, 'templates']);
+            Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
+            Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
+            Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
+            Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
             Route::get('/tracking/forms', [LandingFormController::class, 'index']);
             Route::post('/tracking/forms', [LandingFormController::class, 'store']);
             Route::get('/tracking/forms/{uuid}', [LandingFormController::class, 'show'])->whereUuid('uuid');

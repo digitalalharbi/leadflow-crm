@@ -504,7 +504,7 @@ class TrackingEngineTest extends TestCase
         // Closed on purpose: every name here is one a marketer, a dataLayer and a platform all use.
         $this->assertSame([
             'landing_viewed', 'link_clicked', 'form_started', 'form_submitted', 'whatsapp_started', 'call_started', 'brochure_opened', 'project_viewed', 'property_viewed',
-            'appointment_requested', 'visit_completed', 'reservation_created', 'won', 'form_step_completed', 'lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue_recorded',
+            'appointment_requested', 'visit_completed', 'reservation_created', 'won', 'form_step_completed', 'form_abandoned', 'lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue_recorded',
         ], array_map(fn (EventType $t) => $t->canonical(), EventType::cases()));
         $this->assertNotContains('won', EventType::browserSafeValues());
         foreach (['lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue'] as $serverOnly) {

@@ -3,6 +3,7 @@
 namespace App\Domain\Tracking\Forms;
 
 use App\Models\LandingForm;
+use App\Models\LandingFormVersion;
 use App\Models\Tenant;
 use App\Models\TrackingLink;
 use App\Support\TenantContext;
@@ -17,9 +18,9 @@ use App\Support\TenantContext;
  */
 class LandingPages
 {
-    public function __construct(private TenantContext $context) {}
+    public function __construct(private TenantContext $context, private FormPublisher $publisher) {}
 
-    /** @return array{link:TrackingLink, form:LandingForm, tenant:Tenant}|null */
+    /** @return array{link:TrackingLink, form:LandingForm, version:LandingFormVersion, tenant:Tenant}|null */
     public function resolve(string $token): ?array
     {
         $link = $this->context->withoutScope(fn () => TrackingLink::withoutGlobalScopes()->where('token', $token)->first());
@@ -35,6 +36,9 @@ class LandingPages
             return null;
         }
 
-        return ['link' => $link, 'form' => $form, 'tenant' => $tenant];
+        // What the visitor sees is the PUBLISHED version, never the draft being edited — and a form published before versions existed gets its first now.
+        $version = $this->context->withTenant($tenant, fn () => $this->publisher->live($form));
+
+        return $version === null ? null : ['link' => $link, 'form' => $form, 'version' => $version, 'tenant' => $tenant];
     }
 }

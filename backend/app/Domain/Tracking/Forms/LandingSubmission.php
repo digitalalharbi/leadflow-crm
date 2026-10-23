@@ -10,7 +10,8 @@ use App\Domain\Tracking\EventType;
 use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
 use App\Enums\IntegrationProvider;
-use App\Models\LandingForm;
+use App\Models\LandingFormVersion;
+use App\Models\LeadSourceEvent;
 use App\Models\Project;
 use App\Models\Property;
 use App\Models\Tenant;
@@ -38,6 +39,7 @@ class LandingSubmission
         private Sessions $sessions,
         private EventRecorder $events,
         private LeadIngestionService $ingestion,
+        private FormSignals $signals,
         private TenantContext $context,
     ) {}
 
@@ -46,25 +48,28 @@ class LandingSubmission
      * @param  array{ip?:?string, user_agent?:?string, referer?:?string}  $request
      * @return array{status:int, body:array<string,mixed>}
      */
-    public function handle(TrackingLink $link, LandingForm $form, Tenant $tenant, array $in, array $request): array
+    public function handle(TrackingLink $link, LandingFormVersion $version, Tenant $tenant, array $in, array $request): array
     {
-        return $this->context->withTenant($tenant, function () use ($link, $form, $tenant, $in, $request) {
+        // What was live when the visitor opened the page is what they are held to: the version, never the draft.
+        $def = $version->snapshot;
+
+        return $this->context->withTenant($tenant, function () use ($link, $version, $def, $tenant, $in, $request) {
             // A bot fills what a person cannot see. It is thanked and nothing is made.
             if (filled($in['website'] ?? null)) {
-                return $this->ok($form, $in['submission_id'], duplicate: false);
+                return $this->ok($def, $in['submission_id'], duplicate: false);
             }
 
-            if ($form->consent_required && ($in['consent'] ?? false) !== true) {
+            if (($def['consent_required'] ?? true) && ($in['consent'] ?? false) !== true) {
                 return ['status' => 422, 'body' => ['success' => false, 'message' => 'Consent is required.', 'errors' => ['consent' => 'required']]];
             }
 
             // The same submission twice (a retry, a double tap) is the first one.
             if (TrackingEvent::where('event_type', EventType::FormSubmit->value)->where('event_id', $in['submission_id'])->exists()) {
-                return $this->ok($form, $in['submission_id'], duplicate: true);
+                return $this->ok($def, $in['submission_id'], duplicate: true, link: $link);
             }
 
-            $fields = $this->schema->normalize($form->fields ?? []);
-            $result = $this->schema->validateSubmission($fields, (array) ($in['answers'] ?? []), $this->context($link, $in));
+            $fields = $this->schema->normalize($def['fields'] ?? []);
+            $result = $this->schema->validateSubmission($fields, (array) ($in['answers'] ?? []), $this->context($link, $in), $def['layout'] ?? null, ['default_country' => $def['settings']['default_country'] ?? 'SA']);
 
             if ($result['errors'] !== []) {
                 return ['status' => 422, 'body' => ['success' => false, 'message' => 'Some answers need attention.', 'errors' => $result['errors']]];
@@ -80,7 +85,7 @@ class LandingSubmission
                 'ip_hash' => Visitor::ipHash($request['ip'] ?? null), 'consent' => ($in['consent'] ?? false) === true ? 'granted' : 'denied',
             ] + $agent);
 
-            $incoming = $this->incoming($link, $form, $fields, $result['values'], $in, $visitor, $session->session_id, $clickIds, $utm, $agent);
+            $incoming = $this->incoming($link, $version, $def, $fields, $result, $in, $visitor, $session->session_id, $clickIds, $utm, $agent);
 
             $ingested = $this->ingestion->ingest($tenant, $incoming);
 
@@ -89,6 +94,10 @@ class LandingSubmission
             }
 
             $lead = $ingested->lead;
+
+            // Which version of the form this customer saw, on the source event as well as on the trail.
+            LeadSourceEvent::where('lead_id', $lead->id)->where('provider_lead_id', $in['submission_id'])->update(['form_version_id' => $version->id]);
+            $this->signals->apply($lead, (array) ($def['settings']['signals'] ?? []), $result['values']);
 
             $this->events->record(EventType::FormSubmit, [
                 'tracking_link_id' => $link->id,
@@ -105,10 +114,12 @@ class LandingSubmission
                 'referrer' => $in['referrer'] ?? ($request['referer'] ?? null),
                 'click_id' => ClickIds::primary($clickIds),
                 'ip_hash' => Visitor::ipHash($request['ip'] ?? null),
-                'meta' => ['form' => $form->uuid, 'duplicate_customer' => $ingested->isDuplicate()],
+                'form_version_id' => $version->id,
+                // What was chosen on a matrix is aggregated on the form's analytics: choices only, never a name or a number.
+                'meta' => array_filter(['form' => $version->form->uuid, 'version' => $version->version, 'duplicate_customer' => $ingested->isDuplicate(), 'matrix' => $this->matrixChoices($fields, $result['values'])]),
             ] + $agent);
 
-            return $this->ok($form, $in['submission_id'], duplicate: false, link: $link, projectUuid: Project::whereKey($lead->project_id)->value('uuid'));
+            return $this->ok($def, $in['submission_id'], duplicate: false, link: $link, projectUuid: Project::whereKey($lead->project_id)->value('uuid'), version: $version);
         });
     }
 
@@ -140,13 +151,14 @@ class LandingSubmission
      * @param  array<string,string>  $utm
      * @param  array<string,?string>  $agent
      */
-    private function incoming(TrackingLink $link, LandingForm $form, array $fields, array $values, array $in, string $visitor, string $sessionId, array $clickIds, array $utm, array $agent): IncomingLead
+    private function incoming(TrackingLink $link, LandingFormVersion $version, array $def, array $fields, array $result, array $in, string $visitor, string $sessionId, array $clickIds, array $utm, array $agent): IncomingLead
     {
+        $values = $result['values'];
         $lead = $this->schema->toLead($fields, $values);
         $tracking = $lead['tracking'];
 
         // A custom field holds text: a list of choices reads as the labels the visitor saw, a tick as yes or no.
-        $lead['custom'] = $this->asText($fields, $lead['custom']);
+        $lead['custom'] = $this->schema->customAsText($fields, $lead['custom']);
 
         $data = array_diff_key($lead, array_flip(['tracking', 'raw'])) + [
             // The platform is the ad's (Meta, TikTok…), not "a landing page": that is how the page was reached, not who sent the customer.
@@ -159,8 +171,8 @@ class LandingSubmission
             'utm_term' => $link->utm_term ?? ($utm['utm_term'] ?? null),
             'utm_content' => $link->utm_content ?? ($utm['utm_content'] ?? null),
             'project_id' => $link->project_id,
-            'form_name' => $form->name,
-            'form_id' => $form->uuid,
+            'form_name' => $def['name'],
+            'form_id' => $version->form->uuid,
             'provider_lead_id' => $in['submission_id'],
             'click_id' => ClickIds::primary($clickIds),
             'visitor_id' => $visitor,
@@ -175,7 +187,10 @@ class LandingSubmission
         $raw = [
             'answers' => $lead['raw'],
             'tracking' => $tracking + array_filter(['session_id' => $sessionId, 'click_ids' => $clickIds, 'utm' => $utm]),
-            'form' => $form->uuid,
+            // The phone as the visitor typed it, beside the one the lead keeps.
+            'typed' => $result['raw'] ?? [],
+            'form' => $version->form->uuid,
+            'form_version' => $version->version,
             'submission_id' => $in['submission_id'],
         ];
 
@@ -183,47 +198,52 @@ class LandingSubmission
     }
 
     /**
+     * The choices made on matrix fields, row by row — what to aggregate, nothing that identifies anybody.
+     *
      * @param  list<array<string,mixed>>  $fields
-     * @param  array<string,mixed>  $custom
-     * @return array<string,string>
+     * @param  array<string,mixed>  $values
+     * @return array<string,array<string,mixed>>
      */
-    private function asText(array $fields, array $custom): array
+    private function matrixChoices(array $fields, array $values): array
     {
-        $labels = [];
+        $out = [];
+
         foreach ($fields as $f) {
-            if (str_starts_with((string) $f['mapping'], 'custom.')) {
-                $labels[substr($f['mapping'], 7)] = array_column($f['options'] ?? [], 'label', 'value');
+            if ($f['type'] === 'matrix' && isset($values[$f['key']])) {
+                $out[$f['key']] = $values[$f['key']];
             }
         }
 
-        $text = [];
-
-        foreach ($custom as $key => $value) {
-            $text[$key] = match (true) {
-                is_array($value) => implode('، ', array_map(fn ($v) => $labels[$key][$v] ?? (string) $v, $value)),
-                is_bool($value) => $value ? 'نعم' : 'لا',
-                default => (string) ($labels[$key][(string) $value] ?? $value),
-            };
-        }
-
-        return $text;
+        return $out;
     }
 
     /** @return array{status:int, body:array<string,mixed>} */
-    private function ok(LandingForm $form, string $submissionId, bool $duplicate, ?TrackingLink $link = null, ?string $projectUuid = null): array
+    private function ok(array $def, string $submissionId, bool $duplicate, ?TrackingLink $link = null, ?string $projectUuid = null, ?LandingFormVersion $version = null): array
     {
+        $thanks = (array) ($def['settings']['thanks'] ?? []);
+
         return ['status' => 200, 'body' => ['success' => true, 'data' => [
             'ok' => true,
             'duplicate' => $duplicate,
             'event_id' => $submissionId,
-            'thank_you' => ['title' => $form->thank_you_title, 'message' => $form->thank_you_message],
-            // What the page pushes to its dataLayer — the same id a browser pixel uses, so a platform counts it once.
+            'thank_you' => [
+                'title' => $def['thank_you_title'] ?? null, 'message' => $def['thank_you_message'] ?? null,
+                'actions' => $thanks['actions'] ?? [],
+                'redirect_url' => $thanks['redirect_url'] ?? null, 'redirect_delay' => $thanks['redirect_delay'] ?? 5,
+            ],
+            // What the page pushes to its dataLayer once — and only once — the lead is safely kept: the same id a browser pixel uses, so a
+            // platform counts it once. Ids and names of campaigns; never a name, a number or an address of the customer.
             'datalayer' => array_filter([
                 'event' => EventType::FormSubmit->canonical(),
                 'event_id' => $submissionId,
                 'project_id' => $projectUuid,
                 'tracking_link_id' => $link?->uuid,
+                'form_id' => $version?->form->uuid,
+                'form_version' => $version?->version,
                 'lead_stage' => 'new',
+                'source' => $link?->utm_source,
+                'medium' => $link?->utm_medium,
+                'campaign' => $link?->utm_campaign,
             ]),
         ], 'message' => null, 'errors' => null]];
     }

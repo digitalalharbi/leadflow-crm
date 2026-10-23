@@ -26,6 +26,8 @@ enum EventType: string
     case Won = 'won';
     // The steps of a multi-step form, and what the system concluded about a lead: both new, both on the same trail.
     case FormStep = 'form_step';
+    // A visitor who started a form and left: where they stopped (a step, a field's key — never what they typed).
+    case FormAbandon = 'form_abandon';
     case LeadCreated = 'lead_created';
     case Qualified = 'qualified';
     case Interested = 'interested';
@@ -36,7 +38,7 @@ enum EventType: string
     /** What a landing page or a link may report about a visitor. */
     public static function browserSafe(): array
     {
-        return [self::Visit, self::Click, self::FormStart, self::FormStep, self::FormSubmit, self::WhatsappClick, self::CallClick, self::BrochureOpen, self::ProjectView, self::PropertyView];
+        return [self::Visit, self::Click, self::FormStart, self::FormStep, self::FormAbandon, self::FormSubmit, self::WhatsappClick, self::CallClick, self::BrochureOpen, self::ProjectView, self::PropertyView];
     }
 
     /** @return array<int,string> */
@@ -74,6 +76,7 @@ enum EventType: string
             self::Visit => 'landing_viewed',
             self::FormStart => 'form_started',
             self::FormStep => 'form_step_completed',
+            self::FormAbandon => 'form_abandoned',
             self::FormSubmit => 'form_submitted',
             self::WhatsappClick => 'whatsapp_started',
             self::CallClick => 'call_started',

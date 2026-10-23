@@ -24,12 +24,13 @@ class LandingForm extends Model
 
     protected $fillable = [
         'project_id', 'name', 'status', 'headline', 'description', 'benefits', 'cta_label', 'logo_url', 'image_url',
-        'thank_you_title', 'thank_you_message', 'consent_required', 'consent_text', 'privacy_url', 'fields', 'created_by',
+        'thank_you_title', 'thank_you_message', 'consent_required', 'consent_text', 'privacy_url', 'fields', 'layout', 'design', 'settings',
+        'published_version_id', 'published_at', 'created_by',
     ];
 
     protected function casts(): array
     {
-        return ['benefits' => 'array', 'fields' => 'array', 'consent_required' => 'boolean'];
+        return ['benefits' => 'array', 'fields' => 'array', 'layout' => 'array', 'design' => 'array', 'settings' => 'array', 'consent_required' => 'boolean', 'published_at' => 'datetime'];
     }
 
     public function project(): BelongsTo
@@ -40,6 +41,16 @@ class LandingForm extends Model
     public function links(): HasMany
     {
         return $this->hasMany(TrackingLink::class, 'landing_form_id');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(LandingFormVersion::class, 'landing_form_id');
+    }
+
+    public function publishedVersion(): BelongsTo
+    {
+        return $this->belongsTo(LandingFormVersion::class, 'published_version_id');
     }
 
     public function isPublished(): bool

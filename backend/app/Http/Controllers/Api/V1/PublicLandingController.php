@@ -6,6 +6,8 @@ use App\Domain\Tracking\Attribution;
 use App\Domain\Tracking\ClickIds;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
+use App\Domain\Tracking\Forms\FormDefinition;
+use App\Domain\Tracking\Forms\FormDesign;
 use App\Domain\Tracking\Forms\FormSchema;
 use App\Domain\Tracking\Forms\LandingPages;
 use App\Domain\Tracking\Forms\LandingSubmission;
@@ -40,9 +42,12 @@ class PublicLandingController extends Controller
         $page = $this->pages->resolve($token);
         abort_if($page === null, 404);
 
-        ['link' => $link, 'form' => $form, 'tenant' => $tenant] = $page;
+        ['link' => $link, 'version' => $version, 'tenant' => $tenant] = $page;
 
-        return $this->context->withTenant($tenant, function () use ($request, $link, $form) {
+        // The page is the PUBLISHED version, frozen: editing the draft never reaches a campaign already running.
+        $def = $version->snapshot;
+
+        return $this->context->withTenant($tenant, function () use ($request, $link, $version, $def) {
             $visitor = Visitor::clean($request->query('mt_vid')) ?? Visitor::newId();
             $agent = Visitor::agent($request->userAgent());
             $clickIds = ClickIds::from($request->query());
@@ -61,22 +66,26 @@ class PublicLandingController extends Controller
                 'ip_hash' => Visitor::ipHash($request->ip()),
             ] + $agent);
 
-            $fields = $this->schema->normalize($form->fields ?? []);
+            $fields = $this->schema->normalize($def['fields'] ?? []);
 
             return response()->json(['success' => true, 'data' => [
                 'landing' => [
                     'token' => $link->token,
-                    'headline' => $form->headline,
-                    'description' => $form->description,
-                    'benefits' => $form->benefits ?? [],
-                    'cta_label' => $form->cta_label,
-                    'logo_url' => $form->logo_url,
-                    'image_url' => $form->image_url,
-                    'thank_you' => ['title' => $form->thank_you_title, 'message' => $form->thank_you_message],
+                    'version' => $version->version,
+                    'headline' => $def['headline'],
+                    'description' => $def['description'],
+                    'benefits' => $def['benefits'] ?? [],
+                    'cta_label' => $def['cta_label'],
+                    'logo_url' => $def['logo_url'],
+                    'image_url' => $def['image_url'],
+                    'thank_you' => ['title' => $def['thank_you_title'], 'message' => $def['thank_you_message']],
                     'project' => $link->project_id ? ['name' => Project::whereKey($link->project_id)->value('name')] : null,
                     'fields' => $this->schema->publicShape($fields),
-                    'steps' => $form->steps(),
-                    'consent' => ['required' => (bool) $form->consent_required, 'text' => $form->consent_text, 'privacy_url' => $form->privacy_url],
+                    'layout' => $def['layout'],
+                    'design' => $def['design'],
+                    'settings' => FormDesign::publicSettings($def['settings']),
+                    'steps' => FormDefinition::steps($def),
+                    'consent' => ['required' => (bool) $def['consent_required'], 'text' => $def['consent_text'], 'privacy_url' => $def['privacy_url']],
                     // The tags this workspace asked the page to load: a public identifier each, never a credential.
                     'tags' => $this->tags($link->project_id),
                 ],
@@ -126,7 +135,7 @@ class PublicLandingController extends Controller
         $in = $v->validated();
         $in['consent'] = filter_var($request->input('consent'), FILTER_VALIDATE_BOOLEAN);
 
-        $result = $this->submission->handle($page['link'], $page['form'], $page['tenant'], $in, [
+        $result = $this->submission->handle($page['link'], $page['version'], $page['tenant'], $in, [
             'ip' => $request->ip(), 'user_agent' => $request->userAgent(), 'referer' => $request->headers->get('referer'),
         ]);
 

@@ -29,9 +29,12 @@ class TrackingLinks
      * carries (never over what the destination already has), and the visitor's identity so the
      * landing page can hand it back with the form.
      */
-    public function destination(TrackingLink $link, string $visitorId): string
+    public function destination(TrackingLink $link, string $visitorId, ?string $sessionId = null, array $clickIds = []): string
     {
-        $url = (string) ($link->destination_url ?: config('app.frontend_url', config('app.url')));
+        // A landing link opens the page of ours the workspace designed, and the page is handed everything the click knew.
+        $url = $link->mode === 'landing'
+            ? rtrim((string) config('app.frontend_url', config('app.url')), '/').'/l/'.$link->token
+            : (string) ($link->destination_url ?: config('app.frontend_url', config('app.url')));
 
         // A phone call and a WhatsApp chat are not pages: nothing can be appended to them.
         if (preg_match('#^(tel:|mailto:|https?://(wa\.me|api\.whatsapp\.com)/)#i', $url)) {
@@ -47,7 +50,7 @@ class TrackingLinks
         ], fn ($v) => filled($v));
 
         parse_str((string) parse_url($url, PHP_URL_QUERY), $existing);
-        $params = array_diff_key($params, $existing) + ['mt_vid' => $visitorId, 'mt_t' => $link->token];
+        $params = array_diff_key($params, $existing) + array_filter(['mt_vid' => $visitorId, 'mt_sid' => $sessionId, 'mt_t' => $link->token] + $clickIds + (array) ($link->custom_params ?? []), fn ($v) => is_scalar($v) && $v !== '');
 
         $base = Str::before(Str::before($url, '#'), '?');
         $fragment = str_contains($url, '#') ? '#'.Str::after($url, '#') : '';

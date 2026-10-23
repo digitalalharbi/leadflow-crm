@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Tracking\Attribution;
+use App\Domain\Tracking\ClickIds;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
+use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
@@ -27,7 +30,7 @@ use Illuminate\Support\Facades\Validator;
  */
 class TrackBeaconController extends Controller
 {
-    public function __construct(private TenantContext $context, private EventRecorder $events) {}
+    public function __construct(private TenantContext $context, private EventRecorder $events, private Sessions $sessions) {}
 
     public function __invoke(Request $request, string $token)
     {
@@ -37,6 +40,10 @@ class TrackBeaconController extends Controller
         $v = Validator::make(is_array($body) ? $body : [], [
             'event' => ['required', 'string', 'in:'.implode(',', EventType::browserSafeValues())],
             'visitor_id' => ['nullable', 'string', 'max:40'],
+            'session_id' => ['nullable', 'string', 'max:40'],
+            // The id the browser's own pixel used for the same thing, so a platform counts it once.
+            'event_id' => ['nullable', 'uuid'],
+            'consent' => ['nullable', 'in:granted,denied'],
             'url' => ['nullable', 'string', 'max:2000'],
             'referrer' => ['nullable', 'string', 'max:2000'],
             'utm_source' => ['nullable', 'string', 'max:255'],
@@ -45,6 +52,7 @@ class TrackBeaconController extends Controller
             'utm_term' => ['nullable', 'string', 'max:255'],
             'utm_content' => ['nullable', 'string', 'max:255'],
             'click_id' => ['nullable', 'string', 'max:512'],
+            'click_ids' => ['nullable', 'array'],
             'project' => ['nullable', 'uuid'],
             'property' => ['nullable', 'uuid'],
             'dedupe_key' => ['nullable', 'string', 'max:80'],
@@ -62,24 +70,41 @@ class TrackBeaconController extends Controller
         if ($link !== null && $link->isLive()) {
             $tenant = Tenant::withoutGlobalScopes()->findOrFail($link->tenant_id);
 
-            $this->context->withTenant($tenant, fn () => $this->events->record(EventType::from($data['event']), [
-                'tracking_link_id' => $link->id,
-                'visitor_id' => Visitor::clean($data['visitor_id'] ?? null) ?? Visitor::newId(),
-                // The page may say which project or unit was viewed; the link's own is the fallback.
-                'project_id' => isset($data['project']) ? Project::where('uuid', $data['project'])->value('id') : $link->project_id,
-                'property_id' => isset($data['property']) ? Property::where('uuid', $data['property'])->value('id') : $link->property_id,
-                'url' => $data['url'] ?? null,
-                'referrer' => $data['referrer'] ?? $request->headers->get('referer'),
-                'utm_source' => $data['utm_source'] ?? null,
-                'utm_medium' => $data['utm_medium'] ?? null,
-                'utm_campaign' => $data['utm_campaign'] ?? null,
-                'utm_term' => $data['utm_term'] ?? null,
-                'utm_content' => $data['utm_content'] ?? null,
-                'click_id' => $data['click_id'] ?? null,
-                'ip_hash' => Visitor::ipHash($request->ip()),
-                'meta' => isset($data['meta']) ? $this->small($data['meta']) : null,
-                'dedupe_key' => isset($data['dedupe_key']) ? $link->id.':'.$data['dedupe_key'] : null,
-            ] + Visitor::agent($request->userAgent())));
+            $this->context->withTenant($tenant, function () use ($data, $link, $request) {
+                $visitor = Visitor::clean($data['visitor_id'] ?? null) ?? Visitor::newId();
+                $agent = Visitor::agent($request->userAgent());
+                $clickIds = ClickIds::from((array) ($data['click_ids'] ?? [])) ?: ClickIds::from(['gclid' => $data['click_id'] ?? null]);
+                $utm = array_filter(array_intersect_key($data, array_flip(['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'])));
+
+                $session = $this->sessions->touch($visitor, $data['session_id'] ?? null, $link, [
+                    'click_ids' => $clickIds, 'utm' => $utm, 'landing_url' => $data['url'] ?? null, 'referrer' => $data['referrer'] ?? $request->headers->get('referer'),
+                    'ip_hash' => Visitor::ipHash($request->ip()), 'consent' => $data['consent'] ?? null,
+                ] + $agent);
+
+                $this->events->record(EventType::from($data['event']), [
+                    'tracking_link_id' => $link->id,
+                    'visitor_id' => $visitor,
+                    'session_id' => $session->session_id,
+                    'event_id' => $data['event_id'] ?? null,
+                    'campaign_id' => $link->campaign_id,
+                    'platform' => Attribution::platformOf($link->channel),
+                    'consent' => $session->consent,
+                    // The page may say which project or unit was viewed; the link's own is the fallback.
+                    'project_id' => isset($data['project']) ? Project::where('uuid', $data['project'])->value('id') : $link->project_id,
+                    'property_id' => isset($data['property']) ? Property::where('uuid', $data['property'])->value('id') : $link->property_id,
+                    'url' => $data['url'] ?? null,
+                    'referrer' => $data['referrer'] ?? $request->headers->get('referer'),
+                    'utm_source' => $data['utm_source'] ?? null,
+                    'utm_medium' => $data['utm_medium'] ?? null,
+                    'utm_campaign' => $data['utm_campaign'] ?? null,
+                    'utm_term' => $data['utm_term'] ?? null,
+                    'utm_content' => $data['utm_content'] ?? null,
+                    'click_id' => ClickIds::primary($clickIds) ?? ($data['click_id'] ?? null),
+                    'ip_hash' => Visitor::ipHash($request->ip()),
+                    'meta' => isset($data['meta']) ? $this->small($data['meta']) : null,
+                    'dedupe_key' => isset($data['dedupe_key']) ? $link->id.':'.$data['dedupe_key'] : null,
+                ] + $agent);
+            });
         }
 
         return response()->noContent();

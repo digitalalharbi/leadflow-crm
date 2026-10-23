@@ -8,6 +8,7 @@ use App\Models\TrackingLink;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Writes events to the trail — once.
@@ -24,6 +25,14 @@ class EventRecorder
      */
     public function record(EventType $type, array $attributes = []): ?TrackingEvent
     {
+        // An event has an id the browser, the server and every destination share, so one thing that happened is one
+        // thing everywhere. A caller that names the id means "this event, once": the id is the idempotency key too.
+        if (filled($attributes['event_id'] ?? null) && blank($attributes['dedupe_key'] ?? null)) {
+            $attributes['dedupe_key'] = 'evt:'.$attributes['event_id'];
+        }
+
+        $attributes['event_id'] = filled($attributes['event_id'] ?? null) ? $attributes['event_id'] : (string) Str::uuid();
+
         try {
             // In its own savepoint: on Postgres a unique violation aborts the whole surrounding
             // transaction, and a duplicate event must not take a sale or a brochure open with it.

@@ -327,6 +327,7 @@ class Lead extends Model
             'interest_signals' => 'array',
             'interest_at' => 'datetime',
             'interest_level_changed_at' => 'datetime',
+            'click_ids' => 'array',
             'last_touch_at' => 'datetime',
             'bedrooms' => 'integer',
             'area_sqm' => 'decimal:2',

@@ -75,7 +75,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // The tracking visitor id is an opaque random token a landing page may read back; encrypting
         // it would make it unreadable to the page and add nothing — it carries no information.
-        $middleware->encryptCookies(except: ['mt_vid']);
+        $middleware->encryptCookies(except: ['mt_vid', 'mt_sid']);
 
         $middleware->api(prepend: [
             ForceJsonResponse::class,

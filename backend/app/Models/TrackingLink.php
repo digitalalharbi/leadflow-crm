@@ -30,18 +30,21 @@ class TrackingLink extends Model
 
     public const KINDS = ['link', 'qr'];
 
+    /** Where a click goes: on to an address of the workspace's, or to a landing page of ours. */
+    public const MODES = ['redirect', 'landing'];
+
     /** What a QR code is printed on, so a stack of flyers and a billboard can be told apart. */
     public const PLACEMENTS = ['project', 'property', 'event', 'billboard', 'rep', 'broker', 'other'];
 
     protected $fillable = [
-        'token', 'name', 'kind', 'channel', 'project_id', 'property_id', 'campaign_id', 'ad_id', 'creative_id', 'user_id', 'partner_id', 'placement',
-        'landing_page', 'branch', 'destination_url', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+        'token', 'name', 'kind', 'mode', 'channel', 'project_id', 'property_id', 'campaign_id', 'ad_id', 'creative_id', 'user_id', 'partner_id', 'placement',
+        'landing_page', 'branch', 'destination_url', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'custom_params',
         'is_active', 'expires_at', 'created_by',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'expires_at' => 'datetime'];
+        return ['is_active' => 'boolean', 'expires_at' => 'datetime', 'custom_params' => 'array'];
     }
 
     public function project(): BelongsTo

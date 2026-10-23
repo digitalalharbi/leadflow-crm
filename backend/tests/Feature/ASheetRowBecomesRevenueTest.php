@@ -189,9 +189,10 @@ class ASheetRowBecomesRevenueTest extends TestCase
         $this->assertEquals(1250000, $metrics['revenue']);
 
         // And the ad platform is told, step by step, so its algorithm learns
-        // which people became buyers.
+        // which people became buyers — including the moment they were interested, which the hub
+        // now feeds back too (a platform learns from the early, plentiful signal as well as the sale).
         $exports = $this->asTenant($tenant, fn () => ConversionExport::where('lead_id', $lead->id)->pluck('value', 'event'));
-        $this->assertEqualsCanonicalizing(['qualified', 'appointment', 'won'], $exports->keys()->all());
+        $this->assertEqualsCanonicalizing(['qualified', 'interested', 'appointment', 'won'], $exports->keys()->all());
         $this->assertEquals(1250000, $exports['won']);
 
         // ---------------------------------------------------------------- the proof

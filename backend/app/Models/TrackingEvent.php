@@ -23,7 +23,7 @@ class TrackingEvent extends Model
     protected $fillable = [
         'tracking_link_id', 'lead_id', 'visitor_id', 'event_type', 'occurred_at', 'project_id', 'property_id',
         'url', 'referrer', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'click_id',
-        'device', 'browser', 'os', 'ip_hash', 'meta', 'dedupe_key',
+        'device', 'browser', 'os', 'ip_hash', 'meta', 'dedupe_key', 'event_id', 'session_id', 'campaign_id', 'platform', 'consent', 'form_version_id',
     ];
 
     protected function casts(): array

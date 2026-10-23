@@ -42,6 +42,11 @@ export interface TrackingLink {
   branch: string | null
   destination_url: string | null
   utm: Partial<Record<'source' | 'medium' | 'campaign' | 'term' | 'content', string>>
+  /** `redirect` sends the visitor on; `landing` opens a page of ours, with the form. */
+  mode?: 'redirect' | 'landing'
+  landing_form?: { id: string; name: string; status: string } | null
+  landing_url?: string | null
+  custom_params?: Record<string, string>
   is_active: boolean
   is_live: boolean
   expires_at: string | null
@@ -65,6 +70,15 @@ export interface LinkInput {
   utm_source?: string | null
   utm_medium?: string | null
   utm_campaign?: string | null
+  utm_term?: string | null
+  utm_content?: string | null
+  mode?: 'redirect' | 'landing'
+  landing_form_id?: string | null
+  property_id?: string | null
+  ad_id?: string | null
+  creative_id?: string | null
+  user_id?: string | null
+  custom_params?: Record<string, string> | null
   is_active?: boolean
 }
 

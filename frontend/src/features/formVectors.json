@@ -1,0 +1,127 @@
+{
+  "_comment": "Conformance vectors for the form logic: the PHP server and the TypeScript page both run these, so a condition means one thing on both sides of the wire.",
+  "logic": [
+    { "name": "equals matches a string", "group": { "match": "all", "conditions": [{ "field": "a", "op": "equals", "value": "x" }] }, "answers": { "a": "x" }, "expect": true },
+    { "name": "equals ignores type: 5 equals '5'", "group": { "match": "all", "conditions": [{ "field": "a", "op": "equals", "value": "5" }] }, "answers": { "a": 5 }, "expect": true },
+    { "name": "equals on a list means the list holds it", "group": { "match": "all", "conditions": [{ "field": "a", "op": "equals", "value": "b" }] }, "answers": { "a": ["a", "b"] }, "expect": true },
+    { "name": "equals on nothing is false", "group": { "match": "all", "conditions": [{ "field": "a", "op": "equals", "value": "x" }] }, "answers": {}, "expect": false },
+    { "name": "not_equals on nothing is true", "group": { "match": "all", "conditions": [{ "field": "a", "op": "not_equals", "value": "x" }] }, "answers": {}, "expect": true },
+    { "name": "not_equals on another answer is true", "group": { "match": "all", "conditions": [{ "field": "a", "op": "not_equals", "value": "x" }] }, "answers": { "a": "y" }, "expect": true },
+    { "name": "not_equals on the same answer is false", "group": { "match": "all", "conditions": [{ "field": "a", "op": "not_equals", "value": "x" }] }, "answers": { "a": "x" }, "expect": false },
+    { "name": "contains finds text inside text", "group": { "match": "all", "conditions": [{ "field": "a", "op": "contains", "value": "رياض" }] }, "answers": { "a": "شمال الرياض" }, "expect": true },
+    { "name": "contains finds a member of a list", "group": { "match": "all", "conditions": [{ "field": "a", "op": "contains", "value": "pool" }] }, "answers": { "a": ["gym", "pool"] }, "expect": true },
+    { "name": "contains is false when absent", "group": { "match": "all", "conditions": [{ "field": "a", "op": "contains", "value": "pool" }] }, "answers": { "a": ["gym"] }, "expect": false },
+    { "name": "gt compares numbers", "group": { "match": "all", "conditions": [{ "field": "a", "op": "gt", "value": 100 }] }, "answers": { "a": "150" }, "expect": true },
+    { "name": "gt is false at equality", "group": { "match": "all", "conditions": [{ "field": "a", "op": "gt", "value": 100 }] }, "answers": { "a": 100 }, "expect": false },
+    { "name": "gte is true at equality", "group": { "match": "all", "conditions": [{ "field": "a", "op": "gte", "value": 100 }] }, "answers": { "a": 100 }, "expect": true },
+    { "name": "lt compares numbers", "group": { "match": "all", "conditions": [{ "field": "a", "op": "lt", "value": 3 }] }, "answers": { "a": 2 }, "expect": true },
+    { "name": "lte is true at equality", "group": { "match": "all", "conditions": [{ "field": "a", "op": "lte", "value": 3 }] }, "answers": { "a": 3 }, "expect": true },
+    { "name": "a number comparison on text is false, never an error", "group": { "match": "all", "conditions": [{ "field": "a", "op": "gt", "value": 3 }] }, "answers": { "a": "كثير" }, "expect": false },
+    { "name": "a number comparison on nothing is false", "group": { "match": "all", "conditions": [{ "field": "a", "op": "lt", "value": 3 }] }, "answers": {}, "expect": false },
+    { "name": "empty is true for nothing, an empty string and an empty list", "group": { "match": "all", "conditions": [{ "field": "a", "op": "empty" }] }, "answers": { "a": "" }, "expect": true },
+    { "name": "empty is false for zero", "group": { "match": "all", "conditions": [{ "field": "a", "op": "empty" }] }, "answers": { "a": 0 }, "expect": false },
+    { "name": "empty is true for an empty list", "group": { "match": "all", "conditions": [{ "field": "a", "op": "empty" }] }, "answers": { "a": [] }, "expect": true },
+    { "name": "not_empty is true for an answer", "group": { "match": "all", "conditions": [{ "field": "a", "op": "not_empty" }] }, "answers": { "a": "x" }, "expect": true },
+    { "name": "not_empty is false for nothing", "group": { "match": "all", "conditions": [{ "field": "a", "op": "not_empty" }] }, "answers": {}, "expect": false },
+    { "name": "all needs every condition", "group": { "match": "all", "conditions": [{ "field": "a", "op": "equals", "value": "x" }, { "field": "b", "op": "equals", "value": "y" }] }, "answers": { "a": "x", "b": "z" }, "expect": false },
+    { "name": "any needs one condition", "group": { "match": "any", "conditions": [{ "field": "a", "op": "equals", "value": "x" }, { "field": "b", "op": "equals", "value": "y" }] }, "answers": { "a": "q", "b": "y" }, "expect": true },
+    { "name": "any with none matching is false", "group": { "match": "any", "conditions": [{ "field": "a", "op": "equals", "value": "x" }] }, "answers": { "a": "q" }, "expect": false },
+    { "name": "a group with no conditions is true (nothing to wait for)", "group": { "match": "all", "conditions": [] }, "answers": {}, "expect": true }
+  ],
+  "visibility": [
+    {
+      "name": "a field shown when another was answered as asked",
+      "form": {
+        "fields": [
+          { "key": "purpose", "type": "radio", "required": false, "options": [{ "value": "residence" }, { "value": "investment" }] },
+          { "key": "yield", "type": "text", "required": false, "show_when": { "match": "all", "conditions": [{ "field": "purpose", "op": "equals", "value": "investment" }] } }
+        ],
+        "layout": { "sections": [{ "id": "s1", "rows": [{ "id": "r1", "columns": [{ "id": "c1", "fields": ["purpose"] }] }, { "id": "r2", "columns": [{ "id": "c1", "fields": ["yield"] }] }] }] }
+      },
+      "cases": [
+        { "answers": {}, "visible": ["purpose"], "required": [] },
+        { "answers": { "purpose": "residence" }, "visible": ["purpose"], "required": [] },
+        { "answers": { "purpose": "investment" }, "visible": ["purpose", "yield"], "required": [] }
+      ]
+    },
+    {
+      "name": "hide_when hides, and a hidden answer no longer counts for what depends on it",
+      "form": {
+        "fields": [
+          { "key": "a", "type": "text", "required": false },
+          { "key": "b", "type": "text", "required": false, "hide_when": { "match": "all", "conditions": [{ "field": "a", "op": "equals", "value": "stop" }] } },
+          { "key": "c", "type": "text", "required": false, "show_when": { "match": "all", "conditions": [{ "field": "b", "op": "not_empty" }] } }
+        ],
+        "layout": { "sections": [{ "id": "s1", "rows": [{ "id": "r1", "columns": [{ "id": "c1", "fields": ["a"] }] }, { "id": "r2", "columns": [{ "id": "c1", "fields": ["b"] }] }, { "id": "r3", "columns": [{ "id": "c1", "fields": ["c"] }] }] }] }
+      },
+      "cases": [
+        { "answers": { "a": "go", "b": "x" }, "visible": ["a", "b", "c"], "required": [] },
+        { "answers": { "a": "stop", "b": "x" }, "visible": ["a"], "required": [] }
+      ]
+    },
+    {
+      "name": "require_when makes a visible field required",
+      "form": {
+        "fields": [
+          { "key": "financing", "type": "select", "required": false, "options": [{ "value": "cash" }, { "value": "mortgage" }] },
+          { "key": "bank", "type": "text", "required": false, "require_when": { "match": "all", "conditions": [{ "field": "financing", "op": "equals", "value": "mortgage" }] } }
+        ],
+        "layout": { "sections": [{ "id": "s1", "rows": [{ "id": "r1", "columns": [{ "id": "c1", "fields": ["financing", "bank"] }] }] }] }
+      },
+      "cases": [
+        { "answers": { "financing": "cash" }, "visible": ["financing", "bank"], "required": [] },
+        { "answers": { "financing": "mortgage" }, "visible": ["financing", "bank"], "required": ["bank"] }
+      ]
+    },
+    {
+      "name": "a hidden section or row hides everything in it",
+      "form": {
+        "fields": [
+          { "key": "kind", "type": "radio", "required": false, "options": [{ "value": "own" }, { "value": "invest" }] },
+          { "key": "x", "type": "text", "required": true },
+          { "key": "y", "type": "text", "required": true },
+          { "key": "z", "type": "text", "required": false }
+        ],
+        "layout": { "sections": [
+          { "id": "s1", "rows": [{ "id": "r1", "columns": [{ "id": "c1", "fields": ["kind"] }] }] },
+          { "id": "s2", "show_when": { "match": "all", "conditions": [{ "field": "kind", "op": "equals", "value": "invest" }] }, "rows": [
+            { "id": "r2", "columns": [{ "id": "c1", "fields": ["x"] }] },
+            { "id": "r3", "hide_when": { "match": "all", "conditions": [{ "field": "x", "op": "equals", "value": "skip" }] }, "columns": [{ "id": "c1", "fields": ["y"] }, { "id": "c2", "fields": ["z"] }] }
+          ] }
+        ] }
+      },
+      "cases": [
+        { "answers": { "kind": "own", "x": "1" }, "visible": ["kind"], "required": [] },
+        { "answers": { "kind": "invest" }, "visible": ["kind", "x", "y", "z"], "required": ["x", "y"] },
+        { "answers": { "kind": "invest", "x": "skip" }, "visible": ["kind", "x"], "required": ["x"] }
+      ]
+    },
+    {
+      "name": "a field that waits on a later one still resolves",
+      "form": {
+        "fields": [
+          { "key": "late", "type": "text", "required": false, "show_when": { "match": "all", "conditions": [{ "field": "answer", "op": "equals", "value": "yes" }] } },
+          { "key": "answer", "type": "radio", "required": false, "options": [{ "value": "yes" }, { "value": "no" }] }
+        ],
+        "layout": { "sections": [{ "id": "s1", "rows": [{ "id": "r1", "columns": [{ "id": "c1", "fields": ["late"] }] }, { "id": "r2", "columns": [{ "id": "c1", "fields": ["answer"] }] }] }] }
+      },
+      "cases": [
+        { "answers": { "answer": "yes" }, "visible": ["late", "answer"], "required": [] },
+        { "answers": { "answer": "no" }, "visible": ["answer"], "required": [] }
+      ]
+    }
+  ],
+  "phone": [
+    { "input": "0551234567", "country": "SA", "e164": "+966551234567" },
+    { "input": "551234567", "country": "SA", "e164": "+966551234567" },
+    { "input": "+966 55 123 4567", "country": "SA", "e164": "+966551234567" },
+    { "input": "00966551234567", "country": "SA", "e164": "+966551234567" },
+    { "input": "0501234567", "country": "AE", "e164": "+971501234567" },
+    { "input": "+971501234567", "country": "SA", "e164": "+971501234567" },
+    { "input": "٠٥٥١٢٣٤٥٦٧", "country": "SA", "e164": "+966551234567" },
+    { "input": "12345", "country": "SA", "e164": null },
+    { "input": "abcdefghij", "country": "SA", "e164": null },
+    { "input": "0551234567", "country": "ZZ", "e164": null }
+  ],
+  "countries": { "SA": "966", "AE": "971", "KW": "965", "QA": "974", "BH": "973", "OM": "968", "EG": "20", "JO": "962", "IQ": "964", "LB": "961", "SY": "963", "YE": "967", "SD": "249", "MA": "212", "DZ": "213", "TN": "216", "LY": "218", "PK": "92", "IN": "91", "TR": "90", "GB": "44", "US": "1", "DE": "49", "FR": "33" }
+}

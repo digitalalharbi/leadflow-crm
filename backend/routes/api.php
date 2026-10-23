@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\EmailDeliveryController;
 use App\Http\Controllers\Api\V1\EmailSettingsController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\FollowUpPlanController;
+use App\Http\Controllers\Api\V1\FormAssetController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
@@ -35,6 +36,7 @@ use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\JourneyController;
+use App\Http\Controllers\Api\V1\LandingFormController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\LeadEmailController;
@@ -44,12 +46,14 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PipelineController;
+use App\Http\Controllers\Api\V1\ProjectAcquisitionController;
 use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\PropertyController;
+use App\Http\Controllers\Api\V1\PublicLandingController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -66,6 +70,7 @@ use App\Http\Controllers\Api\V1\SheetSourceController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
+use App\Http\Controllers\Api\V1\TrackingDestinationController;
 use App\Http\Controllers\Api\V1\TrackingHealthController;
 use App\Http\Controllers\Api\V1\TrackingLinkController;
 use App\Http\Controllers\Api\V1\TwilioStatusController;
@@ -97,7 +102,12 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
     // What a landing page tells us a visitor did. Public; the link token says whose it is.
-    Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:240,1')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:landing-beacon')->where('token', '[A-Za-z0-9]{6,24}');
+
+    // The landing page a tracking link opens, and its form. Public by nature; the token is the only thing the visitor holds.
+    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:landing-asset')->where('name', '[a-f0-9]{32}\.(png|jpg|webp)');
+    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:landing-view')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9]{6,24}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
@@ -333,6 +343,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/tracking/links', [TrackingLinkController::class, 'store']);
             Route::get('/tracking/links/{uuid}', [TrackingLinkController::class, 'show'])->whereUuid('uuid');
             Route::get('/tracking/links/{uuid}/qr', [TrackingLinkController::class, 'qr'])->whereUuid('uuid');
+            Route::get('/tracking/links/{uuid}/analytics', [TrackingLinkController::class, 'analytics'])->whereUuid('uuid');
             Route::get('/partners', [PartnerController::class, 'index']);
             Route::post('/partners', [PartnerController::class, 'store']);
             Route::patch('/partners/{uuid}', [PartnerController::class, 'update'])->whereUuid('uuid');
@@ -341,6 +352,28 @@ Route::prefix('v1')->group(function () {
             Route::delete('/partners/{uuid}/commission-payments/{payment}', [PartnerController::class, 'voidPayment'])->whereUuid('uuid');
             Route::post('/partners/{uuid}/statement-link', [PartnerController::class, 'statementLink'])->whereUuid('uuid');
             Route::delete('/partners/{uuid}', [PartnerController::class, 'destroy'])->whereUuid('uuid');
+            // Acquisition: inside a project, where its customers come from and whether the tracking can be trusted.
+            Route::get('/projects/{uuid}/acquisition', ProjectAcquisitionController::class)->whereUuid('uuid');
+            // Where events can go: GA4, Meta, TikTok, a GTM container, a webhook… configuration and readiness only.
+            Route::get('/tracking/destinations/catalogue', [TrackingDestinationController::class, 'catalogue']);
+            Route::get('/tracking/destinations', [TrackingDestinationController::class, 'index']);
+            Route::post('/tracking/destinations', [TrackingDestinationController::class, 'store']);
+            Route::get('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'show'])->whereUuid('uuid');
+            Route::patch('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'destroy'])->whereUuid('uuid');
+            // The landing pages a link can open, and the form on each.
+            Route::get('/tracking/forms/presets', [LandingFormController::class, 'presets']);
+            Route::get('/tracking/forms/templates', [LandingFormController::class, 'templates']);
+            Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
+            Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
+            Route::get('/tracking/forms/{uuid}/analytics', [LandingFormController::class, 'analytics'])->whereUuid('uuid');
+            Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
+            Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
+            Route::get('/tracking/forms', [LandingFormController::class, 'index']);
+            Route::post('/tracking/forms', [LandingFormController::class, 'store']);
+            Route::get('/tracking/forms/{uuid}', [LandingFormController::class, 'show'])->whereUuid('uuid');
+            Route::patch('/tracking/forms/{uuid}', [LandingFormController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tracking/forms/{uuid}', [LandingFormController::class, 'destroy'])->whereUuid('uuid');
             Route::patch('/tracking/links/{uuid}', [TrackingLinkController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/links/{uuid}', [TrackingLinkController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/tracking/attribution', AttributionController::class);

@@ -13,6 +13,7 @@ use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Listeners\BroadcastLeadChange;
 use App\Listeners\RecordConversionOutcome;
+use App\Listeners\RecordMarketingEvents;
 use App\Listeners\RunAutomationRules;
 use App\Models\AutomationRule;
 use App\Models\Company;
@@ -101,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
          */
         Event::listen(LeadDomainEvent::class, RunAutomationRules::class);
         Event::listen(LeadDomainEvent::class, RecordConversionOutcome::class);
+        Event::listen(LeadDomainEvent::class, RecordMarketingEvents::class);
         Event::listen(LeadDomainEvent::class, BroadcastLeadChange::class);
 
         // Mass-assignment protection stays on; we also fail loudly in dev when a
@@ -140,6 +142,16 @@ class AppServiceProvider extends ServiceProvider
         )->by($request->user()?->id ?: $request->ip()));
 
         // Credential stuffing guard: slow, and keyed on email + IP.
+        /*
+         * The public landing page: each kind of request has an allowance of its own, per visitor (address) and per page. A numeric
+         * `throttle:N,M` shares one counter between every route it is put on, so a page's views and a form's step reports would
+         * spend the same few submits — and the customer the button was for would be told to slow down.
+         */
+        RateLimiter::for('landing-view', fn (Request $request) => Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('landing-beacon', fn (Request $request) => Limit::perMinute(240)->by('lb:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('landing-submit', fn (Request $request) => Limit::perMinute(30)->by('ls:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('landing-asset', fn (Request $request) => Limit::perMinute(240)->by('la:'.$request->ip()));
+
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(config('integrations.login.per_email_per_minute'))
                 ->by(strtolower((string) $request->input('email')).'|'.$request->ip()),

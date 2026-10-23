@@ -17,6 +17,8 @@ enum IntegrationProvider: string
     case TwilioVoice = 'twilio_voice';
     case Email = 'email';
     case Manual = 'manual';
+    /** A landing page of ours: the form on it is a lead source, and the link that opened it says which. */
+    case LandingForm = 'landing_form';
 
     public static function values(): array
     {
@@ -39,6 +41,7 @@ enum IntegrationProvider: string
             // first appears over WhatsApp keeps whatever platform brought it in,
             // and GitHub never creates one at all.
             self::Whatsapp, self::GitHub, self::TwilioVoice, self::Email, self::Manual => Platform::Manual,
+            self::LandingForm => Platform::LandingPage,
         };
     }
 }

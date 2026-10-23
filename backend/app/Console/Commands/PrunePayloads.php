@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DestinationDelivery;
 use App\Models\LeadSourceEvent;
+use App\Models\VisitorSession;
 use App\Models\WebhookLog;
 use App\Models\WhatsappEvent;
 use Illuminate\Console\Command;
@@ -65,7 +67,20 @@ class PrunePayloads extends Command
             ->where('received_at', '<', $cutoff)
             ->whereNotNull('payload');
 
+        /*
+         * The tracking hub's two memories of a visitor. A delivery is the log of what was sent to a platform, asked about within
+         * days ("why did it not get this?"), so it goes whole. A session is the trail that credited a lead, and the lead keeps its
+         * credit; the session only loses what could point at a person — the address hash, the browser, the platform click ids —
+         * and keeps which source it came from.
+         */
+        $deliveries = DestinationDelivery::withoutGlobalScopes()->where('created_at', '<', Carbon::now()->subDays((int) config('retention.delivery_days')));
+        $sessionCutoff = Carbon::now()->subDays((int) config('retention.session_days'));
+        $sessions = VisitorSession::withoutGlobalScopes()->where('last_seen_at', '<', $sessionCutoff)
+            ->where(fn ($q) => $q->whereNotNull('ip_hash')->orWhereNotNull('browser')->orWhereNotNull('os')->orWhereRaw("(first_touch->'click_ids') is not null")->orWhereRaw("(last_touch->'click_ids') is not null"));
+
         $counts = [
+            'destination_deliveries' => (clone $deliveries)->count(),
+            'visitor_session_identifiers' => (clone $sessions)->count(),
             'webhook_logs' => (clone $logs)->count(),
             'whatsapp_events' => (clone $events)->count(),
             'lead_source_event_payloads' => (clone $sourceEvents)->count(),
@@ -75,6 +90,12 @@ class PrunePayloads extends Command
             $logs->delete();
             $events->delete();
             $sourceEvents->update(['payload' => null]);
+            $deliveries->delete();
+            $sessions->update([
+                'ip_hash' => null, 'browser' => null, 'os' => null,
+                'first_touch' => \DB::raw("(coalesce(first_touch::jsonb, '{}'::jsonb) - 'click_ids')::json"),
+                'last_touch' => \DB::raw("(coalesce(last_touch::jsonb, '{}'::jsonb) - 'click_ids')::json"),
+            ]);
         }
 
         foreach ($counts as $what => $count) {

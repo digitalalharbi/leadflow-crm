@@ -10,6 +10,7 @@ use App\Http\Resources\TrackingLinkResource;
 use App\Models\Ad;
 use App\Models\Campaign;
 use App\Models\Creative;
+use App\Models\LandingForm;
 use App\Models\Partner;
 use App\Models\Project;
 use App\Models\Property;
@@ -32,7 +33,7 @@ use Illuminate\Validation\Rule;
  */
 class TrackingLinkController extends Controller
 {
-    private const WITH = ['partner:id,uuid,name,type', 'project:id,uuid,name', 'property:id,uuid,code', 'campaign:id,uuid,name', 'ad:id,uuid,name', 'creative:id,uuid,name', 'rep:id,uuid,name'];
+    private const WITH = ['landingForm:id,uuid,name,status', 'partner:id,uuid,name,type', 'project:id,uuid,name', 'property:id,uuid,code', 'campaign:id,uuid,name', 'ad:id,uuid,name', 'creative:id,uuid,name', 'rep:id,uuid,name'];
 
     public function __construct(private TrackingLinks $links, private LinkStats $stats, private AuditLogger $audit) {}
 
@@ -148,6 +149,10 @@ class TrackingLinkController extends Controller
         $data = $request->validate([
             'name' => [$req, 'string', 'max:160'],
             'kind' => ['sometimes', Rule::in(TrackingLink::KINDS)],
+            'mode' => ['sometimes', Rule::in(TrackingLink::MODES)],
+            'landing_form_id' => ['nullable', 'uuid'],
+            'custom_params' => ['nullable', 'array', 'max:12'],
+            'custom_params.*' => ['nullable', 'string', 'max:200'],
             'channel' => ['sometimes', Rule::in(TrackingLink::CHANNELS)],
             'project_id' => ['nullable', 'uuid'],
             'property_id' => ['nullable', 'uuid'],
@@ -170,9 +175,11 @@ class TrackingLinkController extends Controller
         ]);
 
         // uuid → id, each looked up inside the workspace: another workspace's id is simply not there.
-        foreach (['project_id' => Project::class, 'property_id' => Property::class, 'campaign_id' => Campaign::class, 'ad_id' => Ad::class, 'creative_id' => Creative::class, 'user_id' => User::class, 'partner_id' => Partner::class] as $key => $model) {
+        foreach (['project_id' => Project::class, 'property_id' => Property::class, 'campaign_id' => Campaign::class, 'ad_id' => Ad::class, 'creative_id' => Creative::class, 'user_id' => User::class, 'partner_id' => Partner::class, 'landing_form_id' => LandingForm::class] as $key => $model) {
             if (array_key_exists($key, $data)) {
-                $data[$key] = blank($data[$key]) ? null : $model::where('uuid', $data[$key])->value('id');
+                // Users are the one model no scope guards: this workspace's only, or another's salesperson could be named.
+                $lookup = $model === User::class ? User::query()->inWorkspace($request->user()->tenant_id) : $model::query();
+                $data[$key] = blank($data[$key]) ? null : $lookup->where('uuid', $data[$key])->value('id');
                 abort_if($data[$key] === null && filled($request->input($key)), 404, 'Resource not found.');
             }
         }

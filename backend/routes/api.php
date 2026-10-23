@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\JourneyController;
+use App\Http\Controllers\Api\V1\LandingFormController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\LeadEmailController;
@@ -341,6 +342,13 @@ Route::prefix('v1')->group(function () {
             Route::delete('/partners/{uuid}/commission-payments/{payment}', [PartnerController::class, 'voidPayment'])->whereUuid('uuid');
             Route::post('/partners/{uuid}/statement-link', [PartnerController::class, 'statementLink'])->whereUuid('uuid');
             Route::delete('/partners/{uuid}', [PartnerController::class, 'destroy'])->whereUuid('uuid');
+            // The landing pages a link can open, and the form on each.
+            Route::get('/tracking/forms/presets', [LandingFormController::class, 'presets']);
+            Route::get('/tracking/forms', [LandingFormController::class, 'index']);
+            Route::post('/tracking/forms', [LandingFormController::class, 'store']);
+            Route::get('/tracking/forms/{uuid}', [LandingFormController::class, 'show'])->whereUuid('uuid');
+            Route::patch('/tracking/forms/{uuid}', [LandingFormController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tracking/forms/{uuid}', [LandingFormController::class, 'destroy'])->whereUuid('uuid');
             Route::patch('/tracking/links/{uuid}', [TrackingLinkController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/links/{uuid}', [TrackingLinkController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/tracking/attribution', AttributionController::class);

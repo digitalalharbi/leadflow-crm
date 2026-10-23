@@ -51,6 +51,7 @@ use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\PropertyController;
+use App\Http\Controllers\Api\V1\PublicLandingController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -99,6 +100,10 @@ Route::prefix('v1')->group(function () {
 
     // What a landing page tells us a visitor did. Public; the link token says whose it is.
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:240,1')->where('token', '[A-Za-z0-9]{6,24}');
+
+    // The landing page a tracking link opens, and its form. Public by nature; the token is the only thing the visitor holds.
+    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:120,1')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{6,24}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');

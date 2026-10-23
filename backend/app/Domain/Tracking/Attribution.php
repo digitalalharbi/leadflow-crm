@@ -4,6 +4,7 @@ namespace App\Domain\Tracking;
 
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Leads\InterestEngine;
+use App\Enums\IntegrationProvider;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
@@ -109,7 +110,7 @@ class Attribution
         // Their earlier visits are theirs now: how interested they are includes them.
         $visitor !== null && InterestEngine::touch($lead->id, 'attribution');
 
-        if ($last !== null) {
+        if ($last !== null && $incoming->provider !== IntegrationProvider::LandingForm) {
             app(EventRecorder::class)->record(EventType::FormSubmit, [
                 'lead_id' => $lead->id,
                 'visitor_id' => $visitor,

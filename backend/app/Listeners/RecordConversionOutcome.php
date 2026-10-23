@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Domain\Conversions\ConversionEvent;
 use App\Domain\Conversions\ConversionRecorder;
+use App\Domain\Leads\InterestEngine;
 use App\Enums\LeadStatus;
 use App\Events\Contracts\LeadDomainEvent;
 use App\Events\LeadStageChanged;
@@ -34,6 +35,7 @@ class RecordConversionOutcome implements ShouldQueue
         $outcome = match (true) {
             $event->name() === 'lead.qualified' => ConversionEvent::Qualified,
             $event->name() === 'lead.won' => ConversionEvent::Won,
+            $event->name() === 'lead.interest_changed' && in_array($event->context['to'] ?? null, InterestEngine::INTERESTED, true) => ConversionEvent::Interested,
             // A booked visit is the signal between "qualified" and "sold", and
             // the one an algorithm can learn from within days rather than months.
             $event instanceof LeadStageChanged && $event->to === LeadStatus::Appointment => ConversionEvent::Appointment,

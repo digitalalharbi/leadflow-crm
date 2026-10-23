@@ -2,6 +2,8 @@
 
 namespace App\Domain\Visits;
 
+use App\Domain\Conversions\ConversionEvent;
+use App\Domain\Conversions\ConversionRecorder;
 use App\Domain\Leads\OutcomeRecorder;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
@@ -69,6 +71,8 @@ class ReservationService
 
             $this->activities->log($lead, ActivityType::ReservationCreated, $actor, null, ['reservation_id' => $reservation->uuid, 'property_id' => $property?->uuid]);
             app(EventRecorder::class)->outcome($lead, EventType::Reservation, ['reservation' => $reservation->uuid], $reservation->uuid);
+            // The signal a campaign can be optimised on, long before the sale.
+            app(ConversionRecorder::class)->record($lead, ConversionEvent::Reservation);
 
             return $reservation;
         });

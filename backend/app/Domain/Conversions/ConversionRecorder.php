@@ -30,6 +30,11 @@ class ConversionRecorder
         // never reported back to the campaign that produced it.
         $platform = AdPlatform::fromLeadPlatform($lead->platform)?->value;
 
+        // Somebody who refused tracking is not reported to an advertising platform.
+        if ($lead->tracking_consent === 'denied') {
+            return null;
+        }
+
         if (! $this->registry->has($platform)) {
             return null;
         }

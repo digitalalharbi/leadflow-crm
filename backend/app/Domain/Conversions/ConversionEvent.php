@@ -14,6 +14,9 @@ enum ConversionEvent: string
     case Qualified = 'qualified';
     case Appointment = 'appointment';
     case Won = 'won';
+    // The later signals a campaign can be optimised on: not just a lead, but one who is interested, and one who reserved.
+    case Interested = 'interested';
+    case Reservation = 'reservation';
 
     /** @return array<int,string> */
     public static function values(): array
@@ -28,6 +31,8 @@ enum ConversionEvent: string
             self::Qualified => 'Lead',
             self::Appointment => 'Schedule',
             self::Won => 'Purchase',
+            self::Interested => 'Contact',
+            self::Reservation => 'InitiateCheckout',
         };
     }
 }

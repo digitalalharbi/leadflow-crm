@@ -13,6 +13,7 @@ use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Listeners\BroadcastLeadChange;
 use App\Listeners\RecordConversionOutcome;
+use App\Listeners\RecordMarketingEvents;
 use App\Listeners\RunAutomationRules;
 use App\Models\AutomationRule;
 use App\Models\Company;
@@ -101,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
          */
         Event::listen(LeadDomainEvent::class, RunAutomationRules::class);
         Event::listen(LeadDomainEvent::class, RecordConversionOutcome::class);
+        Event::listen(LeadDomainEvent::class, RecordMarketingEvents::class);
         Event::listen(LeadDomainEvent::class, BroadcastLeadChange::class);
 
         // Mass-assignment protection stays on; we also fail loudly in dev when a

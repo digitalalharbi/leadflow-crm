@@ -6,6 +6,7 @@ use App\Domain\Tracking\Destinations\DestinationFanOut;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
+use App\Models\VisitorSession;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -70,6 +71,10 @@ class EventRecorder
                 'tracking_link_id' => $lead->last_touch_link_id ?? $lead->first_touch_link_id,
                 'project_id' => $lead->project_id,
                 'property_id' => $lead->interested_property_id,
+                'session_id' => $lead->visitor_id ? VisitorSession::where('visitor_id', $lead->visitor_id)->latest('last_seen_at')->value('session_id') : null,
+                'campaign_id' => $lead->campaign_ref_id,
+                'platform' => $lead->platform instanceof \BackedEnum ? $lead->platform->value : $lead->platform,
+                'consent' => $lead->tracking_consent,
                 'meta' => $meta ?: null,
                 'dedupe_key' => "{$type->value}:{$lead->id}".($uniqueBy !== null ? ":{$uniqueBy}" : ''),
             ]);

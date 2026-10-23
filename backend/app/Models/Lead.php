@@ -134,6 +134,17 @@ class Lead extends Model
                 app(EventRecorder::class)->outcome($lead, EventType::Won, ['deal_value_minor' => $lead->deal_value_minor]);
             }
 
+            // Lost is the same: however it was closed, it is one event on the trail.
+            if ($lead->wasChanged('status') && $lead->status === LeadStatus::Lost) {
+                app(EventRecorder::class)->outcome($lead, EventType::Lost, array_filter(['reason' => $lead->lost_reason_id]));
+            }
+
+            // What the sale was worth is an event of its own, so an amount that is corrected later is a new figure for the
+            // platforms to optimise on — each distinct amount once.
+            if ($lead->status === LeadStatus::Won && ($lead->wasChanged('status') || $lead->wasChanged('deal_value_minor')) && (int) $lead->deal_value_minor > 0) {
+                app(EventRecorder::class)->outcome($lead, EventType::Revenue, ['deal_value_minor' => (int) $lead->deal_value_minor], (string) $lead->deal_value_minor);
+            }
+
             // What a sale was worth is money on the record: who changed it, and from what to what.
             if ($lead->wasChanged('deal_value_minor') && ! $lead->wasRecentlyCreated) {
                 try {

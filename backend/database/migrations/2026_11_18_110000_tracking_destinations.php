@@ -31,7 +31,7 @@ return new class extends Migration
             $table->json('events')->nullable();                                           // the allowlist of canonical event names
             $table->boolean('send_value')->default(true);                                 // revenue figures
             $table->boolean('hash_identifiers')->default(true);                           // a hashed email or phone, with consent
-            $table->string('consent_mode', 12)->default('required');                     // required · unless_denied
+            $table->string('consent_mode', 16)->default('required');                     // required · unless_denied
             $table->timestamp('last_event_at')->nullable();
             $table->text('last_error')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

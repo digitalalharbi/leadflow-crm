@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tracking;
 
+use App\Domain\Tracking\Destinations\DestinationFanOut;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
@@ -36,7 +37,12 @@ class EventRecorder
         try {
             // In its own savepoint: on Postgres a unique violation aborts the whole surrounding
             // transaction, and a duplicate event must not take a sale or a brochure open with it.
-            return DB::transaction(fn () => TrackingEvent::create(['event_type' => $type->value, 'occurred_at' => now()] + $attributes));
+            $event = DB::transaction(fn () => TrackingEvent::create(['event_type' => $type->value, 'occurred_at' => now()] + $attributes));
+
+            // Told to whoever asked to hear of it — queued, and never allowed to cost the event.
+            app(DestinationFanOut::class)->queue($event);
+
+            return $event;
         } catch (QueryException $e) {
             // 23505: the same dedupe key arrived twice. That is the point of the key.
             if (($e->errorInfo[0] ?? null) === '23505') {

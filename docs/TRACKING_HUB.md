@@ -94,3 +94,52 @@ Nothing here sends to a platform without credentials, and nothing pretends to. E
 
 Meta Conversions API, TikTok Events API, GA4 Measurement Protocol and the offline-conversion exporters need the workspace's own
 credentials; Meta-approved WhatsApp templates are needed for messages outside the 24-hour window.
+
+
+## Form builder V2
+
+The landing form is no longer a list of fields: it is **sections → rows → columns → fields**, built on the screen (`/tracking/forms/:id`), with
+the same `FormSchema` underneath — the flat field list is still the contract of what may be asked and where each answer lands; the layout only
+places the fields, so a form can be drawn a hundred ways without changing what a submission means.
+
+| Part | Where | What it is |
+|---|---|---|
+| Layout | `FormLayout` | Up to 10 sections, 30 rows each, 1–4 columns per row. Every field is placed exactly once; a field nobody placed is asked at the end, never lost. A form without a layout gets one from its steps. |
+| Field types | `FormSchema::TYPES` | text, phone, email, number, textarea, select, multi select, radio, checkbox, date, time, hidden, heading, paragraph, divider, consent, **matrix**, **repeater**. Display types ask nothing and cannot be mapped or required. |
+| Matrix | `field.matrix` | Rows × columns; one answer per row, or several; "every row" or "at least N". Saved as structured JSON (`{row: column}`), read as text on the lead (`الموقع: مهم جدًا`), aggregated on the form's analytics. |
+| Repeater | `field.repeater` | A list of rows with their own columns (name, phone, relation…); min / max / default rows; each cell is checked like any field and a refusal names the row and the column (`guests.1.mobile`). |
+| Conditions | `Logic`, `lib/formLogic.ts` | `show_when`, `hide_when`, `require_when` on a field, a row or a section; `equals, not_equals, contains, gt, gte, lt, lte, empty, not_empty`; AND / OR. The server and the page run **the same vectors** (`frontend/src/features/formVectors.json`), so what the page shows the server accepts. The server re-runs every condition: an answer to a hidden question is dropped, and a hidden question cannot be demanded. |
+| Phone | `PhoneCountries` | A country selector (the workspace's default, Saudi by default); the number leaves as one international number, and the number as typed is kept beside it (`raw.typed`). |
+| Validation | per field | required, min / max, length, pattern, and the manager's own message; errors sit beside the field and nothing typed is lost. |
+| Steps | `settings.mode = multi` | Each section is a step, with a progress bar, back / next, and the visitor's place kept in their own browser. `form_start` and `form_step` are recorded; the lead is made only on submit. |
+| Header and look | `FormDesign` | Five header layouts, a logo and a hero image (uploaded: PNG / JPEG / WebP ≤ 1.5 MB, checked by content, served by us with `nosniff`; **no SVG**), and a look chosen from **closed lists** (colour tokens, radius, spacing, field size, theme). There is no free CSS, no HTML, no colour string: the page maps each token to a value it owns. |
+| After sending | `settings.thanks` | The thanks, up to four actions (WhatsApp, call, appointment, project, brochure) and an optional redirect after a delay. |
+| Templates | `FormTemplates` | Real estate interest, property visit, reservation interest, investment qualification, broker lead, general contact — each a whole form that already works. A form can also be copied. |
+| Intent signals | `settings.signals`, `FormSignals` | Rules a workspace writes ("budget ≥ 2M", "buying within 3 months", "cash") each worth points, up to 30 together; kept as one fact on the lead, so the interest score says *why* (`form_intent`). Never shown to the visitor. |
+
+### Draft, publish, versions
+
+A form row is the **draft** a manager edits. **Publish** freezes it as a version (`landing_form_versions`, with a checksum) and points the form
+at it; the public page serves the published version, so editing the draft never reaches a campaign that is already running. Publishing an unchanged
+draft makes no new version. A submission remembers the version its visitor saw (`form_version_id` on the trail and on the source event), so an old
+lead can always be explained. A form published before versions existed gets its first version the first time it is shown. `variant` is on every
+version so an A/B test can later publish two live versions of one form without a schema change.
+
+### Completion events
+
+`dataLayer` hears `form_view`, `form_start`, `form_step`, `form_submit` (the button pressed and the answers passing the page's checks) and
+`form_success` — **only after the server has kept the lead**, under the same `event_id` the server recorded the submission with and the browser pixels
+use, so a platform counts it once. What is pushed is ids and campaign names (`tracking_link_id`, `project_id`, `form_id`, `form_version`, source,
+medium, campaign) — never a name, a number or an address. The internal event store stays the source of truth.
+
+### Analytics per form
+
+`GET /tracking/forms/{id}/analytics`: views, starts, sent, completion and abandonment rates, average completion time, a step-by-step funnel with
+drop-off, where people stopped (a step and a **field key** — a beacon cannot carry what was typed), matrix answers added up across everybody, and
+submissions per version.
+
+### Security
+
+Public requests have an allowance of their own per kind, per visitor and per page (views, step reports, submit): a shared counter would let a busy
+mobile network lock its customers out of the one button that matters. A honeypot, an idempotent submission id and consent are as before; every
+manager text is plain text; tenant isolation is checked on every new endpoint.

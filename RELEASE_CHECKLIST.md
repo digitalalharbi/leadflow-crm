@@ -1,7 +1,11 @@
-# RELEASE CHECKLIST — «مهتم» release candidate
+# RELEASE CHECKLIST — «مهتم» v0.5.1
+
+**v0.5.1 supersedes v0.5.0.** v0.5.0 was tagged before a cross-workspace leak was found and fixed (#204: the lists of
+managers and salespeople, WhatsApp approval and SLA escalation recipients, agent notes, user search and onboarding read users
+across workspaces). v0.5.0 was never deployed; do not deploy it. **Product freeze is ON** from v0.5.1: only fixes from here until launch.
 
 Status words: **READY** (works as shipped, nothing to supply) · **EXTERNAL CONFIG REQUIRED** (a value only you can
-supply; the feature stays honest-off until it is there) · **OPTIONAL** (nice to have; nothing depends on it).
+supply; the feature stays honest-off until it is there) · **OPTIONAL AFTER LAUNCH** (nice to have; nothing depends on it).
 
 The product is tested Local-only. Nothing below has been exercised against a real server; the gates
 are the repository's own suites (see "Gates" at the end). `./scripts/check-deploy-readiness.sh` reports
@@ -13,7 +17,7 @@ which of these exist on a machine without printing any value.
 | --- | --- |
 | **READY** | the application and its tenant isolation, roles and per-element access, audit log, encrypted credentials, signed webhooks and rate limits · the sales-first phone flow · the installable app (manifest, service worker, offline notice) · the brand kit · the public pages (§P) · email as a recorded log (§4) · queue, scheduler and backups once their processes run (§3) |
 | **EXTERNAL CONFIG REQUIRED** | server, domain and HTTPS (§2) · a mail provider to really send (§4) · WhatsApp Business credentials (§5) · Google Sheets OAuth (§6) · each ad platform's app credentials (§7) · the four public-page values (§P): legal name, contact email, postal address, named processors |
-| **OPTIONAL** | AI key (§8) · Sentry and log shipping (§9) · Twilio calls (§10) · inbound-email parse domain (§4) |
+| **OPTIONAL AFTER LAUNCH** | AI key (§8) · Sentry and log shipping (§9) · Twilio calls (§10) · inbound-email parse domain (§4) |
 
 ## 1. Application (READY)
 
@@ -53,7 +57,7 @@ Default `LEADFLOW_MAIL_PROVIDER=log`: everything is recorded as **logged**, neve
 | `ses` | `LEADFLOW_MAIL_PROVIDER=ses`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `composer require aws/aws-sdk-php` | EXTERNAL CONFIG REQUIRED (keys + SDK) |
 | `resend` | `LEADFLOW_MAIL_PROVIDER=resend`, `RESEND_API_KEY` | EXTERNAL CONFIG REQUIRED (key) |
 | sender | `LEADFLOW_MAIL_FROM_ADDRESS`, `LEADFLOW_MAIL_FROM_NAME` (fall back to `MAIL_FROM_*`) | set with the provider |
-| replies to leads | `EMAIL_INBOUND_DOMAIN`, `EMAIL_INBOUND_SECRET` + an inbound-parse webhook (Postmark/SendGrid/Mailgun) | OPTIONAL — without it customer replies reach the workspace mailbox, not the thread |
+| replies to leads | `EMAIL_INBOUND_DOMAIN`, `EMAIL_INBOUND_SECRET` + an inbound-parse webhook (Postmark/SendGrid/Mailgun) | OPTIONAL AFTER LAUNCH — without it customer replies reach the workspace mailbox, not the thread |
 
 A workspace may also connect its own SMTP in Settings → Integrations → Email; that door is per-workspace and needs no server variable. None of the four adapters has sent a real message yet.
 
@@ -80,18 +84,18 @@ A workspace may also connect its own SMTP in Settings → Integrations → Email
 `ADS_SANDBOX` must stay unset/false in production (it is ignored there anyway): campaign changes are
 proposed, approved and executed only against a connected account.
 
-## 8. AI (OPTIONAL)
+## 8. AI (OPTIONAL AFTER LAUNCH)
 
 `ANTHROPIC_API_KEY` (+ `ANTHROPIC_BASE_URL`, `ANTHROPIC_TIMEOUT`, `AGENT_MODEL_*`) or a per-workspace key
 in Settings. Without it the agents and summaries say so and use their deterministic fallbacks.
 
-## 9. Observability (OPTIONAL)
+## 9. Observability (OPTIONAL AFTER LAUNCH)
 
 Sentry is not wired on the backend (no `SENTRY_*` read anywhere); the frontend SDK is installed but
 needs a DSN before it reports anything. `LOG_SLACK_WEBHOOK_URL` / Papertrail variables are available
 for log shipping.
 
-## 10. Calls (OPTIONAL)
+## 10. Calls (OPTIONAL AFTER LAUNCH)
 
 Twilio Voice is per-workspace (Settings → Calls); no server variable. The status webhook is public and signed.
 
@@ -118,7 +122,7 @@ offered, a last word); it ends on a visit, a held unit, won, lost, an unsubscrib
 | Queue worker and scheduler running (§3) | EXTERNAL CONFIG REQUIRED — without them nothing waits, retries or digests |
 | A real mail provider (§4) — until then summaries and alerts are recorded as *logged* | EXTERNAL CONFIG REQUIRED |
 | **Meta-approved WhatsApp templates for the interested journey's four messages** (`interested`, `interested_follow_up`, `visit_invite`, `final`): a message that starts a conversation outside the 24-hour window must be an approved template; register each under Settings → Messages | EXTERNAL CONFIG REQUIRED per workspace |
-| The four new messages' wording | OPTIONAL — defaults are installed in every workspace and editable per project |
+| The four new messages' wording | OPTIONAL AFTER LAUNCH — defaults are installed in every workspace and editable per project |
 
 ## P. Public pages: privacy, terms, data deletion, security, contact, about (READY; four values EXTERNAL CONFIG REQUIRED)
 
@@ -146,24 +150,71 @@ for a plain `npm run build`.
 - Nothing from `/api/` is ever stored by the worker. With no connection the app shows a notice, pages fall back to an offline page, and every change (save, send, approve) is refused out loud — nothing is queued.
 - Tested in Chromium (Chrome and Edge share the engine), Firefox, WebKit (Safari engine), an iPhone 14 profile and a Pixel 7 profile, at 375, 390, 430, 768 and 1366×768. **Not** tested on a real iPhone, a real Android phone, or Microsoft Edge itself; add-to-home-screen on iOS is a manual step the app explains on screen.
 
-## Gates run on this RC (2026-10-23, `develop`)
+## Production readiness inventory (what exists in the repository, and what only the server can answer)
+
+Nothing below is guessed: an item is **READY** only when the repository ships it and a test or script exercises it; anything
+that needs a machine, a name or a secret only you hold is **EXTERNAL CONFIG REQUIRED** and says what is missing.
+`./scripts/preflight-production.sh` prints the same picture for a given machine without echoing a value (on the build machine:
+1 check passes, 23 fail — every one of them an external value or server fact).
+
+| Item | Status | Where / what is missing |
+| --- | --- | --- |
+| VPS (PHP 8.4, Node 20 build, PostgreSQL, nginx) | EXTERNAL CONFIG REQUIRED | no server is named anywhere; `scripts/provision-server.sh` and `docs/PRODUCTION_RUNBOOK.md` describe it |
+| Domain and DNS (web origin + API origin) | EXTERNAL CONFIG REQUIRED | the two hostnames are yours to choose; they become `FRONTEND_URL` and `APP_URL` |
+| HTTPS | EXTERNAL CONFIG REQUIRED | certificates on both origins; the installable app and the service worker need it |
+| `.env.production` | EXTERNAL CONFIG REQUIRED | `.env.production.example` lists every variable; `APP_KEY`, database and mail secrets are generated on the server, never committed |
+| PostgreSQL | READY (as a service in `docker-compose.production.yml`) | a managed instance is an alternative; migrations are forward-only and reversible (checked up → down → up with an identical schema) |
+| Redis | READY (compose service, append-only) | needed for Horizon, cache and queue in production |
+| Queue worker / Horizon | READY once the process runs | supervised `horizon` service; `leadflow:sweep-scheduled` re-queues any scheduled action the queue lost |
+| Scheduler | READY once the process runs | `schedule:work` service writes a heartbeat the readiness page reads |
+| Storage permissions | READY in the image | `storage/` and `bootstrap/cache` are writable by the app user in the Dockerfile; verify on the first deploy |
+| Backups | READY | `scripts/backup-db.sh` before every migration; keep a copy off the box |
+| Restore procedure | READY | `scripts/restore-check.sh` (non-destructive, prints `RESTORE CHECK: PASS`) and `scripts/restore-db.sh` (the disaster restore) — run the check once on the server before go-live |
+| Logs and rotation | READY | `daily` channel in production; container logs rotate at 20 MB × 5 in compose |
+| Error tracking (Sentry) | OPTIONAL AFTER LAUNCH | not wired on the backend; the runbook lists the one `composer require` and the DSN |
+| Health endpoint | READY | `GET /api/health` (no auth; component status only — application, database, Redis, queue — and the serving commit only to a caller holding the deploy secret) |
+| Readiness | READY | the in-app Readiness page and `scripts/verify-production.sh` / `smoke-production.sh` after a deploy |
+| Rollback | READY | `scripts/rollback.sh`; the pre-deploy backup is the safety net |
+
+### Public values (build-time, §P)
+
+`VITE_PUBLIC_LEGAL_NAME`, `VITE_PUBLIC_CONTACT_EMAIL`, `VITE_PUBLIC_ADDRESS` and `VITE_PUBLIC_PROCESSORS` are **not set** and are
+**not invented**: until they are, the privacy, terms, data-deletion, security, contact and about pages show a visible
+"[يُضاف قبل الإطلاق: …]" marker in each place. They are required before the public launch.
+
+### Provider readiness (nothing is sent without credentials)
+
+| Provider | State |
+| --- | --- |
+| Email: SMTP / SES / Resend | the adapters are built and the default `log` provider records every email as *logged*, never *sent*; a real provider needs its credentials (§4) |
+| Meta (leads, WhatsApp, conversions) | needs the app credentials per workspace (§5, §7). WhatsApp messages that start a conversation outside the 24-hour window — in particular the four Interested-journey messages (`interested`, `interested_follow_up`, `visit_invite`, `final`) — must be **Meta-approved templates**, registered under Settings → Messages |
+| Google (Sheets, Ads) | OAuth / developer credentials per workspace (§6, §7) |
+| TikTok, Snapchat, LinkedIn, X | app credentials per workspace (§7) |
+
+## Gates run for v0.5.1 (2026-10-23, `develop` at 372f9f0)
 
 All local; no CI/CD is wired. Nothing has been run against a real server, a real phone, or Microsoft Edge itself.
 
 | Gate | Result |
 | --- | --- |
-| Backend, full `php artisan test` | 2122 passed (9217 assertions) |
+| Backend, full `php artisan test` | 2166 passed (9443 assertions) |
 | Pint | passed |
 | `npm run typecheck` · `npm run lint` | clean · exit 0 (warnings only) |
 | Vitest, full | 333 passed (32 files) |
-| Playwright, full, one worker, all five engines | 726 passed, 62 skipped by design, 11 failed — all 11 passed ×3 on separate reruns (machine load average 37 from other projects' builds; 50 s page timeouts), recorded as flaky/environmental |
-| PWA production build + `playwright.pwa.config.ts` (Chromium, Firefox, WebKit, iPhone 14, Pixel 7) | 39 passed, 6 skipped by design |
+| Playwright, full, one worker, all five engines | 736 passed, 62 skipped by design, 1 failed — the one (mobile-safari, Work Now on a phone) passed ×3 on separate reruns while the machine was at load average 30+ from other projects' builds: flaky/environmental |
+| PWA production build + `playwright.pwa.config.ts` (Chromium, Firefox, WebKit, iPhone 14, Pixel 7) | 38 passed, 6 skipped by design, 1 failed — the one (Android, offline page) passed ×3 on separate reruns at load average 60+: environmental |
+| Tenant isolation / cross-workspace leaks (`TenantIsolationTest`, `CrossTenantInjectionTest`, `WorkspacePeopleNeverLeakTest`, `TenantSettingsIsolationTest`) and RBAC (`RbacFinalReviewTest`, `RolesAndPermissionsTest`, `DynamicAccessTest`) | 66 passed (889 assertions) |
+| Automation: the lead journey, the interested journey, guardrails (quiet hours, cap, cooldown, duplicate, human takeover), durable scheduled actions and `leadflow:sweep-scheduled`, alerts, SLA, staff WhatsApp | 87 passed (312 assertions) |
+| Digests and report delivery: daily, weekly, monthly, scheduled reports, email alerts | 68 passed (493 assertions) |
+| Migrations | 105 run, 0 pending; `migrate:reset` then `migrate` leaves an identical schema (`pg_dump -s` diff empty); the release adds one additive migration (`install_interested_messages`), nothing destructive |
 
-Found and fixed during the gate (not features): the sales-team report returned a 500 on any date range (an ambiguous
+The #204 fix is covered: every "my managers / my salespeople" read goes through `User::inWorkspace($tenant)` (fail-closed), and
+tests pin the manager and seller lists, WhatsApp approval recipients, SLA escalation recipients, agent notes, user search,
+salesperson filters, onboarding lists and notifications — workspace A never sends to, shows or leaks to workspace B.
+
+Found and fixed during the gates (not features): the sales-team report returned a 500 on any date range (an ambiguous
 `created_at` in the shared lead date filter); `agent_messages` had no index on its thread (additive migration);
 a sales rep was shown a link to `/automation` on the dashboard (now shown only with `automation.view`); the bottom
-tab bar's `tab-*` test ids collided with the pages' own tab strips (now `bottom-tab-*`).
-
-Database: 103 migrations, none destructive in `up()` except `drop_stored_onboarding_flags` (drops a column nothing writes; reversible; back up before `migrate`). The one new migration is an index and reverses cleanly. Seven tenant tables have no index led by `tenant_id`; each is only read through its parent key, which is indexed.
+tab bar's `tab-*` test ids collided with the pages' own tab strips (now `bottom-tab-*`); the cross-workspace leak above.
 
 Left to you: the four public-page values (§P), the server (§2) and the credentials in §4–§7.

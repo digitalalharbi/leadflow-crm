@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PipelineController;
+use App\Http\Controllers\Api\V1\ProjectAcquisitionController;
 use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
@@ -349,6 +350,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('/partners/{uuid}/commission-payments/{payment}', [PartnerController::class, 'voidPayment'])->whereUuid('uuid');
             Route::post('/partners/{uuid}/statement-link', [PartnerController::class, 'statementLink'])->whereUuid('uuid');
             Route::delete('/partners/{uuid}', [PartnerController::class, 'destroy'])->whereUuid('uuid');
+            // Acquisition: inside a project, where its customers come from and whether the tracking can be trusted.
+            Route::get('/projects/{uuid}/acquisition', ProjectAcquisitionController::class)->whereUuid('uuid');
             // Where events can go: GA4, Meta, TikTok, a GTM container, a webhook… configuration and readiness only.
             Route::get('/tracking/destinations/catalogue', [TrackingDestinationController::class, 'catalogue']);
             Route::get('/tracking/destinations', [TrackingDestinationController::class, 'index']);

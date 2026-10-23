@@ -10,13 +10,17 @@ import { HealthPanel } from '@/components/tracking/HealthPanel'
 import { LinkCard } from '@/components/tracking/LinkCard'
 import { LinkDrawer } from '@/components/tracking/LinkDrawer'
 import { QrCenter } from '@/components/tracking/QrCenter'
+import { DestinationsPanel } from '@/components/tracking/DestinationsPanel'
+import { FormsPanel } from '@/components/tracking/FormsPanel'
+import { LinkAnalyticsDrawer } from '@/components/tracking/LinkAnalyticsDrawer'
+import { LinkWizard } from '@/components/tracking/LinkWizard'
 import { QrDialog } from '@/components/tracking/QrDialog'
 import { fetchLinks, type TrackingLink } from '@/features/tracking'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 
-const TABS = ['links', 'qr', 'health', 'attribution'] as const
+const TABS = ['links', 'forms', 'qr', 'health', 'attribution', 'destinations'] as const
 type Tab = (typeof TABS)[number]
 
 /**
@@ -34,13 +38,16 @@ export function TrackingPage() {
   const canSee = can.has(user, 'tracking.view')
   // How platforms are doing and who gets the credit are analyses: they take the reports permission.
   const analytics = can.viewReports(user)
-  const tabs = TABS.filter((key) => key === 'links' || key === 'qr' || analytics)
+  // Forms are the landing pages' questions, and destinations are where events go: a manager's side of tracking.
+  const tabs = TABS.filter((key) => key === 'links' || key === 'qr' || key === 'forms' || (key === 'destinations' ? can.has(user, 'tracking.create') : analytics))
 
   const [tab, setTab] = useState<Tab>('links')
   const [days, setDays] = useState(30)
   const [openId, setOpenId] = useState<string | null>(null)
   const [drawer, setDrawer] = useState(false)
   const [qr, setQr] = useState<TrackingLink | null>(null)
+  const [wizard, setWizard] = useState(false)
+  const [analyticsId, setAnalyticsId] = useState<string | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['tracking-links', days], queryFn: () => fetchLinks(days), enabled: canSee })
 
@@ -69,7 +76,7 @@ export function TrackingPage() {
               {[7, 30, 90].map((d) => <option key={d} value={d}>{t('dashboard.lastDays', { count: d })}</option>)}
             </Select>
             {canEdit && (
-              <Button icon={<Plus className="size-4" />} onClick={() => { setOpenId(null); setDrawer(true) }} data-testid="new-link">{t('tracking.new')}</Button>
+              <Button icon={<Plus className="size-4" />} onClick={() => setWizard(true)} data-testid="new-link">{t('tracking.new')}</Button>
             )}
           </div>
         }
@@ -95,13 +102,15 @@ export function TrackingPage() {
             ) : (
               <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="link-list">
                 {links.map((link) => (
-                  <LinkCard key={link.id} link={link} onOpen={() => { setOpenId(link.id); setDrawer(true) }} onCopy={() => void copy(link.url)} onQr={() => setQr(link)} />
+                  <LinkCard key={link.id} link={link} onOpen={() => { setOpenId(link.id); setDrawer(true) }} onCopy={() => void copy(link.url)} onQr={() => setQr(link)} onAnalytics={() => setAnalyticsId(link.id)} />
                 ))}
               </ul>
             )}
           </>
         )}
 
+        {tab === 'forms' && <FormsPanel canEdit={can.has(user, 'tracking.create')} />}
+        {tab === 'destinations' && <DestinationsPanel canEdit={can.has(user, 'tracking.create')} />}
         {tab === 'qr' && (isLoading ? <Skeleton className="h-48" /> : <QrCenter links={links} onOpen={(id) => { setOpenId(id); setDrawer(true) }} />)}
 
         {tab === 'health' && <HealthPanel onGo={setTab} />}
@@ -109,6 +118,8 @@ export function TrackingPage() {
       </div>
 
       <QrDialog link={qr} onClose={() => setQr(null)} />
+      <LinkWizard open={wizard} onClose={() => setWizard(false)} onAnalytics={(l) => { setWizard(false); setAnalyticsId(l.id) }} onQr={setQr} />
+      <LinkAnalyticsDrawer linkId={analyticsId} onClose={() => setAnalyticsId(null)} />
       <LinkDrawer open={drawer} linkId={openId} canEdit={canEdit} onClose={() => setDrawer(false)} />
     </>
   )

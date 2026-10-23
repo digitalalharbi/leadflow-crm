@@ -57,7 +57,7 @@ test.describe('Tracking hub', () => {
     const stranger = await browser.newContext({ locale: 'ar-SA' })
     const landing = await stranger.newPage()
     await landing.goto(`/l/${token}?utm_source=facebook&fbclid=E2EFBCLID1`)
-    await expect(landing.getByTestId('landing-headline')).toHaveText('فرصتك في الياسمين')
+    await expect(landing.getByTestId('landing-headline')).toHaveText('سجّل اهتمامك')
     await expect(landing.locator('html')).toHaveAttribute('dir', 'rtl')
     await landing.getByTestId('input-name').fill('سلطان المتابع')
     await landing.getByTestId('input-mobile').fill('0555123456')

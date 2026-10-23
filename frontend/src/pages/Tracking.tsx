@@ -38,8 +38,8 @@ export function TrackingPage() {
   const canSee = can.has(user, 'tracking.view')
   // How platforms are doing and who gets the credit are analyses: they take the reports permission.
   const analytics = can.viewReports(user)
-  // Forms are the landing pages' questions, and destinations are where events go: a manager's side of tracking.
-  const tabs = TABS.filter((key) => key === 'links' || key === 'qr' || key === 'forms' || (key === 'destinations' ? can.has(user, 'tracking.create') : analytics))
+  // Forms are the landing pages' questions and destinations are where events go: the manager's side of tracking, not a broker's.
+  const tabs = TABS.filter((key) => key === 'links' || key === 'qr' || (key === 'forms' ? analytics || canEdit : key === 'destinations' ? canEdit : analytics))
 
   const [tab, setTab] = useState<Tab>('links')
   const [days, setDays] = useState(30)

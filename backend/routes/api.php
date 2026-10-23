@@ -366,6 +366,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/tracking/forms/templates', [LandingFormController::class, 'templates']);
             Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
             Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
+            Route::get('/tracking/forms/{uuid}/analytics', [LandingFormController::class, 'analytics'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
             Route::get('/tracking/forms', [LandingFormController::class, 'index']);

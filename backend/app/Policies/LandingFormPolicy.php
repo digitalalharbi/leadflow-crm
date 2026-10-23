@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Domain\Access\Permissions;
 use App\Models\LandingForm;
 use App\Models\User;
 
@@ -16,6 +17,12 @@ class LandingFormPolicy
     public function view(User $user, LandingForm $form): bool
     {
         return $user->belongsToTenant($form->tenant_id);
+    }
+
+    /** How a form is doing — to the riyal's neighbour — is for those the workspace gave the tracking screens to, as a link's is. */
+    public function viewAnalytics(User $user, LandingForm $form): bool
+    {
+        return $user->belongsToTenant($form->tenant_id) && Permissions::has($user, 'tracking.view');
     }
 
     public function create(User $user): bool

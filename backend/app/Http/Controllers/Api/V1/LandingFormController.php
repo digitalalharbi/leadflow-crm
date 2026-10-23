@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Tracking\Forms\FieldPresets;
+use App\Domain\Tracking\Forms\FormAnalytics;
 use App\Domain\Tracking\Forms\FormDefinition;
 use App\Domain\Tracking\Forms\FormDesign;
 use App\Domain\Tracking\Forms\FormLayout;
@@ -142,6 +143,18 @@ class LandingFormController extends Controller
             'id' => $v->uuid, 'version' => $v->version, 'variant' => $v->variant, 'published_at' => $v->published_at->toIso8601String(),
             'published_by' => $v->publisher?->name, 'is_live' => $v->id === $form->published_version_id, 'submissions' => (int) ($submits[$v->id] ?? 0),
         ])->values()]);
+    }
+
+    public function analytics(Request $request, string $uuid, FormAnalytics $analytics)
+    {
+        $form = LandingForm::where('uuid', $uuid)->with('publishedVersion')->firstOrFail();
+        $this->authorize('viewAnalytics', $form);
+
+        $days = (int) ($request->validate(['days' => ['nullable', 'integer', 'min:1', 'max:365']])['days'] ?? 30);
+        $from = now()->subDays($days - 1)->startOfDay();
+        $to = now()->endOfDay();
+
+        return ApiResponse::success(['form' => ['id' => $form->uuid, 'name' => $form->name], 'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'days' => $days]] + $analytics->for($form, $from, $to));
     }
 
     public function duplicate(Request $request, string $uuid)

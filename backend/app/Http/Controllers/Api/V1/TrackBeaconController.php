@@ -101,7 +101,7 @@ class TrackBeaconController extends Controller
                     'utm_content' => $data['utm_content'] ?? null,
                     'click_id' => ClickIds::primary($clickIds) ?? ($data['click_id'] ?? null),
                     'ip_hash' => Visitor::ipHash($request->ip()),
-                    'meta' => isset($data['meta']) ? $this->small($data['meta']) : null,
+                    'meta' => isset($data['meta']) ? $this->small($data['meta'], $data['event']) : null,
                     'dedupe_key' => isset($data['dedupe_key']) ? $link->id.':'.$data['dedupe_key'] : null,
                 ] + $agent);
             });
@@ -111,8 +111,16 @@ class TrackBeaconController extends Controller
     }
 
     /** @param  array<string,mixed>  $meta */
-    private function small(array $meta): array
+    private function small(array $meta, string $event): array
     {
+        // A form's own events say where a visitor was — a step, a field's key — and nothing else: never a word they typed.
+        if (str_starts_with($event, 'form_')) {
+            return array_filter([
+                'step' => isset($meta['step']) && preg_match('/^\d{1,2}$/', (string) $meta['step']) ? (string) (int) $meta['step'] : null,
+                'field' => isset($meta['field']) && is_string($meta['field']) && preg_match('/^[a-z][a-z0-9_]{0,30}$/', $meta['field']) ? $meta['field'] : null,
+            ], fn ($v) => $v !== null);
+        }
+
         $meta = array_map(fn ($v) => is_scalar($v) ? mb_substr((string) $v, 0, 200) : null, $meta);
 
         return array_filter($meta, fn ($v) => $v !== null);

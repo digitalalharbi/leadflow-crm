@@ -6,6 +6,7 @@ use App\Domain\Automation\ActionExecutor;
 use App\Domain\Automation\ActionLog;
 use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Automation\HumanTakeover;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Enums\MessageDirection;
 use App\Models\Lead;
 use App\Models\LeadMessage;
@@ -13,6 +14,8 @@ use App\Models\ScheduledAction;
 use App\Support\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Runs what a rule asked for two days ago.
@@ -26,9 +29,61 @@ class RunScheduledAction implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * Three goes, spaced: a database that blinked is not the end of a wait. What a rule's action itself
+     * cannot do is reported by the executor and never thrown, so a retry is only ever for the world.
+     * Sending twice is not a risk of retrying — the guardrails refuse the same message inside a day.
+     */
+    public int $tries = 3;
+
+    /** @var list<int> */
+    public array $backoff = [30, 120];
+
     public function __construct(public int $scheduledActionId) {}
 
+    /** After the last try: the step is recorded as failed, so the trace stops saying "waiting", and the managers are told. */
+    public function failed(\Throwable $e): void
+    {
+        $scheduled = ScheduledAction::withoutGlobalScopes()->find($this->scheduledActionId);
+
+        if (! $scheduled || $scheduled->status !== ScheduledAction::PENDING) {
+            return;
+        }
+
+        $why = 'تعذّر تنفيذ هذه الخطوة بعد عدة محاولات — راجع حالة الخادم.';
+        $scheduled->resolve(ScheduledAction::FAILED, $why);
+
+        // The exception is for the log; the screen and the managers get words.
+        Log::error('Scheduled action failed after retries.', ['scheduled_action' => $scheduled->id, 'error' => $e->getMessage()]);
+
+        $lead = Lead::withoutGlobalScopes()->find($scheduled->lead_id);
+
+        if ($lead?->tenant) {
+            app(TenantContext::class)->withTenant($lead->tenant, function () use ($scheduled, $why) {
+                app(ActionLog::class)->resolveScheduled($scheduled->id, $scheduled->action ?? [], ['ok' => false, 'description' => $why]);
+                ImportantAlerts::automationFailed($scheduled->automation_rule_id, $scheduled->rule_name, $why);
+            });
+        }
+    }
+
     public function handle(ActionExecutor $actions, TenantContext $tenants): void
+    {
+        // One worker at a time per step: a catch-up that re-queues a step and the original timer going off
+        // must not both run it. Released at the end; a worker that dies lets go when the lock expires.
+        $lock = Cache::lock("scheduled-action:{$this->scheduledActionId}", 120);
+
+        if (! $lock->get()) {
+            return;
+        }
+
+        try {
+            $this->run($actions, $tenants);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function run(ActionExecutor $actions, TenantContext $tenants): void
     {
         /*
          * No tenant scope on the lookups: a queue worker has no request to

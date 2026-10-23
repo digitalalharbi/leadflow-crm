@@ -34,7 +34,7 @@ class ImportantNotification extends Notification implements ShouldQueue
 
     public function alertContent(): array
     {
-        return ['title' => $this->title, 'body' => $this->body, 'lead_id' => $this->leadId, 'severity' => $this->severity];
+        return ['title' => $this->title, 'body' => $this->body, 'lead_id' => $this->leadId, 'severity' => $this->severity, 'link' => $this->link];
     }
 
     public function toDatabase(object $notifiable): array

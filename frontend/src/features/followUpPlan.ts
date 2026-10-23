@@ -21,7 +21,7 @@ export interface PlanStep {
 
 export interface FollowUpPlan {
   status: PlanStatus
-  mode: 'automated' | 'human'
+  mode: 'automated' | 'human' | 'interested'
   decision: PlanDecision
   reason: string
   steps: PlanStep[]

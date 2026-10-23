@@ -118,6 +118,9 @@ Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlap
 
 Schedule::command('leadflow:run-routines')->everyFiveMinutes()->withoutOverlapping();
 
+// A wait whose timer was lost (a flushed queue, a worker that died) is found and run, not forgotten.
+Schedule::command('leadflow:sweep-scheduled')->everyTenMinutes()->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 /*

@@ -47,11 +47,14 @@ test.describe('Notifications', () => {
   }
 
   /** The same notification, in the bell the person actually opens. */
-  async function inTheBell(page: Page, text: string) {
+  async function inTheBell(page: Page, text: string, kind?: string) {
     await authenticateAs(page, ALPHA.admin.email)
     await page.goto('/')
     await page.getByTestId('notifications-toggle').click()
-    const item = page.getByTestId('notification-item').filter({ hasText: text }).first()
+    // A lead nobody owns also tells the managers that it arrived, so one lead can have two notices:
+    // name the kind when it is the kind that is being checked.
+    const all = page.getByTestId('notification-item')
+    const item = (kind ? all.and(page.locator(`[data-kind="${kind}"]`)) : all).filter({ hasText: text }).first()
     await expect(item).toBeVisible()
 
     return item
@@ -155,7 +158,7 @@ test.describe('Notifications', () => {
       const notice = await noticeFor(admin, (n) => n.data.kind === 'appointment_requested' && n.data.lead_id === lead.id)
       expect(notice.data.severity).toBe('critical')
 
-      const item = await inTheBell(page, lead.name)
+      const item = await inTheBell(page, lead.name, 'appointment_requested')
       await expect(item).toHaveAttribute('data-kind', 'appointment_requested')
     } finally {
       await admin.dispose()
@@ -174,7 +177,7 @@ test.describe('Notifications', () => {
 
       expect((await notices(admin)).some((n) => n.data.kind === 'high_value_lead' && n.data.lead_id === small.id)).toBe(false)
 
-      const item = await inTheBell(page, big.name)
+      const item = await inTheBell(page, big.name, 'high_value_lead')
       await expect(item).toHaveAttribute('data-kind', 'high_value_lead')
     } finally {
       await admin.dispose()

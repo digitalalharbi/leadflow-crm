@@ -393,6 +393,21 @@ class AnomalyDetector
     }
 
     /** The alert's title and body, and where it points. @param  array<string,mixed>  $f @return array{0:string,1:string,2:string} */
+    /**
+     * A recorded finding in words, for a summary: what it says, in a sentence, and where to look.
+     *
+     * @return array{title:string, body:string, link:string}
+     */
+    public function describe(Anomaly $anomaly): array
+    {
+        [$title, $body, $link] = $this->words([
+            'kind' => $anomaly->kind, 'subject' => (string) $anomaly->subject,
+            'observed' => (float) $anomaly->observed, 'expected' => (float) $anomaly->expected,
+        ]);
+
+        return ['title' => $title, 'body' => $body, 'link' => $link];
+    }
+
     private function words(array $f): array
     {
         $o = $f['observed'];

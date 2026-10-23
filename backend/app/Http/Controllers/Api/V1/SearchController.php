@@ -122,6 +122,7 @@ class SearchController extends Controller
         }
 
         return User::query()
+            ->inWorkspace($request->user()->tenant_id)
             ->where('is_active', true)
             ->where(fn ($q) => $q->where('name', 'ilike', '%'.$term.'%')
                 ->orWhere('email', 'ilike', '%'.$term.'%'))

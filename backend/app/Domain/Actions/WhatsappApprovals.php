@@ -2,7 +2,6 @@
 
 namespace App\Domain\Actions;
 
-use App\Enums\Role;
 use App\Models\ActionProposal;
 use App\Models\ApprovalToken;
 use App\Models\User;
@@ -47,8 +46,7 @@ final class WhatsappApprovals
         $template = data_get($integration->config, 'approval_template');
         $results = [];
 
-        $approvers = User::query()->whereIn('role', [Role::Admin->value, Role::Manager->value])
-            ->where('is_active', true)->whereNotNull('phone')->get();
+        $approvers = User::query()->inWorkspace($proposal->tenant_id)->managers()->whereNotNull('phone')->get();
 
         foreach ($approvers as $user) {
             $token = Str::random(48);

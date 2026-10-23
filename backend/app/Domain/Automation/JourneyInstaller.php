@@ -62,6 +62,8 @@ class JourneyInstaller
             ]);
         }
 
+        $this->installInterestedMessages();
+
         $installed = AutomationRule::withTrashed()->pluck('template_key')->filter()->all();
 
         foreach (self::RULES as $key) {
@@ -80,6 +82,28 @@ class JourneyInstaller
                 'is_enabled' => true,
                 'template_key' => $key,
             ]);
+        }
+    }
+
+    /**
+     * The four messages of the interested journey, in both channels. A purpose a workspace already
+     * has a message for — or a name it already used — is left exactly as it is.
+     */
+    private function installInterestedMessages(): void
+    {
+        $order = 20;
+
+        foreach (MessageTemplate::INTERESTED_DEFAULTS as $channel => $defaults) {
+            foreach ($defaults as $default) {
+                $order++;
+
+                if (MessageTemplate::where('channel', $channel)->where('purpose', $default['purpose'])->exists()
+                    || MessageTemplate::where('name', $default['name'])->exists()) {
+                    continue;
+                }
+
+                MessageTemplate::create($default + ['channel' => $channel, 'is_active' => true, 'sort_order' => $order]);
+            }
         }
     }
 

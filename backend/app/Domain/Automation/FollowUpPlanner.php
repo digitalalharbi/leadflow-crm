@@ -2,13 +2,16 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Leads\InterestEngine;
 use App\Events\Contracts\LeadDomainEvent;
 use App\Jobs\RunScheduledAction;
 use App\Models\Appointment;
 use App\Models\AutomationActionLog;
+use App\Models\FileShare;
 use App\Models\Lead;
 use App\Models\LeadEngagement;
 use App\Models\LeadMessage;
+use App\Models\Reservation;
 use App\Models\ScheduledAction;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -27,6 +30,13 @@ use Illuminate\Support\Collection;
  *    planned, and the step says so;
  *  - quiet hours move a step to the end of the quiet window;
  *  - what the journey rule already scheduled is not scheduled twice.
+ *
+
+ * When a lead turns interested the week is laid out again, differently: the general nurture stops and the
+ * interested journey takes its place — the owner reminded first, the customer a different message at each
+ * step (never the same words twice), a visit offered, a last word — on the same six rungs. It ends the
+ * moment a visit is booked, a unit is held, the deal is won or lost, or the customer unsubscribes, and a
+ * person who has the conversation keeps only the steps that are theirs.
  *
  * Planning writes the plan to the lead and schedules its steps as ordinary
  * scheduled actions — so guardrails, project pauses and takeover cancellation
@@ -67,6 +77,7 @@ class FollowUpPlanner
             'lead.created' => $this->apply($lead),
             // A person who paused or stopped the plan decided; an answer does not undo that.
             'lead.replied' => $this->held($lead) ? null : $this->apply($lead, replace: true),
+            'lead.interest_changed' => $this->interestChanged($lead),
             default => null,
         };
     }
@@ -75,6 +86,43 @@ class FollowUpPlanner
     public function appointmentBooked(Lead $lead): void
     {
         $this->stop($lead, 'appointment');
+    }
+
+    /** A unit is held for them: the interested journey has done its job. */
+    public function reservationMade(Lead $lead): void
+    {
+        $this->stop($lead, 'reservation');
+    }
+
+    /**
+     * The customer crossed into "interested" (or back out of it). Into it: whatever general nurture was
+     * waiting is cancelled, the lead becomes a priority, and the journey for that moment is laid out.
+     * Out of it (they went cold): the general plan comes back. Already in it — interested to hot —
+     * nothing is rebuilt. A plan a person paused or stopped is never restarted behind their back.
+     */
+    private function interestChanged(Lead $lead): void
+    {
+        if ($this->held($lead)) {
+            return;
+        }
+
+        $interested = $this->isInterested($lead);
+        $inJourney = ($lead->follow_up_plan['mode'] ?? null) === 'interested';
+
+        if ($interested && ! $inJourney) {
+            $this->cancelAll($lead, 'أصبح العميل مهتمًا — انتقل من الرعاية العامة إلى رحلة الاهتمام.');
+            // First in the rep's queue: the same priority a rule would set, written by the same code.
+            app(ActionExecutor::class)->execute($lead, ['type' => 'set_priority', 'rule_name' => 'رحلة الاهتمام']);
+            $this->apply($lead->fresh() ?? $lead);
+        } elseif (! $interested && $inJourney) {
+            $this->cancelAll($lead, 'لم يعد العميل مهتمًا — عادت الرعاية العامة.');
+            $this->apply($lead->fresh() ?? $lead);
+        }
+    }
+
+    private function isInterested(Lead $lead): bool
+    {
+        return ! $lead->status?->isClosed() && in_array($lead->interest_level, InterestEngine::INTERESTED, true);
     }
 
     /**
@@ -130,6 +178,10 @@ class FollowUpPlanner
             return 'حُجز موعد — لم تعد المتابعة لازمة.';
         }
 
+        if ($this->hasReservation($lead)) {
+            return 'حُجزت وحدة — لم تعد المتابعة لازمة.';
+        }
+
         if ($this->unsubscribed($lead)) {
             return 'ألغى العميل الاشتراك.';
         }
@@ -152,12 +204,17 @@ class FollowUpPlanner
         $engaged = LeadEngagement::where('lead_id', $lead->id)->where('happened_at', '>=', $now->copy()->subDays(30))->exists();
         $sent = $this->sentSomething($lead);
         $paused = ! ProjectSettings::isActive($lead);
+        $interested = $this->isInterested($lead);
 
         $steps = [];
 
         foreach (self::LADDER as $key => $minutes) {
             $at = $now->copy()->addMinutes($key === 'now' ? 0 : (int) round($minutes * $factor));
-            [$action, $channel, $why] = $human ? $this->humanStep($key) : $this->automatedStep($key, $channels, $engaged, $sent);
+            [$action, $channel, $why] = match (true) {
+                $interested => $this->interestedStep($key, $channels, $human, $lead),
+                $human => $this->humanStep($key),
+                default => $this->automatedStep($key, $channels, $engaged, $sent),
+            };
 
             $state = 'planned';
 
@@ -165,7 +222,7 @@ class FollowUpPlanner
                 [$state, $why] = ['skipped', 'project_paused'];
             } elseif ($action === null) {
                 [$state, $why] = ['skipped', $why];
-            } elseif ($key === 'now' && ! $human && $sent) {
+            } elseif ($key === 'now' && ! $human && ! $interested && $sent) {
                 [$state, $why] = ['done', 'already_sent'];
             }
 
@@ -186,7 +243,7 @@ class FollowUpPlanner
             ];
         }
 
-        return ['status' => self::ACTIVE, 'mode' => $human ? 'human' : 'automated', 'generated_at' => $now->toIso8601String(), 'steps' => $steps];
+        return ['status' => self::ACTIVE, 'mode' => $interested ? 'interested' : ($human ? 'human' : 'automated'), 'generated_at' => $now->toIso8601String(), 'steps' => $steps];
     }
 
     /**
@@ -330,6 +387,7 @@ class FollowUpPlanner
         return match (true) {
             $lead->status?->isClosed() => ['stop', $lead->status->value],
             $this->hasAppointment($lead) => ['stop', 'appointment'],
+            $this->hasReservation($lead) => ['stop', 'reservation'],
             $this->unsubscribed($lead) => ['stop', 'unsubscribed'],
             ($lead->follow_up_plan['status'] ?? self::ACTIVE) === self::STOPPED => ['stop', 'stopped_by_user'],
             ($lead->follow_up_plan['status'] ?? self::ACTIVE) === self::PAUSED => ['stop', 'paused_by_user'],
@@ -354,7 +412,7 @@ class FollowUpPlanner
     /** Lay the plan out again from now. A lead that is decided, booked or unsubscribed is not resumed. */
     public function resume(Lead $lead): array
     {
-        if ($lead->status?->isClosed() || $this->unsubscribed($lead) || $this->hasAppointment($lead)) {
+        if ($lead->status?->isClosed() || $this->unsubscribed($lead) || $this->hasAppointment($lead) || $this->hasReservation($lead)) {
             return $this->view($lead) ?? [];
         }
 
@@ -434,6 +492,44 @@ class FollowUpPlanner
         };
     }
 
+    /**
+     * What an interested lead gets: the owner first, then the customer — a different message each time —
+     * and a visit offered. With a person on the conversation only the rep's steps remain.
+     *
+     * @param  array{whatsapp:bool,email:bool}  $channels
+     * @return array{0:?array<string,mixed>, 1:string, 2:string} action, channel, why
+     */
+    private function interestedStep(string $key, array $channels, bool $human, Lead $lead): array
+    {
+        $wa = $channels['whatsapp'];
+        $mail = $channels['email'];
+        $customer = fn (string $purpose, string $why) => $wa
+            ? [['type' => 'send_whatsapp', 'purpose' => $purpose, 'unless' => 'replied'], 'whatsapp', $why]
+            : ($mail ? [['type' => 'send_email', 'purpose' => $purpose, 'unless' => 'replied'], 'email', 'no_whatsapp'] : [null, 'whatsapp', 'no_channel']);
+        $call = fn (string $note) => ['type' => 'create_call_task', 'in_hours' => 1, 'note' => $note, 'unless' => 'contacted'];
+
+        return match ($key) {
+            'now' => $human ? [null, 'team', 'human_has_it'] : $customer('interested', 'interested'),
+            // The owner is reminded whether or not automation has the customer: somebody should have called.
+            '15m' => [['type' => 'notify', 'audience' => 'owner', 'message' => 'عميل مهتم ينتظر اتصالك — ابدأ به الآن.', 'unless' => 'contacted'], 'team', 'interested'],
+            '4h' => match (true) {
+                $human => [null, 'call', 'human_has_it'],
+                $this->brochureShared($lead) => [null, 'whatsapp', 'already_sent'],
+                default => [['type' => 'share_file', 'kind' => '', 'send' => true, 'channel' => $wa ? 'whatsapp' : 'email', 'unless' => 'replied'], $wa ? 'whatsapp' : 'email', 'brochure'],
+            },
+            '24h' => $human ? [$call('متابعة اهتمام العميل.'), 'call', 'interested'] : $customer('interested_follow_up', 'interested'),
+            '3d' => $human ? [$call('اعرض على العميل زيارة للمشروع.'), 'call', 'visit_cta'] : $customer('visit_invite', 'visit_cta'),
+            '7d' => $human
+                ? [['type' => 'notify', 'audience' => 'managers', 'message' => 'عميل مهتم منذ أسبوع ولم تُحسم حالته.', 'unless' => 'contacted'], 'team', 'interested']
+                : $customer('final', 'final'),
+        };
+    }
+
+    private function brochureShared(Lead $lead): bool
+    {
+        return FileShare::withoutGlobalScopes()->where('lead_id', $lead->id)->exists();
+    }
+
     /** What a lead who has answered gets: the rep's own steps, each falling away once somebody has called. */
     private function humanStep(string $key): array
     {
@@ -492,6 +588,7 @@ class FollowUpPlanner
     {
         return match ($reason) {
             'appointment' => 'حُجز موعد — انتهت المتابعة الآلية.',
+            'reservation' => 'حُجزت وحدة — انتهت المتابعة الآلية.',
             'unsubscribed' => 'ألغى العميل الاشتراك — توقفت المتابعة.',
             'won' => 'تم إغلاق العميل بالفوز — توقفت المتابعة.',
             'lost' => 'خسرنا العميل — توقفت المتابعة.',
@@ -507,6 +604,11 @@ class FollowUpPlanner
         }
 
         RunScheduledAction::dispatch($row->id)->delay($row->run_at);
+    }
+
+    private function hasReservation(Lead $lead): bool
+    {
+        return Reservation::withoutGlobalScopes()->where('lead_id', $lead->id)->whereIn('status', Reservation::OPEN)->exists();
     }
 
     private function hasAppointment(Lead $lead): bool

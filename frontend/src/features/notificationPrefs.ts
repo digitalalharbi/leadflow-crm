@@ -1,6 +1,6 @@
 import { apiGet, apiPatch } from '@/lib/api'
 
-export type AlertCategory = 'hot_lead' | 'visit_requested' | 'reservation_intent' | 'sla_breach' | 'automation_failure' | 'high_value' | 'tracking_failure' | 'budget_anomaly'
+export type AlertCategory = 'new_lead' | 'interested_lead' | 'hot_lead' | 'visit_requested' | 'reservation_intent' | 'sla_breach' | 'automation_failure' | 'high_value' | 'tracking_failure' | 'budget_anomaly'
 export type AlertMode = 'instant' | 'daily' | 'weekly' | 'off'
 export type DigestKind = 'daily_sales' | 'weekly_marketing' | 'weekly_executive' | 'monthly_executive'
 

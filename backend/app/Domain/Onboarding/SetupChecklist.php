@@ -74,6 +74,7 @@ class SetupChecklist
     private function team(): array
     {
         $hasSellers = User::query()
+            ->inWorkspace()
             ->whereIn('role', [Role::Sales->value, Role::Manager->value])
             ->where('is_active', true)
             ->exists();

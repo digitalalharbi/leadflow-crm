@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Domain\Automation\ActionLog;
 use App\Domain\Notifications\AlertGate;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Enums\Role;
 use App\Models\AutomationRule;
 use App\Models\FollowUp;
@@ -79,6 +80,20 @@ class ImportantAlertsTest extends TestCase
 
         $this->assertSame(['high_value_lead'], $this->important($rep)->pluck('data.kind')->all());
         $this->assertSame($big->uuid, $this->important($rep)->first()->data['lead_id']);
+    }
+
+    public function test_an_alert_for_the_managers_never_reaches_another_workspaces_managers(): void
+    {
+        $rival = $this->provisionTenant('Rival Alerts Co');
+        $lead = $this->lead(['full_name' => 'عميل سري للمنافس']);
+
+        // An unassigned lead and a failing rule both go to "the managers": only this workspace's.
+        $this->asTenant($this->t['tenant'], fn () => $lead->forceFill(['appointment_interest' => true])->save());
+        $this->asTenant($this->t['tenant'], fn () => ImportantAlerts::automationFailed(null, 'قاعدة خاصة', 'فشل'));
+        $this->asTenant($this->t['tenant'], fn () => ImportantAlerts::trackingFailure('meta', 'ميتا', 'توقف'));
+
+        $this->assertGreaterThan(0, $this->important($this->t['admin'])->count(), 'its own managers are told');
+        $this->assertCount(0, $this->important($rival['admin']), 'another workspace never hears of it');
     }
 
     public function test_a_failing_rule_is_one_message_a_day_to_the_managers_not_one_per_lead(): void

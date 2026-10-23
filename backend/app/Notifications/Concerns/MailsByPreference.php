@@ -25,7 +25,7 @@ trait MailsByPreference
     /** The alert category this notification belongs to, or null when it is not one worth an email. */
     abstract public function alertCategory(): ?string;
 
-    /** @return array{title:string, body:string, lead_id:?string, severity:string} */
+    /** @return array{title:string, body:string, lead_id:?string, severity:string, link?:?string} */
     abstract public function alertContent(): array;
 
     public function via(object $notifiable): array
@@ -56,7 +56,8 @@ trait MailsByPreference
                 'body' => $content['body'],
                 'severity' => $content['severity'],
                 'category' => $this->alertCategory(),
-                'link' => $content['lead_id'] ? rtrim((string) config('integrations.app_url'), '/').'/leads/'.$content['lead_id'] : rtrim((string) config('integrations.app_url'), '/'),
+                // The thing itself: the lead, or the screen the alert is about — the home page only when it is neither.
+                'link' => rtrim((string) config('integrations.app_url'), '/').($content['lead_id'] ? '/leads/'.$content['lead_id'] : (string) ($content['link'] ?? '')),
                 'workspace' => $notifiable->tenant?->name,
             ]);
     }

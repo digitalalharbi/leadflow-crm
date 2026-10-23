@@ -82,7 +82,8 @@ export function FormEditor({ open, formId, onClose, canEdit }: { open: boolean; 
         const found: Record<string, string> = {}
         for (const message of Object.values(caught.errors).flat()) {
           const [key, code] = message.split(': ')
-          found[code ? key : 'form_level'] = code ?? message
+          // The server calls the form as a whole `_form`.
+          found[code ? (key === '_form' ? 'form_level' : key) : 'form_level'] = code ?? message
         }
         setErrors(found)
         const first = Object.keys(found).find((k) => fields.some((f) => f.key === k))

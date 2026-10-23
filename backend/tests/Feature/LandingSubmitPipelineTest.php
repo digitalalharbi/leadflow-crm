@@ -7,6 +7,7 @@ use App\Domain\Tracking\Forms\FormSchema;
 use App\Models\LandingForm;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Models\TrackingDestination;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
 use App\Models\VisitorSession;
@@ -102,6 +103,41 @@ class LandingSubmitPipelineTest extends TestCase
         $views = $this->events(EventType::Visit->value);
         $this->assertCount(1, $views, 'the view was not recorded before the page was shown');
         $this->assertSame($this->link->id, $views->first()->tracking_link_id);
+    }
+
+    public function test_the_page_is_told_which_tags_to_load_and_nothing_secret_with_them(): void
+    {
+        $this->asTenant($this->t['tenant'], function () {
+            $mk = fn (string $kind, array $config, array $creds = [], array $extra = []) => TrackingDestination::create($extra + ['kind' => $kind, 'name' => $kind, 'is_enabled' => true, 'config' => $config, 'credentials' => $creds, 'send_value' => true, 'hash_identifiers' => true, 'consent_mode' => 'required']);
+            $mk('ga4', ['measurement_id' => 'G-ABC123DEF4'], ['api_secret' => 'ga-secret']);
+            $mk('meta', ['pixel_id' => '123456789012345', 'test_event_code' => 'TEST123'], ['access_token' => 'meta-token']);
+            $mk('gtm_web', ['container_id' => 'GTM-ABCD12']);
+            $mk('webhook', ['endpoint_url' => 'https://hooks.example.test/in'], ['secret' => 's']);          // server only: no tag
+            $mk('tiktok', ['pixel_id' => 'CABC123DEF456GH'], [], ['is_enabled' => false]);                     // switched off
+            $mk('snapchat', ['pixel_id' => '11111111-2222-3333-4444-555555555555'], [], ['project_id' => Project::create(['name' => 'مشروع آخر'])->id]);   // another project's
+        });
+
+        $response = $this->getJson('/api/v1/public/landing/'.$this->link->token)->assertOk();
+        $tags = collect($response->json('data.landing.tags'));
+
+        $this->assertEqualsCanonicalizing(['ga4', 'meta', 'gtm_web'], $tags->pluck('kind')->all());
+        $this->assertSame('G-ABC123DEF4', $tags->firstWhere('kind', 'ga4')['id']);
+        foreach (['ga-secret', 'meta-token', 'TEST123', 'hooks.example.test', 'api_secret', 'access_token'] as $private) {
+            $this->assertStringNotContainsString($private, $response->getContent(), "the page was handed {$private}");
+        }
+
+        $layer = $response->json('data.tracking.datalayer');
+        $this->assertSame('landing_viewed', $layer['event']);
+        $this->assertSame($response->json('data.tracking.view_event_id'), $layer['event_id'], 'the page\'s view and the server\'s are one event');
+        $this->assertSame($this->project->uuid, $layer['project_id']);
+        $this->assertSame($this->link->uuid, $layer['tracking_link_id']);
+    }
+
+    public function test_another_workspaces_tags_never_reach_this_workspaces_page(): void
+    {
+        $this->asTenant($this->rival['tenant'], fn () => TrackingDestination::create(['kind' => 'ga4', 'name' => 'ga4', 'is_enabled' => true, 'config' => ['measurement_id' => 'G-RIVAL12345'], 'credentials' => [], 'send_value' => true, 'hash_identifiers' => true, 'consent_mode' => 'required']));
+
+        $this->assertSame([], $this->getJson('/api/v1/public/landing/'.$this->link->token)->assertOk()->json('data.landing.tags'));
     }
 
     public function test_a_page_that_is_not_ready_is_not_there(): void

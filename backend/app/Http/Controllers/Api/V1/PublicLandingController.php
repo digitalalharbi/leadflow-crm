@@ -13,6 +13,7 @@ use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\TrackingDestination;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -76,12 +77,21 @@ class PublicLandingController extends Controller
                     'fields' => $this->schema->publicShape($fields),
                     'steps' => $form->steps(),
                     'consent' => ['required' => (bool) $form->consent_required, 'text' => $form->consent_text, 'privacy_url' => $form->privacy_url],
+                    // The tags this workspace asked the page to load: a public identifier each, never a credential.
+                    'tags' => $this->tags($link->project_id),
                 ],
                 'tracking' => [
                     'visitor_id' => $visitor,
                     'session_id' => $session->session_id,
                     // The id the page's own pixel may use for the same view, so a platform counts it once.
                     'view_event_id' => $view?->event_id,
+                    // What the page pushes to its dataLayer for the view — the same event id the server recorded.
+                    'datalayer' => array_filter([
+                        'event' => EventType::Visit->canonical(),
+                        'event_id' => $view?->event_id,
+                        'project_id' => $link->project_id ? Project::whereKey($link->project_id)->value('uuid') : null,
+                        'tracking_link_id' => $link->uuid,
+                    ]),
                 ],
             ], 'message' => null, 'errors' => null]);
         });
@@ -121,5 +131,20 @@ class PublicLandingController extends Controller
         ]);
 
         return response()->json($result['body'] + ['data' => null], $result['status']);
+    }
+
+    /**
+     * The page-side tags of this workspace (and project): GA4, Google Ads, Meta, TikTok, Snapchat, LinkedIn, X, a GTM web container.
+     * Each is an identifier checked for its shape when it was saved; the page loads them only once the visitor has consented.
+     *
+     * @return list<array{kind:string, id:string}>
+     */
+    private function tags(?int $projectId): array
+    {
+        return TrackingDestination::query()->where('is_enabled', true)
+            ->where(fn ($q) => $q->whereNull('project_id')->orWhere('project_id', $projectId))->get()
+            ->filter(fn (TrackingDestination $d) => $d->destinationKind()->browser() && $d->destinationKind()->configErrors((array) $d->config) === [])
+            ->map(fn (TrackingDestination $d) => ['kind' => $d->kind, 'id' => (string) ((array) $d->config)[$d->destinationKind()->config()[0]]])
+            ->values()->all();
     }
 }

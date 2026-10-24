@@ -34,7 +34,7 @@ class FollowUpAgent
             ->limit($limit)
             ->get()
             ->each(function (Lead $lead) use (&$revived) {
-                $action = ['type' => 'start_nurture', 'rule_name' => 'وكيل المتابعة: العملاء الراكدون'];
+                $action = ['type' => 'start_nurture', 'rule_name' => 'وكيل المتابعة: العملاء بلا متابعة'];
                 $result = $this->actions->execute($lead, $action);
                 $this->log->record($lead, null, 'routine.stale_lead_review', $action, $result['ok'] ? 'completed' : 'failed', [
                     'description' => $result['description'] ?? null,

@@ -187,7 +187,7 @@ class Orchestrator
     private function staleLeads(AgentThread $thread): string
     {
         $revived = app(FollowUpAgent::class)->staleLeadReview();
-        $summary = sprintf('عاد %d عميل راكد إلى الرعاية الآلية', $revived);
+        $summary = sprintf('عاد %d عميل بلا متابعة إلى الرعاية الآلية', $revived);
         $thread->say('agent', 'follow_up', $summary, ['revived' => $revived]);
 
         return $summary;

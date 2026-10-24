@@ -107,18 +107,18 @@ class DigestsCoverTheBriefTest extends TestCase
 
         $stats = $this->stats($this->compose('daily_sales'));
 
-        foreach (['وصلوا أمس', 'لم يُتواصل معهم', 'ساخنون', 'عملاء مهتمون ينتظرون', 'تجاوزوا مهلة الرد', 'متابعات متأخرة', 'طلبات زيارة', 'زيارات اليوم', 'حجوزات بانتظار التأكيد', 'صفقات أمس', 'إيراد أمس', 'فشل الأتمتة'] as $label) {
+        foreach (['عملاء الأمس', 'بانتظار أول تواصل', 'باهتمام مرتفع', 'عملاء مهتمون بانتظار الرد', 'تجاوز مهلة الرد', 'متابعات متأخرة', 'طلبات زيارة', 'زيارات اليوم', 'حجوزات بانتظار التأكيد', 'صفقات أمس', 'إيراد أمس', 'فشل الأتمتة'] as $label) {
             $this->assertArrayHasKey($label, $stats, "«{$label}» is missing from the morning summary");
             $this->assertStringStartsWith('/', (string) ($stats[$label]['link'] ?? ''), "«{$label}» opens nothing");
         }
 
-        $this->assertSame(2, $stats['لم يُتواصل معهم']['value']);
-        $this->assertSame(1, $stats['ساخنون']['value']);
+        $this->assertSame(2, $stats['بانتظار أول تواصل']['value']);
+        $this->assertSame(1, $stats['باهتمام مرتفع']['value']);
         $this->assertSame(1, $stats['صفقات أمس']['value']);
         $this->assertStringContainsString('900', (string) $stats['إيراد أمس']['value']);
         $this->assertSame(1, $stats['فشل الأتمتة']['value']);
-        $this->assertSame('/leads?temperature=hot', $stats['ساخنون']['link']);
-        $this->assertSame('/leads?view=interested', $stats['عملاء مهتمون ينتظرون']['link']);
+        $this->assertSame('/leads?temperature=hot', $stats['باهتمام مرتفع']['link']);
+        $this->assertSame('/leads?view=interested', $stats['عملاء مهتمون بانتظار الرد']['link']);
         $this->assertSame('/automation', $stats['فشل الأتمتة']['link']);
     }
 
@@ -130,7 +130,7 @@ class DigestsCoverTheBriefTest extends TestCase
         $this->assertArrayNotHasKey('فشل الأتمتة', $stats);
         $this->assertSame(0, $this->stats($this->compose('daily_sales', $this->rep))['صفقات أمس']['value'], 'a rep is told only of their own deals');
         $this->assertNotNull($this->compose('weekly_marketing')['stats'], 'while the admin has the whole summary');
-        $this->assertArrayHasKey('لم يُتواصل معهم', $stats);
+        $this->assertArrayHasKey('بانتظار أول تواصل', $stats);
     }
 
     public function test_the_morning_lists_name_the_leads_and_open_each_one(): void
@@ -180,7 +180,7 @@ class DigestsCoverTheBriefTest extends TestCase
         $digest = $this->compose('weekly_executive');
         $labels = array_keys($this->stats($digest));
 
-        foreach (['عملاء جدد', 'مؤهلون', 'مهتمون', 'زاروا', 'حجزوا', 'اشتروا', 'الإيراد', 'الإنفاق', 'تكلفة العميل', 'تكلفة الاكتساب', 'العائد على الإنفاق', 'منصات في خطر', 'فشل الأتمتة'] as $label) {
+        foreach (['عملاء جدد', 'مؤهلون', 'مهتمون', 'زيارات', 'حجوزات', 'مبيعات', 'الإيراد', 'الإنفاق', 'تكلفة العميل', 'تكلفة الاكتساب', 'العائد على الإنفاق', 'منصات في خطر', 'فشل الأتمتة'] as $label) {
             $this->assertContains($label, $labels, "«{$label}» is missing from the executive summary");
         }
         foreach (['أفضل الحملات', 'الإسناد حسب المنصة'] as $title) {
@@ -242,6 +242,6 @@ class DigestsCoverTheBriefTest extends TestCase
 
         $rollup = $this->asTenant($this->t['tenant'], fn () => app(DigestComposer::class)->rollup($this->rep->fresh(), 'daily', now()->subDay()));
 
-        $this->assertSame([], array_values(array_filter($rollup, fn ($r) => str_contains($r['title'], 'ساخن'))), 'the hot-lead alert came at once; the summary does not say it again');
+        $this->assertSame([], array_values(array_filter($rollup, fn ($r) => str_contains($r['title'], 'اهتمام مرتفع'))), 'the hot-lead alert came at once; the summary does not say it again');
     }
 }

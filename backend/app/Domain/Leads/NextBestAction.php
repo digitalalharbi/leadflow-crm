@@ -188,7 +188,7 @@ class NextBestAction
         // that quietly goes cold, because nothing about it looks urgent.
         if ($lead->status === LeadStatus::Qualified || $lead->status === LeadStatus::Negotiation) {
             return $this->result('book_meeting', 'high',
-                'مؤهل وبلا خطوة تالية. احجز موعدًا قبل أن يبرد.');
+                'مؤهل وبلا خطوة تالية. احجز موعدًا قبل أن يتراجع اهتمامه.');
         }
 
         return $this->fromIntelligence($lead) ?? $this->result('schedule_follow_up', 'medium',

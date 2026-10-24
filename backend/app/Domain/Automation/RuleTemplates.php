@@ -218,7 +218,7 @@ class RuleTemplates
             'actions' => [['type' => 'send_whatsapp', 'purpose' => 'reminder']],
         ],
         'hot_lead_escalation' => [
-            'name' => 'تصعيد العميل الساخن', 'description' => 'أصبح ساخنًا ← أولوية + تسليم للمندوب.',
+            'name' => 'تصعيد العميل ذي الاهتمام المرتفع', 'description' => 'أصبح اهتمامه مرتفعًا ← أولوية + تسليم للمندوب.',
             'trigger' => 'lead.score_changed', 'priority' => 5, 'conditions' => [['field' => 'temperature', 'operator' => 'equals', 'value' => 'hot']],
             'actions' => [['type' => 'set_priority'], ['type' => 'hand_off', 'reason' => 'needs_human']],
         ],
@@ -233,7 +233,7 @@ class RuleTemplates
             'actions' => [['type' => 'send_whatsapp', 'purpose' => 'reminder'], ['type' => 'create_call_task', 'in_hours' => 2, 'note' => 'إعادة الاتصال']],
         ],
         'cold_lead_nurture' => [
-            'name' => 'رعاية العميل البارد', 'description' => 'أصبح باردًا ← رسالة رعاية ويعود للأتمتة.',
+            'name' => 'رعاية العميل ذي الاهتمام المنخفض', 'description' => 'انخفض اهتمامه ← رسالة رعاية ويعود للأتمتة.',
             'trigger' => 'lead.score_changed', 'priority' => 25, 'conditions' => [['field' => 'temperature', 'operator' => 'equals', 'value' => 'cold']],
             'actions' => [['type' => 'start_nurture']],
         ],

@@ -47,7 +47,7 @@ class WatchTracking extends Command
         return match (true) {
             ! $row['receiving'] => 'لم يصل أي حدث منذ يومين — تحقق من الربط.',
             ($row['success_rate'] ?? 100) < 80 => "نسبة نجاح الاستقبال {$row['success_rate']}% فقط.",
-            default => 'صفقات مكسوبة لم تُرسل إلى المنصة منذ ٤٨ ساعة.',
+            default => 'صفقات مُغلقة لم تُرسل إلى المنصة منذ ٤٨ ساعة.',
         };
     }
 }

@@ -39,7 +39,7 @@ test.describe('الحملات — from spend to revenue', () => {
     const funnel = page.getByTestId('revenue-funnel')
     await expect(funnel).toBeVisible()
 
-    for (const label of ['عملاء', 'مؤهلون', 'مهتمون', 'زاروا', 'حجزوا', 'اشتروا']) {
+    for (const label of ['عملاء', 'مؤهلون', 'مهتمون', 'زيارات', 'حجوزات', 'مبيعات']) {
       await expect(funnel).toContainText(label)
     }
   })

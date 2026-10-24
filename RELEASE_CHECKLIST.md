@@ -1,4 +1,4 @@
-# RELEASE CHECKLIST — «مهتم» v0.5.1
+# RELEASE CHECKLIST — «مهتم» v0.6.0
 
 **v0.5.1 supersedes v0.5.0.** v0.5.0 was tagged before a cross-workspace leak was found and fixed (#204: the lists of
 managers and salespeople, WhatsApp approval and SLA escalation recipients, agent notes, user search and onboarding read users
@@ -10,6 +10,28 @@ supply; the feature stays honest-off until it is there) · **OPTIONAL AFTER LAUN
 The product is tested Local-only. Nothing below has been exercised against a real server; the gates
 are the repository's own suites (see "Gates" at the end). `./scripts/check-deploy-readiness.sh` reports
 which of these exist on a machine without printing any value.
+
+## v0.6.0 — مهتم as a commercial multi-company SaaS (2026-10-24)
+
+**Why a minor version, not a patch:** v0.6.0 turns the single-workspace CRM into a product sold to independent companies
+(plans, subscriptions, seats, entitlements, a separate platform console, invitations, multi-workspace people). It also ships
+the Tracking Hub and the advanced form builder (#208), decided for this release on 2026-10-24. Both run on the current
+domains — tracking links stay `https://api.mohtam.pro/t/<token>`, landing pages `https://mohtam.pro/l/<token>`.
+`go.mohtam.pro` stays DNS-only; it is not served and nothing generates links on it.
+
+Contents: #208 (Tracking Hub, form builder V2), #210 (SaaS), and main's read-only VPS audit workflow (`64f1bd7`, CI only,
+`workflow_dispatch`, never ran — GitHub billing blocked its only run).
+
+### First run on a new server (in addition to the deploy order below)
+
+1. Deploy the `v0.6.0` tag with `deploy-production.sh` (migrations are additive; they move existing workspaces onto the
+   Enterprise plan so nothing they use disappears, and backfill proven emails for existing people).
+2. Create the platform owner on the server: `php artisan leadflow:create-super-admin --email=…` (prompts for the password).
+3. Sign in at `https://mohtam.pro/platform/login` and enrol the authenticator app — `PLATFORM_REQUIRE_MFA=true` keeps the
+   console closed until you do. Store the recovery codes off the server.
+4. Console → Plans: set the prices (they start empty; revenue reads "not configured" until then), seats and limits.
+5. Console → Companies → New company: the owner receives a 7-day setup link by email — this needs the mail provider (§4).
+   Until it is configured, the email is recorded as *logged* and not delivered.
 
 ## At a glance
 
@@ -193,41 +215,37 @@ that needs a machine, a name or a secret only you hold is **EXTERNAL CONFIG REQU
 
 ## Production deployment status — waiting for a server (2026-10-24)
 
-**v0.5.1 is the release for production and is not deployed.** `main` = tag `v0.5.1` = `f2068c9` is the only source of truth for
-production. The Tracking Hub and the advanced form builder are on `develop` only (`3e0a1dd`) and are **not** part of this release:
-`develop` is not merged to `main`, and there is no v0.6.0 until v0.5.1 runs on a server. Product freeze stays on.
-
-The attempt stopped at the first step: no server is named anywhere. Nothing is deployed until all five exist:
+**v0.6.0 is the release for production and is not deployed.** `main` = tag `v0.6.0` is the only source of truth for
+production; `v0.5.1` (`f2068c9`) remains tagged as the previous release. Nothing is deployed until these exist:
 
 | Needed | Where it goes | State |
 | --- | --- | --- |
-| `VPS_HOST` | GitHub → Settings → Secrets | missing |
-| `VPS_USER` | GitHub → Settings → Secrets | missing |
-| `VPS_SSH_KEY` | GitHub → Settings → Secrets (the private half of the deploy key) | missing |
-| `PRODUCTION_PATH` | GitHub → Settings → Secrets | missing |
-| `PRODUCTION_DOMAIN` | GitHub → Settings → Variables (with its DNS A/AAAA record pointing at the server) | missing |
+| `VPS_HOST` | GitHub → Settings → Secrets (and the operator's SSH config) | missing |
+| `VPS_USER` (non-root) | GitHub → Settings → Secrets | missing |
+| SSH access | the deploy key's public half in the server's `authorized_keys` (`~/.ssh/mohtam_deploy.pub`) | waiting for the server |
+| `PRODUCTION_PATH` | `/var/www/mohtam` | decided |
+| DNS | `mohtam.pro`, `www.mohtam.pro`, `api.mohtam.pro` A/AAAA → the server; `go.mohtam.pro` DNS-only | apex points at a parking IP |
 
-The scripts are ready (present, executable, parse cleanly, identical on `main` and `develop`): `provision-server.sh`,
-`deploy-production.sh` (deploys only a commit GitHub has on `main`, refuses a dirty server, backs up before migrating),
-`verify-production.sh`, `smoke-production.sh`, `backup-db.sh`, `restore-check.sh`.
+The scripts are ready: `provision-server.sh`, `deploy-production.sh` (deploys only a commit GitHub has on `main`, refuses a
+dirty server, backs up before migrating), `preflight-production.sh`, `verify-production.sh`, `smoke-production.sh`,
+`backup-db.sh`, `restore-check.sh`; the edge config is `docker/nginx/edge.mohtam.conf.example` (www → apex, api, no `go.`).
 
-When the five values exist, in this order — none of it waits for the external credentials below:
+In order, once the server exists:
 
-1. Provision the VPS: `provision-server.sh` as root, taken from the **`main`** branch (or the `v0.5.1` tag), not `develop`.
-2. DNS and HTTPS for `PRODUCTION_DOMAIN` (both origins: web and API), certificate auto-renewal on.
-3. `.env.production` on the server from `.env.production.example`: `APP_ENV=production`, `APP_DEBUG=false`, a generated `APP_KEY`,
-   database, Redis, queue, cache, session, logging, CORS/Sanctum origins. No value is invented; anything missing is listed below.
-4. PostgreSQL (database, user, permissions, UTF-8, timezone) and Redis — the compose services.
-5. Queue (Horizon) and the scheduler as supervised services that restart on crash and after a reboot.
-6. Backups: `backup-db.sh` on a schedule, a copy off the box, then `restore-check.sh` once (`RESTORE CHECK: PASS`).
-7. Deploy `v0.5.1` with `deploy-production.sh` (it takes a verified backup before migrating).
-8. `verify-production.sh` (health, readiness, queue, scheduler, Redis, backup) and `smoke-production.sh`.
-9. The smoke paths by hand: sign-in → dashboard; Work Now → lead → outcome; a test lead (no real customer contacted); a report and its
-   share link; admin / sales / partner roles; tenant A cannot see tenant B; a phone at 390 px; the installed app and its offline page.
+1. Provision: `provision-server.sh` as root, from the **`v0.6.0` tag** (never `develop`).
+2. DNS and HTTPS for `mohtam.pro`, `www.mohtam.pro`, `api.mohtam.pro`; certbot with auto-renewal; the edge config above.
+3. `.env.production` from `.env.production.example` (domains already filled in; `APP_KEY`, `DB_PASSWORD`, `DEPLOY_SECRET`,
+   `SUPER_ADMIN_PASSWORD` generated on the server — no value is invented here). Run `preflight-production.sh`.
+4. PostgreSQL and Redis (compose services); Horizon and the scheduler supervised (compose `restart: unless-stopped`).
+5. Backups on a schedule, a copy off the box, `restore-check.sh` once.
+6. Deploy `v0.6.0` with `deploy-production.sh`, then the SaaS first-run steps above.
+7. `verify-production.sh` and `smoke-production.sh`, then by hand: platform login + MFA; create a company → setup link →
+   owner signs in; invite a rep → accept; company A cannot see company B; suspend a company → its subscription screen;
+   Work Now on a phone (sale value, loss reason, visit time); a tracking link on `api.mohtam.pro/t/…`.
 
-Still **EXTERNAL CONFIG REQUIRED**, and none of it blocks the deploy above: the four public values (§P), a mail provider (§4;
-until then email is recorded as *logged*), WhatsApp credentials and Meta-approved templates (§5), Google OAuth (§6), the ad platforms'
-credentials (§7), a Sentry DSN (§9).
+Still **EXTERNAL CONFIG REQUIRED**, none of it blocking the deploy: plan prices (console), a mail provider (§4 — invitations and
+password links depend on it to reach people), the four public values (§P), WhatsApp (§5), Google OAuth (§6), ad platforms (§7),
+Sentry (§9), and — only if online payment is wanted — a payment gateway behind `BillingProvider` (manual billing works without one).
 
 ## Gates run for v0.5.1 (2026-10-23, `develop` at 372f9f0)
 

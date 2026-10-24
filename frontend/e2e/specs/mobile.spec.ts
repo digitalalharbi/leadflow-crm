@@ -97,8 +97,17 @@ test.describe('Mobile layout', () => {
 
   test('a lead can be worked from the phone', async ({ page }) => {
     await page.goto('/leads')
+    // Click only once the list has re-rendered for the search: a link replaced mid-click navigates nowhere.
+    const searched = page.waitForResponse((r) => r.url().includes('/api/v1/leads') && r.url().includes('search=') && r.ok())
     await page.getByTestId('lead-search').fill(LEADS.activity)
-    await page.getByRole('link', { name: LEADS.activity }).click()
+    await searched
+    // The page scrolls smoothly: bring the row fully into view and let the scroll finish before the tap, or the tap
+    // is aimed at where the row was mid-glide.
+    const row = page.getByRole('link', { name: LEADS.activity })
+    await expect(row).toHaveCount(1)
+    await row.scrollIntoViewIfNeeded()
+    await expect(row).toBeInViewport({ ratio: 1 })
+    await row.click()
 
     // The phone's own lead screen: the four ways to reach them at the top, the same four in a bar that
     // stays at the bottom — none of it needs scrolling into the page body.

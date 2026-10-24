@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reports;
 
+use App\Domain\Funnel\FunnelFilters;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\ReportShare;
@@ -122,6 +123,15 @@ final class ReportContext
             ->when($this->sources !== [], fn ($q) => $q->whereIn('leads.source', $this->sources))
             ->when($this->campaignIds !== [], fn ($q) => $q->whereIn('leads.campaign_ref_id', $this->campaignIds))
             ->when($this->salesUserIds !== [], fn ($q) => $q->whereIn('leads.assigned_to', $this->salesUserIds));
+    }
+
+    /** What the canonical funnel is asked, for this report: its window, projects, filters and people. */
+    public function funnelFilters(array $window): FunnelFilters
+    {
+        return new FunnelFilters(
+            $window['from'], $window['to'], $this->projectIds, null, null, null, $this->salesUserIds, $window['prev_from'], $window['prev_to'],
+            $this->platforms, $this->campaignIds, $this->sources, $this->partnerId(),
+        );
     }
 
     /** @return Builder<Lead> every lead that arrived in the window (or the one before it), within the report */

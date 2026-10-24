@@ -50,6 +50,10 @@ class AttributionReport
             ->when($filters['creative_id'] ?? null, fn ($q, $id) => $q->whereIn('ad_ref_id', Ad::query()->where('creative_id', $id)->select('id')))
             ->when($filters['partner_id'] ?? null, fn ($q, $id) => $q->where('partner_id', $id))
             ->when($filters['rep_id'] ?? null, fn ($q, $id) => $q->where('assigned_to', $id))
+            ->when($filters['platforms'] ?? [], fn ($q, $list) => $q->whereIn('platform', $list))
+            ->when($filters['campaign_ids'] ?? [], fn ($q, $list) => $q->whereIn('campaign_ref_id', $list))
+            ->when($filters['sources'] ?? [], fn ($q, $list) => $q->whereIn('source', $list))
+            ->when($filters['rep_ids'] ?? [], fn ($q, $list) => $q->whereIn('assigned_to', $list))
             ->get(['id', 'status', 'qualification_status', 'qualified_at', 'deal_value_minor', 'first_touch_link_id', 'last_touch_link_id']);
 
         $ids = $leads->pluck('id');

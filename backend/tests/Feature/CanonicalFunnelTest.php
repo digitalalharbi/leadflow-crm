@@ -243,8 +243,8 @@ class CanonicalFunnelTest extends TestCase
         $this->journey($this->p1);
         $f = $this->asTenant($this->t['tenant'], fn () => (new RealEstateFunnel)->build(new FunnelFilters(now()->subDays(29), now()), null, false));
 
-        $this->assertNull($f['revenue']);
-        $this->assertNull($this->stage($f, 'decision')['revenue']);
+        $this->assertArrayNotHasKey('revenue', $f);
+        $this->assertArrayNotHasKey('revenue', $this->stage($f, 'decision'));
         $this->assertArrayNotHasKey('revenue', collect($this->stage($f, 'decision')['sub_stages'])->firstWhere('key', 'won'));
     }
 }

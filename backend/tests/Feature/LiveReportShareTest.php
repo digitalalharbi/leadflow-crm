@@ -66,7 +66,8 @@ class LiveReportShareTest extends TestCase
         $this->assertEquals(500000, $data['kpis']['revenue']);
         $this->assertEquals(1000, $data['kpis']['spend']);
         $this->assertEquals(500, $data['kpis']['roas']);
-        $this->assertSame(['leads', 'qualified', 'interested', 'visits', 'reservations', 'won'], collect($data['funnel'])->pluck('key')->all());
+        // The one funnel of the product: وعي → اهتمام → تفاعل → حجز معاينة → قرار شراء → إحالة.
+        $this->assertSame(['awareness', 'interest', 'engagement', 'booking', 'decision', 'referral'], collect($data['funnel']['stages'])->pluck('key')->all());
         $this->assertSame('Share Co', $data['workspace']['name']);
 
         // Live: a new lead is in the next load.
@@ -85,7 +86,8 @@ class LiveReportShareTest extends TestCase
         foreach (['spend', 'cpl', 'cac', 'roas', 'revenue'] as $money) {
             $this->assertArrayNotHasKey($money, $data['kpis']);
         }
-        $this->assertArrayNotHasKey('cost', $data['funnel'][0]);
+        $this->assertArrayNotHasKey('revenue', $data['funnel']);
+        $this->assertArrayNotHasKey('revenue', $data['funnel']['stages'][4]);
         $this->assertArrayNotHasKey('spend', $data['trend'][0]);
         $this->assertArrayNotHasKey('revenue', $data['trend'][0]);
         $this->assertArrayNotHasKey('team', $data);
@@ -95,18 +97,22 @@ class LiveReportShareTest extends TestCase
 
     public function test_each_section_can_be_switched_on_or_off(): void
     {
-        $share = $this->make(['template' => 'client', 'sections' => ['kpi_volume' => true, 'campaigns' => true, 'team' => true, 'kpi_revenue' => true]]);
+        $share = $this->make(['template' => 'client', 'options' => ['expose_team' => true], 'sections' => ['kpi_volume' => true, 'campaigns' => true, 'team' => true, 'kpi_revenue' => true]]);
 
         $data = $this->open($share)->assertOk()->json('data');
 
         $this->assertSame(['kpi_volume', 'kpi_revenue', 'campaigns', 'team'], $data['sections']);
         $this->assertEquals(500000, $data['kpis']['revenue']);
         $this->assertArrayNotHasKey('spend', $data['kpis']);
-        $this->assertSame('حملة النرجس', $data['campaigns'][0]['name']);
-        $this->assertArrayNotHasKey('spend', $data['campaigns'][0]);
+        $this->assertSame('حملة النرجس', $data['campaigns']['rows'][0]['name']);
+        $this->assertArrayNotHasKey('spend', $data['campaigns']['rows'][0]);
         $this->assertArrayNotHasKey('funnel', $data);
         // Names only: a link that leaves the building carries no contact details.
-        $this->assertSame(['name', 'leads', 'interested', 'visits', 'reservations', 'won'], array_keys($data['team'][0]));
+        $this->assertSame(['name', 'leads', 'contact_rate', 'response_minutes', 'follow_up_completion', 'qualified', 'interested', 'visits', 'reservations', 'won', 'conversion_rate', 'revenue'], array_keys($data['team'][0]));
+
+        // The team is not shown to the public unless the owner says so.
+        $hidden = $this->make(['template' => 'client', 'sections' => ['kpi_volume' => true, 'team' => true]]);
+        $this->assertArrayNotHasKey('team', $this->open($hidden)->assertOk()->json('data'));
 
         $this->actingAs($this->t['admin'])->patchJson("/api/v1/report-shares/{$share['id']}", ['sections' => ['kpi_volume' => true]])->assertOk();
         $this->assertSame(['kpi_volume'], $this->open($share)->json('data.sections'));
@@ -212,7 +218,7 @@ class LiveReportShareTest extends TestCase
     {
         $this->assertSame(['kpi_volume', 'funnel', 'trend'], array_keys(array_filter(ReportTemplates::sectionsFor('client'))));
         $this->assertSame(ReportTemplates::SECTIONS, array_keys(array_filter(ReportTemplates::sectionsFor('management'))));
-        $this->assertEqualsCanonicalizing(['executive', 'executive_management', 'marketing', 'sales', 'client', 'investor', 'partner', 'statement', 'management'], array_keys(ReportTemplates::TEMPLATES));
+        $this->assertEqualsCanonicalizing(['executive', 'executive_management', 'marketing', 'sales', 'client', 'investor', 'partner', 'statement', 'management', 'full_funnel', 'project', 'campaign', 'team'], array_keys(ReportTemplates::TEMPLATES));
     }
 
     public function test_a_malformed_or_unknown_token_is_a_plain_404(): void

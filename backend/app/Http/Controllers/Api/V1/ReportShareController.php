@@ -63,6 +63,7 @@ class ReportShareController extends Controller
         // A preset fills in what the form leaves out; anything the form says wins.
         $preset = isset($data['preset']) ? ReportPresets::find($data['preset']) : null;
         $template = $data['template'] ?? $preset['template'];
+        $this->assertModelAndCurrency(['template' => $template] + $data);
         abort_if(($preset['needs_partner'] ?? false) && empty($data['partner_id']), 422, 'A partner report needs a partner.');
         [$layout, $sections] = $this->shape($data, $template, null);
         $this->assertMaySee($request, $sections);
@@ -436,9 +437,13 @@ class ReportShareController extends Controller
         return $out;
     }
 
-    /** A model other than last-touch, or a currency of its own, belongs to the plans that include advanced attribution. */
+    /** A model other than last-touch belongs to the plans that include advanced attribution; some templates, to advanced templates. */
     private function assertModelAndCurrency(array $data): void
     {
+        if (isset($data['template']) && in_array($data['template'], ReportTemplates::ADVANCED, true)) {
+            abort_unless(Entitlements::for(request()->user()->tenant)->has('advanced_templates'), 403, 'Your plan does not include this report template.');
+        }
+
         if (isset($data['attribution_model']) && $data['attribution_model'] !== 'last') {
             abort_unless(Entitlements::for(request()->user()->tenant)->has('advanced_attribution'), 403, 'Your plan does not include attribution models.');
         }

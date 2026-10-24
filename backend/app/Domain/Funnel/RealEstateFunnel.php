@@ -102,9 +102,9 @@ class RealEstateFunnel
                 'drop_off' => $rate === null ? null : round(max(0, 100 - $rate), 1),
                 'previous' => $available && $previous[$key] !== null ? $previous[$key] : null,
                 'change' => $available ? $this->change($counts[$key], $previous[$key]) : null,
-                'revenue' => $withRevenue && in_array($key, ['decision', 'referral'], true) ? $this->money($key === 'decision' ? $now['revenue_minor'] : $now['referral_revenue_minor']) : null,
                 'sub_stages' => $this->subStages($key, $now, $withRevenue),
-            ] + ($key === 'awareness' ? ['basis' => $traffic['basis'], 'components' => $traffic['components'], 'reason' => $traffic['reason']] : [])
+            ] + ($withRevenue && in_array($key, ['decision', 'referral'], true) ? ['revenue' => $this->money($key === 'decision' ? $now['revenue_minor'] : $now['referral_revenue_minor'])] : [])
+              + ($key === 'awareness' ? ['basis' => $traffic['basis'], 'components' => $traffic['components'], 'reason' => $traffic['reason']] : [])
               + ($key === 'referral' ? ['subset_of_previous' => false] : []);
 
             if (in_array($key, self::CHAIN, true)) {
@@ -118,7 +118,7 @@ class RealEstateFunnel
             'previous_period' => ['from' => $filters->compareFrom->toDateString(), 'to' => $filters->compareTo->toDateString()],
             'trend' => $this->trend($filters, $viewer),
             'lost' => ['count' => $now['lost'], 'rate' => $now['interest'] > 0 ? round($now['lost'] / $now['interest'] * 100, 1) : null],
-            'revenue' => $withRevenue ? $this->money($now['revenue_minor']) : null,
+        ] + ($withRevenue ? ['revenue' => $this->money($now['revenue_minor'])] : []) + [
             'generated_at' => now()->toIso8601String(),
         ];
     }
@@ -158,9 +158,10 @@ class RealEstateFunnel
             ->whereBetween('leads.created_at', [$f->from, $f->to])
             ->when($viewer !== null, fn ($q) => $q->visibleTo($viewer))
             ->when($f->projectIds !== [], fn ($q) => $q->whereIn('leads.project_id', $f->projectIds))
-            ->when($f->platform, fn ($q, $p) => $q->where('leads.platform', $p))
-            ->when($f->campaignId, fn ($q, $id) => $q->where('leads.campaign_ref_id', $id))
-            ->when($f->source, fn ($q, $s) => $q->where('leads.source', $s))
+            ->when($f->partnerId, fn ($q, $id) => $q->where('leads.partner_id', $id))
+            ->when($f->platforms !== [], fn ($q) => $q->whereIn('leads.platform', $f->leadPlatforms()))
+            ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('leads.campaign_ref_id', $f->campaignIds))
+            ->when($f->sources !== [], fn ($q) => $q->whereIn('leads.source', $f->sources))
             ->when($f->assignedTo !== [], fn ($q) => $q->whereIn('leads.assigned_to', $f->assignedTo));
     }
 
@@ -200,6 +201,10 @@ class RealEstateFunnel
      */
     private function awareness(FunnelFilters $f, ?User $viewer): array
     {
+        if ($f->partnerId !== null) {
+            return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'by_partner', 'components' => [], 'tracked_leads' => null];
+        }
+
         if ($f->assignedTo !== []) {
             // Nobody works traffic: by rep, there is no awareness to speak of.
             return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'by_rep', 'components' => [], 'tracked_leads' => null];
@@ -207,8 +212,8 @@ class RealEstateFunnel
 
         $campaigns = Campaign::query()->select('campaigns.id')
             ->when($f->projectIds !== [], fn ($q) => $q->whereIn('campaigns.project_id', $f->projectIds))
-            ->when($f->platform, fn ($q, $p) => $q->where('campaigns.platform', $p))
-            ->when($f->campaignId, fn ($q, $id) => $q->where('campaigns.id', $id));
+            ->when($f->platforms !== [], fn ($q) => $q->whereIn('campaigns.platform', $f->platforms))
+            ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('campaigns.id', $f->campaignIds));
 
         $platform = MetricSnapshot::query()->whereIn('campaign_id', $campaigns)
             ->whereBetween('date', [$f->from->toDateString(), $f->to->toDateString()])
@@ -216,9 +221,9 @@ class RealEstateFunnel
 
         $events = TrackingEvent::query()->whereBetween('occurred_at', [$f->from, $f->to])
             ->when($f->projectIds !== [], fn ($q) => $q->whereIn('project_id', $f->projectIds))
-            ->when($f->platform, fn ($q, $p) => $q->where('platform', $p))
-            ->when($f->campaignId, fn ($q, $id) => $q->where('campaign_id', $id))
-            ->when($f->source, fn ($q, $s) => $q->where('utm_source', $s))
+            ->when($f->platforms !== [], fn ($q) => $q->whereIn('platform', $f->platforms))
+            ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('campaign_id', $f->campaignIds))
+            ->when($f->sources !== [], fn ($q) => $q->whereIn('utm_source', $f->sources))
             ->selectRaw("
                 count(*) filter (where event_type = 'click' or meta->>'via' = 'link') as link_clicks,
                 count(*) filter (where event_type = 'visit') as landing_views,

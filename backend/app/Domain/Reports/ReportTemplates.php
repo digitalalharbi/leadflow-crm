@@ -23,13 +23,22 @@ class ReportTemplates
         'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'statement',
         // The four pages of the management report: marketing, sales, automation and tracking, each a group of figures.
         'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking',
+        // What a client asks of a real-estate report: where the leads came from and what they cost, what sales did with them,
+        // who did it, how good they were, what was lost, per project and unit, through the tracking hub, what came in, and what needs a person.
+        'marketing', 'sources', 'sales', 'lead_quality', 'loss', 'projects', 'units', 'tracking_hub', 'revenue', 'attention',
     ];
+
+    /** Templates that need the plan's advanced-templates feature. */
+    public const ADVANCED = ['full_funnel', 'project', 'campaign', 'team', 'management'];
+
+    /** Sections that are about the people on the team: a public report shows them only if the owner switched that on. */
+    public const TEAM_ONLY = ['team'];
 
     /** Sections that mean something only in a partner's own report. */
     public const PARTNER_ONLY = ['statement'];
 
     /** The money in the report: sections that may not be offered to somebody who should not see them. */
-    public const MONEY = ['kpi_cost', 'kpi_revenue', 'exec_marketing', 'exec_sales'];
+    public const MONEY = ['kpi_cost', 'kpi_revenue', 'exec_marketing', 'exec_sales', 'marketing', 'revenue'];
 
     public const VISIBILITY = ['public', 'team'];
 
@@ -37,12 +46,20 @@ class ReportTemplates
 
     /** Each template: the sections it starts with, in the order they appear. */
     public const TEMPLATES = [
-        'executive' => ['kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'trend', 'platforms'],
-        'marketing' => ['kpi_volume', 'kpi_cost', 'funnel', 'trend', 'platforms', 'campaigns', 'attribution'],
-        'sales' => ['kpi_volume', 'funnel', 'interested', 'visits', 'reservations', 'trend', 'team'],
+        'executive' => ['kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'trend', 'platforms', 'insights', 'attention'],
+        'marketing' => ['kpi_volume', 'kpi_cost', 'funnel', 'trend', 'platforms', 'marketing', 'campaigns', 'attribution', 'tracking_hub', 'insights'],
+        'sales' => ['kpi_volume', 'funnel', 'sales', 'interested', 'visits', 'reservations', 'trend', 'team', 'loss', 'attention'],
+        // The funnel from end to end: how many, from where, how far each got, and where the rest were lost.
+        'full_funnel' => ['kpi_volume', 'funnel', 'trend', 'sources', 'sales', 'visits', 'reservations', 'loss', 'insights', 'attention'],
+        // One project, or a portfolio: its leads, its units, what it earned.
+        'project' => ['kpi_volume', 'kpi_revenue', 'funnel', 'trend', 'projects', 'units', 'sources', 'visits', 'reservations', 'revenue', 'insights'],
+        // Campaigns against each other, platform-reported and Mohtam-attributed side by side.
+        'campaign' => ['kpi_volume', 'kpi_cost', 'funnel', 'trend', 'marketing', 'platforms', 'campaigns', 'attribution', 'tracking_hub', 'insights', 'attention'],
+        // The sales team: how fast, how many, how well.
+        'team' => ['kpi_volume', 'funnel', 'sales', 'team', 'visits', 'reservations', 'insights', 'attention'],
         'client' => ['kpi_volume', 'funnel', 'trend'],
         // For an investor: what came in, how far it got, what it returned, and what to do about it.
-        'investor' => ['kpi_volume', 'kpi_revenue', 'funnel', 'reservations', 'trend', 'insights', 'recommendations'],
+        'investor' => ['kpi_volume', 'kpi_revenue', 'funnel', 'reservations', 'trend', 'projects', 'revenue', 'insights', 'recommendations'],
         // For a partner: their own leads down the funnel, and nothing about the company's money or other people.
         'partner' => ['kpi_volume', 'funnel', 'trend'],
         // A partner's statement: what they brought, what they are owed and have been paid.
@@ -53,7 +70,7 @@ class ReportTemplates
     ];
 
     /** What a partner's report may never carry, whatever was switched on: the company's own cost and other people's data. */
-    public const NOT_FOR_PARTNERS = ['kpi_cost', 'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking'];
+    public const NOT_FOR_PARTNERS = ['kpi_cost', 'marketing', 'sources', 'sales', 'lead_quality', 'loss', 'projects', 'units', 'tracking_hub', 'revenue', 'attention', 'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking'];
 
     /** @return list<string> the template's sections in order, then the rest (off) */
     private static function order(string $template): array
@@ -173,8 +190,11 @@ class ReportTemplates
         $partner = $share->partner_id ? $share->partner : null;
         $allowed = self::effective(array_column(array_map(fn ($r) => ['k' => $r['key'], 'v' => $r['on']], self::layoutOf($share)), 'v', 'k'), $partner);
 
+        $exposeTeam = (bool) ($share->options['expose_team'] ?? false);
+
         return collect(self::layoutOf($share))
-            ->filter(fn (array $row) => ($allowed[$row['key']] ?? false) && ($audience === 'team' || $row['visible_to'] === 'public') && ($partner !== null || ! in_array($row['key'], self::PARTNER_ONLY, true)))
+            ->filter(fn (array $row) => ($allowed[$row['key']] ?? false) && ($audience === 'team' || $row['visible_to'] === 'public') && ($partner !== null || ! in_array($row['key'], self::PARTNER_ONLY, true))
+                && ($audience === 'team' || $exposeTeam || ! in_array($row['key'], self::TEAM_ONLY, true)))
             ->map(fn (array $row) => ['key' => $row['key'], 'days' => $row['days']])
             ->values()->all();
     }

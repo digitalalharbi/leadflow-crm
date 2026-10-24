@@ -3,6 +3,7 @@
 namespace App\Domain\Reports;
 
 use App\Domain\Analytics\LeadFunnel;
+use App\Domain\Billing\Entitlements;
 use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Conversions\ConversionHealth;
 use App\Domain\Insights\Recommendations;
@@ -20,7 +21,6 @@ use App\Models\LeadMessage;
 use App\Models\Project;
 use App\Models\ReportShare;
 use App\Models\Reservation;
-use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -46,6 +46,11 @@ class LiveReport
 
     private ReportContext $ctx;
 
+    private ReportSections $sections;
+
+    /** @var array<string,mixed> section data already built for this report, by section and window — insights read what the page shows */
+    private array $memo = [];
+
     /** @return array<string,mixed> */
     /**
      * @param  (callable(string):bool)|null  $allowed  for a signed-in viewer: which sections they may see at all — what
@@ -59,10 +64,12 @@ class LiveReport
         $days = array_column($plan, 'days', 'key');
         $has = fn (string $section) => in_array($section, $keys, true);
         // Costs leave with a section that is about costs, revenue with one that is about revenue — and with nothing else.
-        $money = $has('kpi_cost') || $has('marketing');
-        $earnings = $has('kpi_revenue') || $has('revenue');
+        $money = $has('kpi_cost') || $has('marketing') || $has('exec_marketing');
+        $earnings = $has('kpi_revenue') || $has('revenue') || $has('exec_sales');
         $currency = $share->currency ?: ($share->tenant?->settings?->currency ?? 'SAR');
         $this->ctx = new ReportContext($share, $audience, $keys, $money, $earnings, $currency);
+        $this->sections = new ReportSections($this->ctx);
+        $this->memo = [];
 
         $main = $this->window($share, null);
 
@@ -82,8 +89,11 @@ class LiveReport
                 'client_name' => $share->client_name,
                 'state' => $share->state ?: 'live',
                 'projects' => $this->projectNames(),
+                'owner' => $share->relationLoaded('creator') || $share->creator ? ($share->options['show_owner'] ?? false ? $share->creator?->name : null) : null,
+                'revision' => (int) $share->revision,
             ] + ($share->compare ? ['previous' => ['from' => $main['prev_from']->toDateString(), 'to' => $main['prev_to']->toDateString()]] : []),
             'sections' => $keys,
+            'notes' => $this->notes($share),
         ];
 
         foreach ($keys as $section) {
@@ -91,16 +101,26 @@ class LiveReport
 
             $out = match ($section) {
                 'kpi_volume', 'kpi_cost', 'kpi_revenue' => $this->kpis($out, $share, $section, $window),
-                'funnel' => $out + ['funnel' => $this->funnel($share, $window, $money)],
+                'funnel' => $out + ['funnel' => $this->sections->funnel($window, $earnings)],
                 'interested' => $out + ['interested' => InterestSlaStats::for($this->leads($share, $window))],
                 'qualification' => $out + ['qualification' => $this->qualification($share, $window)],
                 'visits' => $out + ['visits' => $this->visits($share, $window)],
                 'reservations' => $out + ['reservations' => $this->reservations($share, $window)],
                 'trend' => $this->trend($out, $share, $window, $money, $earnings),
                 'platforms' => $out + ['platforms' => $this->platforms($share, $window, $money, $earnings)],
-                'campaigns' => $out + ['campaigns' => $this->campaigns($share, $window, $money, $earnings)],
+                'marketing' => $out + ['marketing' => $this->memo('marketing', $window, fn () => $this->sections->marketing($window, $this->revenue($share, $window['from'], $window['to'])))],
+                'campaigns' => $out + ['campaigns' => $this->memo('campaigns', $window, fn () => $this->sections->campaigns($this->revenue($share, $window['from'], $window['to'])))],
+                'sources' => $out + ['sources' => $this->memo('sources', $window, fn () => $this->sections->sources($window))],
+                'sales' => $out + ['sales' => $this->memo('sales', $window, fn () => $this->sections->sales($window))],
+                'lead_quality' => $out + ['lead_quality' => $this->sections->leadQuality($window)],
+                'loss' => $out + ['loss' => $this->sections->loss($window)],
+                'projects' => $out + ['projects' => $this->sections->projects($window, $this->revenue($share, $window['from'], $window['to']))],
+                'units' => $out + ['units' => $this->sections->units($window)],
+                'tracking_hub' => $out + ['tracking_hub' => $this->sections->trackingHub($window)],
+                'revenue' => $out + ['revenue' => $this->sections->revenue($window, $this->revenue($share, $window['from'], $window['to']))],
+                'attention' => $out + ['attention' => $this->attention($share, $window, $audience)],
                 'attribution' => $out + ['attribution' => $this->attribution($share, $window, $earnings)],
-                'team' => $out + ['team' => $this->team($window['from'], $window['to'])],
+                'team' => $out + ['team' => $this->sections->team($window)],
                 'automation' => $out + ['automation' => $this->automation($window)],
                 'tracking_health' => $out + ['tracking_health' => $this->trackingHealth()],
                 'exec_marketing' => $out + ['exec_marketing' => $this->execMarketing($share, $window)],
@@ -159,9 +179,12 @@ class LiveReport
         $spend = $this->revenue($share, $from, $to)['totals']['spend'];
 
         return [
-            'leads' => $counts['leads'], 'interested' => $counts['interested'], 'visits' => $counts['visit'], 'reservations' => $counts['reservation'], 'won' => $counts['won'],
+            'leads' => $counts['leads'], 'qualified' => $counts['qualified'], 'interested' => $counts['interested'], 'visits' => $counts['visit'], 'reservations' => $counts['reservation'], 'won' => $counts['won'],
+            'conversion_rate' => $counts['leads'] > 0 ? round($counts['won'] / $counts['leads'] * 100, 2) : null,
             'spend' => $spend,
             'cpl' => $spend !== null && $counts['leads'] > 0 ? round($spend / $counts['leads'], 2) : null,
+            // Cost of an action: one booked viewing. Cost of an acquisition: one sale.
+            'cpa' => $spend !== null && $counts['visit'] > 0 ? round($spend / $counts['visit'], 2) : null,
             'cac' => $spend !== null && $counts['won'] > 0 ? round($spend / $counts['won'], 2) : null,
             'roas' => $spend !== null && $spend > 0 ? round($earned / $spend, 2) : null,
             'revenue' => $earned,
@@ -169,9 +192,9 @@ class LiveReport
     }
 
     private const KPI_KEYS = [
-        'kpi_volume' => ['leads', 'interested', 'visits', 'reservations', 'won'],
+        'kpi_volume' => ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won', 'conversion_rate'],
         // A cost nobody has entered is null — a dash on the page, not a zero.
-        'kpi_cost' => ['spend', 'cpl', 'cac', 'roas'],
+        'kpi_cost' => ['spend', 'cpl', 'cpa', 'cac', 'roas'],
         'kpi_revenue' => ['revenue'],
     ];
 
@@ -192,27 +215,6 @@ class LiveReport
         }
 
         return $out;
-    }
-
-    /** @return list<array<string,mixed>> */
-    private function funnel(ReportShare $share, array $window, bool $money): array
-    {
-        $counts = LeadFunnel::counts($this->leads($share, $window))['steps'];
-        $spend = $this->revenue($share, $window['from'], $window['to'])['totals']['spend'];
-        $previous = null;
-
-        return collect(['leads', 'qualified', 'interested', 'visit', 'reservation', 'won'])->map(function (string $step) use ($counts, &$previous, $money, $spend) {
-            $count = $counts[$step];
-            $row = [
-                'key' => $step === 'visit' ? 'visits' : ($step === 'reservation' ? 'reservations' : $step),
-                'count' => $count,
-                'rate' => $counts['leads'] > 0 ? round($count / $counts['leads'] * 100, 1) : null,
-                'lost' => $previous !== null && $previous > 0 ? round(($previous - $count) / $previous * 100, 1) : null,
-            ] + ($money ? ['cost' => $spend !== null && $count > 0 ? round($spend / $count, 2) : null] : []);
-            $previous = $count;
-
-            return $row;
-        })->all();
     }
 
     /** @return array{qualified:int,partial:int,unqualified:int,total:int,rate:?float} */
@@ -348,49 +350,31 @@ class LiveReport
     }
 
     /**
-     * Who gets the credit, counted four ways. Channels only (never a person or a link's name),
-     * the top few, with revenue only where revenue is on.
+     * Who gets the credit, under the model the report was made with — and that model is always named. Channels only
+     * (never a person or a link's name), the top few, with revenue only where revenue is on. The other models are
+     * side by side only on a plan that includes advanced attribution.
      *
-     * @return array{models:array<string,list<array<string,mixed>>>}
+     * @return array{model:string,rows:list<array<string,mixed>>,models?:array<string,list<array<string,mixed>>>}
      */
     private function attribution(ReportShare $share, array $window, bool $earnings): array
     {
         $report = app(AttributionReport::class);
+        $filters = array_filter([
+            'platforms' => $this->ctx->leadPlatforms(), 'campaign_ids' => $this->ctx->campaignIds,
+            'sources' => $this->ctx->sources, 'rep_ids' => $this->ctx->salesUserIds, 'partner_id' => $this->ctx->partnerId(),
+        ]);
+        $rows = fn (string $model) => collect($report->build($model, 'channel', Carbon::instance($window['from']), Carbon::instance($window['to']), $this->ctx->projectIds, $filters)['rows'])
+            ->take(8)->map(fn (array $r) => array_intersect_key($r, array_flip(array_filter([
+                'key', 'label', 'leads', 'qualified', 'interested', 'visits', 'reservations', 'won', $earnings ? 'revenue' : null,
+            ]))))->values()->all();
 
-        return ['models' => collect(['first', 'last', 'linear', 'position'])->mapWithKeys(fn (string $model) => [
-            $model => collect($report->build($model, 'channel', Carbon::instance($window['from']), Carbon::instance($window['to']), $this->ctx->projectIds)['rows'])->take(6)->map(fn (array $r) => array_intersect_key($r, array_flip(array_filter([
-                'key', 'label', 'leads', 'interested', 'visits', 'reservations', 'won', $earnings ? 'revenue' : null,
-            ]))))->values()->all(),
-        ])->all()];
-    }
+        $out = ['model' => $this->ctx->model, 'rows' => $rows($this->ctx->model)];
 
-    /**
-     * Who is carrying what: leads, how many reached each step, per person. Names only — a link
-     * that leaves the building does not carry an email address or a phone number.
-     *
-     * @return list<array<string,mixed>>
-     */
-    private function team(CarbonImmutable $from, CarbonImmutable $to): array
-    {
-        $stage = LeadFunnel::stages();
+        if ($share->tenant && Entitlements::for($share->tenant)->has('advanced_attribution')) {
+            $out['models'] = collect(['first', 'last', 'linear', 'position'])->mapWithKeys(fn (string $m) => [$m => $m === $this->ctx->model ? $out['rows'] : $rows($m)])->all();
+        }
 
-        $rows = $this->ctx->narrow(Lead::query()->reorder())->whereNotNull('leads.assigned_to')
-            ->whereBetween('leads.created_at', [$from, $to])
-            ->selectRaw("leads.assigned_to, count(*) as leads,
-                count(*) filter (where {$stage['interested']}) as interested,
-                count(*) filter (where {$stage['visit']}) as visits,
-                count(*) filter (where {$stage['reservation']}) as reservations,
-                count(*) filter (where {$stage['won']}) as won")
-            ->groupBy('leads.assigned_to')->orderByDesc('won')->orderByDesc('leads')->limit(10)->get();
-
-        $names = User::query()->whereIn('id', $rows->pluck('assigned_to'))->pluck('name', 'id');
-
-        /** @var Collection<int,object> $rows */
-        return $rows->map(fn ($r) => [
-            'name' => $names[$r->assigned_to] ?? '—',
-            'leads' => (int) $r->leads, 'interested' => (int) $r->interested, 'visits' => (int) $r->visits,
-            'reservations' => (int) $r->reservations, 'won' => (int) $r->won,
-        ])->values()->all();
+        return $out;
     }
 
     /** How much of the talking the automation did, and how many people are waiting for a human. @return array<string,mixed> */
@@ -530,8 +514,8 @@ class LiveReport
     }
 
     /**
-     * Insights (what is going on) and recommendations (what to do), from the same findings. A public
-     * link never carries the deep link into the product.
+     * Insights (what is going on) and recommendations (what to do). Insights are drawn only from the sections that are
+     * on, so a hidden section can not be read out of a sentence. A public link never carries the deep link into the product.
      *
      * @param  array<string,mixed>  $out
      * @return array<string,mixed>
@@ -541,11 +525,56 @@ class LiveReport
         $kind = $section === 'insights' ? 'insight' : 'recommendation';
         $revenue = $this->revenue($share, $window['from'], $window['to']);
 
-        $out[$section] = collect((new Recommendations)->build($window['from'], $window['to'], $this->ctx->projectIds, $money, $currency, $revenue, $share->partner_id))
+        $found = collect((new Recommendations)->build($window['from'], $window['to'], $this->ctx->projectIds, $money, $currency, $revenue, $share->partner_id))
             ->where('kind', $kind)->take(6)
             ->map(fn (array $f) => ['key' => $f['key'], 'severity' => $f['severity'], 'values' => $f['values']] + ($audience === 'team' ? ['link' => $f['link']] : []))
-            ->values()->all();
+            ->values();
+
+        if ($kind === 'insight') {
+            $found = $found->concat($this->derivedInsights($share, $window))->unique('key')->take(8)->values();
+        }
+
+        $out[$section] = $found->all();
 
         return $out;
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function derivedInsights(ReportShare $share, array $window): array
+    {
+        $on = fn (string $s) => $this->ctx->has($s);
+        $figures = $this->figures($share, $window, false);
+        $before = $share->compare ? $this->figures($share, $window, true) : [];
+        $marketing = $on('marketing') ? $this->memo('marketing', $window, fn () => $this->sections->marketing($window, $this->revenue($share, $window['from'], $window['to']))) : [];
+        $sources = $on('sources') ? $this->memo('sources', $window, fn () => $this->sections->sources($window))['rows'] : [];
+        $campaigns = $on('campaigns') ? $this->memo('campaigns', $window, fn () => $this->sections->campaigns($this->revenue($share, $window['from'], $window['to']))) : [];
+        $sales = $on('sales') ? $this->memo('sales', $window, fn () => $this->sections->sales($window)) : [];
+        $salesBefore = $on('sales') && $share->compare ? $this->sections->sales(['from' => $window['prev_from'], 'to' => $window['prev_to']] + $window) : [];
+        $volume = $on('kpi_volume') || $on('funnel');
+
+        return $this->sections->findings(
+            $marketing, $sources, $campaigns, $sales, $salesBefore,
+            $volume ? $figures : [], $volume ? $before : [],
+        );
+    }
+
+    /** @return array<string,mixed> */
+    private function memo(string $name, array $window, callable $build): mixed
+    {
+        return $this->memo[$name.'|'.$window['from']->toDateString().'|'.$window['to']->toDateString()] ??= $build();
+    }
+
+    /** @return list<array{kind:string,body:string,by:?string,at:string}> what the team wrote for the reader of this report */
+    private function notes(ReportShare $share): array
+    {
+        return $share->notes()->with('author:id,name')->get()->map(fn ($n) => ['kind' => $n->kind, 'body' => $n->body, 'at' => $n->created_at?->toIso8601String()])->values()->all();
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function attention(ReportShare $share, array $window, string $audience): array
+    {
+        $sales = $this->memo('sales', $window, fn () => $this->sections->sales($window));
+
+        return $this->sections->attention($window, $sales, $this->figures($share, $window, false), $share->compare ? $this->figures($share, $window, true) : [], $audience === 'team');
     }
 }

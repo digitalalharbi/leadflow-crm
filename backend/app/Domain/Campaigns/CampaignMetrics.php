@@ -48,6 +48,9 @@ class CampaignMetrics
             ->with(['project:id,uuid,name', 'account:id,uuid,name'])
             ->whereNull('archived_at')
             ->when($filters['platform'] ?? null, fn ($q, $p) => $q->where('platform', $p))
+            ->when($filters['platforms'] ?? [], fn ($q, $p) => $q->whereIn('platform', $p))
+            ->when($filters['campaign_ids'] ?? [], fn ($q, $ids) => $q->whereIn('id', $ids))
+            ->when($filters['project_ids'] ?? [], fn ($q, $ids) => $q->whereIn('project_id', $ids))
             ->when($filters['project_id'] ?? null, fn ($q, $id) => $q->where('project_id', $id))
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->get();

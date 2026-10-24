@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\Reservation;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
+use App\Support\ProjectIds;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -36,13 +37,13 @@ class AttributionReport
      *
      * @param  array{campaign_id?:int,platform?:string,ad_id?:int,creative_id?:int,partner_id?:int,rep_id?:int}  $filters  ids of the thing the leads belong to
      */
-    public function build(string $model, string $dimension, Carbon $from, Carbon $to, ?int $projectId = null, array $filters = []): array
+    public function build(string $model, string $dimension, Carbon $from, Carbon $to, int|array|null $projectId = null, array $filters = []): array
     {
         $model = in_array($model, Attribution::MODELS, true) ? $model : 'last';
         $dimension = in_array($dimension, self::DIMENSIONS, true) ? $dimension : 'channel';
 
         $leads = Lead::query()->reorder()->whereBetween('created_at', [$from, $to])
-            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->tap(fn ($q) => ProjectIds::apply($q, 'project_id', $projectId))
             ->when($filters['campaign_id'] ?? null, fn ($q, $id) => $q->where('campaign_ref_id', $id))
             ->when($filters['platform'] ?? null, fn ($q, $p) => $q->where('platform', $p))
             ->when($filters['ad_id'] ?? null, fn ($q, $id) => $q->where('ad_ref_id', $id))
@@ -114,7 +115,7 @@ class AttributionReport
      * @param  array<string,int>  $filters
      * @return array<string,mixed>
      */
-    public function compare(string $dimension, Carbon $from, Carbon $to, ?int $projectId = null, array $filters = []): array
+    public function compare(string $dimension, Carbon $from, Carbon $to, int|array|null $projectId = null, array $filters = []): array
     {
         $builds = collect(Attribution::MODELS)->mapWithKeys(fn (string $m) => [$m => $this->build($m, $dimension, $from, $to, $projectId, $filters)]);
         $metrics = ['leads', 'interested', 'visits', 'reservations', 'won', 'revenue'];
@@ -240,11 +241,11 @@ class AttributionReport
      *
      * @return array<string,int>
      */
-    private function clicks(Carbon $from, Carbon $to, Collection $knownLinks, string $dimension, ?int $projectId): array
+    private function clicks(Carbon $from, Carbon $to, Collection $knownLinks, string $dimension, int|array|null $projectId): array
     {
         $rows = TrackingEvent::query()->whereBetween('occurred_at', [$from, $to])
             ->whereIn('event_type', ['click', 'whatsapp_click', 'call_click'])->whereNotNull('tracking_link_id')
-            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->tap(fn ($q) => ProjectIds::apply($q, 'project_id', $projectId))
             ->selectRaw('tracking_link_id, count(*) as n')->groupBy('tracking_link_id')->pluck('n', 'tracking_link_id');
 
         $links = TrackingLink::withTrashed()->with(['campaign:id,name', 'ad:id,name', 'creative:id,name', 'project:id,name', 'rep:id,name'])->whereIn('id', $rows->keys())->get()->keyBy('id');

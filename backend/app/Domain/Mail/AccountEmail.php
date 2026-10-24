@@ -45,6 +45,21 @@ class AccountEmail
         ], 'account', null);
     }
 
+    /** The six-digit code for a restricted report link, queued through the company's own delivery log. */
+    public function reportCode(string $email, string $code, string $report, Tenant $tenant): void
+    {
+        $company = $tenant->branding?->company_name ?? $tenant->name;
+
+        $this->send($tenant, $email, null, 'رمز الدخول إلى التقرير', [
+            'title' => 'رمز الدخول إلى التقرير',
+            'body' => 'الرمز الذي طلبته لفتح تقرير «'.$report.'» من '.$company.': '.$code,
+            'link' => rtrim((string) config('integrations.app_url'), '/'),
+            'button' => 'فتح مهتم',
+            'note' => 'الرمز صالح لمدة '.config('links.otp_minutes').' دقائق. إن لم تطلبه فتجاهل الرسالة.',
+            'workspace' => $company,
+        ], 'account', null);
+    }
+
     private function send(Tenant $tenant, string $email, ?string $name, string $subject, array $view, string $kind, ?string $key): void
     {
         $html = view('emails.account-link', $view + ['footer' => 'مهتم — رسالة آلية، لا ترد عليها.'])->render();

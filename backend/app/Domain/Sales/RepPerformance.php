@@ -7,6 +7,7 @@ use App\Domain\Automation\Thresholds;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
+use App\Support\ProjectIds;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -29,7 +30,7 @@ class RepPerformance
     public const SMALL_SAMPLE = 10;
 
     /** @return array{reps:list<array<string,mixed>>,team:array<string,mixed>,from:string,to:string} */
-    public function build(CarbonInterface $from, CarbonInterface $to, ?int $projectId = null, bool $withMoney = true): array
+    public function build(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId = null, bool $withMoney = true): array
     {
         $stage = LeadFunnel::stages();
         $target = (int) Thresholds::workspace('sla_minutes');
@@ -37,7 +38,7 @@ class RepPerformance
         $rows = Lead::query()->reorder()
             ->whereNotNull('leads.assigned_to')
             ->whereBetween('leads.created_at', [$from, $to])
-            ->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))
+            ->tap(fn ($q) => ProjectIds::apply($q, 'leads.project_id', $projectId))
             ->selectRaw("leads.assigned_to,
                 count(*) as leads,
                 count(*) filter (where leads.first_contact_at is not null) as contacted,
@@ -120,13 +121,13 @@ class RepPerformance
      *
      * @return array<string,int|float|null>
      */
-    public function teamSummary(CarbonInterface $from, CarbonInterface $to, ?int $projectId = null): array
+    public function teamSummary(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId = null): array
     {
         $stage = LeadFunnel::stages();
         $target = (int) Thresholds::workspace('sla_minutes');
 
         $r = Lead::query()->reorder()->whereNotNull('leads.assigned_to')->whereBetween('leads.created_at', [$from, $to])
-            ->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))
+            ->tap(fn ($q) => ProjectIds::apply($q, 'leads.project_id', $projectId))
             ->selectRaw("count(*) as assigned,
                 count(*) filter (where leads.first_contact_at is not null) as contacted,
                 count(*) filter (where leads.first_contact_at is not null and leads.assigned_at is not null and leads.first_contact_at <= leads.assigned_at + make_interval(mins => ?)) as in_time,
@@ -138,7 +139,7 @@ class RepPerformance
                 coalesce(sum(leads.deal_value_minor) filter (where {$stage['won']}), 0) as revenue_minor", [$target])->first();
 
         $due = FollowUp::query()->whereBetween('due_at', [$from, min($to, now())])->where('status', '!=', 'cancelled')
-            ->when($projectId, fn ($q) => $q->whereHas('lead', fn ($l) => $l->where('leads.project_id', $projectId)))
+            ->when(ProjectIds::list($projectId) !== [], fn ($q) => $q->whereHas('lead', fn ($l) => ProjectIds::apply($l, 'leads.project_id', $projectId)))
             ->selectRaw("count(*) as due, count(*) filter (where status = 'completed') as done")->first();
 
         $assigned = (int) $r->assigned;

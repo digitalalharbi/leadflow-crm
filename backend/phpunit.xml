@@ -41,5 +41,6 @@
         <env name="LOGIN_RATE_LIMIT_PER_MINUTE" value="5"/>
         <env name="LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE" value="20"/>
         <env name="API_RATE_LIMIT_PER_MINUTE" value="120"/>
+        <env name="REPORT_CACHE_SECONDS" value="0"/>
     </php>
 </phpunit>

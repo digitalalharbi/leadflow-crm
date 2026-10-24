@@ -8,7 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
-use App\Models\ReportShare;
+use App\Models\ShortLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -55,7 +55,7 @@ class LiveReportShareTest extends TestCase
     public function test_a_link_opens_the_live_numbers_without_logging_in(): void
     {
         $share = $this->make();
-        $this->assertStringContainsString('/reports/share/', $share['url']);
+        $this->assertStringContainsString('/r/', $share['url']);
         $this->assertSame('active', $share['status']);
 
         // Anonymous: no session.
@@ -134,10 +134,10 @@ class LiveReportShareTest extends TestCase
         $share = $this->make(['expires_at' => now()->addDay()->toIso8601String()]);
         $this->open($share)->assertOk();
 
-        DB::table('report_shares')->update(['expires_at' => now()->subMinute()]);
+        DB::table('short_links')->update(['expires_at' => now()->subMinute()]);
         $this->open($share)->assertStatus(410);
 
-        DB::table('report_shares')->update(['expires_at' => null]);
+        DB::table('short_links')->update(['expires_at' => null]);
         $this->open($share)->assertOk();
 
         $this->actingAs($this->t['admin'])->postJson("/api/v1/report-shares/{$share['id']}/revoke")->assertOk()->assertJsonPath('data.share.status', 'revoked');
@@ -189,11 +189,11 @@ class LiveReportShareTest extends TestCase
     {
         $share = $this->make();
         $token = basename($share['url']);
-        $row = DB::table('report_shares')->first();
+        $row = DB::table('short_links')->first();
 
         $this->assertNotSame($token, $row->token_hash);
         $this->assertStringNotContainsString($token, json_encode($row));
-        $this->assertSame(ReportShare::hash($token), $row->token_hash);
+        $this->assertSame(ShortLink::hash($token), $row->token_hash);
     }
 
     public function test_only_managers_make_links_and_one_workspace_cannot_touch_anothers(): void
@@ -218,6 +218,6 @@ class LiveReportShareTest extends TestCase
     public function test_a_malformed_or_unknown_token_is_a_plain_404(): void
     {
         $this->getJson('/api/v1/shared/reports/short')->assertNotFound();
-        $this->getJson('/api/v1/shared/reports/'.str_repeat('a', 40))->assertNotFound();
+        $this->getJson('/api/v1/shared/reports/'.str_repeat('a', 22))->assertNotFound();
     }
 }

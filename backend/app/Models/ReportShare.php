@@ -7,17 +7,26 @@ use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 /** A live report behind a link: what it shows, who may open it, until when, and how often it was opened. */
 class ReportShare extends Model
 {
     use BelongsToTenant, HasUuid;
 
-    protected $fillable = ['name', 'template', 'sections', 'layout', 'compare', 'refresh_seconds', 'days', 'project_id', 'partner_id', 'expires_at', 'created_by'];
+    public const STATES = ['draft', 'live', 'archived'];
 
+    public const RANGES = ['today', 'yesterday', 'last_7', 'last_14', 'last_30', 'this_month', 'previous_month', 'quarter', 'custom'];
+
+    public const MODELS = ['first', 'last', 'linear', 'position'];
+
+    protected $fillable = [
+        'name', 'state', 'client_name', 'template', 'sections', 'layout', 'compare', 'compare_mode', 'compare_from', 'compare_to',
+        'refresh_seconds', 'days', 'period', 'period_from', 'period_to', 'attribution_model', 'currency',
+        'filters', 'branding', 'options', 'project_id', 'partner_id', 'created_by', 'revision', 'published_at', 'archived_at',
+    ];
+
+    // The old link columns are no longer written or read: a link lives in `short_links`.
     protected $hidden = ['token_hash', 'token_enc', 'password_hash'];
 
     protected function casts(): array
@@ -28,10 +37,16 @@ class ReportShare extends Model
             'compare' => 'boolean',
             'refresh_seconds' => 'integer',
             'days' => 'integer',
-            'expires_at' => 'datetime',
-            'revoked_at' => 'datetime',
-            'last_viewed_at' => 'datetime',
-            'view_count' => 'integer',
+            'period_from' => 'date',
+            'period_to' => 'date',
+            'compare_from' => 'date',
+            'compare_to' => 'date',
+            'filters' => 'array',
+            'branding' => 'array',
+            'options' => 'array',
+            'revision' => 'integer',
+            'published_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -56,61 +71,81 @@ class ReportShare extends Model
         return $this->hasMany(ReportSchedule::class);
     }
 
-    public static function hash(string $token): string
+    /** @return list<int> the projects the report covers: its project list, or the one project it started with. Empty = every project. */
+    public function projectIds(): array
     {
-        return hash('sha256', $token);
+        $ids = DB::table('report_share_projects')->where('report_share_id', $this->id)->pluck('project_id')->map(fn ($i) => (int) $i)->all();
+
+        return $ids !== [] ? $ids : ($this->project_id ? [(int) $this->project_id] : []);
     }
 
-    /** A new link: the old one stops working the moment this is saved. */
-    public function rotateToken(): string
+    /** Replaces the project list. The first project is also kept as `project_id`, which older code still reads. */
+    public function syncProjects(array $projectIds): void
     {
-        $token = Str::random(40);
-        $this->forceFill(['token_hash' => self::hash($token), 'token_enc' => Crypt::encryptString($token)]);
+        $projectIds = array_values(array_unique(array_map('intval', $projectIds)));
 
-        return $token;
+        DB::table('report_share_projects')->where('report_share_id', $this->id)->delete();
+
+        foreach ($projectIds as $id) {
+            DB::table('report_share_projects')->insert(['tenant_id' => $this->tenant_id, 'report_share_id' => $this->id, 'project_id' => $id]);
+        }
+
+        $this->forceFill(['project_id' => $projectIds[0] ?? null])->saveQuietly();
     }
 
-    public function token(): string
+    public function notes(): HasMany
     {
-        return Crypt::decryptString($this->token_enc);
+        return $this->hasMany(ReportNote::class)->where('is_current', true)->orderBy('id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(ReportRevision::class)->orderByDesc('revision');
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(ReportActivity::class)->orderByDesc('id');
+    }
+
+    /** Every address this report has been given: one per client, each with its own password, expiry and count. */
+    public function links(): HasMany
+    {
+        return $this->hasMany(ShortLink::class, 'resource_id')->where('type', 'report')->oldest('id');
+    }
+
+    /** The report's own link: the first one that is still good, otherwise the first one it ever had. */
+    public function primaryLink(): ?ShortLink
+    {
+        $links = $this->relationLoaded('links') ? $this->links : $this->links()->get();
+
+        return $links->first(fn (ShortLink $l) => ! $l->isRevoked()) ?? $links->first();
     }
 
     public function url(): string
     {
-        return rtrim((string) config('integrations.app_url'), '/').'/reports/share/'.$this->token();
+        return $this->primaryLink()?->url() ?? '';
     }
 
-    public function setPassword(?string $password): void
+    public function token(): ?string
     {
-        $this->password_hash = filled($password) ? Hash::make($password) : null;
+        return $this->primaryLink()?->token();
+    }
+
+    /** active · expired · revoked — of the report's own link. A report with no link has nothing open. */
+    public function status(): string
+    {
+        return $this->primaryLink()?->status() ?? 'revoked';
     }
 
     public function hasPassword(): bool
     {
-        return $this->password_hash !== null;
+        return (bool) $this->primaryLink()?->hasPassword();
     }
 
-    public function passwordMatches(?string $password): bool
+    /** The report's state in the library, apart from its links: draft · live · archived. */
+    public function isLive(): bool
     {
-        return ! $this->hasPassword() || (filled($password) && Hash::check($password, $this->password_hash));
-    }
-
-    public function isRevoked(): bool
-    {
-        return $this->revoked_at !== null;
-    }
-
-    public function isExpired(): bool
-    {
-        return $this->expires_at !== null && $this->expires_at->isPast();
-    }
-
-    public function status(): string
-    {
-        return match (true) {
-            $this->isRevoked() => 'revoked',
-            $this->isExpired() => 'expired',
-            default => 'active',
-        };
+        return ($this->state ?? 'live') === 'live';
     }
 }

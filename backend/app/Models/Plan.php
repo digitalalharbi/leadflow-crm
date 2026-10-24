@@ -19,6 +19,8 @@ class Plan extends Model
     public const FEATURES = [
         'tracking_hub', 'advanced_forms', 'automations', 'attribution', 'exports',
         'api', 'advanced_reports', 'whatsapp', 'custom_branding', 'multiple_projects',
+        // What a report can be sold with, on top of the library itself (advanced_reports).
+        'report_pdf', 'report_excel', 'advanced_templates', 'advanced_attribution', 'white_label_reports', 'client_otp',
     ];
 
     /** The limits a plan sets. Null means unlimited. */

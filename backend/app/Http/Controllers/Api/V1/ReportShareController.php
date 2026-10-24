@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Links\ShortLinks;
 use App\Domain\Mail\EmailDeliveries;
 use App\Domain\Mail\OutboundEmail;
 use App\Domain\Mail\ReportEmail;
@@ -17,6 +18,7 @@ use App\Models\ReportShareView;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -28,14 +30,14 @@ use Illuminate\Validation\ValidationException;
  */
 class ReportShareController extends Controller
 {
-    public function __construct(private AuditLogger $audit) {}
+    public function __construct(private AuditLogger $audit, private ShortLinks $links) {}
 
     public function index(Request $request)
     {
         $this->authorize('viewAny', ReportShare::class);
 
         return ApiResponse::success([
-            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
+            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules', 'links'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
             // The reports a workspace starts from, ready-made: who each is for, how far back it looks, what it carries.
             'presets' => ReportPresets::all(),
             'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key), 'layout' => ReportTemplates::layoutFor($key)])->values(),
@@ -68,16 +70,15 @@ class ReportShareController extends Controller
             'days' => $data['days'] ?? $preset['days'] ?? 30,
             'project_id' => $this->projectId($data),
             'partner_id' => $this->partnerId($data),
-            'expires_at' => $data['expires_at'] ?? null,
             'created_by' => $request->user()->id,
         ]);
-        $share->setPassword($data['password'] ?? null);
-        $share->rotateToken();
         $share->save();
+        $share->syncProjects($share->project_id ? [$share->project_id] : []);
+        $this->links->issue('report', $share->id, $share->project_id, $request->user(), ['expires_at' => $data['expires_at'] ?? null], $data['password'] ?? null);
 
         $this->audit->log('report_share.created', $request->user(), $share, ['after' => $this->trail($share)]);
 
-        return ApiResponse::created(['share' => $this->present($share->load('project', 'partner'))]);
+        return ApiResponse::created(['share' => $this->present($share->load('project', 'partner', 'links'))]);
     }
 
     public function update(Request $request, string $uuid)
@@ -115,19 +116,26 @@ class ReportShareController extends Controller
             $share->partner_id = $this->partnerId($data);
         }
 
-        if (array_key_exists('expires_at', $data)) {
-            $share->expires_at = $data['expires_at'];
+        $link = $share->primaryLink();
+
+        if ($link !== null && array_key_exists('expires_at', $data)) {
+            $link->expires_at = $data['expires_at'];
         }
 
         // A password is set by giving one and removed by sending null; leaving it out changes nothing.
-        if (array_key_exists('password', $data)) {
-            $share->setPassword($data['password']);
+        if ($link !== null && array_key_exists('password', $data)) {
+            $link->setPassword($data['password']);
         }
 
+        $link?->save();
         $share->save();
+
+        if (array_key_exists('project_id', $data)) {
+            $share->syncProjects($share->project_id ? [$share->project_id] : []);
+        }
         $this->audit->log('report_share.updated', $request->user(), $share, ['before' => $before, 'after' => $this->trail($share)]);
 
-        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner', 'links'))]);
     }
 
     /** Shut the door: the link answers "gone" from now on, and the record stays. */
@@ -136,10 +144,12 @@ class ReportShareController extends Controller
         $share = ReportShare::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $share);
 
-        $share->forceFill(['revoked_at' => now()])->save();
+        $link = $share->primaryLink();
+        abort_if($link === null, 404);
+        $this->links->revoke($link, $request->user());
         $this->audit->log('report_share.revoked', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
-        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner', 'links'))]);
     }
 
     /** A new link in place of the old: whoever has the old one is locked out, and a revoked report is open again. */
@@ -148,12 +158,12 @@ class ReportShareController extends Controller
         $share = ReportShare::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $share);
 
-        $share->rotateToken();
-        $share->revoked_at = null;
-        $share->save();
+        $link = $share->primaryLink();
+        abort_if($link === null, 404);
+        $this->links->regenerate($link, $request->user());
         $this->audit->log('report_share.regenerated', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
-        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner', 'links'))]);
     }
 
     /**
@@ -210,14 +220,15 @@ class ReportShareController extends Controller
         $share = ReportShare::where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $share);
 
+        $link = $share->primaryLink();
         $views = ReportShareView::query()->where('report_share_id', $share->id);
         $since = now()->subDays(29)->startOfDay();
         $daily = (clone $views)->where('viewed_at', '>=', $since)->selectRaw('viewed_at::date as day, count(*) as n')->groupBy('day')->pluck('n', 'day');
 
         return ApiResponse::success([
-            'total' => (int) $share->view_count,
+            'total' => (int) $share->links()->sum('view_count'),
             'unique' => (int) (clone $views)->distinct()->count('viewer_hash'),
-            'last_viewed_at' => $share->last_viewed_at?->toIso8601String(),
+            'last_viewed_at' => $share->links()->max('last_viewed_at') ? Carbon::parse($share->links()->max('last_viewed_at'))->toIso8601String() : null,
             'daily' => collect(range(0, 29))->map(fn (int $i) => $since->copy()->addDays($i)->toDateString())->map(fn (string $d) => ['date' => $d, 'views' => (int) ($daily[$d] ?? 0)])->all(),
             'recent' => (clone $views)->latest('viewed_at')->limit(8)->get(['viewed_at', 'device'])->map(fn ($v) => ['at' => $v->viewed_at->toIso8601String(), 'device' => $v->device])->all(),
         ]);
@@ -316,7 +327,7 @@ class ReportShareController extends Controller
     {
         return [
             'name' => $share->name, 'template' => $share->template, 'sections' => $share->sections, 'days' => $share->days,
-            'project_id' => $share->project_id, 'partner_id' => $share->partner_id, 'expires_at' => $share->expires_at?->toIso8601String(), 'has_password' => $share->hasPassword(),
+            'project_id' => $share->project_id, 'partner_id' => $share->partner_id, 'expires_at' => $share->primaryLink()?->expires_at?->toIso8601String(), 'has_password' => $share->hasPassword(),
         ];
     }
 
@@ -338,10 +349,10 @@ class ReportShareController extends Controller
             'url' => $share->url(),
             'status' => $share->status(),
             'has_password' => $share->hasPassword(),
-            'expires_at' => $share->expires_at?->toIso8601String(),
-            'revoked_at' => $share->revoked_at?->toIso8601String(),
-            'view_count' => $share->view_count,
-            'last_viewed_at' => $share->last_viewed_at?->toIso8601String(),
+            'expires_at' => $share->primaryLink()?->expires_at?->toIso8601String(),
+            'revoked_at' => $share->primaryLink()?->revoked_at?->toIso8601String(),
+            'view_count' => (int) $share->links->sum('view_count'),
+            'last_viewed_at' => $share->links->max('last_viewed_at')?->toIso8601String(),
             'created_at' => $share->created_at?->toIso8601String(),
             // How it sends itself, at a glance; the schedules themselves are managed on their own endpoint.
             'schedules' => $share->relationLoaded('schedules') ? $share->schedules->map(fn ($s) => ['id' => $s->uuid, 'frequency' => $s->frequency, 'enabled' => $s->enabled, 'next_run_at' => $s->next_run_at?->toIso8601String(), 'recipients' => count((array) $s->recipients)])->values()->all() : [],

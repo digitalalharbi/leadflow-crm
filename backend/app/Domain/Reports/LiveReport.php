@@ -17,6 +17,7 @@ use App\Models\AutomationActionLog;
 use App\Models\ConversionExport;
 use App\Models\Lead;
 use App\Models\LeadMessage;
+use App\Models\Project;
 use App\Models\ReportShare;
 use App\Models\Reservation;
 use App\Models\User;
@@ -43,6 +44,8 @@ class LiveReport
     /** @var array<string,array<string,mixed>> CampaignRevenue builds by window, for this report */
     private array $engine = [];
 
+    private ReportContext $ctx;
+
     /** @return array<string,mixed> */
     /**
      * @param  (callable(string):bool)|null  $allowed  for a signed-in viewer: which sections they may see at all — what
@@ -55,9 +58,11 @@ class LiveReport
         $keys = array_column($plan, 'key');
         $days = array_column($plan, 'days', 'key');
         $has = fn (string $section) => in_array($section, $keys, true);
-        $money = $has('kpi_cost');
-        $earnings = $has('kpi_revenue');
-        $currency = $share->tenant?->settings?->currency ?? 'SAR';
+        // Costs leave with a section that is about costs, revenue with one that is about revenue — and with nothing else.
+        $money = $has('kpi_cost') || $has('marketing');
+        $earnings = $has('kpi_revenue') || $has('revenue');
+        $currency = $share->currency ?: ($share->tenant?->settings?->currency ?? 'SAR');
+        $this->ctx = new ReportContext($share, $audience, $keys, $money, $earnings, $currency);
 
         $main = $this->window($share, null);
 
@@ -72,6 +77,11 @@ class LiveReport
                 'currency' => $currency,
                 'compare' => (bool) $share->compare,
                 'refresh_seconds' => (int) ($share->refresh_seconds ?: 60),
+                'period' => $share->period ?: 'last_n',
+                'attribution_model' => $this->ctx->model,
+                'client_name' => $share->client_name,
+                'state' => $share->state ?: 'live',
+                'projects' => $this->projectNames(),
             ] + ($share->compare ? ['previous' => ['from' => $main['prev_from']->toDateString(), 'to' => $main['prev_to']->toDateString()]] : []),
             'sections' => $keys,
         ];
@@ -90,7 +100,7 @@ class LiveReport
                 'platforms' => $out + ['platforms' => $this->platforms($share, $window, $money, $earnings)],
                 'campaigns' => $out + ['campaigns' => $this->campaigns($share, $window, $money, $earnings)],
                 'attribution' => $out + ['attribution' => $this->attribution($share, $window, $earnings)],
-                'team' => $out + ['team' => $this->team($window['from'], $window['to'], $share->project_id)],
+                'team' => $out + ['team' => $this->team($window['from'], $window['to'])],
                 'automation' => $out + ['automation' => $this->automation($window)],
                 'tracking_health' => $out + ['tracking_health' => $this->trackingHealth()],
                 'exec_marketing' => $out + ['exec_marketing' => $this->execMarketing($share, $window)],
@@ -107,34 +117,32 @@ class LiveReport
     }
 
     /**
-     * The period a section covers and the one before it, the same length.
+     * The period a section covers and the one it is compared with.
      *
      * @return array{from:CarbonImmutable,to:CarbonImmutable,days:int,prev_from:CarbonImmutable,prev_to:CarbonImmutable}
      */
     private function window(ReportShare $share, ?int $days): array
     {
-        $days = max(1, $days ?? $share->days);
-        $to = CarbonImmutable::today()->endOfDay();
-        $from = $to->subDays($days - 1)->startOfDay();
-        $prevTo = $from->subDay()->endOfDay();
-
-        return ['from' => $from, 'to' => $to, 'days' => $days, 'prev_from' => $prevTo->subDays($days - 1)->startOfDay(), 'prev_to' => $prevTo];
+        return ReportPeriod::window($share, $days);
     }
 
     /** @return array<string,mixed> CampaignRevenue for a window (or the one before it) */
     private function revenue(ReportShare $share, CarbonImmutable $from, CarbonImmutable $to): array
     {
-        return $this->engine[$from->toDateString().'|'.$to->toDateString()] ??= (new CampaignRevenue(null))->build($from, $to, $share->project_id);
+        return $this->engine[$from->toDateString().'|'.$to->toDateString()] ??= (new CampaignRevenue(null))->build($from, $to, $this->ctx->projectIds, null, $this->ctx->campaignFilter());
     }
 
     /** @return Builder<Lead> every lead that arrived in the window, within the report's project and partner */
     private function leads(ReportShare $share, array $window, bool $previous = false): Builder
     {
-        [$from, $to] = $previous ? [$window['prev_from'], $window['prev_to']] : [$window['from'], $window['to']];
+        return $this->ctx->leads($window, $previous);
+    }
 
-        return Lead::query()->reorder()->whereBetween('leads.created_at', [$from, $to])
-            ->when($share->project_id, fn ($q) => $q->where('leads.project_id', $share->project_id))
-            ->when($share->partner_id, fn ($q) => $q->where('leads.partner_id', $share->partner_id));
+    /** @return list<array{id:string,name:string}> the projects the report covers, by name — never an internal id */
+    private function projectNames(): array
+    {
+        return Project::query()->whereIn('id', $this->ctx->projectIds)->orderBy('name')->get(['uuid', 'name'])
+            ->map(fn ($p) => ['name' => $p->name])->all();
     }
 
     /**
@@ -230,7 +238,7 @@ class LiveReport
     private function visits(ReportShare $share, array $window): array
     {
         $visits = fn () => Appointment::query()->reorder()->whereBetween('appointments.scheduled_at', [$window['from'], $window['to']])
-            ->whereHas('lead', fn ($l) => $l->when($share->project_id, fn ($q) => $q->where('leads.project_id', $share->project_id))->when($share->partner_id, fn ($q) => $q->where('leads.partner_id', $share->partner_id)));
+            ->whereHas('lead', fn ($l) => $this->ctx->narrow($l));
 
         $row = $visits()->selectRaw("
             count(*) filter (where appointments.status in ('confirmed','rescheduled','scheduled')) as booked,
@@ -254,7 +262,7 @@ class LiveReport
     private function reservations(ReportShare $share, array $window): array
     {
         $row = Reservation::query()->reorder()->whereBetween('reservations.created_at', [$window['from'], $window['to']])
-            ->whereHas('lead', fn ($l) => $l->when($share->project_id, fn ($q) => $q->where('leads.project_id', $share->project_id))->when($share->partner_id, fn ($q) => $q->where('leads.partner_id', $share->partner_id)))
+            ->whereHas('lead', fn ($l) => $this->ctx->narrow($l))
             ->selectRaw("
                 count(*) filter (where reservations.status = 'pending') as pending,
                 count(*) filter (where reservations.status = 'confirmed') as confirmed,
@@ -350,7 +358,7 @@ class LiveReport
         $report = app(AttributionReport::class);
 
         return ['models' => collect(['first', 'last', 'linear', 'position'])->mapWithKeys(fn (string $model) => [
-            $model => collect($report->build($model, 'channel', Carbon::instance($window['from']), Carbon::instance($window['to']), $share->project_id)['rows'])->take(6)->map(fn (array $r) => array_intersect_key($r, array_flip(array_filter([
+            $model => collect($report->build($model, 'channel', Carbon::instance($window['from']), Carbon::instance($window['to']), $this->ctx->projectIds)['rows'])->take(6)->map(fn (array $r) => array_intersect_key($r, array_flip(array_filter([
                 'key', 'label', 'leads', 'interested', 'visits', 'reservations', 'won', $earnings ? 'revenue' : null,
             ]))))->values()->all(),
         ])->all()];
@@ -362,13 +370,12 @@ class LiveReport
      *
      * @return list<array<string,mixed>>
      */
-    private function team(CarbonImmutable $from, CarbonImmutable $to, ?int $projectId): array
+    private function team(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $stage = LeadFunnel::stages();
 
-        $rows = Lead::query()->reorder()->whereNotNull('leads.assigned_to')
+        $rows = $this->ctx->narrow(Lead::query()->reorder())->whereNotNull('leads.assigned_to')
             ->whereBetween('leads.created_at', [$from, $to])
-            ->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))
             ->selectRaw("leads.assigned_to, count(*) as leads,
                 count(*) filter (where {$stage['interested']}) as interested,
                 count(*) filter (where {$stage['visit']}) as visits,
@@ -429,8 +436,8 @@ class LiveReport
         $team = new RepPerformance;
 
         return [
-            'figures' => $team->teamSummary($window['from'], $window['to'], $share->project_id),
-            'previous' => $share->compare ? $team->teamSummary($window['prev_from'], $window['prev_to'], $share->project_id) : null,
+            'figures' => $team->teamSummary($window['from'], $window['to'], $this->ctx->projectIds),
+            'previous' => $share->compare ? $team->teamSummary($window['prev_from'], $window['prev_to'], $this->ctx->projectIds) : null,
         ];
     }
 
@@ -534,7 +541,7 @@ class LiveReport
         $kind = $section === 'insights' ? 'insight' : 'recommendation';
         $revenue = $this->revenue($share, $window['from'], $window['to']);
 
-        $out[$section] = collect((new Recommendations)->build($window['from'], $window['to'], $share->project_id, $money, $currency, $revenue, $share->partner_id))
+        $out[$section] = collect((new Recommendations)->build($window['from'], $window['to'], $this->ctx->projectIds, $money, $currency, $revenue, $share->partner_id))
             ->where('kind', $kind)->take(6)
             ->map(fn (array $f) => ['key' => $f['key'], 'severity' => $f['severity'], 'values' => $f['values']] + ($audience === 'team' ? ['link' => $f['link']] : []))
             ->values()->all();

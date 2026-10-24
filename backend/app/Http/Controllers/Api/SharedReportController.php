@@ -2,75 +2,171 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Billing\Entitlements;
+use App\Domain\Links\AccessPass;
+use App\Domain\Links\ShortLinks;
+use App\Domain\Mail\AccountEmail;
 use App\Domain\Reports\LiveReport;
+use App\Domain\Reports\ReportActivities;
+use App\Domain\Reports\ReportBranding;
+use App\Domain\Reports\ReportCache;
+use App\Domain\Reports\ReportExporter;
+use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
 use App\Models\ReportShare;
-use App\Models\ReportShareView;
+use App\Models\ShortLink;
 use App\Models\Tenant;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
- * `/api/v1/shared/reports/{token}` — the live report behind a link.
- *
- * Public: the token is the credential, and an optional password is a second one. Unknown and
- * revoked links look the same (404); an expired one says so (410) because "this ended" is
- * something a reader can act on, and a missing one is not. Failed passwords count against a
- * tight throttle, and a response never says whether a link exists to anyone without it.
+ * `/r/<token>` — the live report a client opens with one link. The token is the credential; a password and an emailed
+ * code may be the others. It answers with exactly the sections the owner turned on and no more (the rest are never
+ * built), carries no contact detail of any lead, and says the same "not found" for a link that never existed, was
+ * revoked, is switched off, or belongs to a report that is not live — so it cannot be used to find tokens.
  */
 class SharedReportController extends Controller
 {
-    public function __construct(private TenantContext $context, private LiveReport $report) {}
+    public function __construct(
+        private TenantContext $context,
+        private LiveReport $report,
+        private ShortLinks $links,
+        private AccessPass $pass,
+        private ReportCache $cache,
+    ) {}
 
     public function __invoke(Request $request, string $token)
     {
-        $share = $this->context->withoutScope(fn () => ReportShare::withoutGlobalScopes()->where('token_hash', ReportShare::hash($token))->first());
+        [$link, $share, $tenant] = $this->resolve($token);
+        $brand = ReportBranding::workspace($share, $tenant);
 
-        abort_if($share === null || $share->isRevoked(), 404);
+        if ($denied = $this->gate($request, $link, $share, $brand)) {
+            return $denied;
+        }
 
-        if ($share->isExpired()) {
+        $sections = array_column(ReportTemplates::plan($share, 'public'), 'key');
+
+        $data = $this->context->withTenant($tenant, fn () => $this->cache->remember(
+            $share->setRelation('tenant', $tenant), 'public', $sections, $this->cacheSeconds($share),
+            fn () => $this->report->build($share),
+        ));
+
+        // An open page asking again for fresh numbers is the same view, not another one.
+        if (! $request->hasHeader('X-Share-Refresh')) {
+            $this->context->withTenant($tenant, function () use ($request, $link, $share) {
+                $this->links->recordView($link, $request);
+                ReportActivities::viewed($share, $request);
+            });
+        }
+
+        return ApiResponse::success($data + ['workspace' => $brand, 'link' => ['allow_export' => (bool) $link->allow_export, 'exports' => $this->exportsOffered($tenant, $link)]]);
+    }
+
+    /** The visitor asks for a code at their email. The answer is the same whether or not the email is allowed. */
+    public function requestCode(Request $request, string $token)
+    {
+        [$link, $share, $tenant] = $this->resolve($token);
+        $email = strtolower((string) $request->validate(['email' => ['required', 'email:rfc', 'max:190']])['email']);
+
+        $code = $this->pass->request($link, $email);
+
+        if ($code !== null) {
+            $this->context->withTenant($tenant, fn () => app(AccountEmail::class)->reportCode($email, $code, $share->name, $tenant));
+        }
+
+        return ApiResponse::success(['sent' => true]);
+    }
+
+    public function verifyCode(Request $request, string $token)
+    {
+        [$link] = $this->resolve($token);
+        $data = $request->validate(['email' => ['required', 'email:rfc', 'max:190'], 'code' => ['required', 'string', 'max:12']]);
+
+        $pass = $this->pass->verify($link, $data['email'], $data['code']);
+
+        if ($pass === null) {
+            throw ValidationException::withMessages(['code' => ['That code is not valid.']]);
+        }
+
+        return ApiResponse::success(['access' => $pass]);
+    }
+
+    /** The report as a file, for a link whose owner allowed it. Same gates as the page; same sections; audited. */
+    public function export(Request $request, string $token)
+    {
+        [$link, $share, $tenant] = $this->resolve($token);
+        $brand = ReportBranding::workspace($share, $tenant);
+
+        if ($denied = $this->gate($request, $link, $share, $brand)) {
+            return $denied;
+        }
+
+        abort_unless($link->allow_export, 403, 'This link does not allow downloads.');
+        $format = $request->validate(['format' => ['required', 'in:csv,xlsx,pdf']])['format'];
+        abort_unless($this->exportsOffered($tenant, $link)[$format] ?? false, 403, 'Your plan does not include this format.');
+
+        return $this->context->withTenant($tenant, function () use ($request, $share, $tenant, $format, $link) {
+            $data = $this->report->build($share->setRelation('tenant', $tenant));
+            ReportActivities::exported($share, null, $format, 'client_link', ['link' => $link->uuid]);
+
+            return app(ReportExporter::class)->download($share, $data, $format, $request);
+        });
+    }
+
+    /**
+     * @return array{0: ShortLink, 1: ReportShare, 2: Tenant}
+     */
+    private function resolve(string $token): array
+    {
+        $link = $this->links->find($token, 'report');
+        abort_if($link === null || $link->isRevoked() || ! $link->is_active, 404);
+
+        $share = $this->context->withoutScope(fn () => ReportShare::withoutGlobalScopes()->find($link->resource_id));
+        abort_if($share === null || $share->tenant_id !== $link->tenant_id || ($share->state ?? 'live') !== 'live', 404);
+
+        $tenant = $this->context->withoutScope(fn () => Tenant::with('branding', 'settings')->find($share->tenant_id));
+        // A closed subscription, or a plan without reports, closes the links too — the data stays, the doors do not open.
+        abort_if($tenant === null || ! $tenant->isSubscriptionUsable() || ! Entitlements::for($tenant)->has('advanced_reports'), 404);
+
+        return [$link, $share, $tenant];
+    }
+
+    /** The password and the emailed code. Null means the visitor may go on. */
+    private function gate(Request $request, ShortLink $link, ReportShare $share, array $brand): ?JsonResponse
+    {
+        if ($link->isExpired()) {
             return ApiResponse::error('This report has expired.', null, 410);
         }
 
-        $tenant = $this->context->withoutScope(fn () => Tenant::with('branding', 'settings')->find($share->tenant_id));
-        $brand = ['name' => $tenant?->branding?->company_name ?? $tenant?->name, 'color' => $tenant?->branding?->primary_color ?? '#2563eb', 'logo_url' => $tenant?->branding?->logo_url];
-
-        if (! $share->passwordMatches($request->header('X-Share-Password'))) {
+        if (! $link->passwordMatches($request->header('X-Share-Password'))) {
             // Enough to draw the password screen, nothing about the numbers.
             return response()->json(['success' => false, 'message' => 'A password is required.', 'data' => ['password_required' => true, 'workspace' => $brand, 'name' => $share->name]], 401);
         }
 
-        $data = $this->context->withTenant($tenant, fn () => $this->report->build($share->setRelation('tenant', $tenant)));
-
-        // An open page asking again for fresh numbers is the same view, not another one.
-        if (! $request->hasHeader('X-Share-Refresh')) {
-            $this->countView($request, $share);
+        if ($link->isRestrictedToPeople() && ! $this->pass->valid($link, $request->header('X-Share-Access'))) {
+            return response()->json(['success' => false, 'message' => 'A verification code is required.', 'data' => ['otp_required' => true, 'workspace' => $brand, 'name' => $share->name]], 401);
         }
 
-        return ApiResponse::success($data + ['workspace' => $brand]);
+        return null;
     }
 
-    /**
-     * One more opening: counted without touching `updated_at` (opening a report is not editing it),
-     * and written down with a hash that tells visitors apart without naming anybody.
-     */
-    private function countView(Request $request, ReportShare $share): void
+    /** @return array{csv: bool, xlsx: bool, pdf: bool} */
+    private function exportsOffered(Tenant $tenant, ShortLink $link): array
     {
-        ReportShare::withoutGlobalScopes()->whereKey($share->id)->update(['view_count' => $share->view_count + 1, 'last_viewed_at' => now()]);
+        $entitlements = Entitlements::for($tenant);
 
-        $agent = strtolower((string) $request->userAgent());
-        ReportShareView::withoutGlobalScopes()->create([
-            'tenant_id' => $share->tenant_id,
-            'report_share_id' => $share->id,
-            'viewer_hash' => hash('sha256', $request->ip().'|'.$agent.'|'.$share->id),
-            'device' => match (true) {
-                str_contains($agent, 'ipad') || str_contains($agent, 'tablet') => 'tablet',
-                str_contains($agent, 'mobile') || str_contains($agent, 'android') || str_contains($agent, 'iphone') => 'mobile',
-                $agent !== '' => 'desktop',
-                default => 'other',
-            },
-            'viewed_at' => now(),
-        ]);
+        return [
+            'csv' => (bool) $link->allow_export,
+            'xlsx' => (bool) $link->allow_export && $entitlements->has('report_excel'),
+            'pdf' => (bool) $link->allow_export && $entitlements->has('report_pdf'),
+        ];
+    }
+
+    private function cacheSeconds(ReportShare $share): int
+    {
+        return min((int) config('links.report_cache_seconds', 0), max(0, (int) ($share->refresh_seconds ?: 60)));
     }
 }

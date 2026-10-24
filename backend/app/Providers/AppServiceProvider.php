@@ -167,6 +167,9 @@ class AppServiceProvider extends ServiceProvider
          * `throttle:N,M` shares one counter between every route it is put on, so a page's views and a form's step reports would
          * spend the same few submits — and the customer the button was for would be told to slow down.
          */
+        RateLimiter::for('otp-request', fn (Request $request) => [Limit::perMinute(5)->by('otpq:'.$request->ip().':'.$request->route('token')), Limit::perHour(20)->by('otpq-t:'.$request->route('token'))]);
+        RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinute(10)->by('otpv:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('report-export', fn (Request $request) => Limit::perMinute(10)->by('rx:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-view', fn (Request $request) => Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-beacon', fn (Request $request) => Limit::perMinute(240)->by('lb:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-submit', fn (Request $request) => Limit::perMinute(30)->by('ls:'.$request->ip().':'.$request->route('token')));

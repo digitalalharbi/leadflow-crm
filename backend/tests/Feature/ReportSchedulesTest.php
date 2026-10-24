@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\EmailDelivery;
 use App\Models\ReportSchedule;
 use App\Models\ReportShare;
+use App\Models\ShortLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -212,7 +213,7 @@ class ReportSchedulesTest extends TestCase
     public function test_an_expired_report_is_closed_too(): void
     {
         $this->schedule(['frequency' => 'daily', 'send_hour' => 9]);
-        ReportShare::withoutGlobalScopes()->whereKey(ReportShare::withoutGlobalScopes()->first()->id)->update(['expires_at' => now()->subHour()]);
+        ShortLink::withoutGlobalScopes()->where('resource_id', ReportShare::withoutGlobalScopes()->first()->id)->update(['expires_at' => now()->subHour()]);
 
         Carbon::setTestNow(Carbon::parse('2026-12-01 06:00:30', 'UTC'));
         $this->runNow();

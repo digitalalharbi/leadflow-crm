@@ -140,7 +140,13 @@ Route::prefix('v1')->group(function () {
     Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9]{6,24}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
-    Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
+    // `/r/<token>` on the web is the page; these are the data it reads. The long `shared/reports` path is the old name for the same thing.
+    foreach (['/public/r/{token}', '/shared/reports/{token}'] as $path) {
+        Route::get($path, SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{20,64}');
+    }
+    Route::post('/public/r/{token}/code', [SharedReportController::class, 'requestCode'])->middleware('throttle:otp-request')->where('token', '[A-Za-z0-9]{20,64}');
+    Route::post('/public/r/{token}/verify', [SharedReportController::class, 'verifyCode'])->middleware('throttle:otp-verify')->where('token', '[A-Za-z0-9]{20,64}');
+    Route::get('/public/r/{token}/export', [SharedReportController::class, 'export'])->middleware('throttle:report-export')->where('token', '[A-Za-z0-9]{20,64}');
 
     // Lead ingestion. Authenticated by the per-endpoint shared secret, not a session.
     Route::prefix('integrations/webhooks/{key}')->middleware('throttle:webhook')->group(function () {

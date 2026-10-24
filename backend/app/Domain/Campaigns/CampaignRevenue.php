@@ -8,6 +8,7 @@ use App\Models\CampaignSpend;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
 use App\Models\User;
+use App\Support\ProjectIds;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -38,9 +39,12 @@ class CampaignRevenue
     public function __construct(private ?User $user) {}
 
     /** @return array<string,mixed> */
-    public function build(CarbonInterface $from, CarbonInterface $to, ?int $projectId = null, ?string $platform = null): array
+    /**
+     * @param  array{platforms?: list<string>, campaign_ids?: list<int>}  $only  narrows to these platforms / campaigns
+     */
+    public function build(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId = null, ?string $platform = null, array $only = []): array
     {
-        $filters = ['project_id' => $projectId, 'platform' => $platform];
+        $filters = ['project_ids' => ProjectIds::list($projectId), 'platform' => $platform] + $only;
 
         $metrics = new CampaignMetrics($this->user, $from, $to);
         $rows = collect($metrics->rows($filters));

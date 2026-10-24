@@ -10,6 +10,7 @@ use App\Domain\Sales\RepPerformance;
 use App\Domain\Tracking\AttributionReport;
 use App\Models\Lead;
 use App\Models\Partner;
+use App\Support\ProjectIds;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -36,7 +37,7 @@ class Recommendations
      * @param  array<string,mixed>|null  $revenue  CampaignRevenue::build() for the same window, when the caller has it
      * @return list<array{key:string,kind:string,severity:string,values:array<string,mixed>,link:?string}>
      */
-    public function build(CarbonInterface $from, CarbonInterface $to, ?int $projectId = null, bool $money = true, string $currency = 'SAR', ?array $revenue = null, ?int $partnerId = null): array
+    public function build(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId = null, bool $money = true, string $currency = 'SAR', ?array $revenue = null, ?int $partnerId = null): array
     {
         $revenue ??= (new CampaignRevenue(null))->build($from, $to, $projectId);
         $campaigns = collect($revenue['campaigns']);
@@ -139,7 +140,7 @@ class Recommendations
     }
 
     /** @return list<array<string,mixed>> */
-    private function repLosesAfterVisit(CarbonInterface $from, CarbonInterface $to, ?int $projectId): array
+    private function repLosesAfterVisit(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId): array
     {
         $data = (new RepPerformance)->build($from, $to, $projectId, false);
         $team = $data['team'];
@@ -185,10 +186,10 @@ class Recommendations
     }
 
     /** Interested people past their reply window. */
-    private function slaLate(CarbonInterface $from, CarbonInterface $to, ?int $projectId, ?int $partnerId): ?array
+    private function slaLate(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId, ?int $partnerId): ?array
     {
         $leads = Lead::query()->whereBetween('leads.created_at', [$from, $to])
-            ->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId))->when($partnerId, fn ($q) => $q->where('leads.partner_id', $partnerId));
+            ->tap(fn ($q) => ProjectIds::apply($q, 'leads.project_id', $projectId))->when($partnerId, fn ($q) => $q->where('leads.partner_id', $partnerId));
         $late = InterestSlaStats::for($leads)['late'];
 
         return $late > 0 ? $this->item('sla_late', 'insight', $late >= 5 ? 'critical' : 'warning', ['count' => $late], '/work') : null;
@@ -199,9 +200,9 @@ class Recommendations
      * source), so the two never contradict each other. A lead whose platform is known but which arrived without a
      * tracking link is a different, smaller problem, and is said as that.
      */
-    private function noAttribution(CarbonInterface $from, CarbonInterface $to, ?int $projectId): ?array
+    private function noAttribution(CarbonInterface $from, CarbonInterface $to, int|array|null $projectId): ?array
     {
-        $leads = Lead::query()->whereBetween('leads.created_at', [$from, $to])->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId));
+        $leads = Lead::query()->whereBetween('leads.created_at', [$from, $to])->tap(fn ($q) => ProjectIds::apply($q, 'leads.project_id', $projectId));
         $total = (clone $leads)->count();
 
         if ($total < self::MIN_LEADS) {

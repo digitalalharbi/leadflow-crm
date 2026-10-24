@@ -12,7 +12,7 @@ class ReportShareView extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['tenant_id', 'report_share_id', 'viewer_hash', 'device', 'viewed_at'];
+    protected $fillable = ['tenant_id', 'report_share_id', 'short_link_id', 'viewer_hash', 'device', 'viewed_at'];
 
     protected function casts(): array
     {

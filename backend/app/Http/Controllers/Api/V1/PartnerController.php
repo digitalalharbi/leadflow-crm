@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Links\ShortLinks;
 use App\Domain\Partners\CommissionLedger;
 use App\Domain\Partners\PartnerStats;
 use App\Domain\Reports\ReportTemplates;
@@ -132,7 +133,8 @@ class PartnerController extends Controller
         $this->authorize('update', $partner);
         $this->mayHandleMoney($request);
 
-        $share = ReportShare::query()->where('partner_id', $partner->id)->where('template', 'statement')->whereNull('revoked_at')->latest('id')->first();
+        $share = ReportShare::query()->where('partner_id', $partner->id)->where('template', 'statement')
+            ->whereHas('links', fn ($l) => $l->whereNull('revoked_at'))->latest('id')->first();
 
         if ($share === null) {
             $layout = ReportTemplates::layoutFor('statement');
@@ -141,12 +143,12 @@ class PartnerController extends Controller
                 'sections' => collect($layout)->mapWithKeys(fn ($row) => [$row['key'] => $row['on']])->all(),
                 'days' => 90, 'partner_id' => $partner->id, 'refresh_seconds' => 300, 'created_by' => $request->user()->id,
             ]);
-            $share->rotateToken();
             $share->save();
+            app(ShortLinks::class)->issue('report', $share->id, null, $request->user());
             $this->audit->log('report_share.created', $request->user(), $share, ['after' => ['name' => $share->name, 'template' => 'statement', 'partner_id' => $partner->id]]);
         }
 
-        return ApiResponse::success(['share' => ['id' => $share->uuid, 'url' => $share->url(), 'status' => $share->status(), 'view_count' => $share->view_count, 'last_viewed_at' => $share->last_viewed_at?->toIso8601String()]]);
+        return ApiResponse::success(['share' => ['id' => $share->uuid, 'url' => $share->url(), 'status' => $share->status(), 'view_count' => (int) $share->links()->sum('view_count'), 'last_viewed_at' => $share->links()->max('last_viewed_at')]]);
     }
 
     /** Money is for people who may see money. */

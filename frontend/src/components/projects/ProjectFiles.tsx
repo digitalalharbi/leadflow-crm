@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, Trash2, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUi } from '@/stores/ui'
+import { apiGet } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { Badge, Button, Card, CardBody, CardHeader, Drawer, Select, Skeleton } from '@/components/ui'
 import { FileTargeting, NO_TARGETING, type Targeting } from '@/components/projects/FileTargeting'
@@ -180,6 +181,22 @@ export function ProjectFiles({ projectId }: { projectId: string }) {
                 </span>
 
                 <span className="flex items-center gap-2">
+                  {/* A five-minute link signed for this one file: opens in a tab without exposing the session. */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`open-file-${file.id}`}
+                    onClick={async () => {
+                      try {
+                        const { url } = await apiGet<{ url: string }>(`/projects/${projectId}/files/${file.id}/link`)
+                        window.open(url, '_blank', 'noopener')
+                      } catch (caught) {
+                        toast(translateError(caught), 'error')
+                      }
+                    }}
+                  >
+                    {t('files.open')}
+                  </Button>
                   {/*
                     Paused rather than deleted is the usual answer for a price
                     list that is out of date: the shares already issued against

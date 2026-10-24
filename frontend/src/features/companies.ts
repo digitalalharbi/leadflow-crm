@@ -1,3 +1,4 @@
+import { can, useAuth } from '@/stores/auth'
 import { useQuery } from '@tanstack/react-query'
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/lib/api'
 
@@ -49,7 +50,11 @@ export function fetchCompanies(all = false) {
 
 /** The holding's companies, shared by the switcher, the overview and the form. */
 export function useCompanies() {
-  return useQuery({ queryKey: COMPANIES_KEY, queryFn: () => fetchCompanies(), staleTime: 60_000 })
+  // Not asked by a role the permission matrix refuses (marketing got a 403 on every page). The long-standing roles
+  // keep reading the companies they belong to — a rep's company label comes from here.
+  const allowed = useAuth((s) => !s.isSuperAdmin && (can.has(s.user, 'companies.view') || ['admin', 'manager', 'sales'].includes(s.user?.role ?? '')))
+
+  return useQuery({ queryKey: COMPANIES_KEY, queryFn: () => fetchCompanies(), staleTime: 60_000, enabled: allowed })
 }
 
 export type CompanyPayload = Partial<Pick<Company, 'name' | 'description' | 'color' | 'is_active'>>

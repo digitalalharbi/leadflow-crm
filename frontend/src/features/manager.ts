@@ -3,6 +3,8 @@ import { apiGet } from '@/lib/api'
 /** The manager's one screen: arrivals, SLA, team, sources, funnel and trend. */
 export interface ManagerData {
   days: number
+  /** What each figure measures over: `today`, `now` or the selected `period`. */
+  periods?: Record<string, 'today' | 'now' | 'period'>
   kpis: {
     leads_today: number
     leads_period: number

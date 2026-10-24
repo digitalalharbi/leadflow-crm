@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------------------
+# Host-level Nginx (TLS termination) for production: مهتم on mohtam.pro.
+# Copy to /etc/nginx/sites-available/mohtam and let certbot fill in the certificate lines.
+#
+#   sudo certbot --nginx -d mohtam.pro -d www.mohtam.pro -d api.mohtam.pro
+#
+#   mohtam.pro      → the app (SPA)
+#   www.mohtam.pro  → 301 to https://mohtam.pro
+#   api.mohtam.pro  → the Laravel API; tracking links are https://api.mohtam.pro/t/<token>
+#   go.mohtam.pro   → DNS only. Deliberately NOT served here: it becomes the tracking/landing
+#                     domain with the Tracking Hub release, not before.
+# ---------------------------------------------------------------------------
+
+# Every plain-HTTP request is redirected, except the ACME challenge.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mohtam.pro www.mohtam.pro api.mohtam.pro;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# www → apex, one canonical address.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name www.mohtam.pro;
+
+    # ssl_certificate     /etc/letsencrypt/live/mohtam.pro/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/mohtam.pro/privkey.pem;
+
+    return 301 https://mohtam.pro$request_uri;
+}
+
+# SPA
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name mohtam.pro;
+
+    # ssl_certificate     /etc/letsencrypt/live/mohtam.pro/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/mohtam.pro/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:9080;   # frontend container
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# API
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name api.mohtam.pro;
+
+    # ssl_certificate     /etc/letsencrypt/live/mohtam.pro/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/mohtam.pro/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    client_max_body_size 12M;
+
+    location / {
+        proxy_pass http://127.0.0.1:9081;   # api container
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

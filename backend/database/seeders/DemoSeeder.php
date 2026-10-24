@@ -85,11 +85,8 @@ class DemoSeeder extends Seeder
 
             $count = $fabricator->fabricate(self::FUNNEL);
 
-            // The tenant has clearly been used, so the onboarding checklist is done.
-            $tenant->settings->update(['onboarding' => [
-                'branding' => true, 'team' => true, 'project' => true,
-                'lead_source' => true, 'first_lead' => true,
-            ]]);
+            // The onboarding checklist is worked out from the data itself (nothing stored since
+            // drop_stored_onboarding_flags), so the leads, team and projects above already complete it.
 
             $this->report($count, $result);
         });

@@ -3,7 +3,8 @@
 # Prepares a fresh Ubuntu server to receive deploys. Run ON THE SERVER, as root,
 # once:
 #
-#   curl -fsSL https://raw.githubusercontent.com/<owner>/leadflow-crm/develop/scripts/provision-server.sh | bash -s -- <owner>
+#   curl -fsSL https://raw.githubusercontent.com/<owner>/leadflow-crm/v0.6.0/scripts/provision-server.sh | bash -s -- <owner>
+#   (from the release tag, never develop)
 #
 # or, if the repository is private, copy this file over and run it.
 #

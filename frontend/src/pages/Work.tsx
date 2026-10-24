@@ -14,9 +14,12 @@ import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen, telLink, whatsappLink } from '@/lib/format'
 import { WorkContactPanel } from '@/components/work/WorkContactPanel'
 import { AppointmentDialog } from '@/components/lead/AppointmentDialog'
+import { defaultExtras, extrasComplete, extrasPayload, OutcomeDetails, type OutcomeExtras } from '@/components/work/OutcomeDetails'
+
+const DECISIVE: Outcome[] = ['won', 'lost', 'not_interested', 'meeting_booked']
 import {
   Badge, Button, ButtonLink, buttonClasses, Card, CardBody, CardHeader, Drawer, EmptyState, ErrorState,
-  PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
+  Modal, PageHeader, Skeleton, StatusBadge, TemperatureBadge, Textarea,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
@@ -61,6 +64,10 @@ export function WorkPage() {
   const translateError = useApiError()
 
   const [note, setNote] = useState('')
+  // A sale, a loss or a booked visit asks one more thing before it is recorded: its value, its reason, its time.
+  const [detailsFor, setDetailsFor] = useState<Outcome | null>(null)
+  const [extras, setExtras] = useState<OutcomeExtras>({})
+
   /** The side panel for writing to the lead — email, WhatsApp and files — without leaving the queue. */
   const [contactOpen, setContactOpen] = useState(false)
   const [appointmentOpen, setAppointmentOpen] = useState(false)
@@ -131,14 +138,16 @@ export function WorkPage() {
    * phone instead.
    */
   const outcome = useMutation({
-    mutationFn: (choice: Outcome) =>
+    mutationFn: ({ choice, extras }: { choice: Outcome; extras?: OutcomeExtras }) =>
       recordOutcome({
         lead_id: lead!.id,
         outcome: choice,
         note: note || undefined,
         skip: skipped,
+        ...(extras ? extrasPayload(choice, extras) : {}),
       }),
-    onSuccess: (result, choice) => {
+    onSuccess: (result, { choice }) => {
+      setDetailsFor(null)
       /*
        * Close the call with what the rep just said. `answered` for everything
        * except the two that mean nobody picked up — which is exactly what the
@@ -167,6 +176,15 @@ export function WorkPage() {
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
+  const choose = (choice: Outcome) => {
+    if (DECISIVE.includes(choice)) {
+      setExtras(defaultExtras(choice))
+      setDetailsFor(choice)
+    } else {
+      outcome.mutate({ choice })
+    }
+  }
+
   const skip = useCallback(() => {
     if (!lead) return
     setSkipped((prev) => [...prev, lead.id])
@@ -191,7 +209,7 @@ export function WorkPage() {
 
       if (index >= 1 && index <= OUTCOMES.length) {
         event.preventDefault()
-        outcome.mutate(OUTCOMES[index - 1])
+        choose(OUTCOMES[index - 1])
         return
       }
 
@@ -524,7 +542,7 @@ export function WorkPage() {
                         size="sm"
                         disabled={outcome.isPending}
                         data-testid={`outcome-${choice}`}
-                        onClick={() => outcome.mutate(choice)}
+                        onClick={() => choose(choice)}
                       >
                         {t(`work.outcome.${choice}`)}
                         <Kbd>{index + 1}</Kbd>
@@ -582,6 +600,27 @@ export function WorkPage() {
         Keyed by the lead, so a card that changes underneath an open panel
         cannot leave a half-written email addressed to somebody else.
       */}
+      <Modal
+        open={detailsFor !== null}
+        onClose={() => setDetailsFor(null)}
+        title={detailsFor ? t(`work.outcome.${detailsFor}`) : ''}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDetailsFor(null)}>{t('common.cancel')}</Button>
+            <Button
+              loading={outcome.isPending}
+              disabled={!extrasComplete(detailsFor, extras)}
+              onClick={() => detailsFor && outcome.mutate({ choice: detailsFor, extras })}
+              data-testid="outcome-details-save"
+            >
+              {t('common.save')}
+            </Button>
+          </>
+        }
+      >
+        <OutcomeDetails choice={detailsFor} value={extras} onChange={setExtras} />
+      </Modal>
+
       {lead && (
         <AppointmentDialog
           leadId={lead.id}

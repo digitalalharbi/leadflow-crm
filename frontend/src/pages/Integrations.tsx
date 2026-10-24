@@ -10,7 +10,7 @@ import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
 import { SheetSources } from '@/components/integrations/SheetSources'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
-import { can, useAuth } from '@/stores/auth'
+import { can, useAuth, useEntitled } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatNumber, formatLastSeen } from '@/lib/format'
@@ -41,6 +41,7 @@ export function IntegrationsPage() {
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
+  const whatsappOn = useEntitled('whatsapp')
 
   const [secret, setSecret] = useState<{ url: string; secret: string } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
@@ -258,7 +259,7 @@ export function IntegrationsPage() {
       {/* WhatsApp is the only integration a customer configures themselves end
           to end, so it gets a full card rather than a tile in the grid. */}
       <div className="mb-4">
-        <WhatsappSettingsCard />
+        {whatsappOn && <WhatsappSettingsCard />}
       </div>
 
       {can.manageIntegrations(user) && (

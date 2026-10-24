@@ -194,13 +194,32 @@ class Recommendations
         return $late > 0 ? $this->item('sla_late', 'insight', $late >= 5 ? 'critical' : 'warning', ['count' => $late], '/work') : null;
     }
 
-    /** Leads nobody can trace to a source. */
+    /**
+     * Leads nobody can trace to a source — measured the way the sources chart reads them (the lead's own platform or
+     * source), so the two never contradict each other. A lead whose platform is known but which arrived without a
+     * tracking link is a different, smaller problem, and is said as that.
+     */
     private function noAttribution(CarbonInterface $from, CarbonInterface $to, ?int $projectId): ?array
     {
-        $totals = app(AttributionReport::class)->build('last', 'channel', Carbon::instance($from), Carbon::instance($to), $projectId)['totals'];
+        $leads = Lead::query()->whereBetween('leads.created_at', [$from, $to])->when($projectId, fn ($q) => $q->where('leads.project_id', $projectId));
+        $total = (clone $leads)->count();
 
-        return $totals['leads'] >= self::MIN_LEADS && ($totals['unattributed_percent'] ?? 0) >= 30
-            ? $this->item('no_attribution', 'insight', 'info', ['percent' => (int) round($totals['unattributed_percent'])], '/tracking')
+        if ($total < self::MIN_LEADS) {
+            return null;
+        }
+
+        $unknown = (clone $leads)->where(fn ($q) => $q->where(fn ($p) => $p->whereNull('leads.platform')->orWhere('leads.platform', ''))
+            ->where(fn ($p) => $p->whereNull('leads.source')->orWhere('leads.source', '')))->count();
+        $unknownPercent = $unknown / $total * 100;
+
+        if ($unknownPercent >= 30) {
+            return $this->item('no_attribution', 'insight', 'info', ['percent' => (int) round($unknownPercent)], '/data-quality');
+        }
+
+        $untracked = app(AttributionReport::class)->build('last', 'channel', Carbon::instance($from), Carbon::instance($to), $projectId)['totals']['unattributed_percent'] ?? 0;
+
+        return $untracked >= 30
+            ? $this->item('no_tracking_links', 'insight', 'info', ['percent' => (int) round($untracked)], '/tracking')
             : null;
     }
 }

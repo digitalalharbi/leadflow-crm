@@ -304,7 +304,7 @@ class TrackingEngineTest extends TestCase
         $this->assertSame('meta', $lead->platform);
 
         $mine = $this->asTenant($this->t['tenant'], fn () => TrackingEvent::where('lead_id', $lead->id)->orderBy('id')->pluck('event_type')->all());
-        $this->assertSame(['click', 'click', 'form_submit'], $mine, 'the earlier clicks were stitched onto the lead, and the form is an event');
+        $this->assertSame(['click', 'click', 'form_submit', 'lead_created'], $mine, 'the earlier clicks were stitched onto the lead, the form is an event, and the lead being made is the last');
     }
 
     public function test_a_lead_with_no_trail_is_still_a_lead(): void
@@ -313,7 +313,8 @@ class TrackingEngineTest extends TestCase
 
         $lead = $this->lead();
         $this->assertNull($lead->first_touch_link_id);
-        $this->assertCount(0, $this->events());
+        // Nobody touched it, so there is no click, no visit, no form: the only thing on its trail is that it was created.
+        $this->assertSame(['lead_created'], $this->events()->pluck('event_type')->all());
     }
 
     public function test_a_forged_visitor_id_cannot_steal_anothers_events(): void
@@ -325,7 +326,8 @@ class TrackingEngineTest extends TestCase
         $this->webhookLead(['full_name' => 'مزوّر', 'phone' => '0551234567', 'visitor_id' => 'v_aaaaaaaaaaaaaaaaaaaa']);
 
         $this->assertNull($this->lead()->first_touch_link_id);
-        $this->assertNull($this->events()->sole()->lead_id, 'the real visitor\'s click is still unclaimed');
+        $click = $this->events()->firstWhere('event_type', 'click');
+        $this->assertNull($click->lead_id, 'the real visitor\'s click is still unclaimed');
         $this->assertNotNull($vid);
     }
 
@@ -353,7 +355,8 @@ class TrackingEngineTest extends TestCase
 
         $types = $this->asTenant($this->t['tenant'], fn () => TrackingEvent::where('lead_id', $lead->id)->orderBy('id')->pluck('event_type')->all());
 
-        $this->assertSame(['click', 'form_submit', 'appointment_request', 'site_visit', 'won'], $types);
+        // The whole journey, once each: the click and the form, the lead made and its interest, the visit asked for, booked and done, the sale and what it was worth.
+        $this->assertSame(['click', 'form_submit', 'lead_created', 'interested', 'appointment_request', 'appointment_booked', 'site_visit', 'won', 'revenue'], $types);
         $this->assertSame($link->id, $this->asTenant($this->t['tenant'], fn () => TrackingEvent::where('event_type', 'won')->value('tracking_link_id')));
     }
 
@@ -498,8 +501,16 @@ class TrackingEngineTest extends TestCase
 
     public function test_the_event_vocabulary_is_closed_and_outcomes_are_server_only(): void
     {
-        $this->assertCount(13, EventType::cases());
+        // Closed on purpose: every name here is one a marketer, a dataLayer and a platform all use.
+        $this->assertSame([
+            'landing_viewed', 'link_clicked', 'form_started', 'form_submitted', 'whatsapp_started', 'call_started', 'brochure_opened', 'project_viewed', 'property_viewed',
+            'appointment_requested', 'visit_completed', 'reservation_created', 'won', 'form_step_completed', 'form_abandoned', 'lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue_recorded',
+        ], array_map(fn (EventType $t) => $t->canonical(), EventType::cases()));
         $this->assertNotContains('won', EventType::browserSafeValues());
+        foreach (['lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue'] as $serverOnly) {
+            $this->assertNotContains($serverOnly, EventType::browserSafeValues(), "{$serverOnly} must never be claimable by a browser");
+            $this->assertTrue(EventType::from($serverOnly)->isOutcome());
+        }
         $this->assertTrue(EventType::Reservation->isOutcome());
         $this->assertFalse(EventType::Click->isOutcome());
     }

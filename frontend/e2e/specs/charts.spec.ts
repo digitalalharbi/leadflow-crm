@@ -24,7 +24,7 @@ test.describe('الرسوم البيانية — charts', () => {
     // Three series, each named — identity is never carried by colour alone.
     await expect(card).toContainText('وارد')
     await expect(card).toContainText('مؤهَّل')
-    await expect(card).toContainText('مكسوب')
+    await expect(card).toContainText('تم البيع')
   })
 
   /**
@@ -66,7 +66,7 @@ test.describe('الرسوم البيانية — charts', () => {
     const tooltip = card.locator('div.pointer-events-none.absolute')
     await expect(tooltip).toBeVisible()
     await expect(tooltip).toContainText('وارد')
-    await expect(tooltip).toContainText('مكسوب')
+    await expect(tooltip).toContainText('تم البيع')
   })
 
   /**

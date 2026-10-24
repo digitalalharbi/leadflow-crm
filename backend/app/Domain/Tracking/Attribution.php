@@ -4,9 +4,11 @@ namespace App\Domain\Tracking;
 
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Leads\InterestEngine;
+use App\Enums\IntegrationProvider;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
+use App\Models\VisitorSession;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -35,6 +37,12 @@ class Attribution
     /** A link's channel, as the platform a lead is filed under. Channels with no platform stay unset. */
     private const PLATFORM_OF = ['meta' => 'meta', 'tiktok' => 'tiktok', 'snapchat' => 'snapchat', 'google' => 'google_ads', 'linkedin' => 'linkedin', 'landing_page' => 'landing_page'];
 
+    /** The platform a link's channel files its leads under, or null when the channel is not a platform. */
+    public static function platformOf(?string $channel): ?string
+    {
+        return self::PLATFORM_OF[$channel ?? ''] ?? null;
+    }
+
     /**
      * Put a lead on the trail it left: its earlier events, its first and last touch, and what the
      * links it came through already say about it (project, campaign, ad).
@@ -57,8 +65,13 @@ class Attribution
 
         $first = $touches->first();
         $last = $touches->last();
+        $session = $visitor !== null ? $this->adoptSessions($lead, $visitor) : null;
 
         $updates = array_filter([
+            // The platform click ids it arrived with — the first touch's and the last's — and the consent it gave.
+            'click_ids' => $session['click_ids'] ?? null,
+            'tracking_consent' => $session['consent'] ?? null,
+            'click_id' => blank($lead->click_id) ? ClickIds::primary($session['click_ids']['first'] ?? $session['click_ids']['last'] ?? []) : null,
             'visitor_id' => $visitor,
             'first_touch_link_id' => $first['link']->id ?? null,
             'last_touch_link_id' => $last['link']->id ?? null,
@@ -97,7 +110,7 @@ class Attribution
         // Their earlier visits are theirs now: how interested they are includes them.
         $visitor !== null && InterestEngine::touch($lead->id, 'attribution');
 
-        if ($last !== null) {
+        if ($last !== null && $incoming->provider !== IntegrationProvider::LandingForm) {
             app(EventRecorder::class)->record(EventType::FormSubmit, [
                 'lead_id' => $lead->id,
                 'visitor_id' => $visitor,
@@ -107,6 +120,27 @@ class Attribution
                 'dedupe_key' => "form_submit:{$lead->id}",
             ]);
         }
+    }
+
+    /**
+     * The visits of this visitor are the lead's now: they know whose they are, and the lead keeps the click ids the first
+     * and the last of them arrived with.
+     *
+     * @return array{click_ids:?array<string,array<string,string>>, consent:?string}
+     */
+    private function adoptSessions(Lead $lead, string $visitor): array
+    {
+        $sessions = VisitorSession::query()->where('visitor_id', $visitor)->orderBy('started_at')->orderBy('id')->get();
+
+        $sessions->whereNull('lead_id')->each(fn (VisitorSession $s) => $s->forceFill(['lead_id' => $lead->id])->save());
+
+        $firstIds = $sessions->map(fn (VisitorSession $s) => $s->first_touch['click_ids'] ?? [])->first(fn ($ids) => $ids !== []) ?? [];
+        $lastIds = $sessions->reverse()->map(fn (VisitorSession $s) => $s->last_touch['click_ids'] ?? [])->first(fn ($ids) => $ids !== []) ?? [];
+
+        return [
+            'click_ids' => ($firstIds || $lastIds) ? array_filter(['first' => $firstIds ?: null, 'last' => $lastIds ?: null]) : null,
+            'consent' => $sessions->pluck('consent')->filter()->last(),
+        ];
     }
 
     /**

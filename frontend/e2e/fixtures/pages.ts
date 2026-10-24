@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { apiLogin } from './api'
+import { apiLogin, apiPlatformLogin } from './api'
 import { PASSWORD } from './data'
 
 /**
@@ -18,8 +18,8 @@ import { PASSWORD } from './data'
  * other test only needs to *be* signed in, so it gets a token from the API and
  * injects it before the app boots.
  */
-export async function authenticateAs(page: Page, email: string, password: string = PASSWORD) {
-  const session = await apiLogin(email, password)
+export async function authenticateAs(page: Page, email: string, password: string = PASSWORD, platform = false) {
+  const session = platform ? await apiPlatformLogin(email, password) : await apiLogin(email, password)
 
   try {
     await page.addInitScript((token) => {
@@ -47,6 +47,21 @@ export async function signInAs(page: Page, email: string, password: string = PAS
   await page.goto('/')
   await expect(page.getByTestId('page-title')).toBeVisible()
   await expect(page).not.toHaveURL(/\/login/)
+}
+
+/** The platform owner, signed in through the platform's own door. */
+export function authenticateAsPlatform(page: Page, email: string, password: string = PASSWORD) {
+  return authenticateAs(page, email, password, true)
+}
+
+/** Drives the platform's own login form. */
+export async function signInPlatform(page: Page, email: string, password: string = PASSWORD) {
+  await page.goto('/platform/login')
+  await page.getByLabel('البريد الإلكتروني').fill(email)
+  await page.getByLabel('كلمة المرور', { exact: true }).fill(password)
+  await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
+  await expect(page).toHaveURL(/\/platform$/)
+  await expect(page.getByTestId('page-title')).toBeVisible()
 }
 
 /** Drives the real login form. Used by the authentication spec itself. */

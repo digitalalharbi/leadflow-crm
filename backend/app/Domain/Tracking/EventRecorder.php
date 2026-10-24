@@ -2,12 +2,15 @@
 
 namespace App\Domain\Tracking;
 
+use App\Domain\Tracking\Destinations\DestinationFanOut;
 use App\Models\Lead;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
+use App\Models\VisitorSession;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Writes events to the trail — once.
@@ -24,10 +27,23 @@ class EventRecorder
      */
     public function record(EventType $type, array $attributes = []): ?TrackingEvent
     {
+        // An event has an id the browser, the server and every destination share, so one thing that happened is one
+        // thing everywhere. A caller that names the id means "this event, once": the id is the idempotency key too.
+        if (filled($attributes['event_id'] ?? null) && blank($attributes['dedupe_key'] ?? null)) {
+            $attributes['dedupe_key'] = 'evt:'.$attributes['event_id'];
+        }
+
+        $attributes['event_id'] = filled($attributes['event_id'] ?? null) ? $attributes['event_id'] : (string) Str::uuid();
+
         try {
             // In its own savepoint: on Postgres a unique violation aborts the whole surrounding
             // transaction, and a duplicate event must not take a sale or a brochure open with it.
-            return DB::transaction(fn () => TrackingEvent::create(['event_type' => $type->value, 'occurred_at' => now()] + $attributes));
+            $event = DB::transaction(fn () => TrackingEvent::create(['event_type' => $type->value, 'occurred_at' => now()] + $attributes));
+
+            // Told to whoever asked to hear of it — queued, and never allowed to cost the event.
+            app(DestinationFanOut::class)->queue($event);
+
+            return $event;
         } catch (QueryException $e) {
             // 23505: the same dedupe key arrived twice. That is the point of the key.
             if (($e->errorInfo[0] ?? null) === '23505') {
@@ -55,6 +71,10 @@ class EventRecorder
                 'tracking_link_id' => $lead->last_touch_link_id ?? $lead->first_touch_link_id,
                 'project_id' => $lead->project_id,
                 'property_id' => $lead->interested_property_id,
+                'session_id' => $lead->visitor_id ? VisitorSession::where('visitor_id', $lead->visitor_id)->latest('last_seen_at')->value('session_id') : null,
+                'campaign_id' => $lead->campaign_ref_id,
+                'platform' => $lead->platform instanceof \BackedEnum ? $lead->platform->value : $lead->platform,
+                'consent' => $lead->tracking_consent,
                 'meta' => $meta ?: null,
                 'dedupe_key' => "{$type->value}:{$lead->id}".($uniqueBy !== null ? ":{$uniqueBy}" : ''),
             ]);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Automation\AutomationPack;
+use App\Domain\Billing\PlanLimits;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Enums\QualificationStatus;
@@ -16,6 +17,7 @@ use App\Models\ProjectQuestion;
 use App\Models\TenantSetting;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -137,6 +139,8 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
 
         $data = $this->validatePayload($request);
+
+        PlanLimits::ensureProjectRoom(app(TenantContext::class)->get());
 
         // Not a column: a project can be created with a team, synced after it
         // exists and has an id to sync against.

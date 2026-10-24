@@ -84,7 +84,7 @@ test.describe('Leads list', () => {
       // Every visible row is actually won. The badge appears twice per row —
       // a column on wide screens, an inline badge on phones — so count rather
       // than assert visibility on an ambiguous match.
-      expect(await rows.first().getByText('مكسوب').count()).toBeGreaterThan(0)
+      expect(await rows.first().getByText('تم البيع').count()).toBeGreaterThan(0)
     }).toPass()
   })
 

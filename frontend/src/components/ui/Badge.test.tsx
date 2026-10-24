@@ -14,8 +14,8 @@ describe('status and temperature badges', () => {
       contacted: 'تم التواصل',
       qualified: 'مؤهل',
       appointment: 'موعد',
-      won: 'مكسوب',
-      lost: 'مفقود',
+      won: 'تم البيع',
+      lost: 'فرصة خاسرة',
     }
 
     for (const [status, label] of Object.entries(labels)) {

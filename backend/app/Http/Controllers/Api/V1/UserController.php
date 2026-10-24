@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Billing\PlanLimits;
+use App\Domain\Mail\AccountEmail;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\AccessRole;
 use App\Models\Partner;
+use App\Models\PasswordLink;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -30,6 +34,7 @@ class UserController extends Controller
             ->where('tenant_id', $request->user()->tenant_id)
             ->with(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name'])
             ->withCount('assignedLeads as leads_count')
+            ->withMax('tokens', 'last_used_at')
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->input('role')))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('name', 'ilike', '%'.$request->input('search').'%')
@@ -86,11 +91,14 @@ class UserController extends Controller
             'access_role_id' => ['sometimes', 'nullable', 'uuid'],
             'phone' => ['nullable', 'string', 'max:32'],
             'project_ids' => ['sometimes', 'array', 'max:200'],
+            'all_projects' => ['sometimes', 'boolean'],
             'project_ids.*' => ['uuid'],
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
 
         $this->applyAccessRole($data, $tenantId);
+
+        PlanLimits::ensureSeatFor(app(TenantContext::class)->get(), $data['role']);
 
         $user = User::create([
             'tenant_id' => $tenantId,
@@ -101,6 +109,7 @@ class UserController extends Controller
             'access_role_id' => $data['access_role_id'] ?? null,
             'phone' => $data['phone'] ?? null,
             'partner_id' => $this->partnerId($data),
+            'all_projects' => $data['all_projects'] ?? true,
             'is_active' => true,
         ]);
 
@@ -146,6 +155,7 @@ class UserController extends Controller
             'password' => ['sometimes', 'string', 'min:8'],
             // The projects a project-scoped role (project manager, client, broker) is limited to.
             'project_ids' => ['sometimes', 'array', 'max:200'],
+            'all_projects' => ['sometimes', 'boolean'],
             'project_ids.*' => ['uuid'],
             // The partner a broker login belongs to: their leads and links, and nobody else's.
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
@@ -192,7 +202,7 @@ class UserController extends Controller
         ]);
 
         // Only an admin changes roles, activation or project scope, and never their own role.
-        if ((isset($data['role']) || array_key_exists('access_role_id', $data) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
+        if ((array_key_exists('all_projects', $data) || isset($data['role']) || array_key_exists('access_role_id', $data) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
             throw ValidationException::withMessages(['role' => ['Only an admin can change roles.']]);
         }
 
@@ -236,6 +246,21 @@ class UserController extends Controller
             }
         }
 
+        // The owner stays an active admin: only the platform hands a company to someone else.
+        if ($user->id === app(TenantContext::class)->get()?->owner_user_id
+            && ((isset($data['role']) && $data['role'] !== Role::Admin->value) || array_key_exists('access_role_id', $data) && $data['access_role_id'] !== null || (array_key_exists('is_active', $data) && ! $data['is_active']))) {
+            throw ValidationException::withMessages(['role' => ['The workspace owner stays an active admin. Ownership is transferred by the service provider.']]);
+        }
+
+        // Reactivating someone, or moving an outside viewer onto the team, takes a seat.
+        $seatless = config('billing.seatless_roles');
+        $heldSeat = $user->is_active && ! in_array($user->role?->value, $seatless, true);
+        $willHold = ($data['is_active'] ?? $user->is_active) && ! in_array($data['role'] ?? $user->role?->value, $seatless, true);
+
+        if ($willHold && ! $heldSeat) {
+            PlanLimits::ensureSeatFor(app(TenantContext::class)->get(), $data['role'] ?? $user->role?->value);
+        }
+
         $user->update($data);
 
         if ($projectIds !== null) {
@@ -255,10 +280,27 @@ class UserController extends Controller
         return ApiResponse::success(['user' => new UserResource($user->fresh()->load(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name']))]);
     }
 
+    /** An admin sends someone a link to set (or reset) their own password. The admin never sees or types it. */
+    public function passwordLink(Request $request, string $uuid)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->where('is_active', true)->firstOrFail();
+
+        [, $token] = PasswordLink::issue($user->email, $user->last_login_at === null ? 'setup' : 'reset', $request->ip());
+        app(AccountEmail::class)->passwordLink($user->email, $user->name, $user->last_login_at === null ? 'setup' : 'reset', $token, app(TenantContext::class)->get());
+        $this->audit->log('user.password_link_sent', $request->user(), $user);
+
+        return ApiResponse::success(null, 'Link sent.');
+    }
+
     public function destroy(Request $request, string $uuid)
     {
         $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $user);
+
+        if ($user->id === app(TenantContext::class)->get()?->owner_user_id) {
+            throw ValidationException::withMessages(['user' => ['The workspace owner cannot be removed.']]);
+        }
 
         DB::transaction(function () use ($user) {
             $user->tokens()->delete();

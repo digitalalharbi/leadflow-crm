@@ -42,7 +42,7 @@ class SalesAgent
                 }
 
                 $waited = (int) ($lead->handed_off_at ?? $lead->updated_at)->diffInMinutes(now(), true);
-                $message = "{$lead->full_name} ينتظر منذ {$waited} دقيقة — عميل ساخن لم يتواصل معه أحد.";
+                $message = "{$lead->full_name} ينتظر منذ {$waited} دقيقة — عميل باهتمام مرتفع لم يتواصل معه أحد.";
 
                 if ($lead->assignee?->is_active) {
                     $lead->assignee->notify(new AutomationNotification($lead, $message, 'وكيل المبيعات'));
@@ -56,7 +56,7 @@ class SalesAgent
                 }
 
                 AutomationActionLog::create([
-                    'lead_id' => $lead->id, 'rule_name' => 'وكيل المبيعات: مراجعة الساخنين', 'trigger' => 'routine.hot_lead_review',
+                    'lead_id' => $lead->id, 'rule_name' => 'وكيل المبيعات: مراجعة العملاء ذوي الاهتمام المرتفع', 'trigger' => 'routine.hot_lead_review',
                     'action_type' => 'notify', 'channel' => 'team', 'mode' => 'auto', 'result' => AutomationActionLog::NEEDS_HUMAN,
                     'description' => $message, 'happened_at' => now(),
                 ]);

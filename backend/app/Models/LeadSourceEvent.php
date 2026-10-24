@@ -17,7 +17,7 @@ class LeadSourceEvent extends Model
 
     protected $fillable = [
         'lead_id', 'provider', 'platform', 'source',
-        'campaign_name', 'campaign_id', 'adset_name', 'ad_name', 'form_name',
+        'campaign_name', 'campaign_id', 'adset_name', 'ad_name', 'form_name', 'form_version_id',
         'provider_lead_id', 'was_duplicate', 'payload', 'received_at',
     ];
 

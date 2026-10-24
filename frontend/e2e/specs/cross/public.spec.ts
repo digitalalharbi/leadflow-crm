@@ -248,13 +248,17 @@ test.describe('Login', () => {
     await expect(page.getByLabel(/المؤسسة/)).toBeVisible()
   })
 
-  test('a forgotten password leads to the page that says who resets it', async ({ page }) => {
+  test('a forgotten password leads to the self-service reset, which answers the same for any address', async ({ page }) => {
     await ready(page, '/login')
 
     await page.getByTestId('login-forgot').click()
-    await expect(page).toHaveURL(/\/contact#password$/)
-    await expect(page.locator('#password')).toBeInViewport()
-    await expect(page.locator('#password')).toContainText('لا توجد حاليًا إعادة تعيين ذاتية')
+    await expect(page).toHaveURL(/\/forgot-password$/)
+    // The page is loaded on demand: fill it once it is there, and check the value held.
+    await expect(page.getByTestId('forgot-password').getByTestId('page-title')).toBeVisible()
+    await page.getByLabel('البريد الإلكتروني').fill('nobody-here@e2e.test')
+    await expect(page.getByLabel('البريد الإلكتروني')).toHaveValue('nobody-here@e2e.test')
+    await page.getByTestId('forgot-submit').click()
+    await expect(page.getByTestId('forgot-sent')).toBeVisible()
   })
 
   test('the login still signs in, and the way to the marketing page is there', async ({ page }) => {

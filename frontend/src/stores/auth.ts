@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { disconnectEcho } from '@/lib/echo'
 import { hasAny, hasPermission, sees } from '@/lib/permissions'
-import type { Branding, User } from '@/types/api'
+import type { Branding, Feature, Subscription, User } from '@/types/api'
 
 interface Access {
   permissions: string[]
@@ -23,6 +23,7 @@ interface LoginResponse extends Partial<Access> {
   branding: Branding | null
   is_super_admin: boolean
   workspace_language: string | null
+  subscription?: Subscription | null
 }
 
 interface AuthState {
@@ -37,12 +38,20 @@ interface AuthState {
    * every lead labelled "Arabic", and the one labelled "Urdu" is worth seeing.
    */
   workspaceLanguage: string | null
+  /** The plan, its features and the lifecycle; null for the platform owner. */
+  subscription: Subscription | null
+  /** Set while the platform owner works inside this workspace as support. */
+  impersonation: { reason: string; expires_at: string } | null
   /** null until the first /me call settles, so the router can hold the redirect. */
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
   login: (credentials: { email: string; password: string; tenant?: string }) => Promise<void>
+  /** The platform owner's own door. Resolves `mfa` when a code is still needed. */
+  loginPlatform: (credentials: { email: string; password: string; code?: string }) => Promise<'ok' | 'mfa'>
   logout: () => Promise<void>
   restore: () => Promise<void>
   setBranding: (branding: Branding) => void
+  /** The server answered 402: the workspace is closed, whatever the session said when it was loaded. */
+  closeSubscription: (state: Subscription['state']) => void
   /** For the few things a person changes about themselves without reloading. */
   setUser: (user: User) => void
   reset: () => void
@@ -54,6 +63,8 @@ export const useAuth = create<AuthState>((set) => ({
   isSuperAdmin: false,
   demoMode: false,
   workspaceLanguage: null,
+  subscription: null,
+  impersonation: null,
   status: 'idle',
 
   login: async (credentials) => {
@@ -66,8 +77,28 @@ export const useAuth = create<AuthState>((set) => ({
       branding: data.branding,
       isSuperAdmin: data.is_super_admin,
       workspaceLanguage: data.workspace_language,
+      subscription: data.subscription ?? null,
       status: 'authenticated',
     })
+  },
+
+  loginPlatform: async (credentials) => {
+    const data = await apiPost<{ token?: string; mfa_required?: boolean; user?: { id: string; name: string; email: string } }>('/platform/auth/login', credentials)
+
+    if (data.mfa_required || !data.token) return 'mfa'
+
+    tokenStorage.set(data.token)
+    // The console's session: no workspace, no plan. /auth/me fills in the rest on the next restore.
+    set({
+      user: { id: data.user?.id ?? '', name: data.user?.name ?? '', email: data.user?.email ?? '', role: 'super_admin', phone: null, avatar_url: null, is_active: true } as User,
+      branding: null,
+      isSuperAdmin: true,
+      subscription: null,
+      impersonation: null,
+      status: 'authenticated',
+    })
+
+    return 'ok'
   },
 
   logout: async () => {
@@ -85,7 +116,7 @@ export const useAuth = create<AuthState>((set) => ({
     tokenStorage.clear()
     set({
       user: null, branding: null,
-      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, status: 'anonymous',
+      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, subscription: null, impersonation: null, status: 'anonymous',
     })
   },
 
@@ -105,6 +136,8 @@ export const useAuth = create<AuthState>((set) => ({
         is_super_admin: boolean
         workspace_language: string | null
         demo_mode: boolean
+        subscription?: Subscription | null
+        impersonation?: { reason: string; expires_at: string } | null
       }>('/auth/me')
 
       set({
@@ -113,6 +146,8 @@ export const useAuth = create<AuthState>((set) => ({
         isSuperAdmin: data.is_super_admin,
         workspaceLanguage: data.workspace_language,
         demoMode: data.demo_mode,
+        subscription: data.subscription ?? null,
+        impersonation: data.impersonation ?? null,
         status: 'authenticated',
       })
     } catch {
@@ -122,6 +157,7 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   setBranding: (branding) => set({ branding }),
+  closeSubscription: (state) => set((current) => (current.subscription ? { subscription: { ...current.subscription, state, usable: false } } : {})),
   setUser: (user) => set({ user }),
   reset: () => {
     // The socket belongs to the session that opened it: a live feed left
@@ -132,7 +168,7 @@ export const useAuth = create<AuthState>((set) => ({
     tokenStorage.clear()
     set({
       user: null, branding: null,
-      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, status: 'anonymous',
+      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, subscription: null, impersonation: null, status: 'anonymous',
     })
   },
 }))
@@ -163,4 +199,16 @@ export const can = {
     user?.role === 'admin' || (user?.role === 'manager' && user.id !== target.id),
   viewReports: (user: User | null) => hasPermission(user, 'analytics.view'),
   manageIntegrations: (user: User | null) => hasPermission(user, 'integrations.edit'),
+}
+
+/**
+ * Whether this workspace's plan includes a feature. The platform owner has no plan and no workspace features; a session
+ * loaded before plans existed (no subscription block) is treated as having none — the server decides either way.
+ */
+export function entitled(subscription: Subscription | null, feature: Feature): boolean {
+  return subscription?.features.includes(feature) ?? false
+}
+
+export function useEntitled(feature: Feature): boolean {
+  return useAuth((s) => entitled(s.subscription, feature))
 }

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { queryConfig } from '@/lib/queryConfig'
 import { BrowserRouter } from 'react-router-dom'
-import { setUnauthenticatedHandler } from '@/lib/api'
+import { setSubscriptionClosedHandler, setUnauthenticatedHandler } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { applyAppearance, useUi } from '@/stores/ui'
 import { App } from '@/App'
@@ -46,6 +46,11 @@ const queryClient = new QueryClient(queryConfig)
 setUnauthenticatedHandler(() => {
   useAuth.getState().reset()
   queryClient.clear()
+})
+
+// A 402 anywhere: the workspace's subscription is closed. The shell swaps the page for the screen that says why.
+setSubscriptionClosedHandler((state) => {
+  useAuth.getState().closeSubscription(state as never)
 })
 
 createRoot(document.getElementById('root')!).render(

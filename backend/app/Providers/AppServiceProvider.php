@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Automation\Thresholds;
+use App\Domain\Billing\BillingProvider;
+use App\Domain\Billing\ManualBillingProvider;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Providers\ManualCallProvider;
 use App\Domain\Calls\Providers\TwilioCallProvider;
@@ -13,6 +16,7 @@ use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Listeners\BroadcastLeadChange;
 use App\Listeners\RecordConversionOutcome;
+use App\Listeners\RecordMarketingEvents;
 use App\Listeners\RunAutomationRules;
 use App\Models\AutomationRule;
 use App\Models\Company;
@@ -44,6 +48,7 @@ use App\Support\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
@@ -57,6 +62,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TenantContext::class);
         $this->app->singleton(CompanyContext::class);
         $this->app->singleton(ProjectContext::class);
+
+        // Manual until a payment provider is configured; the subscription model does not change when one is.
+        $this->app->bind(BillingProvider::class, fn () => match (config('billing.provider')) {
+            default => new ManualBillingProvider,
+        });
 
         /*
          * One client, one registry, for every code host. Bound here rather than
@@ -90,7 +100,18 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // A queue worker lives for days: judge each job by the lines as they are now.
-        Queue::before(fn () => Thresholds::flush());
+        // And start each job from no company at all: a job names its own tenant (withTenant), it never inherits the
+        // previous job's — nor a permission resolved for somebody whose role has since changed.
+        // (A `sync` job runs inside the request that dispatched it and keeps that request's company.)
+        Queue::before(function (JobProcessing $event) {
+            Thresholds::flush();
+            AccessResolver::flush();
+
+            if ($event->connectionName !== 'sync') {
+                app(TenantContext::class)->clear();
+                app(ProjectContext::class)->clear();
+            }
+        });
 
         /*
          * One listener for every lead event. Registered on the *interface*:
@@ -101,6 +122,7 @@ class AppServiceProvider extends ServiceProvider
          */
         Event::listen(LeadDomainEvent::class, RunAutomationRules::class);
         Event::listen(LeadDomainEvent::class, RecordConversionOutcome::class);
+        Event::listen(LeadDomainEvent::class, RecordMarketingEvents::class);
         Event::listen(LeadDomainEvent::class, BroadcastLeadChange::class);
 
         // Mass-assignment protection stays on; we also fail loudly in dev when a
@@ -140,6 +162,16 @@ class AppServiceProvider extends ServiceProvider
         )->by($request->user()?->id ?: $request->ip()));
 
         // Credential stuffing guard: slow, and keyed on email + IP.
+        /*
+         * The public landing page: each kind of request has an allowance of its own, per visitor (address) and per page. A numeric
+         * `throttle:N,M` shares one counter between every route it is put on, so a page's views and a form's step reports would
+         * spend the same few submits — and the customer the button was for would be told to slow down.
+         */
+        RateLimiter::for('landing-view', fn (Request $request) => Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('landing-beacon', fn (Request $request) => Limit::perMinute(240)->by('lb:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('landing-submit', fn (Request $request) => Limit::perMinute(30)->by('ls:'.$request->ip().':'.$request->route('token')));
+        RateLimiter::for('landing-asset', fn (Request $request) => Limit::perMinute(240)->by('la:'.$request->ip()));
+
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(config('integrations.login.per_email_per_minute'))
                 ->by(strtolower((string) $request->input('email')).'|'.$request->ip()),

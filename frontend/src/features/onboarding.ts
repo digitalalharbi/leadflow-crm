@@ -27,6 +27,8 @@ export interface TestLeadTrace {
 export interface ChecklistStep {
   key: string
   done: boolean
+  /** Not counted in the progress: worth doing, not required. */
+  optional?: boolean
   /** Where to go to finish it — never a dead end. */
   where: string
 }

@@ -31,6 +31,8 @@ class MonthlyExecutiveDigestTest extends TestCase
     {
         parent::setUp();
         $this->t = $this->provisionTenant('Month Co');
+        // A paying company: the test travels past the end of a trial, and a lapsed one gets no summaries.
+        $this->t['tenant']->forceFill(['subscription_status' => 'active', 'subscription_ends_at' => null])->save();
         $this->t['tenant']->settings->forceFill(['timezone' => 'Asia/Riyadh'])->save();
     }
 
@@ -86,12 +88,12 @@ class MonthlyExecutiveDigestTest extends TestCase
         $this->assertSame('2026-11-01 → 2026-11-30', $digest['period'], 'the calendar month that has just ended');
 
         $stats = collect($digest['stats'])->keyBy('label');
-        foreach (['عملاء جدد', 'مؤهلون', 'مهتمون', 'زاروا', 'حجزوا', 'اشتروا', 'الإيراد', 'الإنفاق', 'تكلفة العميل', 'تكلفة الاكتساب', 'العائد على الإنفاق', 'الرد في الوقت', 'نجاح الأتمتة'] as $label) {
+        foreach (['عملاء جدد', 'مؤهلون', 'مهتمون', 'زيارات', 'حجوزات', 'مبيعات', 'الإيراد', 'الإنفاق', 'تكلفة العميل', 'تكلفة الاكتساب', 'العائد على الإنفاق', 'الرد في الوقت', 'نجاح الأتمتة'] as $label) {
             $this->assertTrue($stats->has($label), "the page has «{$label}»");
         }
         $this->assertSame(4, $stats['عملاء جدد']['value'], 'only November counts');
         $this->assertSame(300.0, (float) $stats['عملاء جدد']['change'], 'four against the one in October');
-        $this->assertSame(1, $stats['اشتروا']['value']);
+        $this->assertSame(1, $stats['مبيعات']['value']);
         $this->assertStringContainsString('900,000', $stats['الإيراد']['value']);
     }
 

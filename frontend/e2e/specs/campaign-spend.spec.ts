@@ -78,7 +78,7 @@ test.describe('إنفاق الحملات — campaign spend', () => {
     await page.getByRole('button', { name: 'إنشاء' }).click()
 
     await page.getByText('مشتري بلا قيمة').first().click()
-    await page.getByRole('button', { name: 'مكسوب' }).click()
+    await page.getByRole('button', { name: 'تم البيع' }).click()
 
     // The value is optional, and confirming without it still closes the sale.
     await expect(page.getByTestId('deal-value')).toBeVisible()

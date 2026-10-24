@@ -18,10 +18,10 @@ export interface ApiSession {
  * ids so isolation can be probed, and asserting that the backend really changed
  * after a UI action rather than trusting the optimistic render.
  */
-export async function apiLogin(email: string, password: string = PASSWORD): Promise<ApiSession> {
+export async function apiLogin(email: string, password: string = PASSWORD, door: '/api/v1/auth/login' | '/api/v1/platform/auth/login' = '/api/v1/auth/login'): Promise<ApiSession> {
   const context = await request.newContext({ baseURL: API_URL })
 
-  const response = await context.post('/api/v1/auth/login', {
+  const response = await context.post(door, {
     data: { email, password },
     headers: { Accept: 'application/json' },
   })
@@ -146,3 +146,8 @@ export function inboundWhatsappMessage(from: string, text: string, id = `wamid.e
 }
 
 export { API_URL }
+
+/** The platform owner's session — from the platform's own door, never a company's login. */
+export function apiPlatformLogin(email: string, password: string = PASSWORD): Promise<ApiSession> {
+  return apiLogin(email, password, '/api/v1/platform/auth/login')
+}

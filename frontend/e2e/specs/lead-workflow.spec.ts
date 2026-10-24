@@ -41,7 +41,7 @@ test.describe('Lead workflow', () => {
       ['تم التواصل', 'contacted'],
       ['مؤهل', 'qualified'],
       ['موعد', 'appointment'],
-      ['مكسوب', 'won'],
+      ['تم البيع', 'won'],
     ]
 
     for (const [label, value] of stages) {
@@ -75,7 +75,7 @@ test.describe('Lead workflow', () => {
   test('marking a lead lost requires a reason and records it', async ({ page }) => {
     await openLeadByName(page, LEADS.lost)
 
-    await page.getByTestId('stage-switcher').getByRole('button', { name: 'مفقود', exact: true }).click()
+    await page.getByTestId('stage-switcher').getByRole('button', { name: 'فرصة خاسرة', exact: true }).click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -83,11 +83,11 @@ test.describe('Lead workflow', () => {
     // Confirm stays disabled until a reason is chosen — the report depends on it.
     await expect(dialog.getByRole('button', { name: 'تأكيد' })).toBeDisabled()
 
-    await dialog.getByLabel('سبب الفقدان').selectOption({ index: 1 })
+    await dialog.getByLabel('سبب الخسارة').selectOption({ index: 1 })
     await dialog.getByLabel('ملاحظة').fill('الميزانية غير مناسبة');
     await dialog.getByRole('button', { name: 'تأكيد' }).click()
 
-    await expect(page.getByTestId('lead-status-badge')).toHaveText('مفقود')
+    await expect(page.getByTestId('lead-status-badge')).toHaveText('فرصة خاسرة')
 
     await expect(async () => {
       expect((await fetchLead(LEADS.lost)).status).toBe('lost')

@@ -22,7 +22,7 @@ use App\Support\TenantContext;
  */
 class InterestSlaSweeper
 {
-    private const LABELS = ['hot' => 'ساخن', 'interested' => 'مهتم', 'visit_ready' => 'جاهز للزيارة', 'reservation_ready' => 'جاهز للحجز'];
+    private const LABELS = ['hot' => 'اهتمام مرتفع', 'interested' => 'مهتم', 'visit_ready' => 'جاهز للزيارة', 'reservation_ready' => 'جاهز للحجز'];
 
     public function __construct(private TenantContext $context, private ActivityLogger $activities) {}
 

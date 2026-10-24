@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Role;
+use App\Models\Lead;
 use App\Support\ProjectContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -21,6 +22,13 @@ class ResolveProjectScope
         if ($user !== null && $user->isProjectScoped()) {
             // No projects given means nothing to see, not everything: an empty list is a real restriction.
             $this->context->restrictTo($user->projects()->pluck('projects.id')->map(fn ($id) => (int) $id)->all());
+        }
+
+        // A rep whose account says so opens only the projects they work on; earlier accounts keep seeing every project.
+        if ($user !== null && $user->role === Role::Sales && $user->all_projects === false && ! $user->isProjectScoped()) {
+            $fromLeads = Lead::withoutGlobalScopes()->where('tenant_id', $user->tenant_id)->where('assigned_to', $user->id)
+                ->whereNotNull('project_id')->distinct()->pluck('project_id');
+            $this->context->restrictProjectListTo($user->projects()->pluck('projects.id')->concat($fromLeads)->map(fn ($id) => (int) $id)->unique()->values()->all());
         }
 
         // A broker is limited to what their own partner brought — and to nothing until they are linked to one.

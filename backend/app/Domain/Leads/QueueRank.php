@@ -85,7 +85,7 @@ class QueueRank
             'interest' => match ($lead->interest_level) {
                 'reservation_ready' => 'يريد الحجز',
                 'visit_ready' => 'يريد زيارة',
-                'hot' => 'عميل ساخن',
+                'hot' => 'عميل باهتمام مرتفع',
                 default => 'عميل مهتم',
             },
             default => null,

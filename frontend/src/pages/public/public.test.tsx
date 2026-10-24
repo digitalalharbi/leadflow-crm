@@ -53,7 +53,7 @@ describe('public information pages', () => {
     renderWithProviders(<DocumentPage page="contact" />)
 
     expect(document.getElementById('password')).not.toBeNull()
-    expect(screen.getByText(/لا توجد حاليًا إعادة تعيين ذاتية/)).toBeInTheDocument()
+    expect(screen.getByText(/يصلك رابط صالح لساعة واحدة/)).toBeInTheDocument()
   })
 })
 
@@ -121,10 +121,10 @@ describe('login page', () => {
     expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0)
   })
 
-  it('sends a forgotten password to the page that says who resets it, rather than to a form that would not work', () => {
+  it('sends a forgotten password to the self-service reset, which emails a one-use link', () => {
     renderWithProviders(<LoginPage />)
 
-    expect(screen.getByTestId('login-forgot')).toHaveAttribute('href', '/contact#password')
+    expect(screen.getByTestId('login-forgot')).toHaveAttribute('href', '/forgot-password')
   })
 
   it('keeps the organisation field for the person with more than one, closed until it is asked for or a link names one', () => {

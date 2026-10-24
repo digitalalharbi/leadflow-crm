@@ -96,10 +96,13 @@ class InterestEngine
         $add('came_back', $days >= 2 ? 8 : 0, $days);
 
         // ---- what they asked
-        $facts = LeadFact::withoutGlobalScopes()->where('lead_id', $lead->id)->get(['kind', 'value']);
+        $facts = LeadFact::withoutGlobalScopes()->where('lead_id', $lead->id)->get(['kind', 'value', 'detail']);
         $inquiries = $facts->where('kind', Vocabulary::INQUIRY)->pluck('value');
         $add('asked_price', $inquiries->contains('price') ? 8 : 0);
         $add('asked_financing', $inquiries->contains('financing') ? 8 : 0);
+
+        // What the form's own answers said about intent: the workspace's rules (budget, timeline, financing…) scored once, at submit.
+        $add('form_intent', min(30, (int) ($facts->firstWhere('kind', 'form_intent')?->detail['points'] ?? 0)));
 
         $visitAsked = $lead->appointment_interest === true || $facts->contains(fn ($f) => $f->kind === Vocabulary::APPOINTMENT && $f->value === 'requested');
         $add('asked_for_visit', $visitAsked ? 20 : 0);

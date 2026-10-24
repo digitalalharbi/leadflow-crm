@@ -224,8 +224,8 @@ export function LoginPage() {
                   placeholder="••••••••"
                   className="h-12 text-[1rem]"
                 />
-                {/* There is no self-service reset: this leads to the page that says who resets it, not to a form that would not work. */}
-                <Link to="/contact#password" className="mt-1 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
+                {/* Self-service: a one-hour link by email, never a password. */}
+                <Link to="/forgot-password" className="mt-1 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
                   {t('auth.forgot')}
                 </Link>
               </div>

@@ -77,6 +77,10 @@ export interface User {
   project_scope?: string[] | null
   /** On a user in the team list: the projects that person was given. */
   project_ids?: string[]
+  /** A manager-type role: every project (true) or only `project_ids` (false). */
+  all_projects?: boolean
+  /** When they last did anything in the app. */
+  last_active_at?: string | null
   /** On a broker login: the partner whose leads and links are all they see. */
   partner?: { id: string; name: string } | null
   /** Cities this rep sells in. Empty means every city. */
@@ -601,6 +605,12 @@ export interface TenantSummary {
   leads_last_30_days: number | null
   last_lead_at: string | null
   created_at: string
+  plan_name?: string | null
+  /** The effective lifecycle state (a lapsed trial reads `trial_expired`). */
+  state?: string
+  seats_used?: number
+  seat_limit?: number | null
+  owner?: { id: string; name: string; email: string } | null
 }
 
 export interface AppNotification {
@@ -706,4 +716,31 @@ export interface NextAction {
   action: string
   urgency: 'critical' | 'high' | 'medium' | 'low'
   reason: string
+}
+
+/** A paid capability a plan or an add-on switches on. The server refuses the routes of one that is off. */
+export type Feature =
+  | 'tracking_hub' | 'advanced_forms' | 'automations' | 'attribution' | 'exports'
+  | 'api' | 'advanced_reports' | 'whatsapp' | 'custom_branding' | 'multiple_projects'
+
+export interface UsageMeter {
+  used: number
+  limit: number | null
+  alert: boolean
+  over: boolean
+}
+
+/** The workspace's subscription, as sent with the session. The server enforces the same facts on its own. */
+export interface Subscription {
+  plan: { key: string; name: string } | null
+  status: 'trialing' | 'active' | 'past_due' | 'suspended' | 'cancelled'
+  /** The effective state: a trial whose date passed is `trial_expired` though nobody changed its status. */
+  state: 'trialing' | 'active' | 'past_due' | 'suspended' | 'cancelled' | 'trial_expired' | 'expired' | 'disabled'
+  usable: boolean
+  trial_ends_at: string | null
+  subscription_ends_at: string | null
+  features: Feature[]
+  limits: Record<'projects' | 'leads_per_month' | 'storage_mb', number | null>
+  seat_limit: number | null
+  usage?: Record<'seats' | 'projects' | 'leads_per_month' | 'storage_mb', UsageMeter>
 }

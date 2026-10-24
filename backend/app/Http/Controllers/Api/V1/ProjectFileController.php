@@ -13,8 +13,10 @@ use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
+use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
 /**
@@ -72,7 +74,7 @@ class ProjectFileController extends Controller
          * material and occasionally their price list; the only way out is a
          * share link issued against one lead.
          */
-        $path = $upload->store('project-files/'.$project->uuid, 'local');
+        $path = $upload->store(TenantStorage::dir($project->tenant_id, 'project-files', $project->uuid), 'local');
 
         $file = ProjectFile::create([
             'project_id' => $project->id,
@@ -271,6 +273,24 @@ class ProjectFileController extends Controller
             'share' => ['id' => $result['share']->uuid, 'url' => $result['share']->url()],
             'reasons' => $result['reasons'],
             'status' => $result['message']?->status->value,
+        ]);
+    }
+
+    /**
+     * Opening a file from inside the app: a link signed for this one file, valid for five minutes, so the browser can
+     * open it in a tab without the session token — and nobody can reuse it later or for another file.
+     */
+    public function link(Request $request, string $uuid, string $fileUuid)
+    {
+        $project = Project::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('view', $project);
+        $file = ProjectFile::where('project_id', $project->id)->where('uuid', $fileUuid)->firstOrFail();
+
+        $this->audit->log('project_file.opened', $request->user(), $project, ['file' => $file->name]);
+
+        return ApiResponse::success([
+            'url' => URL::temporarySignedRoute('files.signed', now()->addMinutes(5), ['file' => $file->uuid, 'tenant' => $file->tenant_id]),
+            'expires_in' => 300,
         ]);
     }
 

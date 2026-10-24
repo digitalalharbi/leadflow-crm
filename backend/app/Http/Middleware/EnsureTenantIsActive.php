@@ -29,12 +29,22 @@ class EnsureTenantIsActive
             ], 403);
         }
 
+        // Suspended, cancelled or lapsed: every row is kept, the workspace is closed until the subscription is.
         if (! $tenant->isSubscriptionUsable()) {
+            $state = $tenant->lifecycleState();
+
             return response()->json([
                 'success' => false,
                 'data' => null,
-                'message' => 'Your subscription has expired.',
-                'errors' => ['tenant' => ['subscription_expired']],
+                'message' => match ($state) {
+                    'suspended' => 'This workspace is suspended until its subscription is settled.',
+                    'cancelled' => 'This workspace\'s subscription was cancelled.',
+                    default => 'Your subscription has expired.',
+                },
+                'errors' => [
+                    'tenant' => [in_array($state, ['suspended', 'cancelled'], true) ? 'subscription_'.$state : 'subscription_expired'],
+                    'state' => [$state],
+                ],
             ], 402);
         }
 

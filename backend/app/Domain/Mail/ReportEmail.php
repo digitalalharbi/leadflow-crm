@@ -31,7 +31,7 @@ class ReportEmail
             'button' => $rtl ? 'افتح التقرير' : 'Open the report',
             'protected' => $share->hasPassword(),
             'protectedNote' => $rtl ? 'هذا التقرير محميّ بكلمة مرور تصلك من المرسِل بطريق آخر.' : 'This report is protected by a password the sender gives you separately.',
-            'footer' => $rtl ? 'أُرسلت هذه الرسالة نيابةً عن '.($from?->name ?? $workspace ?? 'مهتم').'.' : 'Sent on behalf of '.($from?->name ?? $workspace ?? 'Mohtam').'.',
+            'footer' => $rtl ? 'أُرسلت هذه الرسالة نيابةً عن '.($from?->name ?? $workspace ?? 'مهتم').'.' : 'Sent on behalf of '.($from?->name ?? $workspace ?? 'مهتم').'.',
             'workspace' => $workspace,
         ])->render();
 

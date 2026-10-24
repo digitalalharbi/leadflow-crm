@@ -119,7 +119,7 @@ test.describe('Visits and reservations', () => {
 
     const funnel = page.getByTestId('manager-re-funnel')
     await expect(funnel).toBeVisible()
-    for (const label of ['عملاء', 'مؤهلون', 'مهتمون', 'زاروا', 'حجزوا', 'اشتروا']) {
+    for (const label of ['عملاء', 'مؤهلون', 'مهتمون', 'زيارات', 'حجوزات', 'مبيعات']) {
       await expect(funnel).toContainText(label)
     }
   })

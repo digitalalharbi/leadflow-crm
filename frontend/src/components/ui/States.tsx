@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { AlertCircle, Inbox, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from './Button'
+import { Button, buttonClasses } from './Button'
 import { cn } from '@/lib/cn'
 
 /** Shimmer placeholder. Pages never render blank while loading. */
@@ -77,10 +78,13 @@ export function ErrorState({
   message,
   onRetry,
   className,
+  back,
 }: {
   message?: string
   onRetry?: () => void
   className?: string
+  /** Where to go instead — a page that is not there is not fixed by trying again. */
+  back?: { to: string; label: string }
 }) {
   const { t } = useTranslation()
 
@@ -93,11 +97,18 @@ export function ErrorState({
       <p className="mt-1.5 max-w-sm text-[0.9375rem] text-[var(--color-ink-muted)]">
         {message ?? t('errors.unknown')}
       </p>
-      {onRetry && (
-        <Button variant="outline" size="sm" className="mt-5" icon={<RefreshCw className="size-4" />} onClick={onRetry}>
-          {t('common.retry')}
-        </Button>
-      )}
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        {back && (
+          <Link to={back.to} className={buttonClasses('primary', 'sm')} data-testid="error-back">
+            {back.label}
+          </Link>
+        )}
+        {onRetry && (
+          <Button variant="outline" size="sm" icon={<RefreshCw className="size-4" />} onClick={onRetry}>
+            {t('common.retry')}
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

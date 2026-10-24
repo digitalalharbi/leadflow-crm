@@ -96,6 +96,13 @@ export function setUnauthenticatedHandler(handler: () => void) {
   onUnauthenticated = handler
 }
 
+/** Called when the server says the workspace's subscription is closed (402), with the state it named. */
+let onSubscriptionClosed: ((state: string) => void) | null = null
+
+export function setSubscriptionClosedHandler(handler: (state: string) => void) {
+  onSubscriptionClosed = handler
+}
+
 type ErrorKey =
   | 'offline'
   | 'network'
@@ -153,6 +160,11 @@ http.interceptors.response.use(
     if (status === 401) {
       tokenStorage.clear()
       onUnauthenticated?.()
+    }
+
+    if (status === 402) {
+      const state = (data?.errors as Record<string, string[]> | null | undefined)?.state?.[0]
+      onSubscriptionClosed?.(state ?? 'expired')
     }
 
     // 422 carries field errors the forms render; everything else gets a generic

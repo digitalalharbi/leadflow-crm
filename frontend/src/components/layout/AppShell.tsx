@@ -4,6 +4,9 @@ import { PageHeaderSlotProvider } from '@/components/ui/PageHeader'
 import { useLiveFeed } from '@/hooks/useLiveFeed'
 import { useUi } from '@/stores/ui'
 import { useAuth } from '@/stores/auth'
+import { LifecycleBanner } from '@/components/billing/LifecycleBanner'
+import { SupportBanner } from '@/components/billing/SupportBanner'
+import { SubscriptionRequired } from '@/components/billing/SubscriptionRequired'
 import { BottomNav } from './BottomNav'
 import { IconRail } from './IconRail'
 import { Sidebar } from './Sidebar'
@@ -24,6 +27,8 @@ import { Topbar } from './Topbar'
  */
 export function AppShell() {
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const subscription = useAuth((s) => s.subscription)
+  const closed = !isSuperAdmin && subscription !== null && !subscription.usable
   const focusMode = useUi((s) => s.focusMode)
   // A callback ref into state: the pages below need the element itself, and
   // need to re-render once it exists.
@@ -62,7 +67,14 @@ export function AppShell() {
           <IconRail />
           <main className="min-w-0 flex-1">
             <PageHeaderSlotProvider value={titleSlot}>
-              <Outlet />
+              {/* A closed subscription replaces every page with the one that says why; the data stays on the server. */}
+              {closed ? <SubscriptionRequired subscription={subscription} /> : (
+                <div className="space-y-4">
+                  <SupportBanner />
+                  <LifecycleBanner />
+                  <Outlet />
+                </div>
+              )}
             </PageHeaderSlotProvider>
           </main>
         </div>

@@ -108,7 +108,7 @@ class VisitWorkflow
         $this->activities->log($lead, ActivityType::AppointmentCreated, $actor,
             'موعد في '.$visit->scheduled_at->toDayDateTimeString(), ['appointment_id' => $visit->uuid]);
         app(EventRecorder::class)->outcome($lead, EventType::AppointmentRequest, ['appointment' => $visit->uuid, 'at' => $visit->scheduled_at->toIso8601String()], $visit->uuid);
-        $this->advanceStage($lead, $actor);
+        $this->advanceStage($lead, $actor, $visit->uuid);
 
         return $visit;
     }
@@ -201,7 +201,7 @@ class VisitWorkflow
 
     private function confirmed(Appointment $visit, Lead $lead, ?User $actor): void
     {
-        $this->advanceStage($lead, $actor);
+        $this->advanceStage($lead, $actor, $visit->uuid);
     }
 
     /** They did not come: somebody calls them in four hours, and the owner is told. */
@@ -226,9 +226,9 @@ class VisitWorkflow
     }
 
     /** A booked visit is progress, so the stage follows — forwards only. */
-    private function advanceStage(Lead $lead, ?User $actor): void
+    private function advanceStage(Lead $lead, ?User $actor, ?string $appointment = null): void
     {
-        LeadSignal::dispatch($lead, 'lead.appointment_created', [], $actor);
+        LeadSignal::dispatch($lead, 'lead.appointment_created', array_filter(['appointment' => $appointment]), $actor);
 
         $from = $lead->status;
 

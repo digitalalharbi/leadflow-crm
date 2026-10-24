@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, GitBranch, GitMerge, GitPullRequest, Rocket, Tag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { apiGet } from '@/lib/api'
+import { ApiError, apiGet } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -16,6 +16,7 @@ import {
   fetchDevelopment, fetchRepositories, linkRepository, syncGitHub,
   type DevelopmentActivity, type DevelopmentDeployment, type DevelopmentRun,
 } from '@/features/development'
+import { ProjectAcquisition } from '@/components/projects/ProjectAcquisition'
 import { ProjectFiles } from '@/components/projects/ProjectFiles'
 import { ProjectQuestions } from '@/components/projects/ProjectQuestions'
 import { ProjectUnits } from '@/components/projects/ProjectUnits'
@@ -39,7 +40,7 @@ import type { Project } from '@/types/api'
  * for a different reader and was the only tab there was.
  */
 const TABS = [
-  'overview', 'leads', 'units', 'files', 'questions', 'campaigns', 'automations',
+  'overview', 'leads', 'units', 'files', 'questions', 'campaigns', 'acquisition', 'automations',
   'activities', 'reports', 'integrations', 'development',
 ] as const
 
@@ -58,7 +59,10 @@ export function ProjectDetailPage() {
   // The tab can be linked to — the automation pack points at files and questions.
   const [searchParams] = useSearchParams()
   const linked = searchParams.get('tab') as ProjectTab | null
-  const [tab, setTab] = useState<ProjectTab>(linked && (TABS as readonly string[]).includes(linked) ? linked : 'overview')
+  const user = useAuth((s) => s.user)
+  // Acquisition is the tracking screens, in the project: for those who hold them.
+  const tabs = TABS.filter((key) => key !== 'acquisition' || can.has(user, 'tracking.view'))
+  const [tab, setTab] = useState<ProjectTab>(linked && (tabs as readonly string[]).includes(linked) ? linked : 'overview')
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -77,7 +81,7 @@ export function ProjectDetailPage() {
         testId="project-tabs"
         value={tab}
         onChange={setTab}
-        items={TABS.map((key) => ({ key, label: t(`projects.tabs.${key}`) }))}
+        items={tabs.map((key) => ({ key, label: t(`projects.tabs.${key}`) }))}
       />
 
       {tab === 'overview' && (
@@ -108,6 +112,7 @@ export function ProjectDetailPage() {
       {tab === 'files' && <ProjectFiles projectId={id} />}
       {tab === 'questions' && <ProjectQuestions projectId={id} />}
       {tab === 'campaigns' && <ProjectCampaigns projectId={id} />}
+      {tab === 'acquisition' && <ProjectAcquisition projectId={id} />}
       {tab === 'automations' && <ProjectAutomations projectId={id} />}
       {tab === 'activities' && <ProjectActivities projectId={id} />}
       {tab === 'reports' && <ProjectReports projectId={id} />}
@@ -153,7 +158,7 @@ function Development({ projectId }: { projectId: string }) {
   })
 
   if (isLoading) return <Skeleton className="h-64" />
-  if (isError) return <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
+  if (isError) return <ErrorState message={translateError(error)} onRetry={error instanceof ApiError && error.status === 404 ? undefined : () => void refetch()} back={{ to: '/projects', label: t('nav.projects') }} />
 
   if (!data?.repository) {
     return <LinkRepository projectId={projectId} onLinked={() => void queryClient.invalidateQueries({ queryKey: ['development', projectId] })} />

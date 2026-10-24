@@ -66,7 +66,9 @@ test.describe('Critical paths, in every browser', () => {
   test('reports: the live-sharing tab and the builder open', async ({ page }) => {
     const errors = collectPageErrors(page)
     await signInAs(page, ALPHA.admin.email)
+    // The insight strip arrives on its own and pushes the tabs down; press the tab once it has landed.
     await page.goto('/reports')
+    await expect(page.getByTestId('insight-strip')).toBeVisible()
     await page.getByTestId('tab-share').click()
     await expect(page.getByTestId('share-tab')).toBeVisible()
     await page.getByTestId('new-share').click()

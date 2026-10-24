@@ -3,11 +3,13 @@
 namespace App\Services\Tenancy;
 
 use App\Domain\Automation\JourneyInstaller;
+use App\Domain\Mail\AccountEmail;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\LostReason;
 use App\Models\MessageTemplate;
+use App\Models\PasswordLink;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantBranding;
@@ -125,6 +127,13 @@ class TenantProvisioningService
                 // The account it was created with owns it: an admin no other admin can demote or remove.
                 $tenant->forceFill(['owner_user_id' => $admin->id])->save();
 
+                // No password given: the owner chooses one from a setup link — nobody else ever knows it.
+                $setupLink = null;
+
+                if (blank($data['admin_password'] ?? null)) {
+                    [, $setupLink] = PasswordLink::issue($admin->email, 'setup');
+                }
+
                 // Every tenant gets a working inbound endpoint from minute one.
                 $integration = Integration::create([
                     'provider' => IntegrationProvider::GenericWebhook,
@@ -135,9 +144,14 @@ class TenantProvisioningService
 
                 [$endpoint, $secret] = WebhookEndpoint::issue($integration->id, 'Default Webhook');
 
+                if ($setupLink !== null) {
+                    DB::afterCommit(fn () => app(AccountEmail::class)->passwordLink($admin->email, $admin->name, 'setup', $setupLink, $tenant->fresh('branding')));
+                }
+
                 return [
                     'tenant' => $tenant->fresh(['branding', 'settings']),
                     'admin' => $admin,
+                    'setup_link_sent' => $setupLink !== null,
                     'webhook_key' => $endpoint->key,
                     'webhook_secret' => $secret,
                 ];

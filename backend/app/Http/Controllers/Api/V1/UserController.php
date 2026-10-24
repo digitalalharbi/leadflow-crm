@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
 use App\Domain\Billing\PlanLimits;
+use App\Domain\Mail\AccountEmail;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\AccessRole;
 use App\Models\Partner;
+use App\Models\PasswordLink;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -32,6 +34,7 @@ class UserController extends Controller
             ->where('tenant_id', $request->user()->tenant_id)
             ->with(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name'])
             ->withCount('assignedLeads as leads_count')
+            ->withMax('tokens', 'last_used_at')
             ->when($request->filled('role'), fn ($q) => $q->where('role', $request->input('role')))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s
                 ->where('name', 'ilike', '%'.$request->input('search').'%')
@@ -88,6 +91,7 @@ class UserController extends Controller
             'access_role_id' => ['sometimes', 'nullable', 'uuid'],
             'phone' => ['nullable', 'string', 'max:32'],
             'project_ids' => ['sometimes', 'array', 'max:200'],
+            'all_projects' => ['sometimes', 'boolean'],
             'project_ids.*' => ['uuid'],
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
@@ -105,6 +109,7 @@ class UserController extends Controller
             'access_role_id' => $data['access_role_id'] ?? null,
             'phone' => $data['phone'] ?? null,
             'partner_id' => $this->partnerId($data),
+            'all_projects' => $data['all_projects'] ?? true,
             'is_active' => true,
         ]);
 
@@ -150,6 +155,7 @@ class UserController extends Controller
             'password' => ['sometimes', 'string', 'min:8'],
             // The projects a project-scoped role (project manager, client, broker) is limited to.
             'project_ids' => ['sometimes', 'array', 'max:200'],
+            'all_projects' => ['sometimes', 'boolean'],
             'project_ids.*' => ['uuid'],
             // The partner a broker login belongs to: their leads and links, and nobody else's.
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
@@ -196,7 +202,7 @@ class UserController extends Controller
         ]);
 
         // Only an admin changes roles, activation or project scope, and never their own role.
-        if ((isset($data['role']) || array_key_exists('access_role_id', $data) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
+        if ((array_key_exists('all_projects', $data) || isset($data['role']) || array_key_exists('access_role_id', $data) || isset($data['is_active']) || array_key_exists('project_ids', $data) || array_key_exists('partner_id', $data)) && ! $request->user()->isAdmin()) {
             throw ValidationException::withMessages(['role' => ['Only an admin can change roles.']]);
         }
 
@@ -272,6 +278,19 @@ class UserController extends Controller
         }
 
         return ApiResponse::success(['user' => new UserResource($user->fresh()->load(['projects:projects.id,projects.uuid', 'partner:partners.id,partners.uuid,partners.name']))]);
+    }
+
+    /** An admin sends someone a link to set (or reset) their own password. The admin never sees or types it. */
+    public function passwordLink(Request $request, string $uuid)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->where('is_active', true)->firstOrFail();
+
+        [, $token] = PasswordLink::issue($user->email, $user->last_login_at === null ? 'setup' : 'reset', $request->ip());
+        app(AccountEmail::class)->passwordLink($user->email, $user->name, $user->last_login_at === null ? 'setup' : 'reset', $token, app(TenantContext::class)->get());
+        $this->audit->log('user.password_link_sent', $request->user(), $user);
+
+        return ApiResponse::success(null, 'Link sent.');
     }
 
     public function destroy(Request $request, string $uuid)

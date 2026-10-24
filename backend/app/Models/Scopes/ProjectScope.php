@@ -40,6 +40,11 @@ class ProjectScope implements Scope
             }
         }
 
+        // A rep opens the projects they work on — the ones given to them and the ones their leads belong to — and no other.
+        if ($model instanceof Project && $context->listed() !== null) {
+            $builder->whereIn("{$table}.id", $context->listed() ?: [-1]);
+        }
+
         if ($ids === null) {
             return;
         }

@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\V1\SuperAdmin;
 use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\SubscriptionSummary;
 use App\Domain\Billing\UsageMeter;
+use App\Domain\Mail\AccountEmail;
 use App\Domain\Platform\PlatformAudit;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\Lead;
+use App\Models\PasswordLink;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -103,7 +105,8 @@ class TenantController extends Controller
             'secondary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'admin_name' => ['required', 'string', 'max:255'],
             'admin_email' => ['required', 'email', 'max:255'],
-            'admin_password' => ['required', 'string', 'min:8'],
+            // Optional: without one, the owner gets a link to choose their own.
+            'admin_password' => ['nullable', 'string', 'min:8'],
             'plan' => ['nullable', 'string', 'max:40'],
             'trial_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'locale' => ['nullable', 'in:ar,en'],
@@ -120,7 +123,7 @@ class TenantController extends Controller
 
         return ApiResponse::created([
             'tenant' => $this->present($result['tenant']->loadCount(['users', 'leads'])),
-            'admin' => ['name' => $result['admin']->name, 'email' => $result['admin']->email],
+            'admin' => ['name' => $result['admin']->name, 'email' => $result['admin']->email, 'setup_link_sent' => $result['setup_link_sent']],
             'webhook' => [
                 'url' => url("/api/v1/integrations/webhooks/{$result['webhook_key']}/leads"),
                 'secret' => $result['webhook_secret'],
@@ -250,6 +253,22 @@ class TenantController extends Controller
 
             return ApiResponse::success(['tenant' => $this->present($tenant->fresh(['branding'])->loadCount(['users', 'leads']))]);
         });
+    }
+
+    /** Sends the owner a fresh link to set their password — the console's "resend invitation". */
+    public function ownerSetupLink(Request $request, string $uuid)
+    {
+        $tenant = Tenant::with('branding')->where('uuid', $uuid)->firstOrFail();
+        $owner = $tenant->owner_user_id ? User::find($tenant->owner_user_id) : null;
+        abort_if($owner === null || ! $owner->is_active, 404, 'This company has no active owner.');
+
+        $purpose = $owner->last_login_at === null ? 'setup' : 'reset';
+        [, $token] = PasswordLink::issue($owner->email, $purpose, $request->ip());
+        app(AccountEmail::class)->passwordLink($owner->email, $owner->name, $purpose, $token, $tenant);
+
+        app(PlatformAudit::class)->log('tenant.owner_setup_link_sent', $request->user(), $tenant, $owner, ['email' => $owner->email, 'purpose' => $purpose]);
+
+        return ApiResponse::success(null, 'Link sent.');
     }
 
     private function present(Tenant $tenant): array

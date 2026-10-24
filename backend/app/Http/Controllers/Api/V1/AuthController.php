@@ -50,9 +50,13 @@ class AuthController extends Controller
          * account shadow another's — check the password against each candidate
          * and prefer an active one, instead of guessing.
          */
-        $candidates = $query->orderByDesc('is_active')->orderBy('id')->get();
-
-        $user = $candidates->first(fn (User $candidate) => Hash::check($password, $candidate->password));
+        // One person may hold an account in several companies. Of the ones this password opens, an active one in an
+        // open company, the one used most recently first.
+        $candidates = $query->orderByRaw('last_login_at desc nulls last')->orderBy('id')->get();
+        $matching = $candidates->filter(fn (User $candidate) => Hash::check($password, $candidate->password));
+        $user = $matching->first(fn (User $u) => $u->is_active && $u->tenant?->is_active)
+            ?? $matching->first(fn (User $u) => $u->is_active)
+            ?? $matching->first();
 
         if (! $user) {
             /*
@@ -85,6 +89,15 @@ class AuthController extends Controller
             ]);
         }
 
+        return ApiResponse::success($this->issueSession($user, $request));
+    }
+
+    /**
+     * A new session for this account and the payload the SPA boots from. Used by the login, an accepted invitation, a
+     * password link and a workspace switch — every way into a company ends the same way.
+     */
+    public function issueSession(User $user, Request $request, string $action = 'auth.login'): array
+    {
         $user->loadMissing('tenant.branding', 'tenant.settings');
 
         // One token per device; logging in again elsewhere does not kill this session.
@@ -92,9 +105,10 @@ class AuthController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
-        $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
+        $this->audit->log($action, $user, null, ['ip' => $request->ip()]);
 
-        return ApiResponse::success([
+        // Built against this account's company, whatever the request's own context was.
+        return app(TenantContext::class)->withTenant($user->tenant, fn () => [
             'token' => $token,
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
@@ -106,7 +120,7 @@ class AuthController extends Controller
             'hidden_elements' => Permissions::hiddenElements($user),
             'access_role' => AccessResolver::customRole($user)?->uuid,
             // The plan's features, limits and lifecycle: the interface agrees with what the server enforces.
-            'subscription' => ($tenant = app(TenantContext::class)->get() ?? $user->tenant) ? SubscriptionSummary::for($tenant) : null,
+            'subscription' => SubscriptionSummary::for($user->tenant),
             'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             /*
              * The language this workspace itself works in, read off its default

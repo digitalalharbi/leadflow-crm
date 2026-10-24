@@ -40,9 +40,23 @@ class ProjectContext
         return $this->ids;
     }
 
+    /** Projects a person may open, when their leads are governed elsewhere (a rep: their own leads). */
+    protected ?array $listed = null;
+
+    public function restrictProjectListTo(?array $ids): void
+    {
+        $this->listed = $ids;
+    }
+
+    public function listed(): ?array
+    {
+        return $this->listed;
+    }
+
     public function clear(): void
     {
         $this->ids = null;
+        $this->listed = null;
         $this->partnerId = null;
     }
 }

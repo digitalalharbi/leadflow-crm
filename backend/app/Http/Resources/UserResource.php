@@ -6,6 +6,7 @@ use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 class UserResource extends JsonResource
 {
@@ -38,6 +39,9 @@ class UserResource extends JsonResource
             'speaks' => $this->speaks ?? [],
             'locale' => $this->locale,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
+            // When they last used any session — Sanctum stamps it on every request, so this costs nothing extra.
+            'last_active_at' => isset($this->tokens_max_last_used_at) ? Carbon::parse($this->tokens_max_last_used_at)->toIso8601String() : null,
+            'all_projects' => (bool) ($this->all_projects ?? true),
             'created_at' => $this->created_at?->toIso8601String(),
             'leads_count' => $this->when(isset($this->leads_count), fn () => (int) $this->leads_count),
         ];

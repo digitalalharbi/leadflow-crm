@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
+use App\Http\Controllers\Api\V1\AccountAccessController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
+use App\Http\Controllers\Api\V1\InvitationController;
 use App\Http\Controllers\Api\V1\JourneyController;
 use App\Http\Controllers\Api\V1\LandingFormController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
@@ -86,6 +88,7 @@ use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
+use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\EmailInboundController;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
@@ -108,6 +111,15 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    // Into an account without a password in hand. Every answer is the same whether or not an email is registered.
+    Route::middleware('throttle:login')->group(function () {
+        Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);
+        Route::get('/auth/password/links/{token}', [AccountAccessController::class, 'link'])->where('token', '[A-Za-z0-9]{48}');
+        Route::post('/auth/password/reset', [AccountAccessController::class, 'reset']);
+        Route::get('/public/invitations/{token}', [AccountAccessController::class, 'invitation'])->where('token', '[A-Za-z0-9]{48}');
+        Route::post('/public/invitations/{token}/accept', [AccountAccessController::class, 'accept'])->where('token', '[A-Za-z0-9]{48}');
+    });
+
     // The platform owner's own door — never a company's login.
     Route::post('/platform/auth/login', [PlatformAuthController::class, 'login'])->middleware('throttle:login');
 
@@ -193,6 +205,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        // One person in several companies: the server lists their memberships and moves the session.
+        Route::get('/auth/workspaces', [WorkspaceController::class, 'index']);
+        Route::post('/auth/workspaces/{uuid}/switch', [WorkspaceController::class, 'switch'])->middleware('throttle:login');
         // Support ends from inside the company, with the support session's own token.
         Route::post('/auth/impersonation/stop', [ImpersonationController::class, 'stop']);
         // Outside `tenant.active`: a suspended company's admin can still read why, and what to do.
@@ -439,6 +454,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/access/users/{uuid}', [AccessController::class, 'effective']);
             Route::get('/users', [UserController::class, 'index']);
             Route::post('/users', [UserController::class, 'store']);
+            // Bringing people in: an invitation by email; nobody sets a password for anyone else.
+            Route::get('/invitations', [InvitationController::class, 'index']);
+            Route::post('/invitations', [InvitationController::class, 'store']);
+            Route::post('/invitations/{uuid}/resend', [InvitationController::class, 'resend']);
+            Route::delete('/invitations/{uuid}', [InvitationController::class, 'destroy']);
+            Route::post('/users/{uuid}/password-link', [UserController::class, 'passwordLink']);
             Route::patch('/users/{uuid}', [UserController::class, 'update']);
             Route::delete('/users/{uuid}', [UserController::class, 'destroy']);
 
@@ -641,6 +662,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/tenants/{uuid}/impersonate', [ImpersonationController::class, 'start']);
             Route::post('/impersonations/{uuid}/revoke', [ImpersonationController::class, 'revoke']);
             Route::post('/tenants/{uuid}/owner', [TenantController::class, 'transferOwner']);
+            Route::post('/tenants/{uuid}/owner/setup-link', [TenantController::class, 'ownerSetupLink']);
 
             // The SaaS business: catalogue, subscriptions, invoices, the owner's dashboard and trail.
             Route::get('/dashboard', [PlatformController::class, 'dashboard']);

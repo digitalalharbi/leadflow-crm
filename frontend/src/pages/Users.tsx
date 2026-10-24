@@ -19,7 +19,8 @@ import { fetchRoles } from '@/features/roles'
 import { fetchPartners } from '@/features/partners'
 import type { User } from '@/types/api'
 
-const MANAGER_ROLES = ['manager', 'marketing_manager', 'sales_manager']
+// Roles that see every project or only the ones given. A new rep starts limited to their projects.
+const MANAGER_ROLES = ['manager', 'marketing_manager', 'sales_manager', 'sales']
 
 export function UsersPage() {
   const { t, i18n } = useTranslation()
@@ -84,7 +85,7 @@ export function UsersPage() {
   const scoped = chosen?.scoped ?? false
   const choosesScope = MANAGER_ROLES.includes(baseRole)
   // The projects box: a scoped role's whole world, a manager's when not "all", a rep's projects to work on.
-  const picksProjects = scoped || (choosesScope && !allProjects) || baseRole === 'sales'
+  const picksProjects = scoped || (choosesScope && !allProjects)
   const partners = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: canManage && baseRole === 'broker_viewer', select: (d) => d.partners })
 
   /*
@@ -168,7 +169,7 @@ export function UsersPage() {
   function openCreate() {
     setEditing(null)
     setForm({ name: '', email: '', password: '', role: 'sales', phone: '' })
-    setAllProjects(true)
+    setAllProjects(false)
     setCities('')
     setWeight('1')
     setSpeaks([])
@@ -277,7 +278,7 @@ export function UsersPage() {
                       {formatNumber(metricsByName.get(user.name)?.won ?? 0, i18n.language)}
                     </Td>
                     <Td className="hidden xl:table-cell">
-                      {user.last_active_at ?? user.last_login_at ? formatLastSeen((user.last_active_at ?? user.last_login_at) as string, i18n.language) : '—'}
+                      {(user.last_active_at ?? user.last_login_at) ? formatLastSeen((user.last_active_at ?? user.last_login_at) as string, i18n.language) : '—'}
                     </Td>
                     <Td>
                       <Badge tone={user.is_active ? 'success' : 'neutral'}>
@@ -363,7 +364,10 @@ export function UsersPage() {
             <Select
               label={t('users.role')}
               value={form.role}
-              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, role: e.target.value }))
+                if (!editing) setAllProjects(e.target.value !== 'sales')
+              }}
               disabled={editing?.id === currentUser?.id}
             >
               {(roles.data?.roles ?? [{ role: 'sales' }, { role: 'manager' }, { role: 'admin' }] as { role: string; id?: string; custom?: boolean; label?: string }[]).map((role) => (
@@ -417,7 +421,7 @@ export function UsersPage() {
                   )
                 })}
               </div>
-              {projectIds.length === 0 && baseRole !== 'sales' && <p className="t-caption text-[var(--color-warning)]" data-testid="user-projects-none">{t('roles.noProjectsWarning')}</p>}
+              {projectIds.length === 0 && <p className="t-caption text-[var(--color-warning)]" data-testid="user-projects-none">{t('roles.noProjectsWarning')}</p>}
             </fieldset>
           )}
           </>

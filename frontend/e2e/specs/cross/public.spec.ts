@@ -253,7 +253,10 @@ test.describe('Login', () => {
 
     await page.getByTestId('login-forgot').click()
     await expect(page).toHaveURL(/\/forgot-password$/)
+    // The page is loaded on demand: fill it once it is there, and check the value held.
+    await expect(page.getByTestId('forgot-password').getByTestId('page-title')).toBeVisible()
     await page.getByLabel('البريد الإلكتروني').fill('nobody-here@e2e.test')
+    await expect(page.getByLabel('البريد الإلكتروني')).toHaveValue('nobody-here@e2e.test')
     await page.getByTestId('forgot-submit').click()
     await expect(page.getByTestId('forgot-sent')).toBeVisible()
   })

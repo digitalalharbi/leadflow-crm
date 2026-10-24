@@ -97,7 +97,13 @@ test.describe('Mobile layout', () => {
 
   test('a lead can be worked from the phone', async ({ page }) => {
     await page.goto('/leads')
+    // Click only once the list has re-rendered for the search: a link replaced mid-click navigates nowhere.
+    const searched = page.waitForResponse((r) => r.url().includes('/api/v1/leads') && r.url().includes('search=') && r.ok())
     await page.getByTestId('lead-search').fill(LEADS.activity)
+    await searched
+    // The overview charts above the list arrive on their own and push it down: tap once the page has settled.
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('link', { name: LEADS.activity })).toHaveCount(1)
     await page.getByRole('link', { name: LEADS.activity }).click()
 
     // The phone's own lead screen: the four ways to reach them at the top, the same four in a bar that

@@ -4,8 +4,12 @@ namespace App\Domain\Onboarding;
 
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
+use App\Models\AccessRole;
+use App\Models\AdConnection;
 use App\Models\AutomationRule;
+use App\Models\Import;
 use App\Models\Integration;
+use App\Models\Invitation;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\Tenant;
@@ -28,29 +32,38 @@ class SetupChecklist
 {
     public function for(Tenant $tenant): array
     {
+        // The order a company sets up in: the workspace, who it is, its team and their roles, its first project, where
+        // leads come from, the optional connections, its existing leads, and then the proof that it all runs.
         $steps = [
+            $this->step('workspace', true, '/settings'),
             $this->identity($tenant),
-            $this->projects(),
             $this->team(),
+            $this->roles($tenant),
+            $this->projects(),
             $this->sources(),
+            $this->integrations() + ['optional' => true],
+            $this->imported() + ['optional' => true],
             $this->assignment($tenant),
             $this->sla($tenant),
             $this->automation(),
             $this->testLead(),
         ];
 
-        $done = count(array_filter($steps, fn (array $s) => $s['done']));
+        // An optional step done or not, the checklist is complete when the required ones are.
+        $required = array_values(array_filter($steps, fn (array $s) => ! ($s['optional'] ?? false)));
+        $done = count(array_filter($required, fn (array $s) => $s['done']));
 
         return [
             'steps' => $steps,
             'done' => $done,
-            'total' => count($steps),
+            // Progress counts the required steps; an optional one done is a bonus, not a gap.
+            'total' => count($required),
             /*
              * "complete", not "ready". Whether a sales floor is ready to run on
              * this is their call; all this can honestly say is that nothing it
              * knows how to check is missing.
              */
-            'complete' => $done === count($steps),
+            'complete' => $done === count($required),
         ];
     }
 
@@ -79,7 +92,33 @@ class SetupChecklist
             ->where('is_active', true)
             ->exists();
 
-        return $this->step('team', $hasSellers, '/users');
+        // An invitation on its way counts: the team is being built, it just has not accepted yet.
+        $invited = Invitation::query()->whereNull('accepted_at')->whereNull('revoked_at')->where('expires_at', '>', now())->exists();
+
+        return $this->step('team', $hasSellers || $invited, '/users');
+    }
+
+    /** Someone besides the owner has a role decided — the access the company gives its people. */
+    private function roles(Tenant $tenant): array
+    {
+        $decided = User::query()->inWorkspace()->where('is_active', true)->where('id', '!=', $tenant->owner_user_id ?? 0)->exists()
+            || Invitation::query()->exists()
+            || AccessRole::query()->exists();
+
+        return $this->step('roles', $decided, '/access');
+    }
+
+    /** Ad accounts, WhatsApp, email — optional, but where most of the product's reach comes from. */
+    private function integrations(): array
+    {
+        return $this->step('integrations', AdConnection::query()->where('is_active', true)->exists()
+            || Integration::query()->where('is_active', true)->where('provider', '!=', IntegrationProvider::GenericWebhook->value)->exists(), '/integrations');
+    }
+
+    /** The leads the company already had, brought in from a sheet or a file. */
+    private function imported(): array
+    {
+        return $this->step('import', Import::query()->exists(), '/leads');
     }
 
     /**

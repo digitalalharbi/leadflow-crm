@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { fetchWhatsappCapability } from '@/features/conversations'
 import { logContact, recordCall, recordOutcome, type NextInQueue, type Outcome } from '@/features/work'
+import { extrasPayload, type OutcomeExtras } from '@/components/work/OutcomeDetails'
 import { useApiError } from '@/hooks/useApiError'
 import { dialTarget, whatsappTarget, type Dial } from '@/lib/dial'
 import { usePwa } from '@/stores/pwa'
@@ -124,8 +125,8 @@ export function useSalesFlow({
   }, [])
 
   const outcome = useMutation({
-    mutationFn: (payload: { choice: Outcome; note?: string }) =>
-      recordOutcome({ lead_id: lead!.id, outcome: payload.choice, note: payload.note || undefined, skip }),
+    mutationFn: (payload: { choice: Outcome; note?: string; extras?: OutcomeExtras }) =>
+      recordOutcome({ lead_id: lead!.id, outcome: payload.choice, note: payload.note || undefined, skip, ...(payload.extras ? extrasPayload(payload.choice, payload.extras) : {}) }),
     onSuccess: (result, payload) => {
       if (openCall && openCall.leadId === lead!.id) {
         void recordCall(openCall.leadId, openCall.callId, { status: payload.choice === 'no_answer' ? 'no_answer' : 'answered', outcome: payload.choice })
@@ -144,7 +145,7 @@ export function useSalesFlow({
   })
 
   /** Saves the outcome once. Returns false when it was refused (offline, already saving, or just saved). */
-  const save = useCallback((choice: Outcome, note?: string): boolean => {
+  const save = useCallback((choice: Outcome, note?: string, extras?: OutcomeExtras): boolean => {
     if (!lead || saving.current || outcome.isPending) return false
     if (!online) return false
 
@@ -153,7 +154,7 @@ export function useSalesFlow({
     if (last && Date.now() - last < 10_000) return false
 
     saving.current = true
-    outcome.mutate({ choice, note })
+    outcome.mutate({ choice, note, extras })
 
     return true
   }, [lead, online, outcome])

@@ -85,6 +85,7 @@ export function OnboardingChecklist() {
               <Circle className="size-4 shrink-0" aria-hidden />
             )}
             {t(`onboarding.step.${step.key}`)}
+            {step.optional && <span className="t-caption">({t('onboarding.optional')})</span>}
           </Link>
         ))}
       </div>

@@ -4,6 +4,7 @@ namespace App\Domain\Digest;
 
 use App\Domain\Access\Permissions;
 use App\Domain\Analytics\LeadFunnel;
+use App\Domain\Analytics\SourceAttribution;
 use App\Domain\Automation\AutomationCentre;
 use App\Domain\Campaigns\CampaignRevenue;
 use App\Domain\Insights\AnomalyDetector;
@@ -77,7 +78,8 @@ class DigestComposer
         $holds = Reservation::query()->where('status', 'pending')->when(! $user->seesAllLeads(), fn ($q) => $q->whereHas('lead', fn ($l) => $l->where('assigned_to', $user->id)))->count();
 
         $stats = [
-            $this->stat('وصلوا أمس', $arrived, link: '/leads?view=new_today'),
+            // Yesterday's arrivals, linked to exactly those — not to today's list.
+            $this->stat('وصلوا أمس', $arrived, link: '/leads?date_from='.$yesterday->toDateString().'&date_to='.$yesterday->toDateString()),
             $this->stat('لم يُتواصل معهم', $uncontacted, null, $uncontacted > 0 ? 'bad' : null, link: '/leads?status=new'),
             $this->stat('ساخنون', $hot, link: '/leads?temperature=hot'),
             $this->stat('عملاء مهتمون ينتظرون', $interested->count(), null, $late->isNotEmpty() ? 'bad' : null, link: '/leads?view=interested'),
@@ -120,6 +122,12 @@ class DigestComposer
         $report = (new CampaignRevenue($user))->build($to->subDays(6)->startOfDay(), $to);
         $c = $report['comparison'];
 
+        // No synced campaigns: the week by the platform each lead came from — real numbers, said to be by source —
+        // rather than campaign figures that are all zero only because no ad account is connected.
+        if (($report['totals']['campaigns'] ?? 0) === 0) {
+            return $this->weeklyMarketingBySource($user, $to);
+        }
+
         $stats = [];
 
         if ($this->sees($user, 'spend')) {
@@ -155,6 +163,41 @@ class DigestComposer
                 $report['rankings']['roas'] === [] ? null : $this->campaigns('أفضل عائد', $report['rankings']['roas'], fn ($r) => "{$r['name']} — {$r['roas']}x"),
                 $report['rankings']['wasted'] === [] || ! $this->sees($user, 'spend') ? null : $this->campaigns('إنفاق بلا تأهيل — راجعه', $report['rankings']['wasted'], fn ($r) => "{$r['name']} — ".number_format((float) $r['spend']).' ر.س.'),
                 $this->attribution($report),
+                $this->trackingIssues(),
+                $this->automationIssues($user, 7),
+            ])),
+        ];
+    }
+
+    private function weeklyMarketingBySource(User $user, CarbonImmutable $to): array
+    {
+        $this_ = SourceAttribution::between($user, $to->subDays(6)->startOfDay(), $to);
+        $last = SourceAttribution::between($user, $to->subDays(13)->startOfDay(), $to->subDays(7)->endOfDay());
+        $change = fn (string $k) => ($last['totals'][$k] ?? 0) > 0 ? round(($this_['totals'][$k] - $last['totals'][$k]) / $last['totals'][$k] * 100, 1) : null;
+
+        $stats = [
+            $this->stat('العملاء', $this_['totals']['leads'], $change('leads'), link: '/leads'),
+            $this->stat('مؤهلون', $this_['totals']['qualified'], $change('qualified'), link: '/leads?view=qualified'),
+            $this->stat('مهتمون', $this_['totals']['interested'], $change('interested'), link: '/leads?view=interested'),
+            $this->stat('زيارات', $this_['totals']['visit'], $change('visit'), link: '/visits'),
+            $this->stat('حجوزات', $this_['totals']['reservation'], $change('reservation'), link: '/visits'),
+            $this->stat('صفقات', $this_['totals']['won'], $change('won'), link: '/leads?status=won'),
+        ];
+
+        if ($this->sees($user, 'revenue')) {
+            $stats[] = $this->stat('الإيراد', number_format((float) $this_['totals']['revenue']).' ر.س.', $change('revenue'), link: '/reports');
+        }
+
+        return [
+            'kind' => 'weekly_marketing',
+            'title' => 'ملخص التسويق الأسبوعي — حسب مصدر العميل',
+            'period' => $to->subDays(6)->toDateString().' → '.$to->toDateString(),
+            'stats' => $stats,
+            'lists' => array_values(array_filter([
+                $this_['rows'] === [] ? null : [
+                    'title' => 'حسب المنصة (لا حملات مزامنة؛ الأرقام من مصدر كل عميل)',
+                    'items' => array_map(fn ($r) => ($r['source'] === 'unknown' ? 'مصدر غير معروف' : $r['source'])." — {$r['leads']} عميل، {$r['qualified']} مؤهل، {$r['won']} صفقة", $this_['rows']),
+                ],
                 $this->trackingIssues(),
                 $this->automationIssues($user, 7),
             ])),
@@ -281,6 +324,11 @@ class DigestComposer
         $stats[] = $this->stat('فشل الأتمتة', $failed, null, $failed > 0 ? 'bad' : null, link: '/automation');
         $stats[] = $this->stat('منصات في خطر', count($risk), null, $risk !== [] ? 'bad' : null, link: '/tracking');
 
+        // Why the month's losses were lost, by the reason the rep chose — the list the month's numbers cannot say.
+        $lostWhy = Lead::query()->visibleTo($user)->reorder()->where('leads.status', 'lost')->whereBetween('leads.updated_at', [$from, $to])
+            ->join('lost_reasons', 'lost_reasons.id', '=', 'leads.lost_reason_id')
+            ->selectRaw('lost_reasons.label as reason, count(*) as total')->groupBy('lost_reasons.label')->orderByDesc('total')->limit(5)->get();
+
         $notes = Anomaly::query()->whereBetween('detected_on', [$from->toDateString(), $to->toDateString()])->orderByRaw("case severity when 'critical' then 0 else 1 end")->latest('detected_on')->limit(5)->get();
 
         return [
@@ -292,6 +340,11 @@ class DigestComposer
                 ! $this->sees($user, 'spend') || $report['rankings']['roas'] === [] ? null : $this->campaigns('أفضل حملات الشهر عائدًا', $report['rankings']['roas'], fn ($r) => "{$r['name']} — {$r['roas']}x"),
                 ! $this->sees($user, 'spend') || $report['rankings']['wasted'] === [] ? null : $this->campaigns('إنفاق بلا تأهيل — أوقفه أو راجعه', $report['rankings']['wasted'], fn ($r) => "{$r['name']} — ".number_format((float) $r['spend']).' ر.س.'),
                 $this->attribution($report),
+                $lostWhy->isEmpty() ? null : [
+                    'title' => 'لماذا خسرنا',
+                    'items' => $lostWhy->map(fn ($r) => "{$r->reason} — {$r->total}")->all(),
+                    'links' => $lostWhy->map(fn () => '/leads?status=lost')->all(),
+                ],
                 $this->trackingIssues(),
                 $notes->isEmpty() ? null : [
                     'title' => 'ملاحظات الشهر',

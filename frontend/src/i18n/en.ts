@@ -266,6 +266,7 @@ export default {
     reset: 'Restore the workspace value ({{value}})',
   },
   manager: {
+    when: { today: 'today', now: 'now', period_one: 'last day', period_other: 'last {{count}} days' },
     title: 'Command center',
     period: 'Period',
     funnel: 'Lead funnel',
@@ -360,6 +361,16 @@ export default {
     completenessHint: 'How much we know about this lead',
   },
   work: {
+    details: {
+      dealValue: 'Deal value',
+      dealValueHint: 'In the workspace currency — counted in revenue',
+      lostReason: 'Reason lost',
+      chooseReason: 'Choose a reason',
+      visitAt: 'Visit time',
+      visitHint: 'A real visit is booked on the visits schedule',
+      nextFollowUp: 'Next follow-up',
+      nextFollowUpHint: 'You can change the suggested time',
+    },
     rank: { label: 'Ranked by', title: 'What put this lead first' },
     signal: {
       replied: 'Replied on WhatsApp',
@@ -1240,6 +1251,10 @@ export default {
   },
   onboarding: {
     step: {
+      workspace: 'Create the workspace',
+      roles: 'Decide roles',
+      integrations: 'Connect integrations',
+      import: 'Import existing leads',
       identity: 'Company name and identity',
       projects: 'Add a project',
       team: 'Add sales reps',
@@ -1251,7 +1266,7 @@ export default {
     },
     title: "Let's set up your workspace", subtitle: 'A few short steps to start receiving leads',
     branding: 'Set up your branding', team: 'Add your sales team', project: 'Add a project',
-    leadSource: 'Connect a lead source', firstLead: 'Receive your first lead', dismiss: 'Dismiss',
+    leadSource: 'Connect a lead source', firstLead: 'Receive your first lead', dismiss: 'Dismiss', optional: 'optional',
   },
   /*
    * The languages a number can be read as — see the backend PhoneLanguage.
@@ -1635,6 +1650,7 @@ export default {
   },
 
   files: {
+    open: 'Open',
     title: 'Files',
     hint: 'We pick the file that suits this lead, and tell you if they opened it.',
     projectTitle: 'Project files',
@@ -2135,6 +2151,12 @@ export default {
   },
 
   marketingSales: {
+    sourceTitle: 'By lead source',
+    sourceHint: 'Every lead by the platform it came from — always available, no ad account needed.',
+    unknownSource: 'Unknown source',
+    noLeads: 'No leads in this period.',
+    campaignTitle: 'By synced campaign',
+    noSyncedCampaigns: 'No campaigns are synced from an ad account, so there is no spend or campaign data here. The real figures above are by lead source. Connect an ad account under Integrations to see spend and return.',
     by: { platform: 'By platform', project: 'By project', company: 'By company' },
     qualifiedBy: 'Qualified',
     unassigned: 'Unassigned',
@@ -3141,6 +3163,10 @@ export default {
       finding: '{{count}} interested leads are past their reply window.',
       impact: 'Interested people cool by the minute.', action: 'Hand them to whoever is available now.',
     },
+    no_tracking_links: {
+      finding: '{{percent}}% of leads arrived without a tracking link; we know their platform but not which link or campaign.',
+      impact: 'We cannot tell which ad earns its spend.', action: 'Create a tracking link for every ad and source.',
+    },
     no_attribution: {
       finding: '{{percent}}% of leads have no known source.',
       impact: 'We cannot tell which campaign to reward.', action: 'Add tracking links for every source.',
@@ -3543,7 +3569,7 @@ export default {
     inviteInvalidTitle: 'Invitation not valid',
     inviteInvalid: 'This invitation has expired, was revoked or was already accepted. Ask the company admin for a new one.',
     inviteBody: 'You are invited to join {{company}} as {{role}}.',
-    inviteExisting: 'You already have a Mohtam account with this email. Enter your current password to add this company to your workspaces.',
+    inviteExisting: 'You already have a مهتم account with this email. Enter your current password to add this company to your workspaces.',
     yourName: 'Your name',
     acceptInvite: 'Accept invitation',
     sendSetupLink: 'Send password setup link',

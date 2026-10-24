@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { Outcome } from '@/features/work'
 import { Button, Modal, Textarea } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { defaultExtras, extrasComplete, OutcomeDetails, type OutcomeExtras } from '@/components/work/OutcomeDetails'
 
 /**
  * The choices in the order a rep thinks of them after a call: reached them or not, how they felt, what was
@@ -29,7 +30,7 @@ export function OutcomeSheet({
 }: {
   open: boolean
   onClose: () => void
-  onSave: (choice: Outcome, note: string) => boolean
+  onSave: (choice: Outcome, note: string, extras: OutcomeExtras) => boolean
   pending: boolean
   online: boolean
   /** When there is no lead after this one the button says only "save". */
@@ -38,12 +39,14 @@ export function OutcomeSheet({
   const { t } = useTranslation()
   const [choice, setChoice] = useState<Outcome | null>(null)
   const [note, setNote] = useState('')
+  const [extras, setExtras] = useState<OutcomeExtras>({})
 
   // A sheet opened again is a fresh one, whichever way the last was left.
   useEffect(() => {
     if (!open) {
       setChoice(null)
       setNote('')
+      setExtras({})
     }
   }, [open])
 
@@ -54,7 +57,8 @@ export function OutcomeSheet({
     onClose()
   }
 
-  const blocked = pending || !online || choice === null
+  // A sale without its value, a loss without its reason, a visit without its time: not saved half-told.
+  const blocked = pending || !online || choice === null || !extrasComplete(choice, extras)
 
   return (
     <Modal
@@ -70,7 +74,7 @@ export function OutcomeSheet({
           disabled={blocked}
           data-testid="outcome-save"
           onClick={() => {
-            if (choice) onSave(choice, note)
+            if (choice) onSave(choice, note, extras)
           }}
         >
           {pending ? t('mobileSales.outcome.saving') : hasNext ? t('mobileSales.outcome.save') : t('mobileSales.outcome.saveOnly')}
@@ -93,7 +97,10 @@ export function OutcomeSheet({
               role="radio"
               aria-checked={choice === value}
               data-testid={`outcome-${value}`}
-              onClick={() => setChoice(value)}
+              onClick={() => {
+                setChoice(value)
+                setExtras(defaultExtras(value))
+              }}
               className={cn(
                 'pressable min-h-14 rounded-2xl px-3 py-2 text-[1rem] font-semibold',
                 choice === value
@@ -105,6 +112,8 @@ export function OutcomeSheet({
             </button>
           ))}
         </div>
+
+        <OutcomeDetails choice={choice} value={extras} onChange={setExtras} />
 
         <Textarea
           label={t('mobileSales.outcome.note')}

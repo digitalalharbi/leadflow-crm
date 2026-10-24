@@ -1,3 +1,4 @@
+import { can, useAuth } from '@/stores/auth'
 import { useQuery } from '@tanstack/react-query'
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/lib/api'
 
@@ -49,7 +50,10 @@ export function fetchCompanies(all = false) {
 
 /** The holding's companies, shared by the switcher, the overview and the form. */
 export function useCompanies() {
-  return useQuery({ queryKey: COMPANIES_KEY, queryFn: () => fetchCompanies(), staleTime: 60_000 })
+  // Asked only by someone allowed to read it: a role without the permission got a 403 on every page.
+  const allowed = useAuth((s) => !s.isSuperAdmin && can.has(s.user, 'companies.view'))
+
+  return useQuery({ queryKey: COMPANIES_KEY, queryFn: () => fetchCompanies(), staleTime: 60_000, enabled: allowed })
 }
 
 export type CompanyPayload = Partial<Pick<Company, 'name' | 'description' | 'color' | 'is_active'>>

@@ -10,7 +10,7 @@ import {
   addLeadNote, assignLead, changeLeadStatus, changeLeadTemperature, deleteLead,
   fetchAssignableUsers, fetchLead, fetchLostReasons, logContact,
 } from '@/features/leads'
-import { apiPost } from '@/lib/api'
+import { ApiError, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -218,7 +218,7 @@ export function LeadDetailPage() {
   if (isError) {
     return (
       <Card>
-        <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
+        <ErrorState message={translateError(error)} onRetry={error instanceof ApiError && error.status === 404 ? undefined : () => void refetch()} back={{ to: '/leads', label: t('nav.leads') }} />
       </Card>
     )
   }

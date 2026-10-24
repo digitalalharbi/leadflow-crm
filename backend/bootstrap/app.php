@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuditExports;
 use App\Http\Middleware\EnforceEntitlements;
 use App\Http\Middleware\EnforcePermissions;
 use App\Http\Middleware\EnsureTenantIsActive;
@@ -89,6 +90,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.active' => EnsureTenantIsActive::class,
             'entitlements' => EnforceEntitlements::class,
             'support.guard' => GuardSupportSession::class,
+            'audit.exports' => AuditExports::class,
             'project.scope' => ResolveProjectScope::class,
             'permission' => EnforcePermissions::class,
             'hide.fields' => HideRestrictedFields::class,

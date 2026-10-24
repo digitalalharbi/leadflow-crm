@@ -56,18 +56,20 @@ class ManagerCenter
         $total = (int) $cohort->total;
         $rate = fn (int $n) => $total > 0 ? round($n / $total * 100, 1) : null;
         $sla = $this->sla->summary($user, $targetMinutes, $days);
+        // One definition of "qualified" on this screen: the funnel's. The tile and the funnel read the same number.
+        $reFunnel = LeadFunnel::counts(Lead::query()->visibleTo($user)->where('leads.created_at', '>=', $since));
 
         return [
             'days' => $days,
             'kpis' => [
                 'leads_today' => (int) $now->today,
                 'leads_period' => $total,
-                'qualified' => (int) $cohort->qualified,
+                'qualified' => $reFunnel['steps']['qualified'],
                 'overdue_follow_ups' => (int) $now->overdue,
                 'stalled' => $sla['stalled']['count'],
                 'avg_response_seconds' => $sla['first_human']['average_seconds'],
                 'appointment_rate' => $rate((int) $cohort->appointments),
-                'conversion_rate' => $rate((int) $cohort->won),
+                'conversion_rate' => $rate($reFunnel['steps']['won']),
                 'revenue' => round($revenueMinor / 100, 2),
             ],
             'sla' => $sla,
@@ -75,9 +77,9 @@ class ManagerCenter
                 ['key' => 'leads', 'count' => $total],
                 ['key' => 'valid', 'count' => (int) $cohort->valid],
                 ['key' => 'engaged', 'count' => (int) $cohort->engaged],
-                ['key' => 'qualified', 'count' => (int) $cohort->qualified],
+                ['key' => 'qualified', 'count' => $reFunnel['steps']['qualified']],
                 ['key' => 'appointments', 'count' => (int) $cohort->appointments],
-                ['key' => 'won', 'count' => (int) $cohort->won],
+                ['key' => 'won', 'count' => $reFunnel['steps']['won']],
             ],
             'temperature' => [
                 ['key' => 'hot', 'count' => (int) $now->hot],
@@ -85,7 +87,11 @@ class ManagerCenter
                 ['key' => 'cold', 'count' => (int) $now->cold],
             ],
             // Lead → Qualified → Interested → Visit → Reservation → Won, for the leads that arrived in the period.
-            're_funnel' => LeadFunnel::counts(Lead::query()->visibleTo($user)->where('leads.created_at', '>=', $since)),
+            're_funnel' => $reFunnel,
+            // What each figure measures over: a tile says its period, so two numbers never look like one disagreeing.
+            'periods' => ['leads_today' => 'today', 'qualified' => 'period', 'overdue_follow_ups' => 'now', 'stalled' => 'now',
+                'avg_response_seconds' => 'period', 'appointment_rate' => 'period', 'conversion_rate' => 'period', 'revenue' => 'period',
+                'leads_period' => 'period', 'interest' => 'now'],
             'automation' => $this->automation($user, $since, $days),
             'sources' => $this->sources($user, $since),
             'interest' => collect($interest = $this->interest($user))->except('by_rep')->all(),

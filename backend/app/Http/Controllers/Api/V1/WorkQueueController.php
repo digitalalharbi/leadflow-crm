@@ -308,12 +308,16 @@ class WorkQueueController extends Controller
             'outcome' => ['required', 'string', Rule::in(OutcomeRecorder::available())],
             'note' => ['nullable', 'string', 'max:2000'],
             'skip' => ['sometimes', 'array'],
+            'deal_value' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+            'lost_reason_id' => ['nullable', 'uuid'],
+            'appointment_at' => ['nullable', 'date', 'after:now'],
+            'follow_up_at' => ['nullable', 'date', 'after:now'],
         ]);
 
         $lead = Lead::where('uuid', $data['lead_id'])->firstOrFail();
         $this->authorize('update', $lead);
 
-        $result = $recorder->record($lead, $data['outcome'], $request->user(), $data['note'] ?? null);
+        $result = $recorder->record($lead, $data['outcome'], $request->user(), $data['note'] ?? null, details: array_intersect_key($data, array_flip(['deal_value', 'lost_reason_id', 'appointment_at', 'follow_up_at'])));
 
         // The lead just worked is never the next one offered, even when the
         // outcome left it open — a rep who records "no answer" and is handed

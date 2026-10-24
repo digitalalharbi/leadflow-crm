@@ -223,7 +223,7 @@ Route::prefix('v1')->group(function () {
         | Only /auth/me and the logout routes stay outside, so the SPA can still
         | sign a user out of a suspended account.
         */
-        Route::middleware(['tenant.active', 'entitlements'])->group(function () {
+        Route::middleware(['tenant.active', 'entitlements', 'audit.exports'])->group(function () {
             Route::get('/notifications', [NotificationController::class, 'index']);
             Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
                 ->whereUuid('id');
@@ -432,6 +432,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/projects/{uuid}/files', [ProjectFileController::class, 'store']);
             Route::patch('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'update']);
             Route::delete('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'destroy']);
+            Route::get('/projects/{uuid}/files/{file}/link', [ProjectFileController::class, 'link']);
             Route::get('/leads/{uuid}/files', [ProjectFileController::class, 'forLead']);
             Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
             Route::post('/leads/{uuid}/files/send', [ProjectFileController::class, 'send']);

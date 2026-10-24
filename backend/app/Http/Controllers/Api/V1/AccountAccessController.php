@@ -57,7 +57,7 @@ class AccountAccessController extends Controller
             $data = $request->validate(['password' => ['required', 'string']]);
 
             if (! $existing->contains(fn (User $u) => Hash::check($data['password'], $u->password))) {
-                throw ValidationException::withMessages(['password' => ['That is not the password of your Mohtam account.']]);
+                throw ValidationException::withMessages(['password' => ['That is not the password of your account.']]);
             }
 
             $name = $existing->first()->name;

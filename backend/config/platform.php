@@ -14,5 +14,5 @@ return [
     'impersonation_minutes' => (int) env('PLATFORM_IMPERSONATION_MINUTES', 30),
 
     /* The name an authenticator app shows beside the code. */
-    'mfa_issuer' => env('PLATFORM_MFA_ISSUER', 'Mohtam Platform'),
+    'mfa_issuer' => env('PLATFORM_MFA_ISSUER', 'مهتم'),
 ];

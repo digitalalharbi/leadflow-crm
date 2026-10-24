@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, GitBranch, GitMerge, GitPullRequest, Rocket, Tag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { apiGet } from '@/lib/api'
+import { ApiError, apiGet } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -158,7 +158,7 @@ function Development({ projectId }: { projectId: string }) {
   })
 
   if (isLoading) return <Skeleton className="h-64" />
-  if (isError) return <ErrorState message={translateError(error)} onRetry={() => void refetch()} />
+  if (isError) return <ErrorState message={translateError(error)} onRetry={error instanceof ApiError && error.status === 404 ? undefined : () => void refetch()} back={{ to: '/projects', label: t('nav.projects') }} />
 
   if (!data?.repository) {
     return <LinkRepository projectId={projectId} onLinked={() => void queryClient.invalidateQueries({ queryKey: ['development', projectId] })} />

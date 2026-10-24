@@ -308,6 +308,8 @@ test.describe('Mobile sales flow', () => {
     await expect(page.getByTestId('sales-problem')).toContainText('غير متصل')
     await page.getByTestId('sales-outcome').click()
     await page.getByTestId('outcome-won').click()
+    // A sale is recorded with its value.
+    await page.getByTestId('outcome-deal-value').fill('850000')
     await expect(page.getByTestId('outcome-offline')).toBeVisible()
     await expect(page.getByTestId('outcome-save')).toBeDisabled()
     expect(saves).toHaveLength(0)

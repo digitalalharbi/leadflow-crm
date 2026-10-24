@@ -15,6 +15,12 @@ interface Data {
   rows: (CampaignTotals & { key: string; name: string | null })[]
   totals: CampaignTotals
   currency: string
+  attribution?: { synced_campaigns: number; campaign_basis_available: boolean }
+  source_attribution?: {
+    basis: 'lead_source'
+    rows: { source: string; leads: number; qualified: number; interested: number; visit: number; reservation: number; won: number; revenue: number }[]
+    totals: Record<'leads' | 'qualified' | 'interested' | 'visit' | 'reservation' | 'won' | 'revenue', number>
+  }
 }
 
 /**
@@ -51,6 +57,42 @@ export function MarketingSalesTab({ dateFrom, dateTo }: { dateFrom?: string; dat
         <Skeleton className="h-64" />
       ) : (
         <>
+          {/*
+            Two attributions, each named. By source: every lead by the platform it came from — what any workspace has.
+            By synced campaign: needs connected ad accounts. Without them, the campaign figures are not zeros; they are absent.
+          */}
+          {data.source_attribution && (
+            <Card data-testid="source-attribution">
+              <CardBody>
+                <h2 className="t-card-title">{t('marketingSales.sourceTitle')}</h2>
+                <p className="t-caption mb-3">{t('marketingSales.sourceHint')}</p>
+                {data.source_attribution.rows.length === 0 ? (
+                  <p className="t-caption">{t('marketingSales.noLeads')}</p>
+                ) : (
+                  <ul className="divide-y divide-[var(--color-line)]">
+                    {data.source_attribution.rows.map((row) => (
+                      <li key={row.source} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-[0.9375rem]" data-testid={`source-row-${row.source}`}>
+                        <span className="flex min-w-32 items-center gap-2 font-medium">
+                          {row.source !== 'unknown' && <span className="size-2.5 rounded-full" style={{ background: platformColor(row.source) }} aria-hidden />}
+                          {row.source === 'unknown' ? t('marketingSales.unknownSource') : t(`platforms.${row.source}`, { defaultValue: row.source })}
+                        </span>
+                        {(['leads', 'qualified', 'interested', 'visit', 'won'] as const).map((key) => (
+                          <span key={key} className="tabular-nums"><span className="t-caption">{t(`manager.reFunnel.${key}`)} </span>{formatNumber(row[key], i18n.language)}</span>
+                        ))}
+                        <span className="tabular-nums" dir="ltr">{money(row.revenue)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
+          <h2 className="t-card-title pt-2" data-testid="campaign-attribution-title">{t('marketingSales.campaignTitle')}</h2>
+          {data.attribution && !data.attribution.campaign_basis_available ? (
+            <Card data-testid="no-synced-campaigns"><CardBody><p className="text-[0.9375rem]">{t('marketingSales.noSyncedCampaigns')}</p></CardBody></Card>
+          ) : (
+          <>
           <div className="grid gap-3 lg:grid-cols-12">
             <Card className="lg:col-span-5">
               <CardBody>
@@ -101,6 +143,8 @@ export function MarketingSalesTab({ dateFrom, dateTo }: { dateFrom?: string; dat
               </Card>
             ))}
           </div>
+          </>
+          )}
         </>
       )}
     </div>

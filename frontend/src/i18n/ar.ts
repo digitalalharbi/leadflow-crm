@@ -323,6 +323,7 @@ export default {
     reset: 'إرجاع قيمة المساحة ({{value}})',
   },
   manager: {
+    when: { today: 'اليوم', now: 'الآن', period_one: 'آخر يوم', period_two: 'آخر يومين', period_few: 'آخر {{count}} أيام', period_many: 'آخر {{count}} يومًا', period_other: 'آخر {{count}} يوم' },
     title: 'مركز القيادة',
     period: 'الفترة',
     funnel: 'مسار العملاء',
@@ -417,6 +418,16 @@ export default {
     completenessHint: 'كم نعرف عن هذا العميل',
   },
   work: {
+    details: {
+      dealValue: 'قيمة الصفقة',
+      dealValueHint: 'بعملة مساحة العمل — تُحتسب في الإيراد',
+      lostReason: 'سبب الخسارة',
+      chooseReason: 'اختر السبب',
+      visitAt: 'موعد الزيارة',
+      visitHint: 'يُنشأ موعد زيارة فعلي في جدول الزيارات',
+      nextFollowUp: 'المتابعة التالية',
+      nextFollowUpHint: 'يمكنك تغيير الموعد المقترح',
+    },
     rank: { label: 'سبب الترتيب', title: 'ما الذي جعل هذا العميل أولًا' },
     signal: {
       replied: 'ردّ على واتساب',
@@ -1392,6 +1403,10 @@ export default {
   },
   onboarding: {
     step: {
+      workspace: 'إنشاء مساحة العمل',
+      roles: 'تحديد الصلاحيات',
+      integrations: 'ربط التكاملات',
+      import: 'استيراد العملاء الحاليين',
       identity: 'اسم الشركة وهويتها',
       projects: 'إضافة مشروع',
       team: 'إضافة مندوبي مبيعات',
@@ -1408,6 +1423,7 @@ export default {
     project: 'إضافة مشروع',
     leadSource: 'ربط مصدر عملاء',
     firstLead: 'استقبال أول عميل',
+    optional: 'اختياري',
     dismiss: 'إخفاء',
   },
   /*
@@ -1792,6 +1808,7 @@ export default {
   },
 
   files: {
+    open: 'فتح',
     title: 'الملفات',
     hint: 'نختار الملف المناسب لهذا العميل، وتعرف إن فتحه.',
     projectTitle: 'ملفات المشروع',
@@ -2359,6 +2376,12 @@ export default {
   },
 
   marketingSales: {
+    sourceTitle: 'حسب مصدر العميل',
+    sourceHint: 'كل عميل حسب المنصة التي جاء منها — متاح دائماً، دون ربط حسابات إعلانية.',
+    unknownSource: 'مصدر غير معروف',
+    noLeads: 'لا عملاء في هذه الفترة.',
+    campaignTitle: 'حسب الحملات المزامنة',
+    noSyncedCampaigns: 'لا توجد حملات مزامنة من حسابات إعلانية، فلا أرقام إنفاق أو حملات هنا. الأرقام الفعلية أعلاه حسب مصدر العميل. اربط حساباً إعلانياً من التكاملات لرؤية الإنفاق والعائد.',
     by: { platform: 'حسب المنصة', project: 'حسب المشروع', company: 'حسب الشركة' },
     qualifiedBy: 'المؤهلون',
     unassigned: 'غير مرتبط',
@@ -3467,6 +3490,10 @@ export default {
     sla_late: {
       finding: '{{count}} عميلًا مهتمًا تجاوزوا مهلة الرد.',
       impact: 'مهتمون يبرُدون كل دقيقة.', action: 'وزّعهم الآن على من هو متاح.',
+    },
+    no_tracking_links: {
+      finding: '{{percent}}٪ من العملاء وصلوا دون رابط تتبع؛ نعرف منصتهم لكن لا نعرف أي رابط أو حملة جاءوا منها.',
+      impact: 'لا نعرف أي إعلان بعينه يستحق الإنفاق.', action: 'أنشئ رابط تتبع لكل إعلان ومصدر.',
     },
     no_attribution: {
       finding: '{{percent}}٪ من العملاء بلا مصدر معروف.',

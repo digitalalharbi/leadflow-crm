@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, ChevronDown, LogOut, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CommandPalette } from '@/components/layout/CommandPalette'
+import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher'
 import { CompanySwitcher } from '@/components/company/CompanySwitcher'
 import { BrandLockup } from '@/components/brand'
 import { useNavigation } from '@/components/layout/navigation'
@@ -225,6 +226,7 @@ export function Topbar() {
             >
               {t('nav.profile')}
             </DropdownItem>
+            {!isSuperAdmin && <WorkspaceSwitcher onDone={close} />}
             <div className="border-t border-[var(--color-line)] px-3 py-2" role="group" aria-label={t('settings.language')}>
               <p className="mb-1 text-[0.8125rem] text-[var(--color-ink-subtle)]">{t('settings.language')}</p>
               <div className="flex gap-1">

@@ -200,6 +200,11 @@ export function recordOutcome(payload: {
   outcome: Outcome
   note?: string
   skip?: string[]
+  /** A sale's value, a loss's reason, a booked visit's time, the next reminder's time. */
+  deal_value?: number
+  lost_reason_id?: string
+  appointment_at?: string
+  follow_up_at?: string
 }) {
   return apiPost<OutcomeResult>('/work/outcome', payload)
 }

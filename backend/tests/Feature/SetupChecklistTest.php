@@ -39,8 +39,10 @@ class SetupChecklistTest extends TestCase
 
     public function test_it_reports_every_setup_step(): void
     {
+        // In the order a company sets up: workspace → company → team → roles → project → sources →
+        // (optional) integrations → (optional) import → how leads are shared → the response promise → automation → the proof.
         $this->assertSame([
-            'identity', 'projects', 'team', 'sources',
+            'workspace', 'identity', 'team', 'roles', 'projects', 'sources', 'integrations', 'import',
             'assignment', 'sla', 'automation', 'test_lead',
         ], array_keys($this->steps()));
     }

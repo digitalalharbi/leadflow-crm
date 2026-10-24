@@ -52,6 +52,11 @@ class SendDigests extends Command
             ->when($this->option('tenant'), fn ($q, $slug) => $q->where('slug', $slug))->get());
 
         foreach ($tenants as $tenant) {
+            // A closed subscription (suspended, cancelled, lapsed) gets no summaries until it reopens.
+            if (! $tenant->isSubscriptionUsable()) {
+                continue;
+            }
+
             try {
                 $local = CarbonImmutable::now((string) ($tenant->settings?->timezone ?: 'Asia/Riyadh'));
                 $force = (bool) $this->option('now');

@@ -13,7 +13,7 @@ return [
 
     'from' => [
         'address' => env('LEADFLOW_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'reports@example.test')),
-        'name' => env('LEADFLOW_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'Mohtam')),
+        'name' => env('LEADFLOW_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'مهتم')),
     ],
 
     /*

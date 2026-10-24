@@ -17,7 +17,7 @@ import { LinkWizard } from '@/components/tracking/LinkWizard'
 import { QrDialog } from '@/components/tracking/QrDialog'
 import { fetchLinks, type TrackingLink } from '@/features/tracking'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
-import { can, useAuth } from '@/stores/auth'
+import { can, entitled, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 
 const TABS = ['links', 'forms', 'qr', 'health', 'attribution', 'destinations'] as const
@@ -39,9 +39,13 @@ export function TrackingPage() {
   // How platforms are doing and who gets the credit are analyses: they take the reports permission.
   const analytics = can.viewReports(user)
   // Forms are the landing pages' questions and destinations are where events go: the manager's side of tracking, not a broker's.
-  const tabs = TABS.filter((key) => key === 'links' || key === 'qr' || (key === 'forms' ? analytics || canEdit : key === 'destinations' ? canEdit : analytics))
+  const subscription = useAuth((s) => s.subscription)
+  // And each tab is a feature the plan includes or does not; the server refuses the data of one it does not.
+  const FEATURE: Record<Tab, Parameters<typeof entitled>[1]> = { links: 'tracking_hub', qr: 'tracking_hub', health: 'tracking_hub', forms: 'advanced_forms', attribution: 'attribution', destinations: 'api' }
+  const hasLinks = entitled(subscription, 'tracking_hub')
+  const tabs = TABS.filter((key) => entitled(subscription, FEATURE[key]) && (key === 'links' || key === 'qr' || (key === 'forms' ? analytics || canEdit : key === 'destinations' ? canEdit : analytics)))
 
-  const [tab, setTab] = useState<Tab>('links')
+  const [tab, setTab] = useState<Tab>(tabs[0] ?? 'links')
   const [days, setDays] = useState(30)
   const [openId, setOpenId] = useState<string | null>(null)
   const [drawer, setDrawer] = useState(false)
@@ -49,7 +53,7 @@ export function TrackingPage() {
   const [wizard, setWizard] = useState(false)
   const [analyticsId, setAnalyticsId] = useState<string | null>(null)
 
-  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['tracking-links', days], queryFn: () => fetchLinks(days), enabled: canSee })
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['tracking-links', days], queryFn: () => fetchLinks(days), enabled: canSee && hasLinks })
 
   // Money and attribution: the people who may read reports, as in the navigation and the API.
   if (!canSee) return <Navigate to="/" replace />

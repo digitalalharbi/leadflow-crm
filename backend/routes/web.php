@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\SharedFileController;
 use App\Http\Controllers\ApprovalLinkController;
 use App\Http\Controllers\EmailTrackingController;
+use App\Http\Controllers\SignedFileController;
 use App\Http\Controllers\TrackerScriptController;
 use App\Http\Controllers\TrackingRedirectController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,12 @@ Route::get('/', fn () => response()->json([
  */
 Route::get('/approve/{token}', [ApprovalLinkController::class, 'show'])->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{48}');
 Route::post('/approve/{token}', [ApprovalLinkController::class, 'decide'])->middleware('throttle:10,1')->where('token', '[A-Za-z0-9]{48}');
+
+// Staff opening a company file: a five-minute signed link for one file of one company.
+Route::get('/files/{file}', SignedFileController::class)
+    ->middleware(['signed', 'throttle:60,1'])
+    ->whereUuid('file')
+    ->name('files.signed');
 
 Route::get('/f/{token}', SharedFileController::class)
     ->middleware('throttle:60,1')

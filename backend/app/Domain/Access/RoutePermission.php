@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 class RoutePermission
 {
     /** Paths every signed-in person may use, whatever their role. */
-    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles'];
+    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles', 'billing'];
 
     /** First path segment → area. */
     private const AREAS = [
@@ -30,7 +30,7 @@ class RoutePermission
         'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share', 'report-schedules' => 'reports_share', 'email-deliveries' => 'reports_share',
         'automation' => 'automation', 'scheduled-actions' => 'automation',
         'integrations' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
-        'users' => 'users', 'access' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
+        'users' => 'users', 'invitations' => 'users', 'access' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
     ];
 
     /** @return string|null "resource.action", or null for a path no area claims; '' for an open one */

@@ -198,7 +198,7 @@ const contact: Bilingual = {
     sections: [
       { id: 'trial', heading: 'طلب تجربة', paragraphs: ['التجربة بطلب من فريقنا ولا يوجد تسجيل ذاتي بعد. راسلنا على {email} واذكر اسم شركتك وعدد فريق المبيعات والمنصات الإعلانية التي تستخدمها، وسنرتّب معك الخطوة التالية.'] },
       { id: 'support', heading: 'الدعم لمن لديه حساب', paragraphs: ['إن كان لديك حساب، ابدأ بمسؤول مساحة العمل في شركتك. وإن لم يحل المسألة، راسلنا على {email} مع اسم مساحة العمل ووصف ما حدث.'] },
-      { id: 'password', heading: 'نسيت كلمة المرور', paragraphs: ['لا توجد حاليًا إعادة تعيين ذاتية لكلمة المرور من شاشة الدخول. اطلب من مسؤول مساحة العمل في شركتك إعادة تعيينها لك. وإن كنت أنت المسؤول، راسلنا من البريد المرتبط بالحساب على {email}.'] },
+      { id: 'password', heading: 'نسيت كلمة المرور', paragraphs: ['اختر «نسيت كلمة المرور» في شاشة الدخول واكتب بريدك؛ يصلك رابط صالح لساعة واحدة لتختار كلمة مرور جديدة بنفسك. لا تُرسل كلمات المرور بالبريد أبدًا. إن لم يصلك الرابط فراسلنا من البريد المرتبط بالحساب على {email}.'] },
       { id: 'privacy', heading: 'الخصوصية وحذف البيانات', paragraphs: ['لطلبات الاطلاع على البيانات أو حذفها، اتبع الخطوات في صفحة حذف البيانات.'] },
       { id: 'security', heading: 'الأمان', paragraphs: ['للإبلاغ عن ثغرة، راجع صفحة الأمان.'] },
       { id: 'company', heading: 'بيانات الجهة', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'العنوان: {address}.'] },
@@ -210,7 +210,7 @@ const contact: Bilingual = {
     sections: [
       { id: 'trial', heading: 'Request a trial', paragraphs: ['Trials are arranged by our team; there is no self-service sign-up yet. Write to {email} with your company’s name, the size of your sales team and the ad platforms you use, and we will arrange the next step with you.'] },
       { id: 'support', heading: 'Support for account holders', paragraphs: ['If you have an account, start with your workspace administrator. If that does not settle it, write to {email} with the workspace name and a description of what happened.'] },
-      { id: 'password', heading: 'Forgotten password', paragraphs: ['There is currently no self-service password reset on the sign-in screen. Ask your company’s workspace administrator to reset it for you. If you are the administrator, write from the email linked to the account to {email}.'] },
+      { id: 'password', heading: 'Forgotten password', paragraphs: ['Choose “Forgot password” on the sign-in screen and enter your email: you get a link, valid for one hour, to choose a new password yourself. Passwords are never sent by email. If the link does not arrive, write from the email linked to the account to {email}.'] },
       { id: 'privacy', heading: 'Privacy and data deletion', paragraphs: ['To ask to see or delete data, follow the steps on the data deletion page.'] },
       { id: 'security', heading: 'Security', paragraphs: ['To report a vulnerability, see the security page.'] },
       { id: 'company', heading: 'Provider details', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Address: {address}.'] },

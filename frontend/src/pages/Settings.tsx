@@ -2,8 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { BillingPanel } from '@/components/billing/BillingPanel'
 import { apiGet, apiPatch, apiPost } from '@/lib/api'
-import { can, useAuth } from '@/stores/auth'
+import { can, useAuth, useEntitled } from '@/stores/auth'
 import type { Thresholds } from '@/features/automation'
 import { useUi } from '@/stores/ui'
 import { SetupCheck } from '@/components/onboarding/SetupCheck'
@@ -12,7 +13,6 @@ import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
 import { SelfApprovalPanel } from '@/components/settings/SelfApprovalPanel'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
-import { formatDate } from '@/lib/format'
 import {
   Badge, Button, Card, CardBody, CardHeader, ErrorState, Input, Modal,
   PageHeader, Select, Skeleton, Textarea,
@@ -48,10 +48,11 @@ const WEEK = [
 ] as const
 
 export function SettingsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const user = useAuth((s) => s.user)
   const setBranding = useAuth((s) => s.setBranding)
+  const brandingOn = useEntitled('custom_branding')
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
@@ -107,6 +108,9 @@ export function SettingsPage() {
         <Skeleton className="h-96" />
       ) : (
         <>
+          {tab === 'branding' && canManage && !brandingOn && (
+            <p className="mb-3 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] p-3 text-[0.9375rem]" data-testid="branding-locked">{t('billing.brandingLocked')}</p>
+          )}
           {tab === 'branding' && canManage && (
             <BrandingForm
               branding={data.branding}
@@ -163,40 +167,10 @@ export function SettingsPage() {
 
           {tab === 'delivery' && canManage && <EmailDeliveryPanel />}
 
-          {tab === 'subscription' && (
-            <Card>
-              <CardHeader title={t('settings.subscription')} />
-              <CardBody className="space-y-3">
-                <Row label={t('settings.plan')} value={data.subscription.plan} />
-                <Row
-                  label={t('common.status')}
-                  value={
-                    <Badge tone={data.subscription.status === 'active' ? 'success' : 'info'}>
-                      {data.subscription.status}
-                    </Badge>
-                  }
-                />
-                {data.subscription.trial_ends_at && (
-                  <Row
-                    label={t('settings.trialEnds')}
-                    value={formatDate(data.subscription.trial_ends_at, i18n.language)}
-                  />
-                )}
-              </CardBody>
-            </Card>
-          )}
+          {tab === 'subscription' && <BillingPanel />}
         </>
       )}
     </>
-  )
-}
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3 text-[1rem]">
-      <span className="text-[var(--color-ink-muted)]">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
   )
 }
 

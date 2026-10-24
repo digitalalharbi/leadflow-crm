@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { apiGet, apiLogin, apiPost } from '../fixtures/api'
+import { apiGet, apiLogin, apiPlatformLogin, apiPost } from '../fixtures/api'
 import { PASSWORD } from '../fixtures/data'
-import { signIn, signInAs } from '../fixtures/pages'
-import { artisan, resetFixtures } from '../fixtures/seed'
+import { signIn, signInAs, signInPlatform } from '../fixtures/pages'
+import { artisan, linkFromEmail, resetFixtures } from '../fixtures/seed'
 
 /**
  * The commercial promise: a new customer is onboarded without a code change, a
@@ -29,8 +29,8 @@ test.describe('Tenant onboarding', () => {
   })
 
   test('a platform owner creates a client that is immediately usable', async ({ page }) => {
-    await signIn(page, 'owner@e2e.test')
-    await expect(page).toHaveURL(/\/platform/)
+    // The platform owner's own door.
+    await signInPlatform(page, 'owner@e2e.test')
 
     await page.getByRole('button', { name: 'عميل جديد' }).click()
 
@@ -48,7 +48,8 @@ test.describe('Tenant onboarding', () => {
 
     await dialog.getByLabel('اسم المدير').fill('مدير العميل الجديد')
     await dialog.getByLabel('بريد المدير').fill(adminEmail)
-    await dialog.getByLabel('كلمة مرور المدير').fill(PASSWORD)
+    // No password is typed for the owner: they get a link and choose their own.
+    await expect(dialog.getByTestId('owner-setup-note')).toBeVisible()
     await dialog.getByRole('button', { name: 'إنشاء' }).click()
 
     // The webhook endpoint is handed over at creation, shown exactly once.
@@ -60,10 +61,20 @@ test.describe('Tenant onboarding', () => {
     await expect(page.getByText(company)).toBeVisible()
   })
 
+  test('the new owner chooses their own password from the emailed setup link', async ({ page }) => {
+    const token = linkFromEmail(adminEmail, 'set-password')
+    await page.goto(`/set-password/${token}`)
+    await page.getByTestId('new-password').fill(PASSWORD)
+    await page.getByTestId('confirm-password').fill(PASSWORD)
+    await page.getByTestId('set-password-submit').click()
+    await expect(page).not.toHaveURL(/set-password/)
+    await expect(page.getByTestId('page-title')).toBeVisible()
+  })
+
   test('the identity the operator entered is the one the client gets', async () => {
     // Set on the creation form, visible on the client's own login screen before
     // anyone has signed in or touched settings.
-    const session = await apiLogin('owner@e2e.test')
+    const session = await apiPlatformLogin('owner@e2e.test')
     try {
       const branding = await apiGet<{
         company_name: string

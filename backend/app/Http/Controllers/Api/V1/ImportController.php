@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessLeadImport;
 use App\Models\Import;
 use App\Support\ApiResponse;
+use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -43,7 +44,7 @@ class ImportController extends Controller
         ]);
 
         $file = $request->file('file');
-        $path = $file->store('imports/'.$request->user()->tenant_id);
+        $path = $file->store(TenantStorage::dir($request->user()->tenant_id, 'imports'));
 
         $handle = fopen($file->getRealPath(), 'r');
         $headers = fgetcsv($handle) ?: [];

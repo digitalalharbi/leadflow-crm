@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
+use App\Http\Controllers\Api\V1\AccountAccessController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Api\V1\AuditTrailController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
+use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignController;
@@ -35,6 +37,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InsightController;
 use App\Http\Controllers\Api\V1\IntegrationController;
+use App\Http\Controllers\Api\V1\InvitationController;
 use App\Http\Controllers\Api\V1\JourneyController;
 use App\Http\Controllers\Api\V1\LandingFormController;
 use App\Http\Controllers\Api\V1\LeadAnswerController;
@@ -46,6 +49,8 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PipelineController;
+use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
+use App\Http\Controllers\Api\V1\Platform\PlatformAuthController;
 use App\Http\Controllers\Api\V1\ProjectAcquisitionController;
 use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
@@ -67,6 +72,10 @@ use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SelfApprovalController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SheetSourceController;
+use App\Http\Controllers\Api\V1\SuperAdmin\InvoiceController;
+use App\Http\Controllers\Api\V1\SuperAdmin\PlanController;
+use App\Http\Controllers\Api\V1\SuperAdmin\PlatformController;
+use App\Http\Controllers\Api\V1\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
@@ -79,7 +88,9 @@ use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
+use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\EmailInboundController;
+use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -100,6 +111,25 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    // Into an account without a password in hand. Every answer is the same whether or not an email is registered.
+    Route::middleware('throttle:login')->group(function () {
+        Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);
+        Route::get('/auth/password/links/{token}', [AccountAccessController::class, 'link'])->where('token', '[A-Za-z0-9]{48}');
+        Route::post('/auth/password/reset', [AccountAccessController::class, 'reset']);
+        Route::get('/public/invitations/{token}', [AccountAccessController::class, 'invitation'])->where('token', '[A-Za-z0-9]{48}');
+        Route::post('/public/invitations/{token}/accept', [AccountAccessController::class, 'accept'])->where('token', '[A-Za-z0-9]{48}');
+    });
+
+    // The platform owner's own door — never a company's login.
+    Route::post('/platform/auth/login', [PlatformAuthController::class, 'login'])->middleware('throttle:login');
+
+    Route::middleware(['auth:sanctum', EnsurePlatformSession::class])->prefix('platform/auth')->group(function () {
+        Route::get('/me', [PlatformAuthController::class, 'me']);
+        Route::post('/logout', [PlatformAuthController::class, 'logout']);
+        Route::post('/mfa/setup', [PlatformAuthController::class, 'setupMfa']);
+        Route::post('/mfa/confirm', [PlatformAuthController::class, 'confirmMfa'])->middleware('throttle:login');
+        Route::delete('/mfa', [PlatformAuthController::class, 'disableMfa'])->middleware('throttle:login');
+    });
 
     // What a landing page tells us a visitor did. Public; the link token says whose it is.
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:landing-beacon')->where('token', '[A-Za-z0-9]{6,24}');
@@ -170,11 +200,18 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        // One person in several companies: the server lists their memberships and moves the session.
+        Route::get('/auth/workspaces', [WorkspaceController::class, 'index']);
+        Route::post('/auth/workspaces/{uuid}/switch', [WorkspaceController::class, 'switch'])->middleware('throttle:login');
+        // Support ends from inside the company, with the support session's own token.
+        Route::post('/auth/impersonation/stop', [ImpersonationController::class, 'stop']);
+        // Outside `tenant.active`: a suspended company's admin can still read why, and what to do.
+        Route::get('/billing', [BillingController::class, 'show']);
         Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
         Route::patch('/auth/notification-preferences', [NotificationPreferenceController::class, 'update']);
         Route::get('/auth/notification-preferences/whatsapp-log', [NotificationPreferenceController::class, 'whatsappLog']);
@@ -186,7 +223,7 @@ Route::prefix('v1')->group(function () {
         | Only /auth/me and the logout routes stay outside, so the SPA can still
         | sign a user out of a suspended account.
         */
-        Route::middleware('tenant.active')->group(function () {
+        Route::middleware(['tenant.active', 'entitlements', 'audit.exports'])->group(function () {
             Route::get('/notifications', [NotificationController::class, 'index']);
             Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
                 ->whereUuid('id');
@@ -395,6 +432,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/projects/{uuid}/files', [ProjectFileController::class, 'store']);
             Route::patch('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'update']);
             Route::delete('/projects/{uuid}/files/{file}', [ProjectFileController::class, 'destroy']);
+            Route::get('/projects/{uuid}/files/{file}/link', [ProjectFileController::class, 'link']);
             Route::get('/leads/{uuid}/files', [ProjectFileController::class, 'forLead']);
             Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
             Route::post('/leads/{uuid}/files/send', [ProjectFileController::class, 'send']);
@@ -417,6 +455,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/access/users/{uuid}', [AccessController::class, 'effective']);
             Route::get('/users', [UserController::class, 'index']);
             Route::post('/users', [UserController::class, 'store']);
+            // Bringing people in: an invitation by email; nobody sets a password for anyone else.
+            Route::get('/invitations', [InvitationController::class, 'index']);
+            Route::post('/invitations', [InvitationController::class, 'store']);
+            Route::post('/invitations/{uuid}/resend', [InvitationController::class, 'resend']);
+            Route::delete('/invitations/{uuid}', [InvitationController::class, 'destroy']);
+            Route::post('/users/{uuid}/password-link', [UserController::class, 'passwordLink']);
             Route::patch('/users/{uuid}', [UserController::class, 'update']);
             Route::delete('/users/{uuid}', [UserController::class, 'destroy']);
 
@@ -613,6 +657,26 @@ Route::prefix('v1')->group(function () {
             Route::get('/tenants/{uuid}', [TenantController::class, 'show']);
             Route::patch('/tenants/{uuid}', [TenantController::class, 'update']);
             Route::post('/tenants/{uuid}/admins', [TenantController::class, 'createAdmin']);
+
+            // Support access: explicit start with a reason, short-lived, written to both trails.
+            Route::get('/impersonations', [ImpersonationController::class, 'index']);
+            Route::post('/tenants/{uuid}/impersonate', [ImpersonationController::class, 'start']);
+            Route::post('/impersonations/{uuid}/revoke', [ImpersonationController::class, 'revoke']);
+            Route::post('/tenants/{uuid}/owner', [TenantController::class, 'transferOwner']);
+            Route::post('/tenants/{uuid}/owner/setup-link', [TenantController::class, 'ownerSetupLink']);
+
+            // The SaaS business: catalogue, subscriptions, invoices, the owner's dashboard and trail.
+            Route::get('/dashboard', [PlatformController::class, 'dashboard']);
+            Route::get('/audit', [PlatformController::class, 'audit']);
+            Route::get('/plans', [PlanController::class, 'index']);
+            Route::post('/plans', [PlanController::class, 'store']);
+            Route::patch('/plans/{uuid}', [PlanController::class, 'update']);
+            Route::get('/tenants/{uuid}/subscription', [SubscriptionController::class, 'show']);
+            Route::patch('/tenants/{uuid}/subscription', [SubscriptionController::class, 'update']);
+            Route::post('/tenants/{uuid}/subscription/{action}', [SubscriptionController::class, 'transition'])
+                ->whereIn('action', ['activate', 'extend', 'past_due', 'suspend', 'reactivate', 'cancel']);
+            Route::post('/tenants/{uuid}/invoices', [InvoiceController::class, 'store']);
+            Route::post('/invoices/{uuid}/{action}', [InvoiceController::class, 'transition'])->whereIn('action', ['paid', 'void', 'issued']);
         });
     });
 });

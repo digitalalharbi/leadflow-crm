@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Analytics\SourceAttribution;
 use App\Domain\Campaigns\AdPlatform;
 use App\Domain\Campaigns\AdPlatformRegistry;
 use App\Domain\Campaigns\CampaignMetrics;
@@ -204,6 +205,13 @@ class CampaignController extends Controller
             'group' => $group,
             'rows' => $groups,
             'totals' => $metrics->totals($rows->all()),
+            // Two attributions, each named: campaign attribution needs synced campaigns; source attribution is every
+            // lead by the platform it came from, and is what a workspace without ad accounts reads.
+            'attribution' => [
+                'synced_campaigns' => $rows->count(),
+                'campaign_basis_available' => $rows->isNotEmpty(),
+            ],
+            'source_attribution' => SourceAttribution::between($request->user(), $from, $to),
             'currency' => $this->context->get()?->settings?->currency ?? 'SAR',
         ]);
     }

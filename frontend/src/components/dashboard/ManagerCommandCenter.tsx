@@ -163,17 +163,19 @@ function ManagerTiles({
   const k = data.kpis
   const pct = (v: number | null) => (v === null ? '—' : `${formatNumber(v, i18n.language)}%`)
   const trend = (key: 'leads' | 'qualified' | 'won') => data.trend.map((point) => point[key])
+  // Every tile says what it measures over — today, right now, or the selected period — so none reads as a contradiction of another.
+  const when = (key: string) => t(`manager.when.${data.periods?.[key] ?? 'period'}`, { count: data.days })
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" data-testid="manager-kpis">
-      <Gate element="dashboard.kpi.leads_today"><KpiCard testId="kpi-leads-today" valueTestId="kpi-leads-today-value" label={t('manager.kpi.leadsToday')} value={formatNumber(k.leads_today, i18n.language)} icon={Sparkles} spark={trend('leads')} to="/leads?view=new_today" /></Gate>
-      <Gate element="dashboard.kpi.qualified"><KpiCard testId="kpi-qualified" valueTestId="kpi-qualified-value" label={t('manager.kpi.qualified')} value={formatNumber(k.qualified, i18n.language)} icon={BadgeCheck} spark={trend('qualified')} to="/leads?view=qualified" /></Gate>
-      <Gate element="dashboard.kpi.overdue"><KpiCard testId="kpi-overdue" valueTestId="kpi-overdue-value" label={t('manager.kpi.overdue')} value={formatNumber(k.overdue_follow_ups, i18n.language)} icon={BellRing} tone={k.overdue_follow_ups > 0 ? 'bad' : 'good'} to="/leads?overdue=1" /></Gate>
-      <Gate element="dashboard.kpi.stalled"><KpiCard testId="kpi-stalled" valueTestId="kpi-stalled-value" label={t('manager.kpi.stalled')} value={formatNumber(k.stalled, i18n.language)} icon={Snowflake} tone={k.stalled > 0 ? 'warn' : 'good'} to="/leads?view=stalled" /></Gate>
-      <Gate element="dashboard.kpi.response"><KpiCard testId="kpi-response" valueTestId="kpi-response-value" label={t('manager.kpi.response')} value={duration(k.avg_response_seconds)} icon={Clock} /></Gate>
-      <Gate element="dashboard.kpi.appointment_rate"><KpiCard testId="kpi-appointments" valueTestId="kpi-appointments-value" label={t('manager.kpi.appointmentRate')} value={pct(k.appointment_rate)} icon={CalendarCheck} /></Gate>
-      <Gate element="dashboard.kpi.conversion"><KpiCard testId="kpi-conversion" valueTestId="kpi-conversion-value" label={t('manager.kpi.conversion')} value={pct(k.conversion_rate)} icon={TrendingUp} spark={trend('won')} /></Gate>
-      {can.has(user, 'revenue.view') && <Gate element="dashboard.kpi.revenue"><KpiCard testId="kpi-revenue" valueTestId="kpi-revenue-value" label={t('manager.kpi.revenue')} value={money(k.revenue)} icon={Coins} spark={trend('won')} /></Gate>}
+      <Gate element="dashboard.kpi.leads_today"><KpiCard testId="kpi-leads-today" valueTestId="kpi-leads-today-value" label={`${t('manager.kpi.leadsToday')} · ${when('leads_today')}`} value={formatNumber(k.leads_today, i18n.language)} icon={Sparkles} spark={trend('leads')} to="/leads?view=new_today" /></Gate>
+      <Gate element="dashboard.kpi.qualified"><KpiCard testId="kpi-qualified" valueTestId="kpi-qualified-value" label={`${t('manager.kpi.qualified')} · ${when('qualified')}`} value={formatNumber(k.qualified, i18n.language)} icon={BadgeCheck} spark={trend('qualified')} to="/leads?view=qualified" /></Gate>
+      <Gate element="dashboard.kpi.overdue"><KpiCard testId="kpi-overdue" valueTestId="kpi-overdue-value" label={`${t('manager.kpi.overdue')} · ${when('overdue_follow_ups')}`} value={formatNumber(k.overdue_follow_ups, i18n.language)} icon={BellRing} tone={k.overdue_follow_ups > 0 ? 'bad' : 'good'} to="/leads?overdue=1" /></Gate>
+      <Gate element="dashboard.kpi.stalled"><KpiCard testId="kpi-stalled" valueTestId="kpi-stalled-value" label={`${t('manager.kpi.stalled')} · ${when('stalled')}`} value={formatNumber(k.stalled, i18n.language)} icon={Snowflake} tone={k.stalled > 0 ? 'warn' : 'good'} to="/leads?view=stalled" /></Gate>
+      <Gate element="dashboard.kpi.response"><KpiCard testId="kpi-response" valueTestId="kpi-response-value" label={`${t('manager.kpi.response')} · ${when('avg_response_seconds')}`} value={duration(k.avg_response_seconds)} icon={Clock} /></Gate>
+      <Gate element="dashboard.kpi.appointment_rate"><KpiCard testId="kpi-appointments" valueTestId="kpi-appointments-value" label={`${t('manager.kpi.appointmentRate')} · ${when('appointment_rate')}`} value={pct(k.appointment_rate)} icon={CalendarCheck} /></Gate>
+      <Gate element="dashboard.kpi.conversion"><KpiCard testId="kpi-conversion" valueTestId="kpi-conversion-value" label={`${t('manager.kpi.conversion')} · ${when('conversion_rate')}`} value={pct(k.conversion_rate)} icon={TrendingUp} spark={trend('won')} /></Gate>
+      {can.has(user, 'revenue.view') && <Gate element="dashboard.kpi.revenue"><KpiCard testId="kpi-revenue" valueTestId="kpi-revenue-value" label={`${t('manager.kpi.revenue')} · ${when('revenue')}`} value={money(k.revenue)} icon={Coins} spark={trend('won')} /></Gate>}
       <Gate element="dashboard.kpi.period"><KpiCard testId="kpi-period" valueTestId="kpi-period-value" label={t('manager.kpi.period', { days: data.days })} value={formatNumber(k.leads_period, i18n.language)} icon={Target} spark={trend('leads')} /></Gate>
     </div>
   )

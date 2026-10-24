@@ -121,6 +121,8 @@ class ImportantAlerts
     {
         $project = $lead->project_id ? ($lead->project?->name ?? Project::withoutGlobalScopes()->whereKey($lead->project_id)->value('name')) : null;
         $platform = $lead->platform ? Platform::labelFor((string) ($lead->platform instanceof \BackedEnum ? $lead->platform->value : $lead->platform)) : null;
+        // A project already named "مشروع …" is not called "مشروع مشروع …".
+        $project = $project !== null ? preg_replace('/^مشروع\s+/u', '', $project) : null;
         $parts = array_filter([$project ? "مشروع {$project}" : null, $platform ? "عبر {$platform}" : null]);
 
         return $parts === [] ? '' : ' — '.implode(' · ', $parts);

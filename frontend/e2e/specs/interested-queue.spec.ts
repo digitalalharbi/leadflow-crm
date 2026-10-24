@@ -103,6 +103,9 @@ test.describe('Interested queue — اعمل الآن', () => {
     await page.goto('/work')
 
     await page.getByTestId('outcome-not_interested').click()
+    // A loss is recorded with its reason.
+    await page.getByTestId('outcome-lost-reason').selectOption({ index: 1 })
+    await page.getByTestId('outcome-details-save').click()
     await expect(page.getByTestId('work-empty')).toBeVisible()
   })
 

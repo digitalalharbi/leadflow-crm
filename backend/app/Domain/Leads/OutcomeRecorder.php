@@ -3,6 +3,7 @@
 namespace App\Domain\Leads;
 
 use App\Domain\Visits\ReservationService;
+use App\Domain\Visits\VisitWorkflow;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Events\LeadLost;
@@ -12,8 +13,10 @@ use App\Events\LeadStageChanged;
 use App\Events\LeadWon;
 use App\Models\FollowUp;
 use App\Models\Lead;
+use App\Models\LostReason;
 use App\Models\User;
 use App\Services\Leads\ActivityLogger;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -131,12 +134,18 @@ class OutcomeRecorder
     /**
      * @return array{lead: Lead, stage_changed: bool, follow_up: ?FollowUp, summary: string}
      */
-    public function record(Lead $lead, string $outcome, User $actor, ?string $note = null, string $via = 'work_queue'): array
+    /**
+     * `$details` is what the tap alone cannot say: a sale's value, a loss's reason, a booked visit's time, a reminder's
+     * chosen time. Each lands on the record it belongs to, in the same transaction.
+     *
+     * @param  array{deal_value?: float|int|string|null, lost_reason_id?: string|null, appointment_at?: string|null, follow_up_at?: string|null}  $details
+     */
+    public function record(Lead $lead, string $outcome, User $actor, ?string $note = null, string $via = 'work_queue', array $details = []): array
     {
         $spec = self::OUTCOMES[$outcome];
         $from = $lead->status;
 
-        return DB::transaction(function () use ($lead, $spec, $outcome, $actor, $note, $from, $via) {
+        return DB::transaction(function () use ($lead, $spec, $outcome, $actor, $note, $from, $via, $details) {
             $this->activities->log($lead, $spec['activity'], $actor,
                 $note ?: $spec['label'],
                 ['outcome' => $outcome, 'via' => $via]);
@@ -162,8 +171,25 @@ class OutcomeRecorder
              */
             $lead->last_contact_at = now();
 
+            // The sale's value and the loss's reason travel with the stage change, so the events it fires carry them.
+            if ($outcome === 'won' && filled($details['deal_value'] ?? null)) {
+                $lead->deal_value_minor = (int) round((float) $details['deal_value'] * 100);
+            }
+
+            if (in_array($outcome, ['lost', 'not_interested'], true) && filled($details['lost_reason_id'] ?? null)) {
+                $lead->lost_reason_id = LostReason::where('uuid', $details['lost_reason_id'])->firstOrFail()->id;
+            }
+
             $stageChanged = $this->advance($lead, $spec['stage']);
-            $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label'], $via);
+
+            $followUp = $this->scheduleNextStep($lead, $spec['followUpHours'], $actor, $spec['label'], $via,
+                filled($details['follow_up_at'] ?? null) ? Carbon::parse($details['follow_up_at']) : null);
+
+            // A booked visit is a real visit on the schedule, not only a word on the timeline.
+            if ($outcome === 'meeting_booked' && filled($details['appointment_at'] ?? null)) {
+                app(VisitWorkflow::class)->book($lead, $actor, Carbon::parse($details['appointment_at']));
+                $stageChanged = $stageChanged || $lead->fresh()->status !== $from;
+            }
 
             if ($outcome === 'reservation') {
                 $this->reserve($lead, $actor);
@@ -243,7 +269,7 @@ class OutcomeRecorder
         return true;
     }
 
-    private function scheduleNextStep(Lead $lead, ?int $hours, User $actor, string $label, string $via = 'work_queue'): ?FollowUp
+    private function scheduleNextStep(Lead $lead, ?int $hours, User $actor, string $label, string $via = 'work_queue', ?Carbon $at = null): ?FollowUp
     {
         if ($hours === null) {
             return null;
@@ -268,6 +294,11 @@ class OutcomeRecorder
         $pending = FollowUp::where('lead_id', $lead->id)->where('status', FollowUp::PENDING)->first();
 
         if ($pending) {
+            // The rep chose when to call again: the open reminder moves there rather than a second one stacking up.
+            if ($at !== null && ! $pending->due_at->equalTo($at)) {
+                $pending->update(['due_at' => $at]);
+            }
+
             return $pending;
         }
 
@@ -275,7 +306,7 @@ class OutcomeRecorder
             'lead_id' => $lead->id,
             'assigned_to' => $lead->assigned_to ?? $actor->id,
             'created_by' => $actor->id,
-            'due_at' => now()->addHours($hours),
+            'due_at' => $at ?? now()->addHours($hours),
             'note' => $label,
             'status' => FollowUp::PENDING,
         ]);

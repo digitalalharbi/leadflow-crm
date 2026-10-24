@@ -24,7 +24,9 @@ return [
     ],
 
     'defaults' => [
-        'plan' => 'trial',
+        // The plan a new company starts its trial on, by key. A trial sees the whole product; the owner picks the
+        // plan it converts to from the console.
+        'plan' => env('TENANCY_DEFAULT_PLAN', 'enterprise'),
         'trial_days' => 14,
         'locale' => 'ar',
         'currency' => 'SAR',

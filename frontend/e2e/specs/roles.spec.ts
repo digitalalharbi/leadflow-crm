@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { apiGet, apiLogin, apiPost } from '../fixtures/api'
 import { ALPHA } from '../fixtures/data'
 import { authenticateAs } from '../fixtures/pages'
-import { artisan, resetFixtures } from '../fixtures/seed'
+import { artisan, linkFromEmail, resetFixtures } from '../fixtures/seed'
 
 /**
  * Roles: what each is shown, and that the API refuses what the interface hides.
@@ -215,13 +215,22 @@ test.describe('Roles and permissions', () => {
     await page.getByRole('button', { name: 'إضافة مستخدم' }).click()
     await page.getByLabel('الاسم', { exact: false }).first().fill('عميل جديد')
     await page.locator('input[type=email]').fill('newclient@e2e.test')
-    await page.locator('input[type=password]').fill('Password123!')
     await page.getByLabel('الصلاحية').selectOption('client_viewer')
 
     await expect(page.getByTestId('user-projects-none')).toBeVisible()
     await page.getByTestId('user-projects').getByRole('button', { name: ALPHA.projects[2] }).click()
     await expect(page.getByTestId('user-projects-none')).toHaveCount(0)
-    await page.getByRole('button', { name: 'حفظ' }).click()
+    // Nobody types a password for anyone: the client is invited, and chooses their own from the emailed link.
+    await page.getByTestId('user-form-submit').click()
+    await expect(page.getByTestId('invitation-newclient@e2e.test')).toBeVisible()
+
+    const invite = linkFromEmail('newclient@e2e.test', 'invite')
+    await page.goto(`/invite/${invite}`)
+    await page.getByTestId('invite-name').fill('عميل جديد')
+    await page.getByTestId('invite-password').fill('Password123!')
+    await page.getByTestId('invite-confirm').fill('Password123!')
+    await page.getByTestId('invite-accept').click()
+    await expect(page).not.toHaveURL(/\/invite\//)
 
     await expect.poll(async () => (await asApi<{ project: { name: string } | null }[]>('newclient@e2e.test', '/api/v1/leads')).length).toBeGreaterThan(0)
     const seen = await asApi<{ project: { name: string } | null }[]>('newclient@e2e.test', '/api/v1/leads')

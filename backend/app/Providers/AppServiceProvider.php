@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Automation\Thresholds;
+use App\Domain\Billing\BillingProvider;
+use App\Domain\Billing\ManualBillingProvider;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Providers\ManualCallProvider;
 use App\Domain\Calls\Providers\TwilioCallProvider;
@@ -45,6 +48,7 @@ use App\Support\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
@@ -58,6 +62,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TenantContext::class);
         $this->app->singleton(CompanyContext::class);
         $this->app->singleton(ProjectContext::class);
+
+        // Manual until a payment provider is configured; the subscription model does not change when one is.
+        $this->app->bind(BillingProvider::class, fn () => match (config('billing.provider')) {
+            default => new ManualBillingProvider,
+        });
 
         /*
          * One client, one registry, for every code host. Bound here rather than
@@ -91,7 +100,18 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // A queue worker lives for days: judge each job by the lines as they are now.
-        Queue::before(fn () => Thresholds::flush());
+        // And start each job from no company at all: a job names its own tenant (withTenant), it never inherits the
+        // previous job's — nor a permission resolved for somebody whose role has since changed.
+        // (A `sync` job runs inside the request that dispatched it and keeps that request's company.)
+        Queue::before(function (JobProcessing $event) {
+            Thresholds::flush();
+            AccessResolver::flush();
+
+            if ($event->connectionName !== 'sync') {
+                app(TenantContext::class)->clear();
+                app(ProjectContext::class)->clear();
+            }
+        });
 
         /*
          * One listener for every lead event. Registered on the *interface*:

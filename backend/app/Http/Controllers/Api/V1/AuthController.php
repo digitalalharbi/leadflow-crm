@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
+use App\Domain\Billing\SubscriptionSummary;
+use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\BrandingResource;
 use App\Http\Resources\UserResource;
+use App\Models\Impersonation;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -29,7 +33,8 @@ class AuthController extends Controller
     {
         $email = strtolower($request->string('email')->toString());
 
-        $query = User::query()->with('tenant.branding', 'tenant.settings')->where('email', $email);
+        // A company's login finds a company's people only. The platform owner signs in at the platform's own door.
+        $query = User::query()->with('tenant.branding', 'tenant.settings')->whereNotNull('tenant_id')->where('email', $email);
 
         // Optional subdomain hint narrows the lookup when the same person has
         // accounts in more than one organisation.
@@ -45,9 +50,13 @@ class AuthController extends Controller
          * account shadow another's — check the password against each candidate
          * and prefer an active one, instead of guessing.
          */
-        $candidates = $query->orderByDesc('is_active')->orderBy('id')->get();
-
-        $user = $candidates->first(fn (User $candidate) => Hash::check($password, $candidate->password));
+        // One person may hold an account in several companies. Of the ones this password opens, an active one in an
+        // open company, the one used most recently first.
+        $candidates = $query->orderByRaw('last_login_at desc nulls last')->orderBy('id')->get();
+        $matching = $candidates->filter(fn (User $candidate) => Hash::check($password, $candidate->password));
+        $user = $matching->first(fn (User $u) => $u->is_active && $u->tenant?->is_active)
+            ?? $matching->first(fn (User $u) => $u->is_active)
+            ?? $matching->first();
 
         if (! $user) {
             /*
@@ -80,6 +89,15 @@ class AuthController extends Controller
             ]);
         }
 
+        return ApiResponse::success($this->issueSession($user, $request));
+    }
+
+    /**
+     * A new session for this account and the payload the SPA boots from. Used by the login, an accepted invitation, a
+     * password link and a workspace switch — every way into a company ends the same way.
+     */
+    public function issueSession(User $user, Request $request, string $action = 'auth.login'): array
+    {
         $user->loadMissing('tenant.branding', 'tenant.settings');
 
         // One token per device; logging in again elsewhere does not kill this session.
@@ -87,9 +105,10 @@ class AuthController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
-        $this->audit->log('auth.login', $user, null, ['ip' => $request->ip()]);
+        $this->audit->log($action, $user, null, ['ip' => $request->ip()]);
 
-        return ApiResponse::success([
+        // Built against this account's company, whatever the request's own context was.
+        return app(TenantContext::class)->withTenant($user->tenant, fn () => [
             'token' => $token,
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
@@ -100,6 +119,8 @@ class AuthController extends Controller
             'hidden_data' => Permissions::hiddenData($user),
             'hidden_elements' => Permissions::hiddenElements($user),
             'access_role' => AccessResolver::customRole($user)?->uuid,
+            // The plan's features, limits and lifecycle: the interface agrees with what the server enforces.
+            'subscription' => SubscriptionSummary::for($user->tenant),
             'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             /*
              * The language this workspace itself works in, read off its default
@@ -128,15 +149,32 @@ class AuthController extends Controller
             'hidden_data' => Permissions::hiddenData($user),
             'hidden_elements' => Permissions::hiddenElements($user),
             'access_role' => AccessResolver::customRole($user)?->uuid,
+            // The plan's features, limits and lifecycle: the interface agrees with what the server enforces.
+            'subscription' => ($tenant = app(TenantContext::class)->get() ?? $user->tenant) ? SubscriptionSummary::for($tenant) : null,
             'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             // The language this workspace itself works in — see login, which
             // sends the same field; the SPA re-hydrates from here on reload.
             'workspace_language' => app(PhoneLanguage::class)
                 ->forCallingCode($user->tenant?->settings?->default_country_code),
+            // A support session says so on every screen, with how long it has left.
+            'impersonation' => $this->impersonation($request),
             // Lets the SPA offer the sales-demo helpers. False in production, so
             // the controls simply do not exist for a real customer.
             'demo_mode' => ! app()->environment('production'),
         ]);
+    }
+
+    private function impersonation(Request $request): ?array
+    {
+        $token = $request->user()->currentAccessToken();
+
+        if (! $token instanceof PersonalAccessToken || $token->name !== ImpersonationController::TOKEN_NAME) {
+            return null;
+        }
+
+        $session = Impersonation::where('token_id', $token->id)->first();
+
+        return $session ? ['reason' => $session->reason, 'expires_at' => $session->expires_at->toIso8601String()] : null;
     }
 
     public function logout(Request $request)

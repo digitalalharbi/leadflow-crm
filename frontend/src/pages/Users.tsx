@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FolderLock, Pencil, Plus, ShieldCheck, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ApiError, apiGet, apiPatch, apiPost } from '@/lib/api'
+import { ApiError, apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
-import { formatNumber, formatLastSeen } from '@/lib/format'
+import { formatDate, formatNumber, formatLastSeen } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { fetchSalesTeam } from '@/features/conversations'
 import {
@@ -18,6 +18,9 @@ import { RolesMatrix } from '@/components/users/RolesMatrix'
 import { fetchRoles } from '@/features/roles'
 import { fetchPartners } from '@/features/partners'
 import type { User } from '@/types/api'
+
+// Roles that see every project or only the ones given. A new rep starts limited to their projects.
+const MANAGER_ROLES = ['manager', 'marketing_manager', 'sales_manager', 'sales']
 
 export function UsersPage() {
   const { t, i18n } = useTranslation()
@@ -35,6 +38,8 @@ export function UsersPage() {
   const [speaks, setSpeaks] = useState<string[]>([])
   const [handles, setHandles] = useState<('buy' | 'rent')[]>([])
   const [projectIds, setProjectIds] = useState<string[]>([])
+  // A manager, marketing manager or sales manager sees every project, or only the ones given — never "nothing said".
+  const [allProjects, setAllProjects] = useState(true)
   const [partnerId, setPartnerId] = useState('')
   const [matrixOpen, setMatrixOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -78,6 +83,9 @@ export function UsersPage() {
   // A role the workspace built behaves like a built-in one: that decides what the form asks next.
   const baseRole = chosen?.base_role ?? form.role
   const scoped = chosen?.scoped ?? false
+  const choosesScope = MANAGER_ROLES.includes(baseRole)
+  // The projects box: a scoped role's whole world, a manager's when not "all", a rep's projects to work on.
+  const picksProjects = scoped || (choosesScope && !allProjects)
   const partners = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: canManage && baseRole === 'broker_viewer', select: (d) => d.partners })
 
   /*
@@ -112,12 +120,11 @@ export function UsersPage() {
         // A role the workspace built travels as its id; the server brings the built-in role it behaves like.
         ...(form.role.startsWith('custom:') ? { access_role_id: form.role.slice(7) } : { role: form.role }),
         phone: form.phone || null,
-        // The projects a scoped role is limited to; sent for everybody so that moving someone out of a scoped role clears them.
-        project_ids: scoped ? projectIds : [],
+        // The projects a person is limited to (or works on); sent for everybody so that moving someone out of a scoped role clears them.
+        project_ids: picksProjects ? projectIds : [],
+        all_projects: choosesScope ? allProjects : !scoped,
         partner_id: baseRole === 'broker_viewer' ? partnerId || null : null,
       }
-
-      if (form.password) payload.password = form.password
 
       /*
        * Only when editing: these are the workspace's policy about an existing
@@ -127,12 +134,14 @@ export function UsersPage() {
         Object.assign(payload, routingPayload())
       }
 
-      return editing ? apiPatch(`/users/${editing.id}`, payload) : apiPost('/users', payload)
+      // Nobody is given a password: a new person gets an invitation link and chooses their own.
+      return editing ? apiPatch(`/users/${editing.id}`, payload) : apiPost('/invitations', payload)
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
+      void queryClient.invalidateQueries({ queryKey: ['invitations'] })
       void queryClient.invalidateQueries({ queryKey: ['assignable-users'] })
-      toast(t('settings.saved'), 'success')
+      toast(editing ? t('settings.saved') : t('account.invited'), 'success')
       close()
     },
     onError: (caught) => {
@@ -160,6 +169,7 @@ export function UsersPage() {
   function openCreate() {
     setEditing(null)
     setForm({ name: '', email: '', password: '', role: 'sales', phone: '' })
+    setAllProjects(false)
     setCities('')
     setWeight('1')
     setSpeaks([])
@@ -177,6 +187,7 @@ export function UsersPage() {
     setSpeaks(user.speaks ?? [])
     setHandles(user.handles ?? [])
     setProjectIds(user.project_ids ?? [])
+    setAllProjects(user.all_projects ?? true)
     setPartnerId(user.partner?.id ?? '')
     setFieldErrors({})
     setOpen(true)
@@ -267,7 +278,7 @@ export function UsersPage() {
                       {formatNumber(metricsByName.get(user.name)?.won ?? 0, i18n.language)}
                     </Td>
                     <Td className="hidden xl:table-cell">
-                      {user.last_login_at ? formatLastSeen(user.last_login_at, i18n.language) : '—'}
+                      {(user.last_active_at ?? user.last_login_at) ? formatLastSeen((user.last_active_at ?? user.last_login_at) as string, i18n.language) : '—'}
                     </Td>
                     <Td>
                       <Badge tone={user.is_active ? 'success' : 'neutral'}>
@@ -303,16 +314,18 @@ export function UsersPage() {
         )}
       </Card>
 
+      {canManage && <PendingInvitations />}
+
       <RolesMatrix open={matrixOpen} onClose={() => setMatrixOpen(false)} />
 
       <Modal
         open={open}
         onClose={close}
-        title={editing ? t('common.edit') : t('users.addUser')}
+        title={editing ? t('common.edit') : t('account.inviteTitleShort')}
         footer={
           <>
             <Button variant="ghost" onClick={close}>{t('common.cancel')}</Button>
-            <Button type="submit" form="user-form" loading={mutation.isPending}>{t('common.save')}</Button>
+            <Button type="submit" form="user-form" loading={mutation.isPending} data-testid="user-form-submit">{editing ? t('common.save') : t('account.sendInvite')}</Button>
           </>
         }
       >
@@ -346,22 +359,15 @@ export function UsersPage() {
             error={fieldErrors.email}
             onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
           />
-          <Input
-            dir="ltr"
-            type="password"
-            autoComplete="new-password"
-            label={t('auth.password')}
-            hint={editing ? t('common.optional') : undefined}
-            required={!editing}
-            value={form.password}
-            error={fieldErrors.password}
-            onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-          />
+          {!editing && <p className="t-caption" data-testid="invite-note">{t('account.inviteNote')}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label={t('users.role')}
               value={form.role}
-              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, role: e.target.value }))
+                if (!editing) setAllProjects(e.target.value !== 'sales')
+              }}
               disabled={editing?.id === currentUser?.id}
             >
               {(roles.data?.roles ?? [{ role: 'sales' }, { role: 'manager' }, { role: 'admin' }] as { role: string; id?: string; custom?: boolean; label?: string }[]).map((role) => (
@@ -385,8 +391,15 @@ export function UsersPage() {
             </Select>
           )}
 
+          {choosesScope && (
+            <label className="flex items-center gap-2 text-[0.9375rem]" data-testid="user-all-projects">
+              <input type="checkbox" checked={allProjects} onChange={(e) => setAllProjects(e.target.checked)} />
+              {t('account.allProjects')}
+            </label>
+          )}
+
           {/* A project manager, a client or a broker sees only these — and nothing at all until they are given one. */}
-          {scoped && (
+          {picksProjects && (
             <fieldset className="space-y-2" data-testid="user-projects">
               <legend className="t-small mb-1 flex items-center gap-1.5 font-medium"><FolderLock className="size-4" aria-hidden />{t('roles.projectsGiven')}</legend>
               <p className="t-caption">{t('roles.projectsHint')}</p>
@@ -527,5 +540,57 @@ export function UsersPage() {
         </form>
       </Modal>
     </>
+  )
+}
+
+interface Invitation {
+  id: string
+  email: string
+  name: string | null
+  role: string
+  expires_at: string
+  last_sent_at: string | null
+  expired: boolean
+}
+
+/** Invitations not yet accepted: each holds a seat until it is accepted, revoked or expires. */
+function PendingInvitations() {
+  const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const { data } = useQuery({ queryKey: ['invitations'], queryFn: () => apiGet<{ invitations: Invitation[] }>('/invitations') })
+
+  const act = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'resend' | 'revoke' }) => (action === 'resend' ? apiPost(`/invitations/${id}/resend`) : apiDelete(`/invitations/${id}`)),
+    onSuccess: (_, { action }) => {
+      void queryClient.invalidateQueries({ queryKey: ['invitations'] })
+      toast(action === 'resend' ? t('account.resent') : t('account.revoked'), 'success')
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const rows = data?.invitations ?? []
+
+  if (rows.length === 0) return null
+
+  return (
+    <Card className="mt-4" data-testid="pending-invitations">
+      <div className="border-b border-[var(--color-line)] px-4 py-3 font-semibold">{t('account.pending')}</div>
+      <ul className="divide-y divide-[var(--color-line)]">
+        {rows.map((row) => (
+          <li key={row.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-[0.9375rem]" data-testid={`invitation-${row.email}`}>
+            <span className="font-medium">{row.name ?? '—'}</span>
+            <span className="t-caption"><bdi dir="ltr">{row.email}</bdi></span>
+            <span className="t-caption">· {t(`roles.${row.role}`, { defaultValue: row.role })}</span>
+            <Badge tone={row.expired ? 'neutral' : 'info'}>{row.expired ? t('account.expired') : t('account.expires', { date: formatDate(row.expires_at, i18n.language) })}</Badge>
+            <span className="ms-auto flex gap-1">
+              <Button size="sm" variant="ghost" onClick={() => act.mutate({ id: row.id, action: 'resend' })} data-testid={`resend-${row.email}`}>{t('account.resend')}</Button>
+              <Button size="sm" variant="ghost" onClick={() => act.mutate({ id: row.id, action: 'revoke' })} data-testid={`revoke-${row.email}`}>{t('account.revoke')}</Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }

@@ -27,19 +27,23 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, HasUuid, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'tenant_id', 'name', 'email', 'password', 'role', 'access_role_id',
+        'tenant_id', 'name', 'email', 'password', 'role', 'access_role_id', 'all_projects',
         'phone', 'avatar_url', 'is_active', 'locale', 'away_until',
         'covers_cities', 'assignment_weight', 'speaks', 'handles', 'notification_prefs', 'partner_id',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'mfa_secret', 'mfa_recovery_codes'];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'all_projects' => 'boolean',
             'password' => 'hashed',
+            'mfa_secret' => 'encrypted',
+            'mfa_enabled_at' => 'datetime',
+            'mfa_recovery_codes' => 'encrypted:array',
             'is_active' => 'boolean',
             'away_until' => 'datetime',
             'covers_cities' => 'array',
@@ -267,7 +271,13 @@ class User extends Authenticatable
     {
         $custom = AccessResolver::customRole($this);
 
-        return $custom !== null ? $custom->project_scoped : ($this->role?->isProjectScoped() ?? false);
+        if ($custom !== null) {
+            return $custom->project_scoped;
+        }
+
+        // A manager-type role sees every project, or — when the admin said so — only the ones it was given.
+        return ($this->role?->isProjectScoped() ?? false)
+            || (in_array($this->role, [Role::Manager, Role::MarketingManager, Role::SalesManager], true) && $this->all_projects === false);
     }
 
     /** From outside the company: a read-only window. */

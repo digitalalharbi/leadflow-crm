@@ -27,15 +27,33 @@ describe('OutcomeSheet', () => {
     expect(screen.getByTestId('outcome-interested').className).toContain('min-h-14')
   })
 
-  it('saves the chosen outcome with its note, exactly once per press', () => {
+  it('saves the chosen outcome with its note and the visit time, exactly once per press', () => {
     const { onSave } = sheet()
 
     fireEvent.click(screen.getByTestId('outcome-meeting_booked'))
     fireEvent.change(screen.getByTestId('outcome-note'), { target: { value: 'يريد الزيارة السبت' } })
+
+    // A booked visit without its time is not saved half-told.
+    expect(screen.getByTestId('outcome-save')).toBeDisabled()
+
+    fireEvent.change(screen.getByTestId('outcome-appointment-at'), { target: { value: '2099-01-03T17:30' } })
     fireEvent.click(screen.getByTestId('outcome-save'))
 
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave).toHaveBeenCalledWith('meeting_booked', 'يريد الزيارة السبت')
+    expect(onSave).toHaveBeenCalledWith('meeting_booked', 'يريد الزيارة السبت', { appointment_at: '2099-01-03T17:30' })
+  })
+
+  it('a sale asks for its value and a loss for its reason before it can be saved', () => {
+    sheet()
+
+    fireEvent.click(screen.getByTestId('outcome-won'))
+    expect(screen.getByTestId('outcome-save')).toBeDisabled()
+    fireEvent.change(screen.getByTestId('outcome-deal-value'), { target: { value: '850000' } })
+    expect(screen.getByTestId('outcome-save')).toBeEnabled()
+
+    fireEvent.click(screen.getByTestId('outcome-lost'))
+    expect(screen.getByTestId('outcome-lost-reason')).toBeInTheDocument()
+    expect(screen.getByTestId('outcome-save')).toBeDisabled()
   })
 
   it('cannot be saved while a save is in flight, so an outcome is never recorded twice', () => {

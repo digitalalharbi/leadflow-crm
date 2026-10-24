@@ -31,6 +31,8 @@ class MonthlyExecutiveDigestTest extends TestCase
     {
         parent::setUp();
         $this->t = $this->provisionTenant('Month Co');
+        // A paying company: the test travels past the end of a trial, and a lapsed one gets no summaries.
+        $this->t['tenant']->forceFill(['subscription_status' => 'active', 'subscription_ends_at' => null])->save();
         $this->t['tenant']->settings->forceFill(['timezone' => 'Asia/Riyadh'])->save();
     }
 

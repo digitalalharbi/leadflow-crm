@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdAccount;
 use App\Models\AdConnection;
 use App\Models\Integration;
+use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,7 @@ use Throwable;
  */
 class AdConnectionController extends Controller
 {
-    public function __construct(private AdPlatformRegistry $registry, private PlatformVerification $verification) {}
+    public function __construct(private AdPlatformRegistry $registry, private PlatformVerification $verification, private AuditLogger $audit) {}
 
     public function show(string $platform)
     {
@@ -71,6 +72,9 @@ class AdConnectionController extends Controller
         // New credentials prove nothing yet.
         $connection->forceFill(['last_test_ok_at' => null, 'last_sync_ok_at' => null, 'last_error' => null])->save();
 
+        // Which keys changed, never their values.
+        $this->audit->log('ad_connection.saved', $request->user(), $connection, ['platform' => $platform, 'keys' => array_keys(array_filter($data['credentials'] ?? [], 'filled'))]);
+
         return ApiResponse::success(['connection' => $this->present($platform)]);
     }
 
@@ -97,10 +101,11 @@ class AdConnectionController extends Controller
         }
     }
 
-    public function destroy(string $platform)
+    public function destroy(Request $request, string $platform)
     {
         $this->authorize('create', Integration::class);
         AdConnection::query()->where('platform', $platform)->update(['is_active' => false, 'credentials' => null]);
+        $this->audit->log('ad_connection.removed', $request->user(), null, ['platform' => $platform]);
 
         return ApiResponse::success(['connection' => $this->present($platform)]);
     }

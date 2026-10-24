@@ -1,5 +1,6 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { RequireFeature } from '@/components/billing/FeatureLocked'
 import { useTranslation } from 'react-i18next'
 import { seesPage } from '@/lib/permissions'
 import { can, useAuth } from '@/stores/auth'
@@ -61,6 +62,10 @@ const UsersPage = lazy(() => import('@/pages/Users').then((m) => ({ default: m.U
 const SettingsPage = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.SettingsPage })))
 const ProfilePage = lazy(() => import('@/pages/Profile').then((m) => ({ default: m.ProfilePage })))
 const ReadinessPage = lazy(() => import('@/pages/Readiness').then((m) => ({ default: m.ReadinessPage })))
+const InvitationPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.InvitationPage })))
+const SetPasswordPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.SetPasswordPage })))
+const ForgotPasswordPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.ForgotPasswordPage })))
+const PlatformLoginPage = lazy(() => import('@/pages/PlatformLogin').then((m) => ({ default: m.PlatformLoginPage })))
 const PlatformPage = lazy(() => import('@/pages/Platform').then((m) => ({ default: m.PlatformPage })))
 
 /** «اعمل الآن»: one lead at a time on a phone, the full board on a laptop. */
@@ -139,7 +144,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   }
 
   if (status === 'anonymous') {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to={location.pathname.startsWith('/platform') ? '/platform/login' : '/login'} state={{ from: location }} replace />
   }
 
   return <>{children}</>
@@ -167,6 +172,12 @@ export function App() {
     <>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Into an account without a password in hand: an invitation, a first password, a forgotten one. */}
+        <Route path="/invite/:token" element={<Suspense fallback={<PageFallback />}><InvitationPage /></Suspense>} />
+        <Route path="/set-password/:token" element={<Suspense fallback={<PageFallback />}><SetPasswordPage /></Suspense>} />
+        <Route path="/forgot-password" element={<Suspense fallback={<PageFallback />}><ForgotPasswordPage /></Suspense>} />
+        {/* The platform owner's own door; a company's login never signs the owner in. */}
+        <Route path="/platform/login" element={<Suspense fallback={<PageFallback />}><PlatformLoginPage /></Suspense>} />
         {/* Public, no session: what مهتم is, and the pages a visitor, a customer's lead or a platform reviewer expects to find. */}
         <Route path="/welcome" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
         <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPage /></Suspense>} />
@@ -199,13 +210,13 @@ export function App() {
                 <Routes>
                   <Route path="/work" element={<RequirePermission any={['leads.execute']}><WorkRoute /></RequirePermission>} />
                   <Route path="/data-quality" element={<RequirePermission any={['leads.view']}><DataQualityPage /></RequirePermission>} />
-                  <Route path="/automation" element={<RequirePermission any={['automation.view']}><AutomationPage /></RequirePermission>} />
+                  <Route path="/automation" element={<RequirePermission any={['automation.view']}><RequireFeature any={['automations']}><AutomationPage /></RequireFeature></RequirePermission>} />
                   <Route path="/leads" element={<RequirePermission any={['leads.view']}><LeadsPage /></RequirePermission>} />
                   <Route path="/leads/:id" element={<RequirePermission any={['leads.view']}><LeadRoute /></RequirePermission>} />
                   <Route path="/pipeline" element={<RequirePermission any={['leads.view']}><PipelinePage /></RequirePermission>} />
                   <Route path="/campaigns" element={<RequirePermission any={['campaigns.view']}><CampaignsPage /></RequirePermission>} />
-                  <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><TrackingPage /></RequirePermission>} />
-                  <Route path="/tracking/forms/:id" element={<RequirePermission any={['tracking.view']}><Suspense fallback={<PageFallback />}><FormBuilderPage /></Suspense></RequirePermission>} />
+                  <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><RequireFeature any={['tracking_hub', 'advanced_forms', 'attribution']}><TrackingPage /></RequireFeature></RequirePermission>} />
+                  <Route path="/tracking/forms/:id" element={<RequirePermission any={['tracking.view']}><RequireFeature any={['advanced_forms']}><Suspense fallback={<PageFallback />}><FormBuilderPage /></Suspense></RequireFeature></RequirePermission>} />
                   <Route path="/audit" element={<RequirePermission any={['audit.view']}><AuditPage /></RequirePermission>} />
                   <Route path="/partners" element={<RequirePermission any={['partners.view']}><PartnersPage /></RequirePermission>} />
                   <Route path="/visits" element={<RequirePermission any={['visits.view', 'reservations.view']}><VisitsPage /></RequirePermission>} />

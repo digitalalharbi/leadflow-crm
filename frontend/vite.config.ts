@@ -43,6 +43,11 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
+      // The short links the API answers (a tracking click, a form's address, a shared file); /r and /i are pages.
+      '^/(t|f|s|tracker)/': {
+        target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
     },
   },
   /*
@@ -55,6 +60,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
+        target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      // The short links the API answers (a tracking click, a form's address, a shared file); /r and /i are pages.
+      '^/(t|f|s|tracker)/': {
         target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
         changeOrigin: true,
       },

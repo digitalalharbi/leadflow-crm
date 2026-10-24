@@ -10,6 +10,7 @@ use App\Models\AuditLog;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Models\ShortLink;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
 use App\Models\WebhookEndpoint;
@@ -74,7 +75,7 @@ class TrackingEngineTest extends TestCase
 
         $token = $response->json('data.link.token');
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{10}$/', $token);
-        $this->assertSame(rtrim(config('app.url'), '/').'/t/'.$token, $response->json('data.link.url'));
+        $this->assertSame(ShortLink::urlFor('tracking', $token), $response->json('data.link.url'));
         $this->assertSame(1, $this->asTenant($this->t['tenant'], fn () => AuditLog::where('action', 'tracking_link.created')->count()));
     }
 

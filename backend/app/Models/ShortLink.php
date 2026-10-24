@@ -90,6 +90,10 @@ class ShortLink extends Model
         $short = (bool) config('links.short_enabled');
         $base = $short ? config('links.short_base') : (config('links.public_base') ?: config('integrations.app_url'));
 
+        if ($type === 'tracking' && ! $short && config('links.tracking_base')) {
+            $base = config('links.tracking_base');
+        }
+
         return rtrim((string) $base, '/').'/'.config("links.prefixes.{$type}").'/'.$token;
     }
 

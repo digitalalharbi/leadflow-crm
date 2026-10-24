@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\SharedFileController;
 use App\Http\Controllers\ApprovalLinkController;
 use App\Http\Controllers\EmailTrackingController;
+use App\Http\Controllers\FormLinkController;
 use App\Http\Controllers\SignedFileController;
 use App\Http\Controllers\TrackerScriptController;
 use App\Http\Controllers\TrackingRedirectController;
@@ -37,9 +38,16 @@ Route::get('/files/{file}', SignedFileController::class)
     ->whereUuid('file')
     ->name('files.signed');
 
-Route::get('/f/{token}', SharedFileController::class)
+// A shared file: `/s/<token>` is the address now issued; `/f/<40 characters>` is the one already sent in messages.
+Route::get('/s/{token}', SharedFileController::class)
     ->middleware('throttle:60,1')
+    ->where('token', '[A-Za-z0-9]{20,64}')
     ->name('files.share');
+// `/f/<token>`: a landing form (a short token) is handed on to the page; a long one is a file already shared.
+Route::get('/f/{token}', FormLinkController::class)
+    ->middleware('throttle:300,1')
+    ->where('token', '[A-Za-z0-9]{6,64}')
+    ->name('forms.link');
 
 /*
  * Where Google sends the browser back to.

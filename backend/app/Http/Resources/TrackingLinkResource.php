@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ShortLink;
 use App\Models\TrackingLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,7 +21,7 @@ class TrackingLinkResource extends JsonResource
             'mode' => $this->mode ?? 'redirect',
             'landing_form' => $this->whenLoaded('landingForm', fn () => $this->landingForm ? ['id' => $this->landingForm->uuid, 'name' => $this->landingForm->name, 'status' => $this->landingForm->status] : null),
             'custom_params' => $this->custom_params ?? (object) [],
-            'landing_url' => ($this->mode ?? 'redirect') === 'landing' ? rtrim((string) config('app.frontend_url', config('app.url')), '/').'/l/'.$this->token : null,
+            'landing_url' => ($this->mode ?? 'redirect') === 'landing' ? ShortLink::urlFor('form', (string) $this->token) : null,
             'channel' => $this->channel,
             'project' => $this->whenLoaded('project', fn () => $this->project ? ['id' => $this->project->uuid, 'name' => $this->project->name] : null),
             'property' => $this->whenLoaded('property', fn () => $this->property ? ['id' => $this->property->uuid, 'code' => $this->property->code] : null),

@@ -174,6 +174,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         {/* Into an account without a password in hand: an invitation, a first password, a forgotten one. */}
         <Route path="/invite/:token" element={<Suspense fallback={<PageFallback />}><InvitationPage /></Suspense>} />
+        <Route path="/i/:token" element={<Suspense fallback={<PageFallback />}><InvitationPage /></Suspense>} />
         <Route path="/set-password/:token" element={<Suspense fallback={<PageFallback />}><SetPasswordPage /></Suspense>} />
         <Route path="/forgot-password" element={<Suspense fallback={<PageFallback />}><ForgotPasswordPage /></Suspense>} />
         {/* The platform owner's own door; a company's login never signs the owner in. */}
@@ -189,6 +190,7 @@ export function App() {
         {/* The page a tracking link opens: the project, and the form that turns interest into a lead. No session, no chrome. */}
         <Route path="/l/:token" element={<Suspense fallback={<PageFallback />}><LeadPage /></Suspense>} />
         {/* A live report behind a link: no session, no app chrome. */}
+        <Route path="/r/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
         <Route path="/reports/share/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
 
         <Route

@@ -38,8 +38,8 @@ class TeamAccessTest extends TestCase
     {
         $html = EmailDelivery::withoutGlobalScopes()->where('to_email', $email)->latest('id')->value('html');
         $this->assertNotNull($html, "No email was queued for {$email}.");
-        $this->assertMatchesRegularExpression('#/'.$path.'/([A-Za-z0-9]{48})#', $html);
-        preg_match('#/'.$path.'/([A-Za-z0-9]{48})#', $html, $m);
+        $this->assertMatchesRegularExpression('#/'.($path === 'invite' ? '(?:invite|i)' : $path).'/([A-Za-z0-9]{48})#', $html);
+        preg_match('#/'.($path === 'invite' ? '(?:invite|i)' : $path).'/([A-Za-z0-9]{48})#', $html, $m);
 
         return $m[1];
     }

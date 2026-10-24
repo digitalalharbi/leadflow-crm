@@ -52,6 +52,6 @@ class FileShare extends Model
 
     public function url(): string
     {
-        return rtrim((string) config('app.url'), '/').'/f/'.$this->token;
+        return ShortLink::urlFor('share', (string) $this->token);
     }
 }

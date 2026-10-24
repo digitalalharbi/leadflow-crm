@@ -103,6 +103,6 @@ class TrackingLink extends Model
     /** The URL that goes in the ad, the QR code, the broker's message. */
     public function url(): string
     {
-        return rtrim((string) config('app.url'), '/').'/t/'.$this->token;
+        return ShortLink::urlFor('tracking', (string) $this->token);
     }
 }

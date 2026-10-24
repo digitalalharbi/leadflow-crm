@@ -54,6 +54,16 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    # The short links that are answered by the API, not the app: a tracking click, a landing form's address, a shared file,
+    # the tracker script. /r (a report) and /i (an invitation) are pages, so they stay with the app below.
+    location ~ ^/(t|f|s|tracker)/ {
+        proxy_pass http://127.0.0.1:9081;   # api container
+        proxy_set_header Host api.mohtam.pro;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:9080;   # frontend container
         proxy_set_header Host $host;
@@ -86,3 +96,14 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+# Optional shorter domain for the same links (LINKS_SHORT_ENABLED=true, LINKS_SHORT_BASE=https://go.mohtam.pro).
+# Every address already issued on mohtam.pro keeps working; this only adds a second door.
+# server {
+#     listen 443 ssl;
+#     listen [::]:443 ssl;
+#     http2 on;
+#     server_name go.mohtam.pro;
+#     location ~ ^/(t|f|s|tracker)/ { proxy_pass http://127.0.0.1:9081; proxy_set_header Host api.mohtam.pro; }
+#     location / { proxy_pass http://127.0.0.1:9080; proxy_set_header Host mohtam.pro; }
+# }

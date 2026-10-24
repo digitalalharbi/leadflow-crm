@@ -60,6 +60,6 @@ class Invitation extends Model
 
     public function url(string $token): string
     {
-        return rtrim((string) config('integrations.app_url'), '/').'/invite/'.$token;
+        return ShortLink::urlFor('invitation', $token);
     }
 }

@@ -21,7 +21,7 @@ class Tenant extends Model
         'name', 'slug', 'plan', 'plan_id', 'subscription_status', 'billing_cycle',
         'extra_seats', 'seat_limit_override', 'limit_overrides', 'addons',
         'billing_provider', 'billing_customer_ref', 'billing_subscription_ref',
-        'trial_ends_at', 'subscription_ends_at', 'suspended_at', 'cancelled_at', 'status_reason', 'is_active',
+        'trial_ends_at', 'subscription_ends_at', 'suspended_at', 'cancelled_at', 'status_reason', 'is_active', 'owner_user_id',
     ];
 
     protected function casts(): array
@@ -42,6 +42,12 @@ class Tenant extends Model
     public function subscriptionPlan(): BelongsTo
     {
         return $this->belongsTo(Plan::class, 'plan_id')->withTrashed();
+    }
+
+    /** The person the company belongs to: an admin no other admin can demote or remove. */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
     }
 
     public function invoices(): HasMany

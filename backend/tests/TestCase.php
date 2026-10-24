@@ -13,7 +13,9 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantProvisioningService;
 use App\Support\TenantContext;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\Support\FakeMailer;
 
@@ -100,6 +102,21 @@ abstract class TestCase extends BaseTestCase
         $this->app->instance(MailerRegistry::class, $registry);
 
         return $fake;
+    }
+
+    /**
+     * The platform console answers only a session from the platform's own login (the `platform` ability). A test
+     * acting as the owner acts with that session; tests about the door itself sign in for real.
+     */
+    public function actingAs(Authenticatable $user, $guard = null)
+    {
+        if ($user instanceof User && $user->isSuperAdmin()) {
+            Sanctum::actingAs($user, ['platform']);
+
+            return $this;
+        }
+
+        return parent::actingAs($user, $guard);
     }
 
     /** The platform owner: no tenant, platform-level authority. */

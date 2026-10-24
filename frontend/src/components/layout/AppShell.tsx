@@ -5,6 +5,7 @@ import { useLiveFeed } from '@/hooks/useLiveFeed'
 import { useUi } from '@/stores/ui'
 import { useAuth } from '@/stores/auth'
 import { LifecycleBanner } from '@/components/billing/LifecycleBanner'
+import { SupportBanner } from '@/components/billing/SupportBanner'
 import { SubscriptionRequired } from '@/components/billing/SubscriptionRequired'
 import { BottomNav } from './BottomNav'
 import { IconRail } from './IconRail'
@@ -69,6 +70,7 @@ export function AppShell() {
               {/* A closed subscription replaces every page with the one that says why; the data stays on the server. */}
               {closed ? <SubscriptionRequired subscription={subscription} /> : (
                 <div className="space-y-4">
+                  <SupportBanner />
                   <LifecycleBanner />
                   <Outlet />
                 </div>

@@ -77,6 +77,10 @@ export interface User {
   project_scope?: string[] | null
   /** On a user in the team list: the projects that person was given. */
   project_ids?: string[]
+  /** A manager-type role: every project (true) or only `project_ids` (false). */
+  all_projects?: boolean
+  /** When they last did anything in the app. */
+  last_active_at?: string | null
   /** On a broker login: the partner whose leads and links are all they see. */
   partner?: { id: string; name: string } | null
   /** Cities this rep sells in. Empty means every city. */
@@ -601,6 +605,12 @@ export interface TenantSummary {
   leads_last_30_days: number | null
   last_lead_at: string | null
   created_at: string
+  plan_name?: string | null
+  /** The effective lifecycle state (a lapsed trial reads `trial_expired`). */
+  state?: string
+  seats_used?: number
+  seat_limit?: number | null
+  owner?: { id: string; name: string; email: string } | null
 }
 
 export interface AppNotification {

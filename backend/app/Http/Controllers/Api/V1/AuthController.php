@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
 use App\Domain\Billing\SubscriptionSummary;
+use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\BrandingResource;
 use App\Http\Resources\UserResource;
+use App\Models\Impersonation;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
@@ -31,7 +33,8 @@ class AuthController extends Controller
     {
         $email = strtolower($request->string('email')->toString());
 
-        $query = User::query()->with('tenant.branding', 'tenant.settings')->where('email', $email);
+        // A company's login finds a company's people only. The platform owner signs in at the platform's own door.
+        $query = User::query()->with('tenant.branding', 'tenant.settings')->whereNotNull('tenant_id')->where('email', $email);
 
         // Optional subdomain hint narrows the lookup when the same person has
         // accounts in more than one organisation.
@@ -139,10 +142,25 @@ class AuthController extends Controller
             // sends the same field; the SPA re-hydrates from here on reload.
             'workspace_language' => app(PhoneLanguage::class)
                 ->forCallingCode($user->tenant?->settings?->default_country_code),
+            // A support session says so on every screen, with how long it has left.
+            'impersonation' => $this->impersonation($request),
             // Lets the SPA offer the sales-demo helpers. False in production, so
             // the controls simply do not exist for a real customer.
             'demo_mode' => ! app()->environment('production'),
         ]);
+    }
+
+    private function impersonation(Request $request): ?array
+    {
+        $token = $request->user()->currentAccessToken();
+
+        if (! $token instanceof PersonalAccessToken || $token->name !== ImpersonationController::TOKEN_NAME) {
+            return null;
+        }
+
+        $session = Impersonation::where('token_id', $token->id)->first();
+
+        return $session ? ['reason' => $session->reason, 'expires_at' => $session->expires_at->toIso8601String()] : null;
     }
 
     public function logout(Request $request)

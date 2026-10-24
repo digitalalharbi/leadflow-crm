@@ -4,6 +4,7 @@ use App\Http\Middleware\EnforceEntitlements;
 use App\Http\Middleware\EnforcePermissions;
 use App\Http\Middleware\EnsureTenantIsActive;
 use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\GuardSupportSession;
 use App\Http\Middleware\HideRestrictedFields;
 use App\Http\Middleware\ResolveCompanyContext;
 use App\Http\Middleware\ResolveProjectScope;
@@ -87,6 +88,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'company' => ResolveCompanyContext::class,
             'tenant.active' => EnsureTenantIsActive::class,
             'entitlements' => EnforceEntitlements::class,
+            'support.guard' => GuardSupportSession::class,
             'project.scope' => ResolveProjectScope::class,
             'permission' => EnforcePermissions::class,
             'hide.fields' => HideRestrictedFields::class,

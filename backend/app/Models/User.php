@@ -32,7 +32,7 @@ class User extends Authenticatable
         'covers_cities', 'assignment_weight', 'speaks', 'handles', 'notification_prefs', 'partner_id',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'mfa_secret', 'mfa_recovery_codes'];
 
     protected function casts(): array
     {
@@ -40,6 +40,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'mfa_secret' => 'encrypted',
+            'mfa_enabled_at' => 'datetime',
+            'mfa_recovery_codes' => 'encrypted:array',
             'is_active' => 'boolean',
             'away_until' => 'datetime',
             'covers_cities' => 'array',

@@ -11,7 +11,11 @@ class EnsureSuperAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user()?->isSuperAdmin()) {
+        // A platform account AND a session issued by the platform's own door (it carries the `platform` ability):
+        // an enrol-only session, or any token that did not come from the platform login, is refused like anyone else.
+        $user = $request->user();
+
+        if (! $user?->isSuperAdmin() || ! $user->tokenCan('platform')) {
             return response()->json([
                 'success' => false,
                 'data' => null,

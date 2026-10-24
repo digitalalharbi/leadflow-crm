@@ -17,7 +17,9 @@ class Entitlements
 
     public static function for(Tenant $tenant): self
     {
-        return new self($tenant, $tenant->plan_id ? $tenant->subscriptionPlan()->first() : null);
+        $plan = $tenant->relationLoaded('subscriptionPlan') ? $tenant->subscriptionPlan : ($tenant->plan_id ? $tenant->subscriptionPlan()->first() : null);
+
+        return new self($tenant, $plan);
     }
 
     /** @return list<string> */

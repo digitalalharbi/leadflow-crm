@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ALPHA, BETA, PASSWORD } from '../fixtures/data'
-import { authenticateAs } from '../fixtures/pages'
-import { apiLogin } from '../fixtures/api'
+import { authenticateAsPlatform } from '../fixtures/pages'
+import { apiPlatformLogin } from '../fixtures/api'
 import { artisan, resetFixtures } from '../fixtures/seed'
 
 // The platform owner is not part of the tenant fixtures, so this spec makes
@@ -24,7 +24,7 @@ test.describe('Platform console', () => {
   })
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAs(page, OWNER)
+    await authenticateAsPlatform(page, OWNER)
     await page.goto('/platform')
     await expect(page.getByRole('heading', { name: 'إدارة المنصة', level: 1 })).toBeVisible()
   })
@@ -92,22 +92,24 @@ test.describe('Platform console', () => {
     await expect(panel.getByText(ALPHA.admin.email)).toBeVisible()
   })
 
-  test('changing a plan is written through to the API', async ({ page }) => {
+  test('activating a plan from the catalogue is written through to the API', async ({ page }) => {
     await page.getByTestId(`tenant-row-${ALPHA.slug}`).click()
 
     const panel = page.getByRole('dialog')
-    await panel.getByLabel('الباقة').fill('scale')
-    await panel.getByRole('button', { name: 'حفظ' }).click()
+    await panel.getByTestId('activate-plan').selectOption({ label: 'Growth' })
+    await panel.getByTestId('sub-activate').click()
 
-    await expect(page.getByText('تم الحفظ')).toBeVisible()
+    await expect(panel.getByTestId('sub-state')).toHaveText('نشط')
+    await expect(panel.getByTestId('sub-plan')).toHaveText('Growth')
 
-    const owner = await apiLogin(OWNER)
+    const owner = await apiPlatformLogin(OWNER)
     try {
       const response = await owner.context.get('/api/v1/super-admin/tenants')
       const body = await response.json()
       const alpha = body.data.find((t: { slug: string }) => t.slug === ALPHA.slug)
 
-      expect(alpha.plan).toBe('scale')
+      expect(alpha.plan).toBe('growth')
+      expect(alpha.subscription_status).toBe('active')
     } finally {
       await owner.dispose()
     }

@@ -14,6 +14,14 @@ import {
   Pagination, Select, SkeletonCards, SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { Tabs } from '@/components/ui'
+import { BusinessOverview } from '@/components/platform/BusinessOverview'
+import { PlansManager } from '@/components/platform/PlansManager'
+import { PlatformAuditList, SupportSessions } from '@/components/platform/SupportAndAudit'
+import { PlatformSecurity } from '@/components/platform/PlatformSecurity'
+import { SubscriptionManager } from '@/components/platform/SubscriptionManager'
+import { stashPlatformToken } from '@/lib/support'
+import { tokenStorage } from '@/lib/api'
 import type { PaginationMeta, TenantSummary, UserRole } from '@/types/api'
 
 interface PlatformStats {
@@ -34,6 +42,7 @@ interface TenantUser {
   email: string
   role: UserRole | null
   is_active: boolean
+  is_owner?: boolean
   last_login_at: string | null
 }
 
@@ -62,11 +71,14 @@ const EMPTY_FORM = {
   timezone: 'Asia/Riyadh',
   admin_name: '',
   admin_email: '',
-  admin_password: '',
 }
+
+const SECTIONS = ['companies', 'business', 'plans', 'support', 'audit', 'security'] as const
+type Section = (typeof SECTIONS)[number]
 
 export function PlatformPage() {
   const { t, i18n } = useTranslation()
+  const [section, setSection] = useState<Section>('companies')
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
@@ -154,6 +166,17 @@ export function PlatformPage() {
         }
       />
 
+      <div className="mb-4">
+        <Tabs testId="platform-tabs" value={section} onChange={setSection} items={SECTIONS.map((key) => ({ key, label: t(`platformAdmin.sections.${key}`) }))} />
+      </div>
+
+      {section === 'business' && <BusinessOverview />}
+      {section === 'plans' && <PlansManager />}
+      {section === 'support' && <SupportSessions />}
+      {section === 'audit' && <PlatformAuditList />}
+      {section === 'security' && <PlatformSecurity />}
+
+      {section === 'companies' && (<>
       {/*
        * Four numbers, each already judged. "12 tenants" needs a reader to
        * remember what normal is; "12 active of 14, 2 suspended" does not.
@@ -366,6 +389,7 @@ export function PlatformPage() {
           </>
         )}
       </Card>
+      </>)}
 
       <TenantPanel tenant={inspecting} onClose={() => setInspecting(null)} />
 
@@ -492,16 +516,7 @@ export function PlatformPage() {
               error={fieldErrors.admin_email}
               onChange={(e) => setForm((prev) => ({ ...prev, admin_email: e.target.value }))}
             />
-            <Input
-              required
-              dir="ltr"
-              type="password"
-              autoComplete="new-password"
-              label={t('superAdmin.adminPassword')}
-              value={form.admin_password}
-              error={fieldErrors.admin_password}
-              onChange={(e) => setForm((prev) => ({ ...prev, admin_password: e.target.value }))}
-            />
+            <p className="t-caption self-end" data-testid="owner-setup-note">{t('platformAdmin.ownerSetupNote')}</p>
           </div>
         </form>
       </Modal>
@@ -603,6 +618,22 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
+  const setupLink = useMutation({
+    mutationFn: () => apiPost(`/super-admin/tenants/${tenant?.id}/owner/setup-link`),
+    onSuccess: () => toast(t('account.setupLinkSent'), 'success'),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const transfer = useMutation({
+    mutationFn: (userId: string) => apiPost(`/super-admin/tenants/${tenant?.id}/owner`, { user_id: userId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenant', tenant?.id] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      toast(t('settings.saved'), 'success')
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
   const current = data?.tenant ?? tenant
 
   return (
@@ -615,11 +646,9 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
     >
       {current && (
         <div className="space-y-5">
-          <SubscriptionForm
-            tenant={current}
-            pending={save.isPending}
-            onSave={(payload) => save.mutate(payload)}
-          />
+          <SubscriptionManager tenantId={current.id} />
+
+          <SupportEntry tenantId={current.id} />
 
           {/*
            * Suspension is the one destructive control here, so it is separated
@@ -668,6 +697,14 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
                       <p className="t-caption truncate"><bdi dir="ltr">{user.email}</bdi></p>
                     </div>
                     <span className="t-caption shrink-0">{user.role ? t(`roles.${user.role}`) : '—'}</span>
+                    {user.is_owner ? (
+                      <>
+                        <Badge tone="info" testId="owner-badge">{t('platformAdmin.owner')}</Badge>
+                        <Button size="sm" variant="ghost" onClick={() => setupLink.mutate()} loading={setupLink.isPending} data-testid="owner-setup-link">{t('account.sendSetupLink')}</Button>
+                      </>
+                    ) : user.role === 'admin' && user.is_active ? (
+                      <Button size="sm" variant="ghost" onClick={() => transfer.mutate(user.id)} data-testid={`make-owner-${user.id}`}>{t('platformAdmin.makeOwner')}</Button>
+                    ) : null}
                     <span className="t-caption w-20 shrink-0 text-end">
                       {user.last_login_at ? formatLastSeen(user.last_login_at, i18n.language) : t('superAdmin.neverLoggedIn')}
                     </span>
@@ -683,56 +720,35 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
   )
 }
 
-/** Plan, status and the two dates billing actually turns on. */
-function SubscriptionForm({
-  tenant,
-  pending,
-  onSave,
-}: {
-  tenant: TenantSummary
-  pending: boolean
-  onSave: (payload: Record<string, unknown>) => void
-}) {
+/**
+ * Entering a company as support: a reason, then a short-lived session inside it as its owner. The console's own
+ * session is kept aside in this tab and comes back when the support session ends.
+ */
+function SupportEntry({ tenantId }: { tenantId: string }) {
   const { t } = useTranslation()
-  const [plan, setPlan] = useState(tenant.plan)
-  const [status, setStatus] = useState(tenant.subscription_status)
-  const [trialEnds, setTrialEnds] = useState(tenant.trial_ends_at?.slice(0, 10) ?? '')
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const [reason, setReason] = useState('')
+
+  const enter = useMutation({
+    mutationFn: () => apiPost<{ token: string }>(`/super-admin/tenants/${tenantId}/impersonate`, { reason }),
+    onSuccess: (result) => {
+      stashPlatformToken()
+      tokenStorage.set(result.token)
+      window.location.assign('/')
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
 
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSave({
-          plan,
-          subscription_status: status,
-          trial_ends_at: trialEnds || null,
-        })
-      }}
-    >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Input label={t('superAdmin.plan')} value={plan} onChange={(e) => setPlan(e.target.value)} />
-        <Select
-          label={t('superAdmin.subscription')}
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="trialing">{t('superAdmin.status.trialing')}</option>
-          <option value="active">{t('superAdmin.status.active')}</option>
-          <option value="past_due">{t('superAdmin.status.past_due')}</option>
-          <option value="cancelled">{t('superAdmin.status.cancelled')}</option>
-        </Select>
-        <Input
-          type="date"
-          dir="ltr"
-          label={t('superAdmin.trialEndsLabel')}
-          value={trialEnds}
-          onChange={(e) => setTrialEnds(e.target.value)}
-        />
+    <div className="space-y-2 rounded-[var(--radius-card)] border border-[var(--color-line)] p-3" data-testid="support-entry">
+      <p className="text-[0.9375rem] font-medium">{t('platformAdmin.enterAsSupport')}</p>
+      <p className="t-caption">{t('platformAdmin.enterHint')}</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <Input className="min-w-48 flex-1" label={t('platformAdmin.reason')} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="support-reason" />
+        <Button size="sm" variant="secondary" disabled={reason.trim().length < 5} loading={enter.isPending} onClick={() => enter.mutate()} data-testid="support-enter">{t('platformAdmin.enter')}</Button>
       </div>
-
-      <Button type="submit" size="sm" loading={pending}>{t('common.save')}</Button>
-    </form>
+    </div>
   )
 }
 

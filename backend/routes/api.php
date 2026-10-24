@@ -47,6 +47,8 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PipelineController;
+use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
+use App\Http\Controllers\Api\V1\Platform\PlatformAuthController;
 use App\Http\Controllers\Api\V1\ProjectAcquisitionController;
 use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
@@ -85,6 +87,7 @@ use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
 use App\Http\Controllers\EmailInboundController;
+use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -105,6 +108,16 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    // The platform owner's own door — never a company's login.
+    Route::post('/platform/auth/login', [PlatformAuthController::class, 'login'])->middleware('throttle:login');
+
+    Route::middleware(['auth:sanctum', EnsurePlatformSession::class])->prefix('platform/auth')->group(function () {
+        Route::get('/me', [PlatformAuthController::class, 'me']);
+        Route::post('/logout', [PlatformAuthController::class, 'logout']);
+        Route::post('/mfa/setup', [PlatformAuthController::class, 'setupMfa']);
+        Route::post('/mfa/confirm', [PlatformAuthController::class, 'confirmMfa'])->middleware('throttle:login');
+        Route::delete('/mfa', [PlatformAuthController::class, 'disableMfa'])->middleware('throttle:login');
+    });
 
     // What a landing page tells us a visitor did. Public; the link token says whose it is.
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:landing-beacon')->where('token', '[A-Za-z0-9]{6,24}');
@@ -175,11 +188,13 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        // Support ends from inside the company, with the support session's own token.
+        Route::post('/auth/impersonation/stop', [ImpersonationController::class, 'stop']);
         // Outside `tenant.active`: a suspended company's admin can still read why, and what to do.
         Route::get('/billing', [BillingController::class, 'show']);
         Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
@@ -620,6 +635,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/tenants/{uuid}', [TenantController::class, 'show']);
             Route::patch('/tenants/{uuid}', [TenantController::class, 'update']);
             Route::post('/tenants/{uuid}/admins', [TenantController::class, 'createAdmin']);
+
+            // Support access: explicit start with a reason, short-lived, written to both trails.
+            Route::get('/impersonations', [ImpersonationController::class, 'index']);
+            Route::post('/tenants/{uuid}/impersonate', [ImpersonationController::class, 'start']);
+            Route::post('/impersonations/{uuid}/revoke', [ImpersonationController::class, 'revoke']);
+            Route::post('/tenants/{uuid}/owner', [TenantController::class, 'transferOwner']);
 
             // The SaaS business: catalogue, subscriptions, invoices, the owner's dashboard and trail.
             Route::get('/dashboard', [PlatformController::class, 'dashboard']);

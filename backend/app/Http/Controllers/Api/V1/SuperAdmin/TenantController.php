@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1\SuperAdmin;
 
+use App\Domain\Billing\Entitlements;
+use App\Domain\Billing\SubscriptionSummary;
+use App\Domain\Billing\UsageMeter;
+use App\Domain\Platform\PlatformAudit;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
@@ -38,8 +43,9 @@ class TenantController extends Controller
                     ->where('name', 'ilike', '%'.$request->input('search').'%')
                     ->orWhere('slug', 'ilike', '%'.$request->input('search').'%')))
                 ->when($request->filled('status'), fn ($q) => $q->where('subscription_status', $request->input('status')))
-                ->with('branding')
+                ->with(['branding', 'subscriptionPlan', 'owner'])
                 ->withCount(['users', 'leads'])
+                ->withCount(['users as seats_used' => fn ($q) => $q->where('is_active', true)->whereNotIn('role', config('billing.seatless_roles'))])
                 // Usage, not just size: a thousand old leads and a dead month
                 // look identical without it.
                 ->withCount(['leads as leads_last_30_days' => fn ($q) => $q
@@ -108,8 +114,8 @@ class TenantController extends Controller
 
         $result = $this->provisioning->provision($data);
 
-        $this->audit->log('tenant.created', $request->user(), $result['tenant'], [
-            'slug' => $result['tenant']->slug,
+        app(PlatformAudit::class)->log('tenant.created', $request->user(), $result['tenant'], $result['tenant'], [
+            'slug' => $result['tenant']->slug, 'plan' => $result['tenant']->plan,
         ]);
 
         return ApiResponse::created([
@@ -136,7 +142,21 @@ class TenantController extends Controller
                     ->map(fn ($u) => [
                         'id' => $u->uuid, 'name' => $u->name, 'email' => $u->email,
                         'role' => $u->role?->value, 'is_active' => $u->is_active,
+                        'is_owner' => $u->id === $tenant->owner_user_id,
                         'last_login_at' => $u->last_login_at?->toIso8601String(),
+                    ]),
+                'subscription' => SubscriptionSummary::for($tenant, withUsage: true),
+                // Which integrations exist and whether they work — never a credential, a key or a token.
+                'integrations' => Integration::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()
+                    ->map(fn (Integration $i) => [
+                        'provider' => $i->provider?->value ?? (string) $i->provider,
+                        'name' => $i->name,
+                        'status' => $i->status,
+                        'is_active' => (bool) $i->is_active,
+                        'has_credentials' => $i->configuredCredentialKeys() !== [],
+                        'last_synced_at' => $i->last_synced_at?->toIso8601String(),
+                        'has_error' => filled($i->last_error),
+                        'leads_received' => (int) $i->leads_received,
                     ]),
             ]);
         });
@@ -178,7 +198,7 @@ class TenantController extends Controller
                     ->delete();
             }
 
-            $this->audit->log('tenant.updated', $request->user(), $tenant, ['fields' => array_keys($data)]);
+            app(PlatformAudit::class)->log(array_key_exists('is_active', $data) ? ($data['is_active'] ? 'tenant.enabled' : 'tenant.disabled') : 'tenant.updated', $request->user(), $tenant, $tenant, ['fields' => array_keys($data)]);
 
             return ApiResponse::success(['tenant' => $this->present($tenant->fresh(['branding'])->loadCount(['users', 'leads']))]);
         });
@@ -206,14 +226,38 @@ class TenantController extends Controller
                 'is_active' => true,
             ]);
 
-            $this->audit->log('tenant.admin_created', $request->user(), $admin, ['tenant' => $tenant->slug]);
+            app(PlatformAudit::class)->log('tenant.admin_created', $request->user(), $tenant, $admin, ['email' => $admin->email]);
 
             return ApiResponse::created(['user' => ['id' => $admin->uuid, 'name' => $admin->name, 'email' => $admin->email]]);
         });
     }
 
+    /** Hands the company to another of its active admins. Only the platform does this. */
+    public function transferOwner(Request $request, string $uuid)
+    {
+        return $this->context->withoutScope(function () use ($request, $uuid) {
+            $tenant = Tenant::where('uuid', $uuid)->firstOrFail();
+            $data = $request->validate(['user_id' => ['required', 'uuid']]);
+
+            $owner = User::where('tenant_id', $tenant->id)->where('uuid', $data['user_id'])->where('is_active', true)->firstOrFail();
+            abort_unless($owner->isAdmin(), 422, 'The owner must be an active admin of the company.');
+
+            $before = $tenant->owner_user_id;
+            $tenant->forceFill(['owner_user_id' => $owner->id])->save();
+
+            app(PlatformAudit::class)->log('tenant.owner_transferred', $request->user(), $tenant, $owner, ['from' => $before, 'to' => $owner->id]);
+            $this->audit->logForTenant($tenant->id, 'workspace.owner_changed', null, $owner, ['by' => 'platform', 'owner' => $owner->email]);
+
+            return ApiResponse::success(['tenant' => $this->present($tenant->fresh(['branding'])->loadCount(['users', 'leads']))]);
+        });
+    }
+
     private function present(Tenant $tenant): array
     {
+        $tenant->loadMissing(['subscriptionPlan', 'owner']);
+        $plan = $tenant->subscriptionPlan;
+        $owner = $tenant->owner;
+
         return [
             'id' => $tenant->uuid,
             'name' => $tenant->name,
@@ -222,7 +266,12 @@ class TenantController extends Controller
             'logo_url' => $tenant->branding?->logo_url,
             'primary_color' => $tenant->branding?->primary_color,
             'plan' => $tenant->plan,
+            'plan_name' => $plan?->name,
             'subscription_status' => $tenant->subscription_status,
+            'state' => $tenant->lifecycleState(),
+            'seats_used' => isset($tenant->seats_used) ? (int) $tenant->seats_used : UsageMeter::for($tenant)->activeSeats(),
+            'seat_limit' => Entitlements::for($tenant)->seatLimit(),
+            'owner' => $owner ? ['id' => $owner->uuid, 'name' => $owner->name, 'email' => $owner->email] : null,
             'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String(),
             'subscription_ends_at' => $tenant->subscription_ends_at?->toIso8601String(),
             'is_active' => $tenant->is_active,

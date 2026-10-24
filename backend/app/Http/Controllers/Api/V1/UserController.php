@@ -240,6 +240,12 @@ class UserController extends Controller
             }
         }
 
+        // The owner stays an active admin: only the platform hands a company to someone else.
+        if ($user->id === app(TenantContext::class)->get()?->owner_user_id
+            && ((isset($data['role']) && $data['role'] !== Role::Admin->value) || array_key_exists('access_role_id', $data) && $data['access_role_id'] !== null || (array_key_exists('is_active', $data) && ! $data['is_active']))) {
+            throw ValidationException::withMessages(['role' => ['The workspace owner stays an active admin. Ownership is transferred by the service provider.']]);
+        }
+
         // Reactivating someone, or moving an outside viewer onto the team, takes a seat.
         $seatless = config('billing.seatless_roles');
         $heldSeat = $user->is_active && ! in_array($user->role?->value, $seatless, true);
@@ -272,6 +278,10 @@ class UserController extends Controller
     {
         $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $user);
+
+        if ($user->id === app(TenantContext::class)->get()?->owner_user_id) {
+            throw ValidationException::withMessages(['user' => ['The workspace owner cannot be removed.']]);
+        }
 
         DB::transaction(function () use ($user) {
             $user->tokens()->delete();

@@ -122,6 +122,9 @@ class TenantProvisioningService
                     'locale' => $data['locale'] ?? $defaults['locale'],
                 ]);
 
+                // The account it was created with owns it: an admin no other admin can demote or remove.
+                $tenant->forceFill(['owner_user_id' => $admin->id])->save();
+
                 // Every tenant gets a working inbound endpoint from minute one.
                 $integration = Integration::create([
                     'provider' => IntegrationProvider::GenericWebhook,

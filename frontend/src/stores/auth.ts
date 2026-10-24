@@ -40,9 +40,13 @@ interface AuthState {
   workspaceLanguage: string | null
   /** The plan, its features and the lifecycle; null for the platform owner. */
   subscription: Subscription | null
+  /** Set while the platform owner works inside this workspace as support. */
+  impersonation: { reason: string; expires_at: string } | null
   /** null until the first /me call settles, so the router can hold the redirect. */
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
   login: (credentials: { email: string; password: string; tenant?: string }) => Promise<void>
+  /** The platform owner's own door. Resolves `mfa` when a code is still needed. */
+  loginPlatform: (credentials: { email: string; password: string; code?: string }) => Promise<'ok' | 'mfa'>
   logout: () => Promise<void>
   restore: () => Promise<void>
   setBranding: (branding: Branding) => void
@@ -60,6 +64,7 @@ export const useAuth = create<AuthState>((set) => ({
   demoMode: false,
   workspaceLanguage: null,
   subscription: null,
+  impersonation: null,
   status: 'idle',
 
   login: async (credentials) => {
@@ -77,6 +82,25 @@ export const useAuth = create<AuthState>((set) => ({
     })
   },
 
+  loginPlatform: async (credentials) => {
+    const data = await apiPost<{ token?: string; mfa_required?: boolean; user?: { id: string; name: string; email: string } }>('/platform/auth/login', credentials)
+
+    if (data.mfa_required || !data.token) return 'mfa'
+
+    tokenStorage.set(data.token)
+    // The console's session: no workspace, no plan. /auth/me fills in the rest on the next restore.
+    set({
+      user: { id: data.user?.id ?? '', name: data.user?.name ?? '', email: data.user?.email ?? '', role: 'super_admin', phone: null, avatar_url: null, is_active: true } as User,
+      branding: null,
+      isSuperAdmin: true,
+      subscription: null,
+      impersonation: null,
+      status: 'authenticated',
+    })
+
+    return 'ok'
+  },
+
   logout: async () => {
     try {
       await apiPost('/auth/logout')
@@ -92,7 +116,7 @@ export const useAuth = create<AuthState>((set) => ({
     tokenStorage.clear()
     set({
       user: null, branding: null,
-      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, subscription: null, status: 'anonymous',
+      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, subscription: null, impersonation: null, status: 'anonymous',
     })
   },
 
@@ -113,6 +137,7 @@ export const useAuth = create<AuthState>((set) => ({
         workspace_language: string | null
         demo_mode: boolean
         subscription?: Subscription | null
+        impersonation?: { reason: string; expires_at: string } | null
       }>('/auth/me')
 
       set({
@@ -122,6 +147,7 @@ export const useAuth = create<AuthState>((set) => ({
         workspaceLanguage: data.workspace_language,
         demoMode: data.demo_mode,
         subscription: data.subscription ?? null,
+        impersonation: data.impersonation ?? null,
         status: 'authenticated',
       })
     } catch {
@@ -142,7 +168,7 @@ export const useAuth = create<AuthState>((set) => ({
     tokenStorage.clear()
     set({
       user: null, branding: null,
-      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, subscription: null, status: 'anonymous',
+      isSuperAdmin: false, demoMode: false, workspaceLanguage: null, subscription: null, impersonation: null, status: 'anonymous',
     })
   },
 }))

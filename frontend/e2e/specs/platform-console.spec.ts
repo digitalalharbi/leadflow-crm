@@ -83,9 +83,11 @@ test.describe('Platform console', () => {
     await expect(panel).toBeVisible()
     await expect(panel).toContainText(ALPHA.companyName)
 
-    // The subscription is editable here, which is the point of the panel.
-    await expect(panel.getByLabel('الباقة')).toBeVisible()
-    await expect(panel.getByLabel('الاشتراك')).toBeVisible()
+    // The subscription is run from here, which is the point of the panel: its state, its plan, the catalogue to move it to.
+    await expect(panel.getByTestId('sub-state')).toBeVisible()
+    await expect(panel.getByTestId('sub-plan')).toBeVisible()
+    await expect(panel.getByTestId('activate-plan')).toBeVisible()
+    await expect(panel.getByTestId('entitlements-form')).toBeVisible()
 
     // And the people who can actually get in are listed.
     await expect(panel.getByText('مستخدمو هذا العميل')).toBeVisible()

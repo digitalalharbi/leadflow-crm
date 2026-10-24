@@ -53,7 +53,7 @@ describe('public information pages', () => {
     renderWithProviders(<DocumentPage page="contact" />)
 
     expect(document.getElementById('password')).not.toBeNull()
-    expect(screen.getByText(/لا توجد حاليًا إعادة تعيين ذاتية/)).toBeInTheDocument()
+    expect(screen.getByText(/يصلك رابط صالح لساعة واحدة/)).toBeInTheDocument()
   })
 })
 

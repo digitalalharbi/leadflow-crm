@@ -50,8 +50,9 @@ export function fetchCompanies(all = false) {
 
 /** The holding's companies, shared by the switcher, the overview and the form. */
 export function useCompanies() {
-  // Asked only by someone allowed to read it: a role without the permission got a 403 on every page.
-  const allowed = useAuth((s) => !s.isSuperAdmin && can.has(s.user, 'companies.view'))
+  // Not asked by a role the permission matrix refuses (marketing got a 403 on every page). The long-standing roles
+  // keep reading the companies they belong to — a rep's company label comes from here.
+  const allowed = useAuth((s) => !s.isSuperAdmin && (can.has(s.user, 'companies.view') || ['admin', 'manager', 'sales'].includes(s.user?.role ?? '')))
 
   return useQuery({ queryKey: COMPANIES_KEY, queryFn: () => fetchCompanies(), staleTime: 60_000, enabled: allowed })
 }

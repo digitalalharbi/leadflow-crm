@@ -3,20 +3,27 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Billing\Entitlements;
 use App\Domain\Links\ShortLinks;
 use App\Domain\Mail\EmailDeliveries;
 use App\Domain\Mail\OutboundEmail;
 use App\Domain\Mail\ReportEmail;
 use App\Domain\Reports\LiveReport;
+use App\Domain\Reports\ReportActivities;
+use App\Domain\Reports\ReportBranding;
 use App\Domain\Reports\ReportPresets;
+use App\Domain\Reports\ReportRevisions;
 use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\Partner;
 use App\Models\Project;
 use App\Models\ReportShare;
 use App\Models\ReportShareView;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
+use App\Support\ProjectContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -37,7 +44,7 @@ class ReportShareController extends Controller
         $this->authorize('viewAny', ReportShare::class);
 
         return ApiResponse::success([
-            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules', 'links'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
+            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules', 'links', 'creator:id,uuid,name'])->latest('id')->get()->filter(fn (ReportShare $s) => $request->user()->can('view', $s))->values()->map(fn (ReportShare $s) => $this->present($s)),
             // The reports a workspace starts from, ready-made: who each is for, how far back it looks, what it carries.
             'presets' => ReportPresets::all(),
             'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key), 'layout' => ReportTemplates::layoutFor($key)])->values(),
@@ -60,21 +67,30 @@ class ReportShareController extends Controller
         [$layout, $sections] = $this->shape($data, $template, null);
         $this->assertMaySee($request, $sections);
 
+        $projectIds = $this->projectIds($data);
+        abort_if($projectIds === [] && app(ProjectContext::class)->ids() !== null, 422, 'Choose the project this report covers.');
+        $this->assertModelAndCurrency($data);
+
         $share = new ReportShare([
             'name' => $data['name'],
+            'state' => $data['state'] ?? 'live',
             'template' => $template,
             'sections' => $sections,
             'layout' => $layout,
             'compare' => (bool) ($data['compare'] ?? $preset['compare'] ?? false),
             'refresh_seconds' => $data['refresh_seconds'] ?? $preset['refresh_seconds'] ?? 60,
             'days' => $data['days'] ?? $preset['days'] ?? 30,
-            'project_id' => $this->projectId($data),
             'partner_id' => $this->partnerId($data),
             'created_by' => $request->user()->id,
-        ]);
+        ] + $this->libraryFields($request, $data));
         $share->save();
-        $share->syncProjects($share->project_id ? [$share->project_id] : []);
-        $this->links->issue('report', $share->id, $share->project_id, $request->user(), ['expires_at' => $data['expires_at'] ?? null], $data['password'] ?? null);
+        $share->syncProjects($projectIds);
+        $this->links->issue('report', $share->id, $share->project_id, $request->user(), ['expires_at' => $data['expires_at'] ?? null, 'client_name' => $share->client_name], $data['password'] ?? null);
+        ReportActivities::record($share, 'created', $request->user());
+        if ($share->state === 'live') {
+            ReportActivities::record($share, 'published', $request->user());
+        }
+        ReportRevisions::capture($share, $request->user(), []);
 
         $this->audit->log('report_share.created', $request->user(), $share, ['after' => $this->trail($share)]);
 
@@ -88,6 +104,8 @@ class ReportShareController extends Controller
 
         $data = $this->validated($request, partial: true);
         $before = $this->trail($share);
+        $config = ReportRevisions::configuration($share);
+        $this->assertModelAndCurrency($data);
 
         $share->fill(array_filter([
             'name' => $data['name'] ?? null,
@@ -108,9 +126,7 @@ class ReportShareController extends Controller
             }
         }
 
-        if (array_key_exists('project_id', $data)) {
-            $share->project_id = $this->projectId($data);
-        }
+        $share->fill($this->libraryFields($request, $data));
 
         if (array_key_exists('partner_id', $data)) {
             $share->partner_id = $this->partnerId($data);
@@ -130,8 +146,15 @@ class ReportShareController extends Controller
         $link?->save();
         $share->save();
 
-        if (array_key_exists('project_id', $data)) {
-            $share->syncProjects($share->project_id ? [$share->project_id] : []);
+        if (array_key_exists('project_id', $data) || array_key_exists('project_ids', $data)) {
+            $ids = $this->projectIds($data);
+            abort_if($ids === [] && app(ProjectContext::class)->ids() !== null, 422, 'Choose the project this report covers.');
+            $share->syncProjects($ids);
+        }
+        ReportRevisions::capture($share, $request->user(), $config);
+        ReportActivities::record($share, 'edited', $request->user(), ['fields' => array_values(array_keys($data))]);
+        if (array_key_exists('password', $data)) {
+            ReportActivities::record($share, 'password_changed', $request->user());
         }
         $this->audit->log('report_share.updated', $request->user(), $share, ['before' => $before, 'after' => $this->trail($share)]);
 
@@ -147,6 +170,7 @@ class ReportShareController extends Controller
         $link = $share->primaryLink();
         abort_if($link === null, 404);
         $this->links->revoke($link, $request->user());
+        ReportActivities::record($share, 'revoked', $request->user(), ['link' => $link->uuid]);
         $this->audit->log('report_share.revoked', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
         return ApiResponse::success(['share' => $this->present($share->load('project', 'partner', 'links'))]);
@@ -161,6 +185,7 @@ class ReportShareController extends Controller
         $link = $share->primaryLink();
         abort_if($link === null, 404);
         $this->links->regenerate($link, $request->user());
+        ReportActivities::record($share, 'token_regenerated', $request->user(), ['link' => $link->uuid]);
         $this->audit->log('report_share.regenerated', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
         return ApiResponse::success(['share' => $this->present($share->load('project', 'partner', 'links'))]);
@@ -193,6 +218,7 @@ class ReportShareController extends Controller
             );
         }
 
+        ReportActivities::record($share, 'shared', $request->user(), ['via' => 'email', 'recipients' => count($queued)]);
         $this->audit->log('report_share.emailed', $request->user(), $share, ['recipients' => count($queued)]);
 
         return ApiResponse::created(['deliveries' => collect($queued)->map(fn ($d) => ['id' => $d->uuid, 'to' => $d->to_email, 'status' => $d->status, 'provider' => $d->provider])->all()]);
@@ -265,6 +291,38 @@ class ReportShareController extends Controller
             'refresh_seconds' => ['sometimes', 'integer', Rule::in([30, 60, 300, 900])],
             'days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'project_id' => ['sometimes', 'nullable', 'uuid'],
+            'project_ids' => ['sometimes', 'array', 'max:50'],
+            'project_ids.*' => ['uuid', 'distinct'],
+            'state' => ['sometimes', Rule::in(['draft', 'live'])],
+            'client_name' => ['sometimes', 'nullable', 'string', 'max:160'],
+            'period' => ['sometimes', 'nullable', Rule::in(ReportShare::RANGES)],
+            'period_from' => ['required_if:period,custom', 'nullable', 'date'],
+            'period_to' => ['required_if:period,custom', 'nullable', 'date', 'after_or_equal:period_from'],
+            'compare_mode' => ['sometimes', Rule::in(['previous_period', 'previous_month', 'custom'])],
+            'compare_from' => ['required_if:compare_mode,custom', 'nullable', 'date'],
+            'compare_to' => ['required_if:compare_mode,custom', 'nullable', 'date', 'after_or_equal:compare_from'],
+            'attribution_model' => ['sometimes', Rule::in(ReportShare::MODELS)],
+            'currency' => ['sometimes', 'nullable', 'string', 'size:3', 'alpha'],
+            'filters' => ['sometimes', 'nullable', 'array'],
+            'filters.platforms' => ['sometimes', 'array', 'max:20'],
+            'filters.platforms.*' => ['string', 'max:32'],
+            'filters.campaigns' => ['sometimes', 'array', 'max:100'],
+            'filters.campaigns.*' => ['uuid'],
+            'filters.sources' => ['sometimes', 'array', 'max:50'],
+            'filters.sources.*' => ['string', 'max:64'],
+            'filters.sales_users' => ['sometimes', 'array', 'max:100'],
+            'filters.sales_users.*' => ['uuid'],
+            'branding' => ['sometimes', 'nullable', 'array'],
+            'branding.name' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'branding.color' => ['sometimes', 'nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'branding.logo_url' => ['sometimes', 'nullable', 'url:https', 'max:500'],
+            'branding.project_logo_url' => ['sometimes', 'nullable', 'url:https', 'max:500'],
+            'branding.footer' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'branding.hide_mohtam' => ['sometimes', 'boolean'],
+            'options' => ['sometimes', 'nullable', 'array'],
+            'options.expose_team' => ['sometimes', 'boolean'],
+            'options.show_unit_prices' => ['sometimes', 'boolean'],
+            'options.show_names' => ['sometimes', 'boolean'],
             'partner_id' => ['sometimes', 'nullable', 'uuid'],
             'password' => ['sometimes', 'nullable', 'string', 'min:4', 'max:100'],
             'expires_at' => ['sometimes', 'nullable', 'date', 'after:now'],
@@ -313,13 +371,77 @@ class ReportShareController extends Controller
         return empty($data['partner_id']) ? null : Partner::where('uuid', $data['partner_id'])->firstOrFail()->id;
     }
 
-    private function projectId(array $data): ?int
+    /** @return list<int> the projects a request names — `project_ids`, or the one `project_id` — each one this person may open. */
+    private function projectIds(array $data): array
     {
-        if (empty($data['project_id'])) {
-            return null;
+        $uuids = array_values(array_filter((array) ($data['project_ids'] ?? (empty($data['project_id']) ? [] : [$data['project_id']]))));
+
+        if ($uuids === []) {
+            return [];
         }
 
-        return Project::where('uuid', $data['project_id'])->firstOrFail()->id;
+        $ids = Project::whereIn('uuid', $uuids)->pluck('id')->map(fn ($i) => (int) $i)->all();
+        abort_if(count($ids) !== count(array_unique($uuids)), 404);
+
+        return $ids;
+    }
+
+    /**
+     * The settings of the library that the form carries, cleaned: dates, model, currency, the filters (checked to be this
+     * workspace's own campaigns and people), branding (a colour, https images, plain text) and options. White-label needs the plan.
+     *
+     * @return array<string,mixed>
+     */
+    private function libraryFields(Request $request, array $data): array
+    {
+        $out = [];
+
+        foreach (['client_name', 'period', 'period_from', 'period_to', 'compare_mode', 'compare_from', 'compare_to', 'attribution_model', 'state'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $out[$key] = $data[$key];
+            }
+        }
+
+        if (array_key_exists('currency', $data)) {
+            $out['currency'] = $data['currency'] ? strtoupper($data['currency']) : null;
+        }
+
+        if (array_key_exists('filters', $data)) {
+            $f = (array) $data['filters'];
+            $campaigns = array_values(array_unique((array) ($f['campaigns'] ?? [])));
+            $users = array_values(array_unique((array) ($f['sales_users'] ?? [])));
+            abort_if($campaigns !== [] && Campaign::whereIn('uuid', $campaigns)->count() !== count($campaigns), 404);
+            abort_if($users !== [] && User::whereIn('uuid', $users)->count() !== count($users), 404);
+            $out['filters'] = array_filter(['platforms' => array_values(array_unique((array) ($f['platforms'] ?? []))), 'campaigns' => $campaigns, 'sources' => array_values(array_unique((array) ($f['sources'] ?? []))), 'sales_users' => $users]);
+        }
+
+        if (array_key_exists('branding', $data)) {
+            $b = (array) $data['branding'];
+            $white = Entitlements::for($request->user()->tenant)->has('white_label_reports');
+            abort_if((! empty($b['hide_mohtam']) || ! empty($b['logo_url']) || ! empty($b['name'])) && ! $white, 403, 'Your plan does not include branded reports.');
+            $out['branding'] = array_filter([
+                'name' => isset($b['name']) ? strip_tags((string) $b['name']) : null,
+                'color' => $b['color'] ?? null,
+                'logo_url' => ReportBranding::url($b['logo_url'] ?? null),
+                'project_logo_url' => ReportBranding::url($b['project_logo_url'] ?? null),
+                'footer' => isset($b['footer']) ? strip_tags((string) $b['footer']) : null,
+                'hide_mohtam' => ! empty($b['hide_mohtam']) ?: null,
+            ], fn ($v) => $v !== null && $v !== '');
+        }
+
+        if (array_key_exists('options', $data)) {
+            $out['options'] = array_map('boolval', array_intersect_key((array) $data['options'], array_flip(['expose_team', 'show_unit_prices', 'show_names'])));
+        }
+
+        return $out;
+    }
+
+    /** A model other than last-touch, or a currency of its own, belongs to the plans that include advanced attribution. */
+    private function assertModelAndCurrency(array $data): void
+    {
+        if (isset($data['attribution_model']) && $data['attribution_model'] !== 'last') {
+            abort_unless(Entitlements::for(request()->user()->tenant)->has('advanced_attribution'), 403, 'Your plan does not include attribution models.');
+        }
     }
 
     /** What the audit trail remembers: never the token, never the password. */
@@ -337,6 +459,25 @@ class ReportShareController extends Controller
         return [
             'id' => $share->uuid,
             'name' => $share->name,
+            'state' => $share->state ?: 'live',
+            'client_name' => $share->client_name,
+            'owner' => $share->relationLoaded('creator') && $share->creator ? ['id' => $share->creator->uuid, 'name' => $share->creator->name] : null,
+            'period' => $share->period ?: 'last_n',
+            'period_from' => $share->period_from?->toDateString(),
+            'period_to' => $share->period_to?->toDateString(),
+            'compare_mode' => $share->compare_mode ?: 'previous_period',
+            'compare_from' => $share->compare_from?->toDateString(),
+            'compare_to' => $share->compare_to?->toDateString(),
+            'attribution_model' => $share->attribution_model ?: 'last',
+            'currency' => $share->currency,
+            'filters' => (object) ($share->filters ?? []),
+            'branding' => (object) ($share->branding ?? []),
+            'options' => (object) ($share->options ?? []),
+            'revision' => (int) $share->revision,
+            'projects' => $share->projectNames(),
+            'published_at' => $share->published_at?->toIso8601String(),
+            'archived_at' => $share->archived_at?->toIso8601String(),
+            'links_count' => $share->relationLoaded('links') ? $share->links->count() : null,
             'template' => $share->template,
             // What it really shows: for a partner's report, less than was switched on.
             'sections' => ReportTemplates::effective($share->sections, $share->partner_id ? $share->partner : null),

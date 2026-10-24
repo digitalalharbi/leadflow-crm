@@ -27,7 +27,7 @@ class RoutePermission
         'campaigns' => 'campaigns', 'campaign-spend' => 'campaigns', 'ad-connections' => 'campaigns', 'creatives' => 'campaigns',
         'creative-drafts' => 'campaigns', 'action-proposals' => 'campaigns', 'agents' => 'campaigns', 'agent-reports' => 'campaigns',
         'client-rules' => 'campaigns', 'conversions' => 'campaigns',
-        'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share', 'report-schedules' => 'reports_share', 'email-deliveries' => 'reports_share',
+        'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share', 'report-links' => 'reports_share', 'report-schedules' => 'reports_share', 'email-deliveries' => 'reports_share',
         'automation' => 'automation', 'scheduled-actions' => 'automation',
         'integrations' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
         'users' => 'users', 'invitations' => 'users', 'access' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',

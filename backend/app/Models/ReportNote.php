@@ -17,7 +17,7 @@ class ReportNote extends Model
 
     public const KINDS = ['executive', 'marketing', 'sales', 'period'];
 
-    protected $fillable = ['report_share_id', 'kind', 'body', 'revision', 'is_current', 'author_id'];
+    protected $fillable = ['tenant_id', 'report_share_id', 'kind', 'body', 'revision', 'is_current', 'author_id'];
 
     protected function casts(): array
     {

@@ -79,6 +79,14 @@ class ReportShare extends Model
         return $ids !== [] ? $ids : ($this->project_id ? [(int) $this->project_id] : []);
     }
 
+    /** @return list<array{id:string,name:string}> */
+    public function projectNames(): array
+    {
+        $ids = $this->projectIds();
+
+        return $ids === [] ? [] : Project::withoutGlobalScopes()->whereIn('id', $ids)->orderBy('name')->get(['uuid', 'name'])->map(fn ($p) => ['id' => $p->uuid, 'name' => $p->name])->all();
+    }
+
     /** Replaces the project list. The first project is also kept as `project_id`, which older code still reads. */
     public function syncProjects(array $projectIds): void
     {

@@ -13,7 +13,7 @@ class ReportRevision extends Model
 
     public const UPDATED_AT = null;
 
-    protected $fillable = ['report_share_id', 'revision', 'configuration', 'changed', 'changed_by'];
+    protected $fillable = ['tenant_id', 'report_share_id', 'revision', 'configuration', 'changed', 'changed_by'];
 
     protected function casts(): array
     {

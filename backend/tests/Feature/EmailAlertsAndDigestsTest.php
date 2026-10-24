@@ -285,9 +285,9 @@ class EmailAlertsAndDigestsTest extends TestCase
         $compose = fn (User $u) => $this->asTenant($this->t['tenant'], fn () => app(DigestComposer::class)->compose('daily_sales', $u));
         $stats = fn (User $u) => collect($compose($u)['stats'])->pluck('value', 'label');
 
-        $this->assertSame(1, $stats($this->rep)['عملاء مهتمون ينتظرون']);
-        $this->assertSame(1, $stats($this->rep)['تجاوزوا مهلة الرد']);
-        $this->assertSame(2, $stats($this->t['admin'])['عملاء مهتمون ينتظرون'], 'a manager sees everyone');
-        $this->assertSame(['يضيع منهم — ساخن'], $compose($this->rep)['lists'][0]['items']);
+        $this->assertSame(1, $stats($this->rep)['عملاء مهتمون بانتظار الرد']);
+        $this->assertSame(1, $stats($this->rep)['تجاوز مهلة الرد']);
+        $this->assertSame(2, $stats($this->t['admin'])['عملاء مهتمون بانتظار الرد'], 'a manager sees everyone');
+        $this->assertSame(['يضيع منهم — اهتمام مرتفع'], $compose($this->rep)['lists'][0]['items']);
     }
 }

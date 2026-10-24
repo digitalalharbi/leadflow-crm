@@ -79,7 +79,7 @@ class DailyDigestNotification extends Notification implements ShouldQueue
         }
 
         if ($this->digest['won'] > 0) {
-            $parts[] = "{$this->digest['won']} صفقة مكسوبة";
+            $parts[] = "{$this->digest['won']} صفقة مُغلقة";
         }
 
         return implode(' · ', $parts);

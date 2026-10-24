@@ -87,7 +87,7 @@ test.describe('Mobile layout', () => {
     // Status and temperature move under the name on a phone, so the two things
     // a rep scans for are visible without swiping the table.
     const firstRow = page.locator('table tbody tr').first()
-    await expect(firstRow.getByText(/جديد|تم التواصل|مؤهل|موعد|مكسوب|مفقود/).first()).toBeVisible()
+    await expect(firstRow.getByText(/جديد|تم التواصل|مؤهل|موعد|تم البيع|فرصة خاسرة/).first()).toBeVisible()
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

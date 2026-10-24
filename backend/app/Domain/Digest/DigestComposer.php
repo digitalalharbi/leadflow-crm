@@ -79,11 +79,11 @@ class DigestComposer
 
         $stats = [
             // Yesterday's arrivals, linked to exactly those — not to today's list.
-            $this->stat('وصلوا أمس', $arrived, link: '/leads?date_from='.$yesterday->toDateString().'&date_to='.$yesterday->toDateString()),
-            $this->stat('لم يُتواصل معهم', $uncontacted, null, $uncontacted > 0 ? 'bad' : null, link: '/leads?status=new'),
-            $this->stat('ساخنون', $hot, link: '/leads?temperature=hot'),
-            $this->stat('عملاء مهتمون ينتظرون', $interested->count(), null, $late->isNotEmpty() ? 'bad' : null, link: '/leads?view=interested'),
-            $this->stat('تجاوزوا مهلة الرد', $late->count(), null, $late->isNotEmpty() ? 'bad' : null, link: '/work'),
+            $this->stat('عملاء الأمس', $arrived, link: '/leads?date_from='.$yesterday->toDateString().'&date_to='.$yesterday->toDateString()),
+            $this->stat('بانتظار أول تواصل', $uncontacted, null, $uncontacted > 0 ? 'bad' : null, link: '/leads?status=new'),
+            $this->stat('باهتمام مرتفع', $hot, link: '/leads?temperature=hot'),
+            $this->stat('عملاء مهتمون بانتظار الرد', $interested->count(), null, $late->isNotEmpty() ? 'bad' : null, link: '/leads?view=interested'),
+            $this->stat('تجاوز مهلة الرد', $late->count(), null, $late->isNotEmpty() ? 'bad' : null, link: '/work'),
             $this->stat('متابعات متأخرة', $followUps, null, $followUps > 0 ? 'bad' : null, link: '/follow-ups'),
             $this->stat('طلبات زيارة', $requests, link: '/visits'),
             $this->stat('زيارات اليوم', $visits, link: '/visits'),
@@ -223,9 +223,9 @@ class DigestComposer
             $this->stat('عملاء جدد', $this_['leads'], $change('leads'), link: '/leads'),
             $this->stat('مؤهلون', $this_['qualified'], $change('qualified'), link: '/leads?view=qualified'),
             $this->stat('مهتمون', $this_['interested'], $change('interested'), link: '/leads?view=interested'),
-            $this->stat('زاروا', $this_['visit'], $change('visit'), link: '/visits'),
-            $this->stat('حجزوا', $this_['reservation'], $change('reservation'), link: '/visits'),
-            $this->stat('اشتروا', $this_['won'], $change('won'), link: '/leads?status=won'),
+            $this->stat('زيارات', $this_['visit'], $change('visit'), link: '/visits'),
+            $this->stat('حجوزات', $this_['reservation'], $change('reservation'), link: '/visits'),
+            $this->stat('مبيعات', $this_['won'], $change('won'), link: '/leads?status=won'),
         ];
 
         if ($this->sees($user, 'revenue')) {
@@ -292,9 +292,9 @@ class DigestComposer
             $this->stat('عملاء جدد', $now['leads'], $change('leads'), link: '/leads'),
             $this->stat('مؤهلون', $now['qualified'], $change('qualified'), link: '/leads?view=qualified'),
             $this->stat('مهتمون', $now['interested'], $change('interested'), link: '/leads?view=interested'),
-            $this->stat('زاروا', $now['visit'], $change('visit'), link: '/visits'),
-            $this->stat('حجزوا', $now['reservation'], $change('reservation'), link: '/visits'),
-            $this->stat('اشتروا', $now['won'], $change('won'), link: '/leads?status=won'),
+            $this->stat('زيارات', $now['visit'], $change('visit'), link: '/visits'),
+            $this->stat('حجوزات', $now['reservation'], $change('reservation'), link: '/visits'),
+            $this->stat('مبيعات', $now['won'], $change('won'), link: '/leads?status=won'),
             $rateStat('نسبة التأهيل', 'qualified', '/reports'),
             $rateStat('نسبة الاهتمام', 'interested', '/reports'),
             $rateStat('نسبة الإغلاق', 'won', '/reports'),
@@ -341,7 +341,7 @@ class DigestComposer
                 ! $this->sees($user, 'spend') || $report['rankings']['wasted'] === [] ? null : $this->campaigns('إنفاق بلا تأهيل — أوقفه أو راجعه', $report['rankings']['wasted'], fn ($r) => "{$r['name']} — ".number_format((float) $r['spend']).' ر.س.'),
                 $this->attribution($report),
                 $lostWhy->isEmpty() ? null : [
-                    'title' => 'لماذا خسرنا',
+                    'title' => 'أسباب الخسارة',
                     'items' => $lostWhy->map(fn ($r) => "{$r->reason} — {$r->total}")->all(),
                     'links' => $lostWhy->map(fn () => '/leads?status=lost')->all(),
                 ],
@@ -461,6 +461,6 @@ class DigestComposer
 
     private function level(?string $level): string
     {
-        return ['hot' => 'ساخن', 'interested' => 'مهتم', 'visit_ready' => 'جاهز للزيارة', 'reservation_ready' => 'جاهز للحجز'][$level] ?? '';
+        return ['hot' => 'اهتمام مرتفع', 'interested' => 'مهتم', 'visit_ready' => 'جاهز للزيارة', 'reservation_ready' => 'جاهز للحجز'][$level] ?? '';
     }
 }

@@ -68,7 +68,7 @@ class ImportantAlerts
         }
 
         self::send(self::recipients($lead), new ImportantNotification(
-            'hot_lead', 'عميل ساخن', "{$lead->full_name} أصبح ساخنًا".self::about($lead).' — اتصل به الآن.', $lead->uuid, null, 'critical',
+            'hot_lead', 'عميل باهتمام مرتفع', "{$lead->full_name} صار اهتمامه مرتفعًا".self::about($lead).' — اتصل به الآن.', $lead->uuid, null, 'critical',
         ));
     }
 

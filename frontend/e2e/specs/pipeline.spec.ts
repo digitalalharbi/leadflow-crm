@@ -130,7 +130,7 @@ test.describe('Pipeline', () => {
     expect(await leadStatus(LEADS.drag)).toBe('new')
 
     await dragCardToColumn(page, LEADS.drag, 'lost')
-    await page.getByRole('dialog').getByLabel('سبب الفقدان').selectOption({ index: 1 })
+    await page.getByRole('dialog').getByLabel('سبب الخسارة').selectOption({ index: 1 })
     await page.getByRole('dialog').getByRole('button', { name: 'تأكيد' }).click()
 
     await expect(async () => {

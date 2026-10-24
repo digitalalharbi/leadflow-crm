@@ -1,0 +1,298 @@
+name: Audit VPS connectivity (read-only)
+
+# This workflow proves that the repository-level deployment credentials work
+# without deploying code or changing the server. Deliberately do not attach a
+# GitHub Environment to this job: that guarantees same-named environment
+# secrets cannot override the repository secrets being tested here.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: audit-vps-readonly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Verify SSH and inspect the VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Require repository deployment secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+          PRODUCTION_ENABLED: ${{ vars.PRODUCTION_ENABLED }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=()
+          for name in VPS_HOST VPS_PORT VPS_USER VPS_SSH_KEY VPS_SSH_KNOWN_HOSTS PRODUCTION_PATH; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+
+          if (( ${#missing[@]} )); then
+            printf '::error title=Missing repository secrets::Missing:'
+            printf ' %s' "${missing[@]}"
+            printf '\n'
+            exit 1
+          fi
+
+          if [[ "$PRODUCTION_ENABLED" != "false" ]]; then
+            echo "::error title=Production safety gate::PRODUCTION_ENABLED must remain exactly 'false' during the VPS audit."
+            exit 1
+          fi
+
+          if [[ ! "$VPS_PORT" =~ ^[0-9]+$ ]] || (( VPS_PORT < 1 || VPS_PORT > 65535 )); then
+            echo "::error title=Invalid SSH port::VPS_PORT must be a number from 1 through 65535."
+            exit 1
+          fi
+
+          if [[ "$PRODUCTION_PATH" != /* ]]; then
+            echo "::error title=Invalid deployment path::PRODUCTION_PATH must be an absolute path."
+            exit 1
+          fi
+
+          echo "All six repository secrets are present; production remains disabled."
+
+      - name: Install the private key and verified host keys
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > "$HOME/.ssh/leadflow_deploy_key"
+          printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" > "$HOME/.ssh/leadflow_known_hosts"
+          chmod 600 "$HOME/.ssh/leadflow_deploy_key" "$HOME/.ssh/leadflow_known_hosts"
+
+          ssh-keygen -y -f "$HOME/.ssh/leadflow_deploy_key" >/dev/null 2>&1 || {
+            echo "::error title=Invalid SSH private key::VPS_SSH_KEY is not a private key readable by OpenSSH."
+            exit 1
+          }
+
+          ssh-keygen -l -f "$HOME/.ssh/leadflow_known_hosts" >/dev/null 2>&1 || {
+            echo "::error title=Invalid known-hosts data::VPS_SSH_KNOWN_HOSTS is not valid OpenSSH known_hosts content."
+            exit 1
+          }
+
+          if [[ "$VPS_PORT" == "22" ]]; then
+            lookup_host="$VPS_HOST"
+          else
+            lookup_host="[$VPS_HOST]:$VPS_PORT"
+          fi
+
+          ssh-keygen -F "$lookup_host" -f "$HOME/.ssh/leadflow_known_hosts" >/dev/null 2>&1 || {
+            echo "::error title=Host key does not cover target::VPS_SSH_KNOWN_HOSTS has no entry for the configured host and port."
+            exit 1
+          }
+
+      - name: Authenticate and run the read-only VPS audit
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$HOME/.ssh/leadflow_deploy_key"
+          known_hosts="$HOME/.ssh/leadflow_known_hosts"
+          ssh_options=(
+            -i "$key"
+            -p "$VPS_PORT"
+            -o BatchMode=yes
+            -o PasswordAuthentication=no
+            -o KbdInteractiveAuthentication=no
+            -o PreferredAuthentications=publickey
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$known_hosts"
+            -o ConnectTimeout=15
+            -o ServerAliveInterval=10
+            -o ServerAliveCountMax=2
+            -o LogLevel=ERROR
+          )
+
+          printf -v quoted_path '%q' "$PRODUCTION_PATH"
+
+          auth_log=$(mktemp)
+          trap 'rm -f "$auth_log"' EXIT
+          set +e
+          ssh "${ssh_options[@]}" "$VPS_USER@$VPS_HOST" true 2>"$auth_log"
+          auth_status=$?
+          set -e
+
+          if (( auth_status != 0 )); then
+            if grep -qiE 'permission denied|no supported authentication methods' "$auth_log"; then
+              echo "::error title=SSH identity rejected::VPS_USER and VPS_SSH_KEY are incompatible. Confirm that the matching public key is authorized for the configured non-root user."
+            elif grep -qiE 'host key verification failed|remote host identification has changed|no .* host key is known' "$auth_log"; then
+              echo "::error title=SSH host-key verification failed::The server identity does not match VPS_SSH_KNOWN_HOSTS. Strict checking was not bypassed."
+            else
+              echo "::error title=SSH connection failed::The configured SSH endpoint could not complete a public-key-only connection. No password fallback was attempted."
+            fi
+            exit "$auth_status"
+          fi
+          rm -f "$auth_log"
+          trap - EXIT
+          echo "SSH_AUTHENTICATION=PASS"
+
+          set +e
+          ssh "${ssh_options[@]}" "$VPS_USER@$VPS_HOST" \
+            "bash -s -- $quoted_path" <<'REMOTE'
+          set -euo pipefail
+          production_path=$1
+
+          section() { printf '\n===== %s =====\n' "$1"; }
+
+          section "SSH identity"
+          printf 'SSH_AUTHENTICATION=PASS\n'
+          printf 'CURRENT_USER=%s\n' "$(id -un)"
+          printf 'CURRENT_UID=%s\n' "$(id -u)"
+          id
+
+          if [[ "$(id -u)" == "0" ]]; then
+            echo "SSH_IDENTITY=FAIL (deployment identity must be non-root)" >&2
+            exit 20
+          fi
+          echo "SSH_IDENTITY=PASS (non-root)"
+
+          section "Deployment directory permissions"
+          if [[ ! -d "$production_path" ]]; then
+            echo "DEPLOYMENT_DIRECTORY=FAIL (directory does not exist)" >&2
+            exit 21
+          fi
+          namei -l "$production_path"
+          stat -c 'PATH_MODE=%A PATH_OWNER=%U PATH_GROUP=%G PATH=%n' "$production_path"
+          [[ -r "$production_path" ]] || { echo "DEPLOYMENT_DIRECTORY=FAIL (not readable)" >&2; exit 22; }
+          [[ -x "$production_path" ]] || { echo "DEPLOYMENT_DIRECTORY=FAIL (not traversable)" >&2; exit 23; }
+          [[ -w "$production_path" ]] || { echo "DEPLOYMENT_DIRECTORY=FAIL (not writable by deployment identity)" >&2; exit 24; }
+          echo "DEPLOYMENT_DIRECTORY=PASS (readable, traversable, writable)"
+
+          if [[ -d "$production_path/.git" ]]; then
+            git -C "$production_path" rev-parse --is-inside-work-tree
+            git -C "$production_path" rev-parse --verify HEAD
+            echo "DEPLOYMENT_CHECKOUT=PRESENT"
+          else
+            echo "DEPLOYMENT_CHECKOUT=ABSENT"
+          fi
+
+          section "Host baseline"
+          hostnamectl 2>/dev/null || hostname
+          uname -a
+          uptime
+          free -h
+          df -hT
+
+          section "Docker engine and Compose"
+          command -v docker
+          docker --version
+          docker compose version
+          docker info --format 'DockerRootDir={{.DockerRootDir}} CgroupDriver={{.CgroupDriver}} ServerVersion={{.ServerVersion}}'
+
+          section "Containers"
+          docker ps -a --no-trunc --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+
+          section "Compose projects"
+          docker compose ls --all
+
+          section "Docker networks"
+          docker network ls
+
+          section "Docker volumes"
+          docker volume ls
+
+          section "Listening TCP and UDP ports"
+          ss -lntup
+
+          section "Proposed LeadFlow loopback ports"
+          for port in 9080 9081; do
+            if ss -H -lnt "sport = :$port" | grep -q .; then
+              echo "LOOPBACK_PORT_${port}=IN_USE"
+            else
+              echo "LOOPBACK_PORT_${port}=AVAILABLE"
+            fi
+          done
+
+          section "Existing projects under /opt"
+          find /opt -mindepth 1 -maxdepth 1 -type d -printf '%M %u:%g %p\n' 2>/dev/null | sort
+
+          section "Compose files under /opt"
+          find /opt -maxdepth 4 -type f \
+            \( -name 'compose.yml' -o -name 'compose.yaml' -o -name 'docker-compose.yml' -o -name 'docker-compose.yaml' -o -name 'docker-compose.*.yml' -o -name 'docker-compose.*.yaml' \) \
+            -print 2>/dev/null | sort
+
+          section "Caddy topology"
+          if command -v caddy >/dev/null 2>&1; then
+            caddy version
+          else
+            echo "HOST_CADDY_BINARY=NOT_FOUND"
+          fi
+          systemctl is-enabled caddy 2>/dev/null || true
+          systemctl is-active caddy 2>/dev/null || true
+          systemctl show caddy --no-pager -p FragmentPath -p ExecStart -p User -p Group 2>/dev/null || true
+          docker ps -a --filter 'name=caddy' --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+          find /etc/caddy /opt/caddy -maxdepth 3 -type f \
+            \( -name 'Caddyfile' -o -name '*.caddy' -o -name 'compose.yml' -o -name 'compose.yaml' -o -name 'docker-compose.yml' \) \
+            -printf '%M %u:%g %s bytes %p\n' 2>/dev/null | sort || true
+
+          section "Running systemd services"
+          systemctl list-units --type=service --state=running --no-pager --no-legend 2>/dev/null || true
+
+          section "Firewall"
+          if command -v ufw >/dev/null 2>&1; then
+            sudo -n ufw status verbose 2>/dev/null || echo "UFW_STATUS=UNAVAILABLE_TO_DEPLOYMENT_USER"
+          else
+            echo "UFW=NOT_INSTALLED"
+          fi
+
+          section "Backups and timers"
+          crontab -l 2>/dev/null || echo "USER_CRONTAB=NONE_OR_UNREADABLE"
+          systemctl list-timers --all --no-pager 2>/dev/null || true
+
+          section "Audit result"
+          echo "READ_ONLY_VPS_AUDIT=PASS"
+          REMOTE
+          status=$?
+          set -e
+
+          if (( status != 0 )); then
+            if [[ $status -eq 255 ]]; then
+              echo "::error title=SSH session interrupted::Authentication passed, but the read-only SSH session was interrupted before the audit completed."
+            else
+              echo "::error title=VPS readiness audit failed::SSH succeeded, but a required non-root identity, directory permission, Docker permission, or inspection check failed (exit $status)."
+            fi
+            exit "$status"
+          fi
+
+      - name: Record successful safety result
+        shell: bash
+        run: |
+          {
+            echo "## Read-only VPS audit passed"
+            echo
+            echo "- Repository-level deployment secrets were used (this job has no GitHub Environment)."
+            echo "- Strict SSH host-key verification was enforced."
+            echo "- Public-key-only authentication succeeded with a non-root identity."
+            echo "- The deployment directory is readable, traversable, and writable by that identity."
+            echo "- Docker and infrastructure inspection completed without deployment or service changes."
+            echo "- \`PRODUCTION_ENABLED\` remained \`false\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove transient SSH material
+        if: always()
+        shell: bash
+        run: rm -f "$HOME/.ssh/leadflow_deploy_key" "$HOME/.ssh/leadflow_known_hosts"

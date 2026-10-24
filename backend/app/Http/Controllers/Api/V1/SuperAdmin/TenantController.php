@@ -150,7 +150,7 @@ class TenantController extends Controller
             $data = $request->validate([
                 'name' => ['sometimes', 'string', 'max:255'],
                 'plan' => ['sometimes', 'string', 'max:40'],
-                'subscription_status' => ['sometimes', 'in:trialing,active,past_due,cancelled'],
+                'subscription_status' => ['sometimes', 'in:trialing,active,past_due,suspended,cancelled'],
                 'trial_ends_at' => ['nullable', 'date'],
                 'subscription_ends_at' => ['nullable', 'date'],
                 'is_active' => ['sometimes', 'boolean'],

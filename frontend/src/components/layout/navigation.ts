@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/api'
 import { seesPage } from '@/lib/permissions'
-import { can, useAuth } from '@/stores/auth'
+import { can, entitled, useAuth } from '@/stores/auth'
 
 export interface NavItem {
   to: string
@@ -39,6 +39,7 @@ const PRIMARY = ['/', '/work', '/leads', '/pipeline', '/campaigns', '/projects',
 export function useNavigation(): Navigation {
   const user = useAuth((s) => s.user)
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const subscription = useAuth((s) => s.subscription)
 
   // Overdue count sits next to "Follow-ups" — it is the number that should
   // pull a rep back into the app.
@@ -79,7 +80,8 @@ export function useNavigation(): Navigation {
       ...((has('visits.view') || has('reservations.view')) && seesPage(user, '/visits') ? [{ to: '/visits', labelKey: 'nav.visits', Icon: CalendarCheck }] : []),
       // Money and ad accounts: the people who may read them.
       ...item('/campaigns', 'nav.campaigns', Megaphone, 'campaigns.view'),
-      ...item('/tracking', 'nav.tracking', Radar, 'tracking.view'),
+      // A screen the plan does not include is not offered (the server refuses its data either way).
+      ...(['tracking_hub', 'advanced_forms', 'attribution'] as const).some((f) => entitled(subscription, f)) ? item('/tracking', 'nav.tracking', Radar, 'tracking.view') : [],
       ...item('/partners', 'nav.partners', HandCoins, 'partners.view'),
       ...item('/agents', 'nav.agents', Bot, 'campaigns.view'),
       // Overdue count sits next to "Follow-ups" — it is the number that should
@@ -91,7 +93,7 @@ export function useNavigation(): Navigation {
       ...item('/companies', 'nav.companies', Network, 'companies.view'),
       ...item('/projects', 'nav.projects', Building2, 'projects.view'),
       // Rules act on everybody's leads, so the same authority as the API.
-      ...item('/automation', 'nav.automation', Workflow, 'automation.view'),
+      ...(entitled(subscription, 'automations') ? item('/automation', 'nav.automation', Workflow, 'automation.view') : []),
       ...item('/reports', 'nav.reports', BarChart3, 'analytics.view'),
       ...item('/audit', 'nav.audit', ScrollText, 'audit.view'),
     ],

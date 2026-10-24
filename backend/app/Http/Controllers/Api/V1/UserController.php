@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
+use App\Domain\Billing\PlanLimits;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -91,6 +93,8 @@ class UserController extends Controller
         ]);
 
         $this->applyAccessRole($data, $tenantId);
+
+        PlanLimits::ensureSeatFor(app(TenantContext::class)->get(), $data['role']);
 
         $user = User::create([
             'tenant_id' => $tenantId,
@@ -234,6 +238,15 @@ class UserController extends Controller
             if ($before !== $data['partner_id']) {
                 $this->audit->log('user.partner_changed', $request->user(), $user, ['before' => $before, 'after' => $data['partner_id']]);
             }
+        }
+
+        // Reactivating someone, or moving an outside viewer onto the team, takes a seat.
+        $seatless = config('billing.seatless_roles');
+        $heldSeat = $user->is_active && ! in_array($user->role?->value, $seatless, true);
+        $willHold = ($data['is_active'] ?? $user->is_active) && ! in_array($data['role'] ?? $user->role?->value, $seatless, true);
+
+        if ($willHold && ! $heldSeat) {
+            PlanLimits::ensureSeatFor(app(TenantContext::class)->get(), $data['role'] ?? $user->role?->value);
         }
 
         $user->update($data);

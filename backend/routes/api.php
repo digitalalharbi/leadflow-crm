@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\AuditTrailController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
+use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\BrandingController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignController;
@@ -67,6 +68,10 @@ use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SelfApprovalController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SheetSourceController;
+use App\Http\Controllers\Api\V1\SuperAdmin\InvoiceController;
+use App\Http\Controllers\Api\V1\SuperAdmin\PlanController;
+use App\Http\Controllers\Api\V1\SuperAdmin\PlatformController;
+use App\Http\Controllers\Api\V1\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
@@ -175,6 +180,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        // Outside `tenant.active`: a suspended company's admin can still read why, and what to do.
+        Route::get('/billing', [BillingController::class, 'show']);
         Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
         Route::patch('/auth/notification-preferences', [NotificationPreferenceController::class, 'update']);
         Route::get('/auth/notification-preferences/whatsapp-log', [NotificationPreferenceController::class, 'whatsappLog']);
@@ -186,7 +193,7 @@ Route::prefix('v1')->group(function () {
         | Only /auth/me and the logout routes stay outside, so the SPA can still
         | sign a user out of a suspended account.
         */
-        Route::middleware('tenant.active')->group(function () {
+        Route::middleware(['tenant.active', 'entitlements'])->group(function () {
             Route::get('/notifications', [NotificationController::class, 'index']);
             Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
                 ->whereUuid('id');
@@ -613,6 +620,19 @@ Route::prefix('v1')->group(function () {
             Route::get('/tenants/{uuid}', [TenantController::class, 'show']);
             Route::patch('/tenants/{uuid}', [TenantController::class, 'update']);
             Route::post('/tenants/{uuid}/admins', [TenantController::class, 'createAdmin']);
+
+            // The SaaS business: catalogue, subscriptions, invoices, the owner's dashboard and trail.
+            Route::get('/dashboard', [PlatformController::class, 'dashboard']);
+            Route::get('/audit', [PlatformController::class, 'audit']);
+            Route::get('/plans', [PlanController::class, 'index']);
+            Route::post('/plans', [PlanController::class, 'store']);
+            Route::patch('/plans/{uuid}', [PlanController::class, 'update']);
+            Route::get('/tenants/{uuid}/subscription', [SubscriptionController::class, 'show']);
+            Route::patch('/tenants/{uuid}/subscription', [SubscriptionController::class, 'update']);
+            Route::post('/tenants/{uuid}/subscription/{action}', [SubscriptionController::class, 'transition'])
+                ->whereIn('action', ['activate', 'extend', 'past_due', 'suspend', 'reactivate', 'cancel']);
+            Route::post('/tenants/{uuid}/invoices', [InvoiceController::class, 'store']);
+            Route::post('/invoices/{uuid}/{action}', [InvoiceController::class, 'transition'])->whereIn('action', ['paid', 'void', 'issued']);
         });
     });
 });

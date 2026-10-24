@@ -8,6 +8,7 @@ use App\Domain\Automation\Thresholds;
 use App\Domain\Mail\MailerRegistry;
 use App\Enums\Role;
 use App\Models\AutomationRule;
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Tenancy\TenantProvisioningService;
@@ -99,6 +100,27 @@ abstract class TestCase extends BaseTestCase
         $this->app->instance(MailerRegistry::class, $registry);
 
         return $fake;
+    }
+
+    /** The platform owner: no tenant, platform-level authority. */
+    protected function makePlatformOwner(string $email = 'owner@platform.test'): User
+    {
+        return User::create([
+            'tenant_id' => null,
+            'name' => 'Platform Owner',
+            'email' => $email,
+            'password' => 'password123',
+            'role' => Role::SuperAdmin,
+        ]);
+    }
+
+    /** Moves a company onto a catalogue plan by key, as the console would. */
+    protected function putOnPlan(Tenant $tenant, string $key, array $attributes = []): Tenant
+    {
+        $plan = Plan::where('key', $key)->firstOrFail();
+        $tenant->forceFill(array_merge(['plan_id' => $plan->id, 'plan' => $plan->key], $attributes))->save();
+
+        return $tenant->fresh();
     }
 
     /** Runs a closure with the tenant context bound, for direct model work in tests. */

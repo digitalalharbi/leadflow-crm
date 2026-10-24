@@ -1,5 +1,6 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { RequireFeature } from '@/components/billing/FeatureLocked'
 import { useTranslation } from 'react-i18next'
 import { seesPage } from '@/lib/permissions'
 import { can, useAuth } from '@/stores/auth'
@@ -199,13 +200,13 @@ export function App() {
                 <Routes>
                   <Route path="/work" element={<RequirePermission any={['leads.execute']}><WorkRoute /></RequirePermission>} />
                   <Route path="/data-quality" element={<RequirePermission any={['leads.view']}><DataQualityPage /></RequirePermission>} />
-                  <Route path="/automation" element={<RequirePermission any={['automation.view']}><AutomationPage /></RequirePermission>} />
+                  <Route path="/automation" element={<RequirePermission any={['automation.view']}><RequireFeature any={['automations']}><AutomationPage /></RequireFeature></RequirePermission>} />
                   <Route path="/leads" element={<RequirePermission any={['leads.view']}><LeadsPage /></RequirePermission>} />
                   <Route path="/leads/:id" element={<RequirePermission any={['leads.view']}><LeadRoute /></RequirePermission>} />
                   <Route path="/pipeline" element={<RequirePermission any={['leads.view']}><PipelinePage /></RequirePermission>} />
                   <Route path="/campaigns" element={<RequirePermission any={['campaigns.view']}><CampaignsPage /></RequirePermission>} />
-                  <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><TrackingPage /></RequirePermission>} />
-                  <Route path="/tracking/forms/:id" element={<RequirePermission any={['tracking.view']}><Suspense fallback={<PageFallback />}><FormBuilderPage /></Suspense></RequirePermission>} />
+                  <Route path="/tracking" element={<RequirePermission any={['tracking.view']}><RequireFeature any={['tracking_hub', 'advanced_forms', 'attribution']}><TrackingPage /></RequireFeature></RequirePermission>} />
+                  <Route path="/tracking/forms/:id" element={<RequirePermission any={['tracking.view']}><RequireFeature any={['advanced_forms']}><Suspense fallback={<PageFallback />}><FormBuilderPage /></Suspense></RequireFeature></RequirePermission>} />
                   <Route path="/audit" element={<RequirePermission any={['audit.view']}><AuditPage /></RequirePermission>} />
                   <Route path="/partners" element={<RequirePermission any={['partners.view']}><PartnersPage /></RequirePermission>} />
                   <Route path="/visits" element={<RequirePermission any={['visits.view', 'reservations.view']}><VisitsPage /></RequirePermission>} />

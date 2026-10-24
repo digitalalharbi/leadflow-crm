@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Domain\Automation\Thresholds;
+use App\Domain\Billing\BillingProvider;
+use App\Domain\Billing\ManualBillingProvider;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Providers\ManualCallProvider;
 use App\Domain\Calls\Providers\TwilioCallProvider;
@@ -58,6 +60,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TenantContext::class);
         $this->app->singleton(CompanyContext::class);
         $this->app->singleton(ProjectContext::class);
+
+        // Manual until a payment provider is configured; the subscription model does not change when one is.
+        $this->app->bind(BillingProvider::class, fn () => match (config('billing.provider')) {
+            default => new ManualBillingProvider,
+        });
 
         /*
          * One client, one registry, for every code host. Bound here rather than

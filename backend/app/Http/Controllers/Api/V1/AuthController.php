@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
+use App\Domain\Billing\SubscriptionSummary;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\BrandingResource;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -100,6 +102,8 @@ class AuthController extends Controller
             'hidden_data' => Permissions::hiddenData($user),
             'hidden_elements' => Permissions::hiddenElements($user),
             'access_role' => AccessResolver::customRole($user)?->uuid,
+            // The plan's features, limits and lifecycle: the interface agrees with what the server enforces.
+            'subscription' => ($tenant = app(TenantContext::class)->get() ?? $user->tenant) ? SubscriptionSummary::for($tenant) : null,
             'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             /*
              * The language this workspace itself works in, read off its default
@@ -128,6 +132,8 @@ class AuthController extends Controller
             'hidden_data' => Permissions::hiddenData($user),
             'hidden_elements' => Permissions::hiddenElements($user),
             'access_role' => AccessResolver::customRole($user)?->uuid,
+            // The plan's features, limits and lifecycle: the interface agrees with what the server enforces.
+            'subscription' => ($tenant = app(TenantContext::class)->get() ?? $user->tenant) ? SubscriptionSummary::for($tenant) : null,
             'project_scope' => $user->isProjectScoped() ? $user->projects()->pluck('projects.uuid')->all() : null,
             // The language this workspace itself works in — see login, which
             // sends the same field; the SPA re-hydrates from here on reload.

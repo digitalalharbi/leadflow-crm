@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceEntitlements;
 use App\Http\Middleware\EnforcePermissions;
 use App\Http\Middleware\EnsureTenantIsActive;
 use App\Http\Middleware\ForceJsonResponse;
@@ -85,6 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => ResolveTenantContext::class,
             'company' => ResolveCompanyContext::class,
             'tenant.active' => EnsureTenantIsActive::class,
+            'entitlements' => EnforceEntitlements::class,
             'project.scope' => ResolveProjectScope::class,
             'permission' => EnforcePermissions::class,
             'hide.fields' => HideRestrictedFields::class,

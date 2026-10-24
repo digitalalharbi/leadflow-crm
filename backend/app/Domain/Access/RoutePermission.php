@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 class RoutePermission
 {
     /** Paths every signed-in person may use, whatever their role. */
-    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles'];
+    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles', 'billing'];
 
     /** First path segment → area. */
     private const AREAS = [

@@ -8,6 +8,7 @@ use App\Enums\Role;
 use App\Models\Integration;
 use App\Models\LostReason;
 use App\Models\MessageTemplate;
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantBranding;
 use App\Models\TenantSetting;
@@ -34,10 +35,14 @@ class TenantProvisioningService
         return DB::transaction(function () use ($data) {
             $defaults = config('tenancy.defaults');
 
+            $plan = Plan::where('key', $data['plan'] ?? $defaults['plan'])->where('is_active', true)->first()
+                ?? Plan::where('key', $defaults['plan'])->first();
+
             $tenant = Tenant::create([
                 'name' => $data['company_name'],
                 'slug' => $this->uniqueSlug($data['subdomain'] ?? $data['company_name']),
-                'plan' => $data['plan'] ?? $defaults['plan'],
+                'plan' => $plan?->key ?? ($data['plan'] ?? $defaults['plan']),
+                'plan_id' => $plan?->id,
                 'subscription_status' => 'trialing',
                 'trial_ends_at' => now()->addDays((int) ($data['trial_days'] ?? $defaults['trial_days'])),
                 'is_active' => true,

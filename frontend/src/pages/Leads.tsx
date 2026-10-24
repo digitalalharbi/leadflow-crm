@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { InterestBadge, RingProgress } from '@/components/visual'
 import { apiDownload } from '@/lib/api'
 import { fetchAssignableUsers, fetchLeads, fetchProjects, type LeadFilters } from '@/features/leads'
-import { can, useAuth } from '@/stores/auth'
+import { can, useAuth, useEntitled } from '@/stores/auth'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useApiError } from '@/hooks/useApiError'
 import { cn } from '@/lib/cn'
@@ -109,6 +109,8 @@ export function LeadsPage() {
     Boolean(filters.view) ||
     Boolean(filters.unassigned)
 
+  const exportsOn = useEntitled('exports')
+
   function resetFilters() {
     setSearch('')
     setFilters({ page: 1, per_page: 25 })
@@ -121,7 +123,7 @@ export function LeadsPage() {
         subtitle={t('leads.subtitle')}
         actions={
           <>
-            {can.seeAllLeads(user) && (
+            {can.seeAllLeads(user) && exportsOn && (
               <Button
                 variant="outline"
                 icon={<Download className="size-4" />}

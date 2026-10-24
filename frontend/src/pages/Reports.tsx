@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BarChart3, CalendarCheck, Download, Flame, PhoneCall, ShieldAlert, Target, Trophy, Users } from 'lucide-react'
 import { KpiCard, RingProgress } from '@/components/visual'
 import { useTranslation } from 'react-i18next'
+import { useEntitled } from '@/stores/auth'
 import { apiDownload, apiGet } from '@/lib/api'
 import { fetchCampaignQuality, fetchSalesPerformance, fetchSalesTeam } from '@/features/conversations'
 import { fetchDrivers, type Drivers } from '@/features/drivers'
@@ -32,6 +33,9 @@ import { cn } from '@/lib/cn'
 const TABS = ['overview', 'marketing', 'quality', 'campaigns', 'platforms', 'team', 'lost', 'drivers', 'weekly', 'share'] as const
 type Tab = (typeof TABS)[number]
 
+/** The analyses that come with the advanced-reports feature; the server refuses their data on a plan without it. */
+const ADVANCED: readonly Tab[] = ['quality', 'campaigns', 'platforms', 'drivers', 'share']
+
 /**
  * Reports, as five questions rather than seven groupings of the same table.
  *
@@ -46,7 +50,10 @@ export function ReportsPage() {
 
   const [params] = useSearchParams()
   // `?tab=share&new=1` is where the command palette's "create a report" lands: the builder is already open.
-  const [tab, setTab] = useState<Tab>(() => (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'overview')
+  const advanced = useEntitled('advanced_reports')
+  const exportsOn = useEntitled('exports')
+  const visibleTabs = TABS.filter((key) => advanced || !ADVANCED.includes(key))
+  const [tab, setTab] = useState<Tab>(() => (visibleTabs as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'overview')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -133,7 +140,7 @@ export function ReportsPage() {
             <Link to="/data-quality" data-testid="open-data-quality">
               <Button variant="ghost" icon={<ShieldAlert className="size-4" />}>{t('nav.dataQuality')}</Button>
             </Link>
-          {tab === 'campaigns' ? (
+          {tab === 'campaigns' && exportsOn ? (
             <Button
               variant="outline"
               icon={<Download className="size-4" />}
@@ -152,7 +159,7 @@ export function ReportsPage() {
       <Card className="mb-4 overflow-hidden">
         {/* One filter set for every tab, so switching keeps the period. */}
         <div className="scroll-x flex items-center gap-1 border-b border-[var(--color-line)] p-2">
-          {TABS.map((key) => (
+          {visibleTabs.map((key) => (
             <button
               key={key}
               type="button"

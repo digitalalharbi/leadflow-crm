@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\EmailSettingsController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\FollowUpPlanController;
 use App\Http\Controllers\Api\V1\FormAssetController;
+use App\Http\Controllers\Api\V1\FunnelController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
@@ -474,6 +475,7 @@ Route::prefix('v1')->group(function () {
             // Reports
             Route::get('/reports', [ReportController::class, 'index']);
             Route::get('/reports/insights', [ReportController::class, 'insights']);
+            Route::get('/funnel', FunnelController::class);
             Route::get('/report-shares', [ReportShareController::class, 'index']);
             Route::post('/report-shares', [ReportShareController::class, 'store']);
             Route::patch('/report-shares/{uuid}', [ReportShareController::class, 'update']);

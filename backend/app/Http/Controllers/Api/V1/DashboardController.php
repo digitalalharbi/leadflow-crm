@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
+use App\Domain\Funnel\FunnelRequest;
+use App\Domain\Funnel\RealEstateFunnel;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
 use App\Http\Controllers\Controller;
@@ -122,6 +125,8 @@ class DashboardController extends Controller
              * whole screen agrees with itself and costs one round trip.
              */
             'funnel' => $this->analytics->funnel($base()),
+            // The funnel of the product, beside the pipeline's own stage counts above.
+            'real_estate_funnel' => app(RealEstateFunnel::class)->build(FunnelRequest::filters($request, $user), $user, Permissions::has($user, 'revenue.view')),
             'velocity' => $this->analytics->velocity($base()),
             /*
              * Not filtered by the date range, deliberately. A thirty-day line

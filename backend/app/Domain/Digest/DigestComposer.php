@@ -7,6 +7,8 @@ use App\Domain\Analytics\LeadFunnel;
 use App\Domain\Analytics\SourceAttribution;
 use App\Domain\Automation\AutomationCentre;
 use App\Domain\Campaigns\CampaignRevenue;
+use App\Domain\Funnel\FunnelFilters;
+use App\Domain\Funnel\RealEstateFunnel;
 use App\Domain\Insights\AnomalyDetector;
 use App\Domain\Leads\InterestEngine;
 use App\Domain\Leads\InterestSla;
@@ -228,6 +230,8 @@ class DigestComposer
             $this->stat('مبيعات', $this_['won'], $change('won'), link: '/leads?status=won'),
         ];
 
+        array_push($stats, ...$this->funnelStats($user, $now->subDays(6)->startOfDay(), $now->endOfDay(), $now->subDays(13)->startOfDay(), $now->subDays(7)->endOfDay()));
+
         if ($this->sees($user, 'revenue')) {
             $stats[] = $this->stat('الإيراد', number_format($revenue).' ر.س.', null, link: '/reports');
         }
@@ -299,6 +303,8 @@ class DigestComposer
             $rateStat('نسبة الاهتمام', 'interested', '/reports'),
             $rateStat('نسبة الإغلاق', 'won', '/reports'),
         ];
+
+        array_push($stats, ...$this->funnelStats($user, $from, $to, $prevFrom, $prevTo));
 
         $revenue = $won($from, $to);
         $before_ = $won($prevFrom, $prevTo);
@@ -462,5 +468,19 @@ class DigestComposer
     private function level(?string $level): string
     {
         return ['hot' => 'اهتمام مرتفع', 'interested' => 'مهتم', 'visit_ready' => 'جاهز للزيارة', 'reservation_ready' => 'جاهز للحجز'][$level] ?? '';
+    }
+
+    /**
+     * The official funnel's stages as digest lines — تفاعل, حجز معاينة, قرار شراء, إحالة — each against the period before.
+     * (وعي is the ad platforms' reach and اهتمام is the new-leads line above, so neither is repeated here.)
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function funnelStats(User $user, CarbonImmutable $from, CarbonImmutable $to, CarbonImmutable $prevFrom, CarbonImmutable $prevTo): array
+    {
+        $f = app(RealEstateFunnel::class)->build(new FunnelFilters($from, $to, [], null, null, null, [], $prevFrom, $prevTo), $user, false);
+        $links = ['engagement' => '/leads', 'booking' => '/visits', 'decision' => '/leads?view=reserved', 'referral' => '/partners'];
+
+        return collect($f['stages'])->whereIn('key', array_keys($links))->map(fn (array $stage) => $this->stat($stage['label'], $stage['count'], $stage['change'], link: $links[$stage['key']]))->values()->all();
     }
 }

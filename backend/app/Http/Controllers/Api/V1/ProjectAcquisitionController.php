@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Permissions;
 use App\Domain\Campaigns\CampaignRevenue;
+use App\Domain\Funnel\FunnelFilters;
+use App\Domain\Funnel\RealEstateFunnel;
 use App\Domain\Tracking\AttributionReport;
 use App\Domain\Tracking\EventType;
 use App\Domain\Tracking\LinkAnalytics;
@@ -62,6 +64,7 @@ class ProjectAcquisitionController extends Controller
             ])->values(),
             'forms' => $this->forms($project, $from, $to),
             'funnel' => $this->analytics->forLinks($ids, $from, $to, $money)['funnel'],
+            'real_estate_funnel' => app(RealEstateFunnel::class)->build(new FunnelFilters($from, $to, [$project->id]), $user, $money),
             'sources' => $this->sources($project, $links, $stats, $from, $to, $money),
             'campaigns' => $this->campaigns($user, $project, $from, $to, $money),
             'events' => $this->events($project),

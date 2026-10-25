@@ -206,4 +206,22 @@ test.describe('Reports library and client access', () => {
     expect(await open.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
     await context.close()
   })
+
+  test('RTL: the client report reads right-to-left, with the title on the reading edge and numbers kept left-to-right', async ({ browser }) => {
+    const made = await api<{ data: { share: { url: string } } }>('/api/v1/report-shares', { method: 'POST', data: { name: 'تقرير اتجاه', template: 'executive' } })
+    const context = await browser.newContext()
+    const open = await context.newPage()
+    await open.goto(`/r/${tokenOf(made.body.data.share.url)}`)
+    await expect(open.getByTestId('shared-title')).toBeVisible()
+
+    await expect(open.locator('html')).toHaveAttribute('dir', 'rtl')
+    const box = async (id: string) => (await open.getByTestId(id).boundingBox())!
+    const title = await box('shared-title')
+    const viewport = open.viewportSize()!
+    // The title sits on the right half of the page, where an Arabic reader starts.
+    expect(title.x + title.width / 2).toBeGreaterThan(viewport.width / 2)
+    // A figure is a left-to-right island inside the right-to-left page.
+    expect(await open.getByTestId('sk-leads-value').locator('span[dir="ltr"], [dir="ltr"]').count()).toBeGreaterThan(0)
+    await context.close()
+  })
 })

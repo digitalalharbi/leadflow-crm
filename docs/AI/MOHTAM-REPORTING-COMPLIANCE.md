@@ -55,11 +55,11 @@ Evidence names the code and the test that proves it; a status here is a claim ab
 | 48 | SaaS integration | COMPLETE | `advanced_reports`, `report_pdf`, `report_excel`, `advanced_templates`, `advanced_attribution`, `white_label_reports`, `client_otp`, `custom_branding` (existing); a closed subscription closes the links; no price in code. |
 | 49 | Security requirements | COMPLETE | `ReportSecurityTest` covers every item. |
 | 50 | Test matrix | COMPLETE | Two companies × several projects; admin, manager, marketing, sales manager, sales rep; every scenario in the list (`ReportMatrixTest`, `ReportLibraryTest`, `ReportSecurityTest`, `ReportSectionsTest`, e2e). |
-| 51 | Full gates | see final report | |
-| 52 | Existing system intact | see final report | |
+| 51 | Full gates | COMPLETE | Run on the last commit: backend, Pint, typecheck, lint, Vitest, build, full Playwright. |
+| 52 | Existing system intact | COMPLETE | Full backend + Playwright suites green; isolation matrix, entitlements, RBAC, Work Now, tracking, visits, reservations, digests unchanged in behaviour. |
 | 53 | Method | COMPLETE | Batches, each tested and committed on `feat/reporting-links-funnel`. |
 | 54 | Completion rule | COMPLETE | `e2e/report-library.spec.ts` walks project → report → sections → publish → short link → open → full performance. |
-| 55 | Final report | see final report | |
+| 55 | Final report | COMPLETE | Delivered in the closing report. |
 
 ## Known interpretations and limits
 

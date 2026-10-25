@@ -40,7 +40,7 @@ test.describe('Report builder', () => {
     // The link, as a stranger sees it: the owner's order, the comparison, no team-only section.
     const stranger = await browser.newContext()
     const open = await stranger.newPage()
-    await open.goto(`/reports/share/${tokenOf(mine.url)}`)
+    await open.goto(`/r/${tokenOf(mine.url)}`)
     await expect(open.getByTestId('shared-title')).toHaveText('تقرير المستثمر')
     await expect(open.getByTestId('shared-previous-period')).toBeVisible()
     const shown = await open.locator('[data-section]').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-section')))

@@ -30,7 +30,7 @@ export function RealEstateFunnel({ funnel, currency = 'SAR', showRevenue = true,
 
       {funnel.lost.count > 0 && (
         <p className="t-caption" data-testid={`${testId}-lost`}>
-          {t('reFunnel.lost', { count: funnel.lost.count })}{funnel.lost.rate !== null ? ` · ${funnel.lost.rate}%` : ''}
+          {t('reFunnel.lost', { total: funnel.lost.count })}{funnel.lost.rate !== null ? ` · ${funnel.lost.rate}%` : ''}
         </p>
       )}
     </div>

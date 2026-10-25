@@ -112,7 +112,7 @@ test.describe('Notifications and reports', () => {
     expect(mine.days).toBe(30)
 
     const open = await (await browser.newContext()).newPage()
-    await open.goto(`/reports/share/${mine.url.split('/').pop()}`)
+    await open.goto(`/r/${mine.url.split('/').pop()}`)
     await expect(open.getByTestId('shared-title')).toHaveText('الإدارة التنفيذية')
     for (const section of ['exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking']) await expect(open.getByTestId(`shared-${section}`)).toBeVisible()
 

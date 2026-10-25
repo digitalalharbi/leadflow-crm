@@ -25,7 +25,7 @@ const SCREENS: Array<{ name: string; path: (ctx: { lead: string; share: string }
   { name: 'campaigns', path: () => '/campaigns', auth: true },
   { name: 'reports', path: () => '/reports', auth: true },
   { name: 'access', path: () => '/access', auth: true },
-  { name: 'shared report', path: ({ share }) => `/reports/share/${share}`, auth: false },
+  { name: 'shared report', path: ({ share }) => `/r/${share}`, auth: false },
 ]
 
 async function shares(page: Page, png: Buffer) {

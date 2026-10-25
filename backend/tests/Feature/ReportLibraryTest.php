@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Reports\ReportTemplates;
 use App\Enums\Role;
 use App\Models\EmailDelivery;
+use App\Models\Partner;
 use App\Models\Plan;
 use App\Models\Project;
 use App\Models\ReportShare;
@@ -286,5 +288,38 @@ class ReportLibraryTest extends TestCase
         $this->assertStringNotContainsString('library', strtolower($share['url']));
         $this->assertSame(1, ShortLink::where('type', 'report')->count());
         $this->assertStringNotContainsString((string) $project->uuid, $share['url']);
+    }
+
+    public function test_a_partner_report_never_carries_the_companys_money_however_it_was_switched_on(): void
+    {
+        $partner = $this->asTenant($this->t['tenant'], fn () => Partner::create(['name' => 'وسيط', 'type' => 'broker', 'is_active' => true]));
+        $share = $this->make([
+            'template' => 'partner', 'partner_id' => $partner->uuid,
+            'sections' => ['kpi_volume' => true, 'kpi_cost' => true, 'kpi_revenue' => true, 'funnel' => true, 'marketing' => true, 'revenue' => true, 'sources' => true, 'campaigns' => true, 'team' => true, 'attention' => true],
+        ]);
+
+        $data = $this->open($share['url'])->assertOk()->json('data');
+        $text = json_encode($data);
+
+        $this->assertSame(['kpi_volume', 'funnel'], array_values(array_intersect($data['sections'], ['kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'marketing', 'revenue', 'sources', 'campaigns', 'team', 'attention'])));
+        foreach (['"spend"', '"cpl"', '"cac"', '"roas"', '"revenue"', '"cpa"'] as $money) {
+            $this->assertStringNotContainsString($money, $text);
+        }
+    }
+
+    public function test_the_public_page_reads_the_partner_inside_the_workspace_so_the_limits_hold(): void
+    {
+        // The restriction rides on the partner row, which only the workspace can read: it must be read there.
+        $partner = $this->asTenant($this->t['tenant'], fn () => Partner::create(['name' => 'وسيط', 'type' => 'broker', 'is_active' => true, 'show_revenue' => false]));
+        $share = $this->make(['template' => 'partner', 'partner_id' => $partner->uuid, 'sections' => ['kpi_volume' => true, 'kpi_cost' => true, 'kpi_revenue' => true]]);
+
+        $this->assertSame(['kpi_volume'], $this->open($share['url'])->assertOk()->json('data.sections'));
+
+        // And when the partner cannot be read at all, it fails closed rather than open.
+        $row = ReportShare::withoutGlobalScopes()->where('uuid', $share['id'])->first();
+        $row->setRelation('partner', null);
+        $plan = array_column(ReportTemplates::plan($row, 'public'), 'key');
+        $this->assertNotContains('kpi_cost', $plan);
+        $this->assertNotContains('kpi_revenue', $plan);
     }
 }

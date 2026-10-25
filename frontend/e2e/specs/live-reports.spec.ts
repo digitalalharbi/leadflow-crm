@@ -47,7 +47,7 @@ test.describe('Live shared reports', () => {
     const mine = (await shares()).find((s) => s.name === 'تقرير العميل')!
     const anonymous = await browser.newContext()
     const open = await anonymous.newPage()
-    await open.goto(`/reports/share/${tokenOf(mine.url)}`)
+    await open.goto(`/r/${tokenOf(mine.url)}`)
 
     await expect(open.getByTestId('shared-title')).toHaveText('تقرير العميل')
     await expect(open.getByTestId('shared-kpis')).toBeVisible()
@@ -76,7 +76,7 @@ test.describe('Live shared reports', () => {
     const mine = (await shares()).find((s) => s.name === 'تقرير محمي')!
     const context = await browser.newContext()
     const open = await context.newPage()
-    await open.goto(`/reports/share/${tokenOf(mine.url)}`)
+    await open.goto(`/r/${tokenOf(mine.url)}`)
 
     await expect(open.getByTestId('shared-password')).toBeVisible()
     await expect(open.getByTestId('sk-leads')).toHaveCount(0)
@@ -107,18 +107,20 @@ test.describe('Live shared reports', () => {
 
     const context = await browser.newContext()
     const open = await context.newPage()
-    await open.goto(`/reports/share/${tokenOf(before.url)}`)
+    await open.goto(`/r/${tokenOf(before.url)}`)
     await expect(open.getByTestId('shared-gone')).toBeVisible()
 
-    await card.getByTestId('share-regenerate').click()
+    // A new address for the same report is issued from its links.
+    await card.getByTestId('share-links').click()
+    await page.getByTestId('links-panel').getByTestId('link-regenerate').click()
     await expect(card).toHaveAttribute('data-status', 'active')
     const after = (await shares()).find((s) => s.id === before.id)!
     expect(after.url).not.toBe(before.url)
 
     // The old link stays shut; the new one opens.
-    await open.goto(`/reports/share/${tokenOf(before.url)}`)
+    await open.goto(`/r/${tokenOf(before.url)}`)
     await expect(open.getByTestId('shared-gone')).toBeVisible()
-    await open.goto(`/reports/share/${tokenOf(after.url)}`)
+    await open.goto(`/r/${tokenOf(after.url)}`)
     await expect(open.getByTestId('shared-title')).toHaveText('تقرير يُوقف')
     await context.close()
   })
@@ -134,7 +136,7 @@ test.describe('Live shared reports', () => {
     const mine = (await shares()).find((s) => s.name === 'تقرير يُعدّ')!
     const context = await browser.newContext()
     const open = await context.newPage()
-    await open.goto(`/reports/share/${tokenOf(mine.url)}`)
+    await open.goto(`/r/${tokenOf(mine.url)}`)
     await expect(open.getByTestId('shared-title')).toBeVisible()
     await context.close()
 
@@ -150,7 +152,7 @@ test.describe('Live shared reports', () => {
     const mine = (await shares())[0]
     const context = await browser.newContext({ viewport: { width: 1366, height: 768 } })
     const open = await context.newPage()
-    await open.goto(`/reports/share/${tokenOf(mine.url)}`)
+    await open.goto(`/r/${tokenOf(mine.url)}`)
     await expect(open.getByTestId('shared-title')).toBeVisible()
     expect(await open.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
     await open.setViewportSize({ width: 375, height: 812 })

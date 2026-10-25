@@ -42,11 +42,11 @@ test.describe('Partner commissions', () => {
     // The link: asking for it copies it; the partner opens it with no session and sees their own figures.
     await page.getByTestId('statement-link').click()
     const url = await page.getByTestId('statement-link-url').innerText()
-    expect(url).toContain('/reports/share/')
+    expect(url).toMatch(/\/r\/[A-Za-z0-9]{22}$/)
 
     const stranger = await browser.newContext()
     const open = await stranger.newPage()
-    await open.goto(`/reports/share/${url.split('/').pop()}`)
+    await open.goto(`/r/${url.split('/').pop()}`)
     await expect(open.getByTestId('shared-statement')).toBeVisible()
     await expect(open.getByTestId('shared-statement-due')).toContainText('10')
     await expect(open.getByTestId('shared-statement-balance')).toContainText('6')

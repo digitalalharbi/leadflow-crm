@@ -119,7 +119,8 @@ test.describe('Visits and reservations', () => {
 
     const funnel = page.getByTestId('manager-re-funnel')
     await expect(funnel).toBeVisible()
-    for (const label of ['عملاء', 'مؤهلون', 'مهتمون', 'زيارات', 'حجوزات', 'مبيعات']) {
+    // The official funnel: وعي → اهتمام → تفاعل → حجز معاينة → قرار شراء → إحالة.
+    for (const label of ['وعي', 'اهتمام', 'تفاعل', 'حجز معاينة', 'قرار شراء', 'إحالة']) {
       await expect(funnel).toContainText(label)
     }
   })

@@ -103,9 +103,9 @@ class ReportTemplates
      * @param  array<string,bool>  $sections
      * @return array<string,bool>
      */
-    public static function effective(array $sections, ?Partner $partner): array
+    public static function effective(array $sections, ?Partner $partner, bool $partnerReport = false): array
     {
-        if ($partner === null) {
+        if ($partner === null && ! $partnerReport) {
             return $sections;
         }
 
@@ -113,7 +113,8 @@ class ReportTemplates
             $sections[$hidden] = false;
         }
 
-        $sections['kpi_revenue'] = ($sections['kpi_revenue'] ?? false) && $partner->show_revenue;
+        // A partner report whose partner cannot be read fails closed: no revenue, nothing of the company's.
+        $sections['kpi_revenue'] = ($sections['kpi_revenue'] ?? false) && (bool) $partner?->show_revenue;
 
         return $sections;
     }
@@ -188,12 +189,13 @@ class ReportTemplates
     public static function plan(ReportShare $share, string $audience = 'public'): array
     {
         $partner = $share->partner_id ? $share->partner : null;
-        $allowed = self::effective(array_column(array_map(fn ($r) => ['k' => $r['key'], 'v' => $r['on']], self::layoutOf($share)), 'v', 'k'), $partner);
+        $isPartnerReport = $share->partner_id !== null;
+        $allowed = self::effective(array_column(array_map(fn ($r) => ['k' => $r['key'], 'v' => $r['on']], self::layoutOf($share)), 'v', 'k'), $partner, $isPartnerReport);
 
         $exposeTeam = (bool) ($share->options['expose_team'] ?? false);
 
         return collect(self::layoutOf($share))
-            ->filter(fn (array $row) => ($allowed[$row['key']] ?? false) && ($audience === 'team' || $row['visible_to'] === 'public') && ($partner !== null || ! in_array($row['key'], self::PARTNER_ONLY, true))
+            ->filter(fn (array $row) => ($allowed[$row['key']] ?? false) && ($audience === 'team' || $row['visible_to'] === 'public') && ($isPartnerReport || ! in_array($row['key'], self::PARTNER_ONLY, true))
                 && ($audience === 'team' || $exposeTeam || ! in_array($row['key'], self::TEAM_ONLY, true)))
             ->map(fn (array $row) => ['key' => $row['key'], 'days' => $row['days']])
             ->values()->all();

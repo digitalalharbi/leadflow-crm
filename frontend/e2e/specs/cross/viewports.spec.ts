@@ -42,7 +42,7 @@ test.describe('Screen sizes', () => {
       const { token } = await makeSharedReport(ALPHA.admin.email, `تقرير ${size.name}`)
       const stranger = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'ar-SA' })
       const open = await stranger.newPage()
-      await open.goto(`/reports/share/${token}`)
+      await open.goto(`/r/${token}`)
       await expect(open.getByTestId('shared-title')).toBeVisible()
       await expectNoSidewaysScroll(open, `${size.name} shared report`)
       await stranger.close()

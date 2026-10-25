@@ -137,7 +137,7 @@ test.describe('Safari-sensitive surfaces', () => {
     const { token } = await makeSharedReport(ALPHA.admin.email, 'للتخطيط')
     const context = await browser.newContext({ viewport: { width: 1366, height: 768 }, locale: 'ar-SA' })
     const page = await context.newPage()
-    await page.goto(`/reports/share/${token}`)
+    await page.goto(`/r/${token}`)
     await expect(page.getByTestId('shared-exec_marketing')).toBeVisible()
 
     const tops = await page.getByTestId('shared-exec_marketing').locator('[data-testid^="exec_marketing-"]').evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))

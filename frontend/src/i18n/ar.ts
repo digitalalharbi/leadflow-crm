@@ -232,7 +232,7 @@ export default {
       shared: 'كشف حساب الشريك', terms: 'شروط العمولة', brought: 'ما أحضره', owed: 'مستحقاتك', payments: 'الدفعات',
     },
     types: { broker: 'وسيط', influencer: 'مؤثر', affiliate: 'مسوّق بالعمولة', external_agent: 'وكيل خارجي' },
-    stat: { clicks: 'نقرات', leads: 'عملاء', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'مبيعات' },
+    stat: { clicks: 'نقرات', leads: 'عملاء', qualified: 'مؤهلون', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'مبيعات' },
     wonRate: 'نسبة البيع', revenue: 'الإيراد', noCommission: 'لا عمولة متفق عليها',
     newLink: 'رابط ورمز QR', lastLead: 'آخر عميل {{when}}', noLeads: 'لم يجلب عملاء بعد',
     links_zero: 'بلا روابط', links_one: 'رابط واحد', links_two: 'رابطان', links_few: '{{count}} روابط', links_many: '{{count}} رابطًا', links_other: '{{count}} رابط',
@@ -271,7 +271,7 @@ export default {
   },
   revenue: {
     tab: { overview: 'نظرة عامة', revenue: 'من الإنفاق إلى الإيراد' },
-    kpi: { spend: 'الإنفاق', leads: 'العملاء', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'صفقات', revenue: 'الإيراد', roas: 'العائد على الإنفاق', cac: 'تكلفة الصفقة', cpl: 'تكلفة العميل' },
+    kpi: { spend: 'الإنفاق', leads: 'العملاء', qualified: 'مؤهلون', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'صفقات', conversion_rate: 'نسبة التحويل', revenue: 'الإيراد', roas: 'العائد على الإنفاق', cpa: 'تكلفة المعاينة', cac: 'تكلفة الصفقة', cpl: 'تكلفة العميل' },
     step: { leads: 'عملاء', qualified: 'مؤهلون', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'مبيعات' },
     funnel: 'من العميل إلى الصفقة',
     beforeStep: 'قبل «{{step}}»',

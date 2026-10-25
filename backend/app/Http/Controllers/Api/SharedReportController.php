@@ -47,12 +47,13 @@ class SharedReportController extends Controller
             return $denied;
         }
 
-        $sections = array_column(ReportTemplates::plan($share, 'public'), 'key');
+        // Everything that reads the workspace's rows — the partner a report is about included — is read inside the workspace.
+        $data = $this->context->withTenant($tenant, function () use ($share, $tenant) {
+            $share->setRelation('tenant', $tenant)->load('partner');
+            $sections = array_column(ReportTemplates::plan($share, 'public'), 'key');
 
-        $data = $this->context->withTenant($tenant, fn () => $this->cache->remember(
-            $share->setRelation('tenant', $tenant), 'public', $sections, $this->cacheSeconds($share),
-            fn () => $this->report->build($share),
-        ));
+            return $this->cache->remember($share, 'public', $sections, $this->cacheSeconds($share), fn () => $this->report->build($share));
+        });
 
         // An open page asking again for fresh numbers is the same view, not another one.
         if (! $request->hasHeader('X-Share-Refresh')) {

@@ -103,7 +103,7 @@ test.describe('Partners and QR codes', () => {
 
     const context = await browser.newContext()
     const open = await context.newPage()
-    await open.goto(`/reports/share/${url.split('/').pop()}`)
+    await open.goto(`/r/${url.split('/').pop()}`)
     await expect(open.getByTestId('shared-title')).toHaveText('تقرير الشريك')
     for (const hidden of ['sk-spend', 'sk-cpl', 'sk-cac', 'sk-roas', 'sk-revenue', 'shared-team', 'shared-campaigns']) await expect(open.getByTestId(hidden)).toHaveCount(0)
     await expect(open.getByTestId('sk-leads')).toBeVisible()

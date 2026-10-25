@@ -173,7 +173,7 @@ export default {
       shared: 'Partner statement', terms: 'Commission terms', brought: 'What you brought', owed: 'What you are owed', payments: 'Payments',
     },
     types: { broker: 'Broker', influencer: 'Influencer', affiliate: 'Affiliate', external_agent: 'External agent' },
-    stat: { clicks: 'Clicks', leads: 'Leads', interested: 'Interested', visits: 'Visited', reservations: 'Reserved', won: 'Won' },
+    stat: { clicks: 'Clicks', leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visited', reservations: 'Reserved', won: 'Won' },
     wonRate: 'Won rate', revenue: 'Revenue', noCommission: 'No commission agreed',
     newLink: 'Link & QR', lastLead: 'Last lead {{when}}', noLeads: 'No leads yet',
     links_one: '1 link', links_other: '{{count}} links',
@@ -212,7 +212,7 @@ export default {
   },
   revenue: {
     tab: { overview: 'Overview', revenue: 'Spend to revenue' },
-    kpi: { spend: 'Spend', leads: 'Leads', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', won: 'Won', revenue: 'Revenue', roas: 'ROAS', cac: 'CAC', cpl: 'CPL' },
+    kpi: { spend: 'Spend', leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', won: 'Won', conversion_rate: 'Conversion rate', revenue: 'Revenue', roas: 'ROAS', cpa: 'Cost per viewing', cac: 'CAC', cpl: 'CPL' },
     step: { leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visited', reservations: 'Reserved', won: 'Won' },
     funnel: 'From lead to sale',
     beforeStep: 'before “{{step}}”',

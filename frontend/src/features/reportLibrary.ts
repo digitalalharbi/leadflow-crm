@@ -52,6 +52,9 @@ export const updateLink = (id: string, link: string, payload: LinkInput) => apiP
 export const revokeLink = (id: string, link: string) => apiPost<{ link: ReportLink }>(`/report-shares/${id}/links/${link}/revoke`)
 export const regenerateLink = (id: string, link: string) => apiPost<{ link: ReportLink }>(`/report-shares/${id}/links/${link}/regenerate`)
 
+/** A person copied or sent a link: the report's activity says it was shared. Never worth failing a copy over. */
+export const markShared = (id: string, link: string) => apiPost<{ recorded: boolean }>(`/report-shares/${id}/links/${link}/shared`).catch(() => undefined)
+
 export const fetchClientLinks = () => apiGet<{ links: ClientLink[] }>('/report-links')
 
 export const publishReport = (id: string) => apiPost<{ state: string }>(`/report-shares/${id}/publish`)

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, ExternalLink, KeyRound, Mail, Plus, RefreshCw, ShieldOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Drawer, EmptyState, Input, Skeleton, Textarea } from '@/components/ui'
-import { addLink, fetchLinks, regenerateLink, revokeLink, updateLink, type LinkInput, type ReportLink } from '@/features/reportLibrary'
+import { addLink, fetchLinks, markShared, regenerateLink, revokeLink, updateLink, type LinkInput, type ReportLink } from '@/features/reportLibrary'
 import type { ReportShare, ShareStatus } from '@/features/reportShares'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDate, formatLastSeen } from '@/lib/format'
@@ -35,7 +35,8 @@ export function LinksPanel({ share, onClose, canVerify }: { share: ReportShare |
     void queryClient.invalidateQueries({ queryKey: ['report-shares'] })
     void queryClient.invalidateQueries({ queryKey: ['client-links'] })
   }
-  const copy = async (url: string) => {
+  const copy = async (url: string, link?: string) => {
+    if (share && link) void markShared(share.id, link)
     try { await navigator.clipboard.writeText(url); toast(t('links.copied'), 'success') } catch { toast(url, 'info') }
   }
   const act = useMutation({
@@ -68,7 +69,7 @@ export function LinksPanel({ share, onClose, canVerify }: { share: ReportShare |
                   {link.expires_at ? ` · ${t('links.expires')} ${formatDate(link.expires_at, i18n.language)}` : ''}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(link.url)} disabled={link.status === 'revoked'} data-testid="link-copy">{t('links.copy')}</Button>
+                  <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(link.url, link.id)} disabled={link.status === 'revoked'} data-testid="link-copy">{t('links.copy')}</Button>
                   <a href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[0.8125rem]" data-testid="link-open"><ExternalLink className="size-3.5" aria-hidden />{t('links.open')}</a>
                   <Button size="sm" variant="secondary" onClick={() => setEditing(link)} data-testid="link-edit">{t('library.action.edit')}</Button>
                   <Button size="sm" variant="outline" icon={<RefreshCw className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'regenerate', link: link.id })} data-testid="link-regenerate">{t('links.regenerate')}</Button>

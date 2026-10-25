@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, EmptyState, ErrorState, PageHeader, Skeleton } from '@/components/ui'
 import { protectionOf } from '@/components/reports/library/LinksPanel'
-import { duplicateReport, exportReport, fetchClientLinks, revokeLink, type ClientLink } from '@/features/reportLibrary'
+import { duplicateReport, exportReport, fetchClientLinks, markShared, revokeLink, type ClientLink } from '@/features/reportLibrary'
 import type { ShareStatus } from '@/features/reportShares'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDate, formatLastSeen } from '@/lib/format'
@@ -29,7 +29,9 @@ export function ClientAccessPage() {
   const [search, setSearch] = useState('')
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['client-links'], queryFn: fetchClientLinks })
 
-  const copy = async (url: string) => {
+  const copy = async (url: string, link?: ClientLink) => {
+    if (link) void markShared(link.report.id, link.id)
+
     try { await navigator.clipboard.writeText(url); toast(t('links.copied'), 'success') } catch { toast(url, 'info') }
   }
   const revoke = useMutation({
@@ -81,7 +83,7 @@ export function ClientAccessPage() {
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   <a href={link.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[0.8125rem]" data-testid="client-open"><ExternalLink className="size-3.5" aria-hidden />{t('clientAccess.action.open')}</a>
-                  <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} disabled={link.status === 'revoked'} onClick={() => void copy(link.url)} data-testid="client-copy">{t('clientAccess.action.copy')}</Button>
+                  <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} disabled={link.status === 'revoked'} onClick={() => void copy(link.url, link)} data-testid="client-copy">{t('clientAccess.action.copy')}</Button>
                   <Button size="sm" variant="secondary" icon={<Pencil className="size-3.5" aria-hidden />} onClick={() => navigate('/report-library')} data-testid="client-edit">{t('clientAccess.action.edit')}</Button>
                   <Button size="sm" variant="outline" icon={<Files className="size-3.5" aria-hidden />} loading={duplicate.isPending} onClick={() => duplicate.mutate(link)} data-testid="client-duplicate">{t('clientAccess.action.duplicate')}</Button>
                   {exportsOn && <Button size="sm" variant="outline" icon={<Download className="size-3.5" aria-hidden />} loading={download.isPending} onClick={() => download.mutate(link)} data-testid="client-export">{t('clientAccess.action.export')}</Button>}

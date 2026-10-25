@@ -185,6 +185,11 @@ class ReportLibraryTest extends TestCase
         foreach (['csv' => 'text/csv', 'xlsx' => 'spreadsheetml', 'pdf' => 'application/pdf'] as $format => $type) {
             $response = $api()->get("/api/v1/report-shares/{$share['id']}/export?format={$format}")->assertOk();
             $this->assertStringContainsString($type, (string) $response->headers->get('Content-Type'));
+            // A real file of its kind, not a page that was named like one.
+            $body = $response->baseResponse->getContent();
+            $this->assertTrue(match ($format) {
+                'pdf' => str_starts_with($body, '%PDF-'), 'xlsx' => str_starts_with($body, 'PK'), default => str_contains($body, 'name,value')
+            }, "{$format} is a real {$format}");
         }
 
         // The client template carries no money: no export carries it either.

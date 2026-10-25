@@ -185,6 +185,17 @@ class ReportLibraryController extends Controller
         return ApiResponse::success(['link' => $this->presentLink($model, $share)]);
     }
 
+    /** A person copied or sent a link: written down as "shared", with the client it was for. */
+    public function sharedLink(Request $request, string $uuid, string $link)
+    {
+        $share = $this->report($request, $uuid, 'view');
+        $model = $this->link($share, $link);
+
+        ReportActivities::record($share, 'shared', $request->user(), ['link' => $model->uuid, 'via' => 'copy']);
+
+        return ApiResponse::success(['recorded' => true]);
+    }
+
     public function revokeLink(Request $request, string $uuid, string $link)
     {
         $share = $this->report($request, $uuid, 'update');

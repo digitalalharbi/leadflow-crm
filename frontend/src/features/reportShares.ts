@@ -105,6 +105,8 @@ export interface ReportShare {
   /** For a partner's report: whose leads it is, and whether they may see revenue. */
   partner?: { id: string; name: string; show_revenue: boolean } | null
   url: string
+  /** The report's own link, for the things that are done to one link. */
+  link_id: string | null
   status: ShareStatus
   has_password: boolean
   expires_at: string | null

@@ -20,6 +20,7 @@ use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -150,7 +151,19 @@ class SharedReportController extends Controller
             return ApiResponse::error('This report has expired.', null, 410);
         }
 
+        $attempts = 'report-password:'.$link->id.':'.$request->ip();
+        $max = (int) config('links.password_attempts_per_minute', 10);
+
+        if (filled($request->header('X-Share-Password')) && RateLimiter::tooManyAttempts($attempts, $max)) {
+            return ApiResponse::error('Too many attempts.', null, 429);
+        }
+
         if (! $link->passwordMatches($request->header('X-Share-Password'))) {
+            // A wrong guess costs one of the few a minute that an address gets; asking for the password screen costs nothing.
+            if (filled($request->header('X-Share-Password'))) {
+                RateLimiter::hit($attempts, 60);
+            }
+
             // Enough to draw the password screen, nothing about the numbers.
             return response()->json(['success' => false, 'message' => 'A password is required.', 'data' => ['password_required' => true, 'workspace' => $brand, 'name' => $share->name]], 401);
         }

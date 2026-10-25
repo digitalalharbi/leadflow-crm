@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Access\AccessResolver;
+use App\Domain\Links\ShortLinks;
 use App\Domain\Reports\ReportCache;
+use App\Enums\Role;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
+use App\Models\PermissionRule;
 use App\Models\Project;
 use App\Models\ReportShare;
 use App\Models\ShortLink;
@@ -109,7 +113,7 @@ class ReportSecurityTest extends TestCase
         $this->getJson('/api/v1/public/r/'.str_repeat('a', 22).'/export?format=csv')->assertNotFound();
 
         // A tracking token is not a report token.
-        [, $other] = $this->asTenant($this->a['tenant'], fn () => app(\App\Domain\Links\ShortLinks::class)->issue('form', null, null, null));
+        [, $other] = $this->asTenant($this->a['tenant'], fn () => app(ShortLinks::class)->issue('form', null, null, null));
         $this->getJson('/api/v1/public/r/'.$other)->assertNotFound();
     }
 
@@ -243,9 +247,9 @@ class ReportSecurityTest extends TestCase
     public function test_a_person_without_a_permission_cannot_put_the_section_into_a_report_or_read_it_in_the_preview(): void
     {
         $this->plant($this->a, 'Alpha');
-        $manager = $this->makeUser($this->a['tenant'], \App\Enums\Role::Manager);
-        $this->asTenant($this->a['tenant'], fn () => \App\Models\PermissionRule::create(['layer' => 'role', 'role_key' => 'manager', 'permission' => 'revenue.view', 'effect' => 'deny']));
-        \App\Domain\Access\AccessResolver::flush();
+        $manager = $this->makeUser($this->a['tenant'], Role::Manager);
+        $this->asTenant($this->a['tenant'], fn () => PermissionRule::create(['layer' => 'role', 'role_key' => 'manager', 'permission' => 'revenue.view', 'effect' => 'deny']));
+        AccessResolver::flush();
         $manager = $manager->fresh();
 
         $this->actingAs($manager)->postJson('/api/v1/report-shares', ['name' => 'x', 'template' => 'client', 'sections' => ['kpi_volume' => true, 'revenue' => true]])->assertStatus(422);
@@ -260,7 +264,7 @@ class ReportSecurityTest extends TestCase
 
     public function test_only_people_who_may_share_reports_can_reach_the_library_at_all(): void
     {
-        $rep = $this->makeUser($this->a['tenant'], \App\Enums\Role::Sales);
+        $rep = $this->makeUser($this->a['tenant'], Role::Sales);
 
         $this->actingAs($rep)->getJson('/api/v1/report-shares')->assertForbidden();
         $this->actingAs($rep)->getJson('/api/v1/report-links')->assertForbidden();
@@ -273,5 +277,35 @@ class ReportSecurityTest extends TestCase
         $this->getJson('/api/v1/report-links')->assertUnauthorized();
         $this->postJson('/api/v1/report-shares', ['name' => 'x', 'template' => 'client'])->assertUnauthorized();
         $this->getJson('/api/v1/funnel')->assertUnauthorized();
+    }
+
+    public function test_wrong_passwords_are_limited_per_link_and_per_address_but_the_password_screen_is_free(): void
+    {
+        $this->plant($this->a, 'Alpha');
+        $share = $this->share($this->a, ['password' => 'right-pass']);
+
+        // Asking for the password screen costs nothing.
+        foreach (range(1, 15) as $_) {
+            $this->open($share['url'])->assertStatus(401);
+        }
+
+        $codes = collect(range(1, 14))->map(fn () => $this->open($share['url'], ['X-Share-Password' => 'nope'])->status());
+        $this->assertSame(10, $codes->filter(fn ($c) => $c === 401)->count(), 'ten wrong guesses a minute are answered');
+        $this->assertSame(4, $codes->filter(fn ($c) => $c === 429)->count(), 'the rest are refused');
+
+        // Even the right password is refused while the address is cooling off.
+        $this->open($share['url'], ['X-Share-Password' => 'right-pass'])->assertStatus(429);
+    }
+
+    public function test_copying_a_link_is_written_down_as_shared(): void
+    {
+        $share = $this->share($this->a);
+        $this->actingAs($this->a['admin'])->postJson("/api/v1/report-shares/{$share['id']}/links/{$share['link_id']}/shared")->assertOk();
+
+        $actions = array_column($this->actingAs($this->a['admin'])->getJson("/api/v1/report-shares/{$share['id']}/activity")->json('data.activity'), 'action');
+        $this->assertContains('shared', $actions);
+
+        // Another workspace cannot write into this report's trail.
+        $this->actingAs($this->b['admin'])->postJson("/api/v1/report-shares/{$share['id']}/links/{$share['link_id']}/shared")->assertNotFound();
     }
 }

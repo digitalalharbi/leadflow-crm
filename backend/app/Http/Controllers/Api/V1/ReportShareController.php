@@ -13,6 +13,7 @@ use App\Domain\Reports\ReportActivities;
 use App\Domain\Reports\ReportBranding;
 use App\Domain\Reports\ReportPresets;
 use App\Domain\Reports\ReportRevisions;
+use App\Domain\Reports\ReportSections;
 use App\Domain\Reports\ReportTemplates;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
@@ -310,7 +311,7 @@ class ReportShareController extends Controller
             'filters.campaigns' => ['sometimes', 'array', 'max:100'],
             'filters.campaigns.*' => ['uuid'],
             'filters.sources' => ['sometimes', 'array', 'max:50'],
-            'filters.sources.*' => ['string', Rule::in(\App\Domain\Reports\ReportSections::CHANNELS)],
+            'filters.sources.*' => ['string', Rule::in(ReportSections::CHANNELS)],
             'filters.sales_users' => ['sometimes', 'array', 'max:100'],
             'filters.sales_users.*' => ['uuid'],
             'branding' => ['sometimes', 'nullable', 'array'],
@@ -493,6 +494,7 @@ class ReportShareController extends Controller
             'days' => $share->days,
             'project' => $share->relationLoaded('project') && $share->project ? ['id' => $share->project->uuid, 'name' => $share->project->name] : null,
             'url' => $share->url(),
+            'link_id' => $share->primaryLink()?->uuid,
             'status' => $share->status(),
             'has_password' => $share->hasPassword(),
             'expires_at' => $share->primaryLink()?->expires_at?->toIso8601String(),

@@ -502,6 +502,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/report-shares/{uuid}/links', [ReportLibraryController::class, 'addLink']);
             Route::patch('/report-shares/{uuid}/links/{link}', [ReportLibraryController::class, 'updateLink']);
             Route::post('/report-shares/{uuid}/links/{link}/revoke', [ReportLibraryController::class, 'revokeLink']);
+            Route::post('/report-shares/{uuid}/links/{link}/shared', [ReportLibraryController::class, 'sharedLink']);
             Route::post('/report-shares/{uuid}/links/{link}/regenerate', [ReportLibraryController::class, 'regenerateLink']);
             Route::get('/report-shares/{uuid}/export', [ReportLibraryController::class, 'export'])->middleware('throttle:report-export');
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);

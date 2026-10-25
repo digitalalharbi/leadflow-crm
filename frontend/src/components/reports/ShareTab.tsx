@@ -8,7 +8,7 @@ import {
   type LayoutItem, type ReportPreset, type ReportPresetKey, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
 } from '@/features/reportShares'
 import { createSchedule, deleteSchedule, fetchSchedules, updateSchedule, type ScheduleFrequency } from '@/features/reportSchedules'
-import { archiveReport, duplicateReport, exportReport, publishReport, unarchiveReport } from '@/features/reportLibrary'
+import { archiveReport, duplicateReport, exportReport, markShared, publishReport, unarchiveReport } from '@/features/reportLibrary'
 import { HistoryPanel } from '@/components/reports/library/HistoryPanel'
 import { LinksPanel } from '@/components/reports/library/LinksPanel'
 import { NotesPanel } from '@/components/reports/library/NotesPanel'
@@ -47,7 +47,9 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['report-shares'] })
 
-  const copy = async (url: string) => {
+  const copy = async (url: string, share?: ReportShare) => {
+    if (share?.link_id) void markShared(share.id, share.link_id)
+
     try {
       await navigator.clipboard.writeText(url)
       toast(t('share.copied'), 'success')
@@ -158,7 +160,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
                 {share.state === 'live' && share.status === 'active'
                   ? <a href={share.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-2.5 py-1 text-[0.8125rem] font-semibold text-[var(--brand-ink)]" data-testid="share-open"><ExternalLink className="size-3.5" aria-hidden />{t('library.action.open')}</a>
                   : <Button size="sm" icon={<ExternalLink className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-open">{t('library.action.open')}</Button>}
-                <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked' || share.state !== 'live'} data-testid="share-copy">{t('share.copy')}</Button>
+                <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url, share)} disabled={share.status === 'revoked' || share.state !== 'live'} data-testid="share-copy">{t('share.copy')}</Button>
                 <Button size="sm" variant="secondary" onClick={() => setEditing(share)} data-testid="share-edit">{t('share.edit')}</Button>
                 <Button size="sm" variant="outline" icon={<Eye className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-preview">{t('share.preview')}</Button>
                 <Button size="sm" variant="outline" icon={<Link2 className="size-3.5" aria-hidden />} onClick={() => setLinksFor(share)} data-testid="share-links">{t('library.action.links')}</Button>
@@ -205,7 +207,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
         presets={data.presets ?? []}
         unavailable={data.unavailable ?? []}
         onClose={() => setEditing(null)}
-        onSaved={(share) => { setEditing(null); refresh(); if (share.state === 'live') void copy(share.url) }}
+        onSaved={(share) => { setEditing(null); refresh(); if (share.state === 'live') void copy(share.url, share) }}
       />
     </div>
   )

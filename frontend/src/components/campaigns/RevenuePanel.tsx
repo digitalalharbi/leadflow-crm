@@ -4,7 +4,7 @@ import { BadgeDollarSign, CircleDollarSign, Coins, Eye, KeyRound, Sparkles, Targ
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody, EmptyState, ErrorState, Skeleton, Table, TableWrap, Td, Th, Tr } from '@/components/ui'
-import { AreaTrend, Delta, Donut, KpiCard, PipelineFunnel, RankBars } from '@/components/visual'
+import { AreaTrend, Delta, Donut, KpiCard, PipelineFunnel, RankBars, RealEstateFunnel } from '@/components/visual'
 import type { Tone } from '@/components/visual/tones'
 import { platformColor } from '@/components/charts'
 import { useCampaignRevenue, type CampaignRevenueData, type CampaignRow, type RevenueStep } from '@/features/campaigns'
@@ -129,9 +129,10 @@ function FunnelCard({ data, className }: { data: CampaignRevenueData; className?
   return (
     <Card className={className} data-testid="revenue-funnel-card">
       <CardBody>
-        <h2 className="t-card-title mb-3">{t('revenue.funnel')}</h2>
+        <h2 className="t-card-title mb-3">{data.real_estate_funnel ? t('reFunnel.title') : t('revenue.funnel')}</h2>
+        {data.real_estate_funnel && <RealEstateFunnel funnel={data.real_estate_funnel} currency={data.currency} testId="revenue-re-funnel" />}
         {/* The share of the step before that never made it here — where the money leaks. */}
-        <PipelineFunnel
+        {!data.real_estate_funnel && <PipelineFunnel
           testId="revenue-funnel"
           steps={data.funnel.map((step) => ({
             key: step.key,
@@ -139,14 +140,14 @@ function FunnelCard({ data, className }: { data: CampaignRevenueData; className?
             count: step.count,
             costPer: step.cost !== null ? money(step.cost) : null,
           }))}
-        />
-        <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5" data-testid="revenue-funnel-lost">
+        />}
+        {!data.real_estate_funnel && <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5" data-testid="revenue-funnel-lost">
           {data.funnel.filter((step) => step.lost !== null && step.lost > 0).map((step) => (
             <li key={step.key} className="t-caption tabular-nums">
               <span className="font-semibold text-[var(--color-danger)]" dir="ltr">−{step.lost}%</span> {t('revenue.beforeStep', { step: t(`revenue.step.${step.key}`) })}
             </li>
           ))}
-        </ul>
+        </ul>}
       </CardBody>
     </Card>
   )

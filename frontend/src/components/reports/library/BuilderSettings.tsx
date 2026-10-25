@@ -25,6 +25,9 @@ export interface SettingsState {
 
 export const AD_PLATFORMS = ['meta', 'tiktok', 'snapchat', 'google_ads', 'x', 'linkedin'] as const
 
+/** The channels a lead can be filed under — the same ones the sources section lists. */
+export const CHANNELS = ['meta', 'tiktok', 'snapchat', 'google_ads', 'linkedin', 'x', 'whatsapp', 'referral', 'broker', 'influencer', 'qr', 'portals', 'organic', 'social', 'landing_page', 'form', 'manual', 'import', 'other'] as const
+
 export function settingsFrom(share: ReportShare | null): SettingsState {
   return {
     client: share?.client_name ?? '',
@@ -139,6 +142,12 @@ export function BuilderSettings({ value, onChange, partner }: { value: SettingsS
             <p className="t-caption mb-0.5 font-medium">{t('builder.platforms')}</p>
             <div className="flex flex-wrap gap-x-3">
               {AD_PLATFORMS.map((p) => <Check key={p} checked={(value.filters.platforms ?? []).includes(p)} label={t(`platforms.${p}`, { defaultValue: p })} testId={`builder-platform-${p}`} onChange={() => set('filters', { ...value.filters, platforms: toggle(value.filters.platforms, p) })} />)}
+            </div>
+          </div>
+          <div>
+            <p className="t-caption mb-0.5 font-medium">{t('builder.sources')}</p>
+            <div className="flex flex-wrap gap-x-3">
+              {CHANNELS.map((c) => <Check key={c} checked={(value.filters.sources ?? []).includes(c)} label={t(`rsec.channel.${c}`, { defaultValue: t(`platforms.${c}`, { defaultValue: c }) })} testId={`builder-source-${c}`} onChange={() => set('filters', { ...value.filters, sources: toggle(value.filters.sources, c) })} />)}
             </div>
           </div>
           <div>

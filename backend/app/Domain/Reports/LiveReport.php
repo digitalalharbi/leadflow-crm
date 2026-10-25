@@ -55,8 +55,10 @@ class LiveReport
     /**
      * @param  (callable(string):bool)|null  $allowed  for a signed-in viewer: which sections they may see at all — what
      *                                                 they may not is not built, let alone shown
+     * @param  list<string>|null  $only  build just these sections (a page asks for its first screen, then the rest). Which
+     *                                   figures are allowed to appear is decided from every section that is on, not from these.
      */
-    public function build(ReportShare $share, string $audience = 'public', ?callable $allowed = null): array
+    public function build(ReportShare $share, string $audience = 'public', ?callable $allowed = null, ?array $only = null): array
     {
         $this->engine = [];
         $plan = array_values(array_filter(ReportTemplates::plan($share, $audience), fn (array $row) => $allowed === null || $allowed($row['key'])));
@@ -96,7 +98,7 @@ class LiveReport
             'notes' => $this->notes($share),
         ];
 
-        foreach ($keys as $section) {
+        foreach ($only === null ? $keys : array_values(array_intersect($keys, $only)) as $section) {
             $window = $this->window($share, $days[$section] ?? null);
 
             $out = match ($section) {
@@ -109,7 +111,7 @@ class LiveReport
                 'trend' => $this->trend($out, $share, $window, $money, $earnings),
                 'platforms' => $out + ['platforms' => $this->platforms($share, $window, $money, $earnings)],
                 'marketing' => $out + ['marketing' => $this->memo('marketing', $window, fn () => $this->sections->marketing($window, $this->revenue($share, $window['from'], $window['to'])))],
-                'campaigns' => $out + ['campaigns' => $this->memo('campaigns', $window, fn () => $this->sections->campaigns($this->revenue($share, $window['from'], $window['to'])))],
+                'campaigns' => $out + ['campaigns' => $this->memo('campaigns', $window, fn () => $this->sections->campaigns($this->revenue($share, $window['from'], $window['to']), $share->compare ? $this->revenue($share, $window['prev_from'], $window['prev_to']) : null))],
                 'sources' => $out + ['sources' => $this->memo('sources', $window, fn () => $this->sections->sources($window))],
                 'sales' => $out + ['sales' => $this->memo('sales', $window, fn () => $this->sections->sales($window))],
                 'lead_quality' => $out + ['lead_quality' => $this->sections->leadQuality($window)],

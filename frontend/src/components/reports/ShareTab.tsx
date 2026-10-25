@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BarChart3, CalendarClock, Copy, Download, Files, History, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, NotebookPen, Plus, Rocket, ShieldOff, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BarChart3, CalendarClock, Copy, Download, ExternalLink, Files, History, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, NotebookPen, Plus, Rocket, ShieldOff, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui'
 import {
@@ -155,6 +155,9 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
 
               <div className="flex flex-wrap gap-1.5">
                 {share.state === 'draft' && <Button size="sm" icon={<Rocket className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'publish', id: share.id })} data-testid="share-publish">{t('library.action.publish')}</Button>}
+                {share.state === 'live' && share.status === 'active'
+                  ? <a href={share.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-2.5 py-1 text-[0.8125rem] font-semibold text-[var(--brand-ink)]" data-testid="share-open"><ExternalLink className="size-3.5" aria-hidden />{t('library.action.open')}</a>
+                  : <Button size="sm" icon={<ExternalLink className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-open">{t('library.action.open')}</Button>}
                 <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked' || share.state !== 'live'} data-testid="share-copy">{t('share.copy')}</Button>
                 <Button size="sm" variant="secondary" onClick={() => setEditing(share)} data-testid="share-edit">{t('share.edit')}</Button>
                 <Button size="sm" variant="outline" icon={<Eye className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-preview">{t('share.preview')}</Button>

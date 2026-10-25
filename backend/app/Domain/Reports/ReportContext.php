@@ -101,8 +101,20 @@ final class ReportContext
     /** @return array{platforms?: list<string>, campaign_ids?: list<int>} what the campaign engine is narrowed to */
     public function campaignFilter(): array
     {
+        $platforms = $this->platforms;
+
+        // A source filter names channels; only the ad platforms among them have campaigns. None of them: no campaigns at all.
+        if ($this->sources !== []) {
+            $ads = array_values(array_intersect($this->sources, ReportSections::AD_CHANNELS));
+            $platforms = $platforms === [] ? $ads : array_values(array_intersect($platforms, $ads));
+
+            if ($platforms === []) {
+                return ['campaign_ids' => [0]];
+            }
+        }
+
         return array_filter([
-            'platforms' => $this->platforms,
+            'platforms' => $platforms,
             'campaign_ids' => $this->campaignIds,
         ]);
     }
@@ -120,7 +132,7 @@ final class ReportContext
         return $query
             ->when($this->partnerId(), fn ($q, $id) => $q->where('leads.partner_id', $id))
             ->when($this->platforms !== [], fn ($q) => $q->whereIn('leads.platform', $this->leadPlatforms()))
-            ->when($this->sources !== [], fn ($q) => $q->whereIn('leads.source', $this->sources))
+            ->when($this->sources !== [], fn ($q) => $q->whereRaw('('.ReportSections::channelSql().') in ('.implode(',', array_fill(0, count($this->sources), '?')).')', $this->sources))
             ->when($this->campaignIds !== [], fn ($q) => $q->whereIn('leads.campaign_ref_id', $this->campaignIds))
             ->when($this->salesUserIds !== [], fn ($q) => $q->whereIn('leads.assigned_to', $this->salesUserIds));
     }
@@ -130,7 +142,7 @@ final class ReportContext
     {
         return new FunnelFilters(
             $window['from'], $window['to'], $this->projectIds, null, null, null, $this->salesUserIds, $window['prev_from'], $window['prev_to'],
-            $this->platforms, $this->campaignIds, $this->sources, $this->partnerId(),
+            $this->platforms, $this->campaignIds, [], $this->partnerId(), $this->sources,
         );
     }
 

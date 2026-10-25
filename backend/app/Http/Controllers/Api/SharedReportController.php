@@ -47,16 +47,24 @@ class SharedReportController extends Controller
             return $denied;
         }
 
+        $part = in_array($request->query('part'), ['primary', 'secondary'], true) ? $request->query('part') : null;
+
         // Everything that reads the workspace's rows — the partner a report is about included — is read inside the workspace.
-        $data = $this->context->withTenant($tenant, function () use ($share, $tenant) {
+        $data = $this->context->withTenant($tenant, function () use ($share, $tenant, $part) {
             $share->setRelation('tenant', $tenant)->load('partner');
             $sections = array_column(ReportTemplates::plan($share, 'public'), 'key');
+            $only = match ($part) {
+                'primary' => array_values(array_intersect($sections, ReportTemplates::PRIMARY)),
+                'secondary' => array_values(array_diff($sections, ReportTemplates::PRIMARY)),
+                default => null,
+            };
 
-            return $this->cache->remember($share, 'public', $sections, $this->cacheSeconds($share), fn () => $this->report->build($share));
+            return $this->cache->remember($share, 'public', $only ?? $sections, $this->cacheSeconds($share), fn () => $this->report->build($share, 'public', null, $only))
+                + ['part' => $part ?? 'all'];
         });
 
-        // An open page asking again for fresh numbers is the same view, not another one.
-        if (! $request->hasHeader('X-Share-Refresh')) {
+        // An open page asking again for fresh numbers — or for the second half of what it has already opened — is the same view, not another one.
+        if (! $request->hasHeader('X-Share-Refresh') && $part !== 'secondary') {
             $this->context->withTenant($tenant, function () use ($request, $link, $share) {
                 $this->links->recordView($link, $request);
                 ReportActivities::viewed($share, $request);

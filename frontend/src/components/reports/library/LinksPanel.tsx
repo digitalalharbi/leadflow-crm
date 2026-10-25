@@ -97,6 +97,7 @@ function LinkForm({ shareId, link, canVerify, onClose, onSaved }: { shareId: str
   const [removePassword, setRemovePassword] = useState(false)
   const [expires, setExpires] = useState(link?.expires_at?.slice(0, 10) ?? '')
   const [allowExport, setAllowExport] = useState(link?.allow_export ?? false)
+  const [active, setActive] = useState(link?.is_active ?? true)
   const [otp, setOtp] = useState(link?.require_otp ?? false)
   const [emails, setEmails] = useState((link?.allowed_emails ?? []).join('\n'))
   const [domains, setDomains] = useState((link?.allowed_domains ?? []).join('\n'))
@@ -107,6 +108,7 @@ function LinkForm({ shareId, link, canVerify, onClose, onSaved }: { shareId: str
         client_name: client || null, client_email: email || null,
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : null,
         allow_export: allowExport,
+        is_active: active,
         ...(password ? { password } : removePassword ? { password: null } : {}),
         ...(canVerify ? { require_otp: otp, allowed_emails: lines(emails), allowed_domains: lines(domains) } : {}),
       }
@@ -128,6 +130,12 @@ function LinkForm({ shareId, link, canVerify, onClose, onSaved }: { shareId: str
           <label className="t-caption flex items-center gap-2"><input type="checkbox" checked={removePassword} data-testid="link-remove-password" onChange={(e) => { setRemovePassword(e.target.checked); if (e.target.checked) setPassword('') }} className="size-4 accent-[var(--brand)]" />{t('share.removePassword')}</label>
         )}
         <Input type="date" label={t('links.expires')} hint={t('common.optional')} value={expires} data-testid="link-expires" onChange={(e) => setExpires(e.target.value)} />
+        {link && (
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--color-surface-muted)]">
+            <span className="t-small">{t('links.active')}</span>
+            <input type="checkbox" role="switch" checked={active} data-testid="link-active" onChange={(e) => setActive(e.target.checked)} className="size-4 accent-[var(--brand)]" />
+          </label>
+        )}
         <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-[var(--color-surface-muted)]">
           <span className="t-small">{t('links.allowExport')}</span>
           <input type="checkbox" role="switch" checked={allowExport} data-testid="link-allow-export" onChange={(e) => setAllowExport(e.target.checked)} className="size-4 accent-[var(--brand)]" />

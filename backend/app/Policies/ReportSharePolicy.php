@@ -2,21 +2,25 @@
 
 namespace App\Policies;
 
+use App\Domain\Access\Permissions;
 use App\Models\ReportShare;
 use App\Models\User;
 use App\Support\ProjectContext;
 
-/** Who may hand out a window onto the numbers. Reading the list is for anyone who reads reports; making one is a manager's call. */
+/**
+ * Who may hand out a window onto the numbers — decided by the permission table the workspace governs (the admin, the manager and
+ * the marketing manager by default; any role the workspace builds can be given it), narrowed to the projects a person may open.
+ */
 class ReportSharePolicy
 {
     public function viewAny(User $user): bool
     {
-        return ! $user->isSuperAdmin() && ($user->isAdmin() || $user->isManager());
+        return ! $user->isSuperAdmin() && Permissions::has($user, 'reports_share.view');
     }
 
     public function create(User $user): bool
     {
-        return $this->viewAny($user);
+        return ! $user->isSuperAdmin() && Permissions::has($user, 'reports_share.create');
     }
 
     public function view(User $user, ReportShare $share): bool
@@ -26,7 +30,12 @@ class ReportSharePolicy
 
     public function update(User $user, ReportShare $share): bool
     {
-        return $this->view($user, $share);
+        return $user->belongsToTenant($share->tenant_id) && Permissions::has($user, 'reports_share.edit') && $this->withinProjects($share);
+    }
+
+    public function delete(User $user, ReportShare $share): bool
+    {
+        return $user->belongsToTenant($share->tenant_id) && Permissions::has($user, 'reports_share.disable') && $this->withinProjects($share);
     }
 
     /**
@@ -44,10 +53,5 @@ class ReportSharePolicy
         $covered = $share->projectIds();
 
         return $covered !== [] && array_diff($covered, $allowed) === [];
-    }
-
-    public function delete(User $user, ReportShare $share): bool
-    {
-        return $this->update($user, $share);
     }
 }

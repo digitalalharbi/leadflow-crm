@@ -322,4 +322,32 @@ class ReportLibraryTest extends TestCase
         $this->assertNotContains('kpi_cost', $plan);
         $this->assertNotContains('kpi_revenue', $plan);
     }
+
+    public function test_a_long_report_opens_in_two_halves_and_counts_as_one_view(): void
+    {
+        $share = $this->make(['template' => 'management']);
+        $token = basename($share['url']);
+
+        $whole = $this->getJson("/api/v1/public/r/{$token}")->assertOk()->json('data');
+        $first = $this->getJson("/api/v1/public/r/{$token}?part=primary")->assertOk()->json('data');
+        $second = $this->getJson("/api/v1/public/r/{$token}?part=secondary")->assertOk()->json('data');
+
+        $this->assertSame($whole['sections'], $first['sections'], 'the page knows every section and its order from the first half');
+        $this->assertArrayHasKey('kpis', $first);
+        $this->assertArrayHasKey('funnel', $first);
+        $this->assertArrayNotHasKey('campaigns', $first);
+        $this->assertArrayHasKey('campaigns', $second);
+        $this->assertArrayNotHasKey('kpis', $second);
+        $this->assertSame('primary', $first['part']);
+
+        // Together they are the whole report, and money stays allowed by the report, not by the half.
+        $this->assertEquals(array_keys($whole['kpis']), array_keys($first['kpis']));
+        foreach (['marketing', 'revenue', 'sales', 'attention'] as $section) {
+            $this->assertArrayHasKey($section, $whole);
+            $this->assertEquals($whole[$section], $second[$section]);
+        }
+
+        // One opening of the page is one view: the second half is not another.
+        $this->assertSame(2, (int) ShortLink::withoutGlobalScopes()->first()->view_count, 'the whole and the first half counted; the second did not');
+    }
 }

@@ -14,7 +14,7 @@ use App\Models\User;
 class ReportRevisions
 {
     /** What counts as significant. */
-    public const TRACKED = ['name', 'client_name', 'template', 'sections', 'layout', 'project_ids', 'attribution_model', 'currency', 'period', 'period_from', 'period_to', 'compare', 'compare_mode', 'compare_from', 'compare_to', 'filters', 'branding', 'options', 'partner_id', 'state', 'notes'];
+    public const TRACKED = ['name', 'client_name', 'template', 'sections', 'layout', 'project_ids', 'attribution_model', 'currency', 'period', 'period_from', 'period_to', 'compare', 'compare_mode', 'compare_from', 'compare_to', 'filters', 'branding', 'options', 'partner_id', 'state', 'notes', 'share_settings'];
 
     /** @return array<string,mixed> */
     public static function configuration(ReportShare $share): array
@@ -25,6 +25,12 @@ class ReportRevisions
                 'project_ids' => $share->projectIds(),
                 'period_from', 'period_to', 'compare_from', 'compare_to' => $share->{$key}?->toDateString(),
                 'notes' => $share->notes()->get(['kind', 'body'])->map(fn ($n) => ['kind' => $n->kind, 'body' => $n->body])->all(),
+                // How each link is protected — never the password or the token, only that there is one.
+                'share_settings' => $share->links()->get()->map(fn ($l) => [
+                    'link' => $l->uuid, 'client' => $l->client_name, 'active' => (bool) $l->is_active, 'revoked' => $l->revoked_at !== null,
+                    'expires_at' => $l->expires_at?->toDateString(), 'password' => $l->hasPassword(), 'otp' => (bool) $l->require_otp,
+                    'emails' => count((array) $l->allowed_emails), 'domains' => count((array) $l->allowed_domains), 'export' => (bool) $l->allow_export,
+                ])->all(),
                 default => $share->{$key},
             };
         }

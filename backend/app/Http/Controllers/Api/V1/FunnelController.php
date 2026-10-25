@@ -20,6 +20,8 @@ class FunnelController extends Controller
     {
         $this->authorize('viewAny', Lead::class);
         $user = $request->user();
+        // The funnel with filters is an analysis: the people who read analytics. A rep's own funnel is on their dashboard.
+        abort_unless(Permissions::has($user, 'analytics.view'), 403);
         $request->validate([
             'range' => ['sometimes', 'in:'.implode(',', FunnelRequest::RANGES)],
             'date_from' => ['sometimes', 'date'], 'date_to' => ['sometimes', 'date', 'after_or_equal:date_from'],

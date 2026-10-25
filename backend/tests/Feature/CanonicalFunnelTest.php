@@ -247,4 +247,27 @@ class CanonicalFunnelTest extends TestCase
         $this->assertArrayNotHasKey('revenue', $this->stage($f, 'decision'));
         $this->assertArrayNotHasKey('revenue', collect($this->stage($f, 'decision')['sub_stages'])->firstWhere('key', 'won'));
     }
+
+    public function test_referral_covers_brokers_recommendations_and_customers_who_came_back_and_every_stage_has_a_trend(): void
+    {
+        $this->lead($this->p1);
+        $this->lead($this->p1, 'new', ['source' => 'recommendation']);
+        $this->lead($this->p1, 'new', ['re_engaged_count' => 2]);
+        $this->asTenant($this->t['tenant'], fn () => TrackingEvent::create(['visitor_id' => 'v1', 'event_type' => 'visit', 'project_id' => $this->p1->id, 'occurred_at' => now()->subDay()]));
+
+        $f = $this->funnel();
+        $referral = $this->stage($f, 'referral');
+
+        $this->assertSame(2, $referral['count']);
+        $this->assertSame(['broker_referral' => 0, 'source_referral' => 1, 'repeat_opportunity' => 1], collect($referral['sub_stages'])->pluck('count', 'key')->all());
+        $this->assertFalse($referral['subset_of_previous']);
+
+        $point = collect($f['trend']['points'])->firstWhere('date', now()->subDay()->toDateString());
+        $this->assertArrayHasKey('awareness', $point);
+        $this->assertSame(1, $point['awareness']);
+        $this->assertArrayHasKey('referral', $point);
+        $today = collect($f['trend']['points'])->firstWhere('date', now()->toDateString());
+        $this->assertSame(2, array_sum(array_column($f['trend']['points'], 'referral')));
+        $this->assertNotNull($today);
+    }
 }

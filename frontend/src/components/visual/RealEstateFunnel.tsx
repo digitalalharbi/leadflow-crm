@@ -84,6 +84,7 @@ function StageRow({ stage, index, top, currency, showRevenue, lang, detached = f
             {stage.sub_stages.filter((s) => s.count !== null).map((s) => <span key={s.key}>{t(`reFunnel.sub.${s.key}`, { defaultValue: s.key })} <b className="tabular-nums" dir="ltr">{formatNumber(s.count, lang)}</b></span>)}
           </p>
         )}
+        {stage.cost != null && <p className="t-caption" dir="auto" data-testid={`re-funnel-cost-${stage.key}`}>{t('reFunnel.cost')}: <b dir="ltr">{formatMoneyCompact(stage.cost, currency, lang)}</b></p>}
         {showRevenue && stage.revenue != null && stage.revenue > 0 && <p className="t-caption" dir="auto">{t('reFunnel.revenue')}: <b dir="ltr">{formatMoneyCompact(stage.revenue, currency, lang)}</b></p>}
       </div>
     </li>

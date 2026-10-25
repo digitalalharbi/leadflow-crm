@@ -255,6 +255,8 @@ export interface CampaignRevenueData {
   currency: string
   totals: CampaignTotals
   comparison: Record<string, Compared>
+  /** The official funnel over the same period, with what each stage cost when the spend is known. */
+  real_estate_funnel?: import('@/features/reportShares').RealEstateFunnelData
   funnel: { key: RevenueStep; count: number; cost: number | null; rate: number | null; lost: number | null }[]
   campaigns: CampaignRow[]
   heatmap: { steps: RevenueStep[]; rows: { id: string; name: string; platform: AdPlatformKey; leads: number; cells: number[] }[] }

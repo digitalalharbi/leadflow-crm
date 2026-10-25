@@ -310,7 +310,7 @@ class ReportShareController extends Controller
             'filters.campaigns' => ['sometimes', 'array', 'max:100'],
             'filters.campaigns.*' => ['uuid'],
             'filters.sources' => ['sometimes', 'array', 'max:50'],
-            'filters.sources.*' => ['string', 'max:64'],
+            'filters.sources.*' => ['string', Rule::in(\App\Domain\Reports\ReportSections::CHANNELS)],
             'filters.sales_users' => ['sometimes', 'array', 'max:100'],
             'filters.sales_users.*' => ['uuid'],
             'branding' => ['sometimes', 'nullable', 'array'],

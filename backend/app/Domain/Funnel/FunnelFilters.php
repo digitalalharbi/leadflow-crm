@@ -38,6 +38,8 @@ final class FunnelFilters
         public array $campaignIds = [],
         public array $sources = [],
         public ?int $partnerId = null,
+        /** The channels a lead is filed under (meta, whatsapp, broker …) — the same ones the sources page lists. */
+        public array $channels = [],
     ) {
         // The single filters and the lists are one: a list is what the queries read.
         $this->platforms = array_values(array_unique(array_filter([...$this->platforms, $platform])));
@@ -65,7 +67,7 @@ final class FunnelFilters
 
     public function previous(): self
     {
-        return new self($this->compareFrom, $this->compareTo, $this->projectIds, null, null, null, $this->assignedTo, platforms: $this->platforms, campaignIds: $this->campaignIds, sources: $this->sources, partnerId: $this->partnerId);
+        return new self($this->compareFrom, $this->compareTo, $this->projectIds, null, null, null, $this->assignedTo, platforms: $this->platforms, campaignIds: $this->campaignIds, sources: $this->sources, partnerId: $this->partnerId, channels: $this->channels);
     }
 
     /** A stable string for cache keys: everything that changes the answer, nothing that does not. */
@@ -78,7 +80,7 @@ final class FunnelFilters
 
         return hash('sha256', json_encode([
             $this->from->toDateString(), $this->to->toDateString(), $this->compareFrom->toDateString(), $this->compareTo->toDateString(),
-            $ids, $this->platforms, $this->campaignIds, $this->sources, $reps, $this->partnerId,
+            $ids, $this->platforms, $this->campaignIds, $this->sources, $reps, $this->partnerId, $this->channels,
         ]));
     }
 }

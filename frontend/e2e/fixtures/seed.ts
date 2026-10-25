@@ -53,3 +53,14 @@ export function linkFromEmail(email: string, path: 'invite' | 'set-password'): s
 
   return match[1]
 }
+
+/** The six-digit code the last email to an address carried — as the person would read it. */
+export function codeFromEmail(email: string): string {
+  const php = `echo App\\Models\\EmailDelivery::withoutGlobalScopes()->where('to_email', ${JSON.stringify(email.toLowerCase()).replace(/"/g, "'")})->latest('id')->value('html');`
+  const html = execFileSync('php', ['artisan', 'tinker', `--execute=${php}`], { cwd: backendDir, encoding: 'utf8', timeout: 60_000, input: '' })
+  const match = html.match(/: (\d{6})/)
+
+  if (!match) throw new Error(`No code was emailed to ${email}`)
+
+  return match[1]
+}

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Funnel;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Analytics\LeadFunnel;
 use App\Domain\Leads\InterestEngine;
 use App\Models\Campaign;
@@ -136,7 +137,8 @@ class RealEstateFunnel
         $decision = "(leads.status in ('negotiation','won') or exists (select 1 from reservations rd where rd.lead_id = leads.id and rd.status in ('pending','confirmed','converted')))";
         $booking = "(leads.status in ('appointment') or exists (select 1 from appointments ab where ab.lead_id = leads.id and ab.deleted_at is null and ab.status in ('confirmed','rescheduled','scheduled','completed')) or {$decision})";
         $engagement = "(leads.first_contact_at is not null or leads.first_response_at is not null or leads.status in ('contacted','replied','qualified','appointment','negotiation','won') or {$base['qualified']} or {$interested} or {$booking})";
-        $referral = "(leads.partner_id is not null or lower(coalesce(leads.source, '')) in ('referral','referred','broker','partner','إحالة'))";
+        // A referral: through a partner or broker, a source that says so (a referral, a recommendation), or a customer who came back.
+        $referral = "(leads.partner_id is not null or lower(coalesce(leads.source, '')) in ('referral','referred','broker','partner','recommendation','recommended','إحالة','توصية') or leads.re_engaged_count > 0)";
 
         return [
             'engagement' => $engagement,
@@ -162,6 +164,7 @@ class RealEstateFunnel
             ->when($f->platforms !== [], fn ($q) => $q->whereIn('leads.platform', $f->leadPlatforms()))
             ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('leads.campaign_ref_id', $f->campaignIds))
             ->when($f->sources !== [], fn ($q) => $q->whereIn('leads.source', $f->sources))
+            ->when($f->channels !== [], fn ($q) => $q->whereRaw('('.\App\Domain\Reports\ReportSections::channelSql().') in ('.implode(',', array_fill(0, count($f->channels), '?')).')', $f->channels))
             ->when($f->assignedTo !== [], fn ($q) => $q->whereIn('leads.assigned_to', $f->assignedTo));
     }
 
@@ -177,7 +180,8 @@ class RealEstateFunnel
             count(*) filter (where {$c['decision']}) as decision,
             count(*) filter (where {$c['referral']}) as referral,
             count(*) filter (where leads.partner_id is not null) as partner_referrals,
-            count(*) filter (where {$c['referral']} and leads.partner_id is null) as source_referrals,
+            count(*) filter (where {$c['referral']} and leads.partner_id is null and leads.re_engaged_count = 0) as source_referrals,
+            count(*) filter (where leads.re_engaged_count > 0) as repeat_opportunities,
             count(*) filter (where leads.first_contact_at is not null or leads.status in ('contacted','replied','qualified','appointment','negotiation','won')) as contacted,
             count(*) filter (where {$c['qualified']}) as qualified,
             count(*) filter (where {$c['interested']}) as interested,
@@ -203,6 +207,16 @@ class RealEstateFunnel
     {
         if ($f->partnerId !== null) {
             return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'by_partner', 'components' => [], 'tracked_leads' => null];
+        }
+
+        // What the ad platforms report belongs to the people who read analytics; a salesperson sees their own leads, not the company's reach.
+        if ($viewer !== null && ! Permissions::has($viewer, 'analytics.view')) {
+            return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'restricted', 'components' => [], 'tracked_leads' => null];
+        }
+
+        if ($f->channels !== []) {
+            // Traffic is counted by campaign and link, not by the channel a lead was later filed under.
+            return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'by_source', 'components' => [], 'tracked_leads' => null];
         }
 
         if ($f->assignedTo !== []) {
@@ -280,6 +294,7 @@ class RealEstateFunnel
             'referral' => [
                 ['key' => 'broker_referral', 'count' => $now['partner_referrals']],
                 ['key' => 'source_referral', 'count' => $now['source_referrals']],
+                ['key' => 'repeat_opportunity', 'count' => $now['repeat_opportunities']],
             ],
             default => [],
         };
@@ -297,8 +312,10 @@ class RealEstateFunnel
             count(*) as interest,
             count(*) filter (where {$c['engagement']}) as engagement,
             count(*) filter (where {$c['booking']}) as booking,
-            count(*) filter (where {$c['decision']}) as decision
+            count(*) filter (where {$c['decision']}) as decision,
+            count(*) filter (where {$c['referral']}) as referral
         ")->groupBy('day')->orderBy('day')->get()->keyBy(fn ($r) => (string) $r->day);
+        $traffic = $this->trafficByDay($f, $viewer, $bucket);
 
         $points = [];
         $cursor = $weekly ? $f->from->startOfWeek() : $f->from;
@@ -306,11 +323,49 @@ class RealEstateFunnel
         while ($cursor->lte($f->to)) {
             $key = $cursor->toDateString();
             $r = $rows->get($key);
-            $points[] = ['date' => $key, 'interest' => (int) ($r->interest ?? 0), 'engagement' => (int) ($r->engagement ?? 0), 'booking' => (int) ($r->booking ?? 0), 'decision' => (int) ($r->decision ?? 0)];
+            $points[] = ['date' => $key, 'awareness' => $traffic === null ? null : (int) ($traffic[$key] ?? 0), 'interest' => (int) ($r->interest ?? 0), 'engagement' => (int) ($r->engagement ?? 0), 'booking' => (int) ($r->booking ?? 0), 'decision' => (int) ($r->decision ?? 0), 'referral' => (int) ($r->referral ?? 0)];
             $cursor = $weekly ? $cursor->addWeek() : $cursor->addDay();
         }
 
         return ['bucket' => $weekly ? 'week' : 'day', 'points' => $points];
+    }
+
+    /**
+     * Awareness per day (or week), on the same basis as the stage: the platforms' impressions when they report any, otherwise what
+     * Mohtam measured. Null when there is no awareness to chart.
+     *
+     * @return array<string,int>|null
+     */
+    private function trafficByDay(FunnelFilters $f, ?User $viewer, string $leadBucket): ?array
+    {
+        $awareness = $this->awareness($f, $viewer);
+
+        if (! $awareness['available']) {
+            return null;
+        }
+
+        $weekly = $f->days() > 62;
+
+        if ($awareness['basis'] === 'platform') {
+            $campaigns = Campaign::query()->select('campaigns.id')
+                ->when($f->projectIds !== [], fn ($q) => $q->whereIn('campaigns.project_id', $f->projectIds))
+                ->when($f->platforms !== [], fn ($q) => $q->whereIn('campaigns.platform', $f->platforms))
+                ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('campaigns.id', $f->campaignIds));
+            $bucket = $weekly ? "date_trunc('week', date)::date" : 'date::date';
+
+            return MetricSnapshot::query()->whereIn('campaign_id', $campaigns)->whereBetween('date', [$f->from->toDateString(), $f->to->toDateString()])
+                ->selectRaw("{$bucket} as day, coalesce(sum(impressions), 0) as n")->groupBy('day')->pluck('n', 'day')->map(fn ($n) => (int) $n)->all();
+        }
+
+        $bucket = $weekly ? "date_trunc('week', occurred_at)::date" : 'occurred_at::date';
+
+        return TrackingEvent::query()->whereBetween('occurred_at', [$f->from, $f->to])
+            ->when($f->projectIds !== [], fn ($q) => $q->whereIn('project_id', $f->projectIds))
+            ->when($f->platforms !== [], fn ($q) => $q->whereIn('platform', $f->platforms))
+            ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('campaign_id', $f->campaignIds))
+            ->when($f->sources !== [], fn ($q) => $q->whereIn('utm_source', $f->sources))
+            ->whereIn('event_type', ['click', 'visit'])
+            ->selectRaw("{$bucket} as day, count(distinct visitor_id) as n")->groupBy('day')->pluck('n', 'day')->map(fn ($n) => (int) $n)->all();
     }
 
     private function change(?int $now, ?int $before): ?float

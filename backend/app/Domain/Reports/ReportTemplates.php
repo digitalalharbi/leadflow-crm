@@ -18,15 +18,20 @@ use App\Models\ReportShare;
 class ReportTemplates
 {
     /** Every section, in the order a report lists them when nobody has said otherwise. @var list<string> */
+    /**
+     * Every section, in the order a client reads a report (§40): the figures, the funnel, the trend, platforms, campaigns,
+     * sales, visits, reservations, revenue, insights, and what needs attention — then the rest, which the owner adds as needed.
+     */
     public const SECTIONS = [
-        'kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'interested', 'qualification', 'visits', 'reservations', 'trend',
-        'platforms', 'campaigns', 'attribution', 'team', 'automation', 'tracking_health', 'insights', 'recommendations', 'statement',
+        'kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'trend', 'platforms', 'marketing', 'campaigns', 'sources', 'attribution',
+        'sales', 'team', 'interested', 'qualification', 'visits', 'reservations', 'revenue', 'lead_quality', 'loss', 'projects', 'units',
+        'tracking_hub', 'tracking_health', 'automation', 'insights', 'recommendations', 'attention', 'statement',
         // The four pages of the management report: marketing, sales, automation and tracking, each a group of figures.
         'exec_marketing', 'exec_sales', 'exec_automation', 'exec_tracking',
-        // What a client asks of a real-estate report: where the leads came from and what they cost, what sales did with them,
-        // who did it, how good they were, what was lost, per project and unit, through the tracking hub, what came in, and what needs a person.
-        'marketing', 'sources', 'sales', 'lead_quality', 'loss', 'projects', 'units', 'tracking_hub', 'revenue', 'attention',
     ];
+
+    /** The first screen of a report: the page asks for these first and the rest after, so a long report opens at once. */
+    public const PRIMARY = ['kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'trend', 'platforms'];
 
     /** Templates that need the plan's advanced-templates feature. */
     public const ADVANCED = ['full_funnel', 'project', 'campaign', 'team', 'management'];

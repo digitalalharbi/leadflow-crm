@@ -15,7 +15,7 @@ import { Logo } from '@/components/brand'
 import {
   AttentionSection, LeadQualitySection, LossSection, MarketingSection, NotesSection, ProjectsSection, RevenueSection, SalesSection, SourcesSection, TrackingHubSection, UnitsSection,
 } from '@/components/reports/ClientSections'
-import { downloadSharedReport, fetchSharedReport, requestShareCode, verifyShareCode, type ShareCredentials, type SharedReportData } from '@/features/reportShares'
+import { downloadSharedReport, fetchSharedReport, mergeParts, requestShareCode, verifyShareCode, type ShareCredentials, type SharedReportData } from '@/features/reportShares'
 import type { Branding } from '@/types/api'
 
 /** Only the colour matters to the theme; the rest of a Branding is the signed-in app's. */
@@ -48,10 +48,19 @@ export function SharedReportPage() {
   const loaded = useRef(false)
 
   const query = useQuery({
-    queryKey: ['shared-report', token, credentials.password, credentials.access],
-    queryFn: () => fetchSharedReport(token, credentials, loaded.current),
+    queryKey: ['shared-report', token, credentials.password, credentials.access, 'primary'],
+    queryFn: () => fetchSharedReport(token, credentials, loaded.current, 'primary'),
     // A link is never out of date: it asks again as often as the owner chose (a minute unless said otherwise).
     refetchInterval: (q) => (q.state.data?.kind === 'ok' ? Math.max(15, q.state.data.data.report.refresh_seconds ?? 60) * 1000 : false),
+    retry: false,
+  })
+
+  // The first screen opens at once; the rest of a long report follows and is not another view.
+  const rest = useQuery({
+    queryKey: ['shared-report', token, credentials.password, credentials.access, 'secondary'],
+    queryFn: () => fetchSharedReport(token, credentials, true, 'secondary'),
+    enabled: query.data?.kind === 'ok',
+    refetchInterval: (q) => (q.state.data?.kind === 'ok' ? Math.max(15, (query.data?.kind === 'ok' ? query.data.data.report.refresh_seconds : 60) ?? 60) * 1000 : false),
     retry: false,
   })
 
@@ -106,7 +115,9 @@ export function SharedReportPage() {
     return <OtpGate token={token} name={result.name} workspace={result.workspace.name} onPass={(pass) => remember('access', pass)} rejected={credentials.access !== undefined} />
   }
 
-  return <ReportView data={result.data} refreshing={query.isFetching} download={(format) => downloadSharedReport(token, format, credentials)} />
+  const merged = mergeParts(result.data, rest.data?.kind === 'ok' ? rest.data.data : null)
+
+  return <ReportView data={merged} refreshing={query.isFetching || rest.isFetching} loadingRest={rest.isLoading} download={(format) => downloadSharedReport(token, format, credentials)} />
 }
 
 /** For a link meant for named people: an email address, then the code that was sent to it. */
@@ -170,7 +181,7 @@ function Shell({ children, workspace }: { children: React.ReactNode; workspace?:
 /** The sections that read best side by side take half a row; everything else a whole one. */
 const HALF = new Set(['statement', 'interested', 'qualification', 'visits', 'reservations', 'automation', 'platforms', 'team', 'funnel'])
 
-export function ReportView({ data, refreshing = false, download }: { data: SharedReportData; refreshing?: boolean; download?: (format: 'csv' | 'xlsx' | 'pdf') => Promise<Blob> }) {
+export function ReportView({ data, refreshing = false, loadingRest = false, download }: { data: SharedReportData; refreshing?: boolean; loadingRest?: boolean; download?: (format: 'csv' | 'xlsx' | 'pdf') => Promise<Blob> }) {
   const { t, i18n } = useTranslation()
   const ctx = useReportCtx(data)
 
@@ -313,6 +324,9 @@ export function ReportView({ data, refreshing = false, download }: { data: Share
           <div key={block.section} data-section={block.section} className={cn('min-w-0', spans.get(index) !== 'half' && 'lg:col-span-2')}>{render(block.section)}</div>
         ))}
       </div>
+
+      {/* The rest of a long report is on its way; the first screen is already readable. */}
+      {loadingRest && <Skeleton className="h-48" data-testid="shared-rest-loading" />}
 
       {data.sections.length === 0 && (
         <Card><CardBody className="py-10 text-center t-caption">{t('share.public.empty')}</CardBody></Card>

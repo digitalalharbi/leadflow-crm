@@ -152,8 +152,10 @@ class ReportLibraryController extends Controller
         $share = $this->report($request, $uuid, 'update');
         $data = $this->linkRules($request);
         $this->assertProtectionAllowed($request, $data);
+        $before = ReportRevisions::configuration($share);
 
         [$link] = $this->links->issue('report', $share->id, $share->project_id, $request->user(), $this->linkAttributes($data, $share), $data['password'] ?? null);
+        ReportRevisions::capture($share, $request->user(), $before, ['share_settings']);
         ReportActivities::record($share, 'link_created', $request->user(), ['link' => $link->uuid]);
         $this->audit->log('report_share.link_created', $request->user(), $share, ['after' => ['link' => $link->uuid, 'client' => $link->client_name]]);
 
@@ -166,6 +168,7 @@ class ReportLibraryController extends Controller
         $model = $this->link($share, $link);
         $data = $this->linkRules($request, partial: true);
         $this->assertProtectionAllowed($request, $data);
+        $before = ReportRevisions::configuration($share);
 
         $model->fill(array_intersect_key($this->linkAttributes($data, $share, $model), array_flip(array_keys($data)) + ['allowed_emails' => 1, 'allowed_domains' => 1]));
 
@@ -175,6 +178,7 @@ class ReportLibraryController extends Controller
         }
 
         $model->save();
+        ReportRevisions::capture($share, $request->user(), $before, ['share_settings']);
         ReportActivities::record($share, 'edited', $request->user(), ['link' => $model->uuid]);
         $this->audit->log('report_share.link_updated', $request->user(), $share, ['after' => ['link' => $model->uuid, 'fields' => array_keys($data)]]);
 
@@ -185,8 +189,10 @@ class ReportLibraryController extends Controller
     {
         $share = $this->report($request, $uuid, 'update');
         $model = $this->link($share, $link);
+        $before = ReportRevisions::configuration($share);
 
         $this->links->revoke($model, $request->user());
+        ReportRevisions::capture($share, $request->user(), $before, ['share_settings']);
         ReportActivities::record($share, 'revoked', $request->user(), ['link' => $model->uuid]);
         $this->audit->log('report_share.link_revoked', $request->user(), $share, ['after' => ['link' => $model->uuid]]);
 

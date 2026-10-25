@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Analytics\SourceAttribution;
 use App\Domain\Campaigns\AdPlatform;
 use App\Domain\Campaigns\AdPlatformRegistry;
@@ -14,6 +15,8 @@ use App\Domain\Campaigns\PlatformVerification;
 use App\Domain\Campaigns\QualityBreakdown;
 use App\Domain\Campaigns\SelfApproval;
 use App\Domain\Conversions\ConversionHealth;
+use App\Domain\Funnel\FunnelFilters;
+use App\Domain\Funnel\RealEstateFunnel;
 use App\Http\Controllers\Controller;
 use App\Models\ActionProposal;
 use App\Models\AdAccount;
@@ -150,10 +153,16 @@ class CampaignController extends Controller
         $projectId = $request->filled('project_id') ? Project::query()->where('uuid', $request->input('project_id'))->value('id') : null;
         abort_if($request->filled('project_id') && $projectId === null, 404, 'Resource not found.');
 
-        return ApiResponse::success((new CampaignRevenue($request->user()))->build(
-            $from, $to, $projectId,
-            in_array($request->input('platform'), AdPlatform::values(), true) ? $request->input('platform') : null,
-        ) + ['currency' => $this->context->get()?->settings?->currency ?? 'SAR']);
+        $platform = in_array($request->input('platform'), AdPlatform::values(), true) ? $request->input('platform') : null;
+        $report = (new CampaignRevenue($request->user()))->build($from, $to, $projectId, $platform);
+
+        // The same funnel as everywhere, with what each stage cost when the spend is known.
+        $funnel = app(RealEstateFunnel::class)->build(new FunnelFilters($from, $to, $projectId ? [$projectId] : [], $platform), $request->user(), Permissions::has($request->user(), 'revenue.view'));
+        $spend = $report['totals']['spend'] ?? null;
+        $funnel['stages'] = array_map(fn (array $stage) => $spend !== null && $spend > 0 && in_array($stage['key'], ['interest', 'engagement', 'booking', 'decision'], true) && ($stage['count'] ?? 0) > 0
+            ? $stage + ['cost' => round($spend / $stage['count'], 2)] : $stage, $funnel['stages']);
+
+        return ApiResponse::success($report + ['real_estate_funnel' => $funnel, 'currency' => $this->context->get()?->settings?->currency ?? 'SAR']);
     }
 
     public function show(Request $request, string $uuid)

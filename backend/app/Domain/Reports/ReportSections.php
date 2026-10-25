@@ -30,6 +30,12 @@ class ReportSections
     /** The ad platforms Mohtam can hold spend for. Everything else is a source, not a platform. */
     private const AD_PLATFORMS = ['meta', 'facebook', 'instagram', 'tiktok', 'snapchat', 'google_ads', 'linkedin', 'x'];
 
+    /** The channels that are ad platforms — the only ones with campaigns and spend. */
+    public const AD_CHANNELS = ['meta', 'tiktok', 'snapchat', 'google_ads', 'linkedin', 'x'];
+
+    /** Every channel a lead can be filed under, for a filter to offer. */
+    public const CHANNELS = ['meta', 'tiktok', 'snapchat', 'google_ads', 'linkedin', 'x', 'whatsapp', 'referral', 'broker', 'influencer', 'qr', 'portals', 'organic', 'social', 'landing_page', 'form', 'manual', 'import', 'other'];
+
     /**
      * Where a lead came from, in plain categories: the ad platform it was bought on, otherwise what the source says.
      * One definition, so a source is the same thing in the marketing page, the sources page and the revenue page.
@@ -139,15 +145,16 @@ class ReportSections
      * @param  array<string,mixed>  $revenue
      * @return array{rows:list<array<string,mixed>>,total:int}
      */
-    public function campaigns(array $revenue): array
+    public function campaigns(array $revenue, ?array $previous = null): array
     {
         $rows = collect($revenue['campaigns'] ?? []);
+        $before = $previous === null ? null : collect($previous['campaigns'] ?? [])->keyBy('id');
         $money = $this->ctx->money;
         $earnings = $this->ctx->earnings;
 
         return [
             'total' => $rows->count(),
-            'rows' => $rows->take(50)->map(function (array $r) use ($money, $earnings) {
+            'rows' => $rows->take(50)->map(function (array $r) use ($money, $earnings, $before) {
                 $clicks = $r['clicks'] ?? null;
 
                 return array_filter([
@@ -162,6 +169,9 @@ class ReportSections
                     'cac' => $money ? ($r['cac'] ?? null) : false,
                     'roas' => $money && $earnings ? ($r['roas'] ?? null) : false,
                     'revenue' => $earnings ? ($r['revenue'] ?? null) : false,
+                    // The period before, when the report compares: counts always, spend only where spend is shown.
+                    'leads_previous' => $before ? (int) ($before[$r['id']]['leads'] ?? 0) : false,
+                    'spend_previous' => $before && $money ? ($before[$r['id']]['spend'] ?? null) : false,
                 ], fn ($v) => $v !== false);
             })->values()->all(),
         ];

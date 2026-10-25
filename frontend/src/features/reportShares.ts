@@ -222,6 +222,8 @@ export interface FunnelStage {
   previous: number | null
   change: number | null
   revenue?: number | null
+  /** What one of this stage cost, when the spend is known. */
+  cost?: number | null
   /** Awareness only: whose number it is — the ad platforms' or Mohtam's own measurement. */
   basis?: 'platform' | 'mohtam' | null
   reason?: string | null
@@ -233,7 +235,8 @@ export interface RealEstateFunnelData {
   stages: FunnelStage[]
   period: { from: string; to: string; days: number }
   previous_period: { from: string; to: string }
-  trend: { points: ({ date: string } & Partial<Record<Exclude<FunnelStageKey, 'awareness'>, number>>)[] } | null
+  /** One point per day (per week over a long period); awareness is null where there is nothing to chart. */
+  trend: { bucket: 'day' | 'week'; points: ({ date: string; awareness: number | null } & Partial<Record<Exclude<FunnelStageKey, 'awareness'>, number>>)[] } | null
   lost: { count: number; rate: number | null }
   revenue?: number | null
   generated_at: string
@@ -316,6 +319,8 @@ export interface CampaignRow {
   impressions?: number | null; clicks?: number | null; ctr?: number | null
   leads: number; qualified: number; interested: number; visits: number; reservations: number; won: number
   spend?: number | null; cpc?: number | null; cpl?: number | null; cac?: number | null; roas?: number | null; revenue?: number | null
+  /** The period before, when the report compares. */
+  leads_previous?: number; spend_previous?: number | null
 }
 
 export interface SalesFigures {
@@ -359,8 +364,9 @@ export interface ShareCredentials { password?: string; access?: string }
  * Opens a shared report. Public — no session — so it asks the server directly and reads the
  * status itself: "a password is needed", "a code is needed" and "this ended" are screens, not errors.
  */
-export async function fetchSharedReport(token: string, credentials: ShareCredentials = {}, refresh = false): Promise<SharedReportResult> {
+export async function fetchSharedReport(token: string, credentials: ShareCredentials = {}, refresh = false, part?: 'primary' | 'secondary'): Promise<SharedReportResult> {
   const response = await http.get(`/public/r/${token}`, {
+    params: part ? { part } : undefined,
     // An open page asking again is the same view, not another one.
     headers: {
       ...(credentials.password ? { 'X-Share-Password': credentials.password } : {}),
@@ -380,6 +386,15 @@ export async function fetchSharedReport(token: string, credentials: ShareCredent
   if (response.status === 410) return { kind: 'expired' }
 
   return { kind: 'gone' }
+}
+
+/** The two halves of a report as one: the first screen's data, then the rest, in the order the first half named. */
+export function mergeParts(primary: SharedReportData, secondary?: SharedReportData | null): SharedReportData {
+  if (!secondary) return primary
+
+  const { report: _r, sections: _s, workspace: _w, notes: _n, link: _l, ...rest } = secondary as SharedReportData & Record<string, unknown>
+
+  return { ...primary, ...rest } as SharedReportData
 }
 
 /** Asks for a code at an email address. The answer is the same whether or not the address is allowed. */

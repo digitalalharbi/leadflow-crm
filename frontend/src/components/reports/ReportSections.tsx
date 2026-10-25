@@ -279,6 +279,19 @@ export function PlatformsSection({ ctx }: { ctx: ReportCtx }) {
   )
 }
 
+/** How a figure moved since the period before: a small signed percentage, green when it is better. */
+function Change({ now, before, invert = false }: { now: number; before: number; invert?: boolean }) {
+  if (before <= 0) return null
+
+  const change = Math.round(((now - before) / before) * 1000) / 10
+
+  if (change === 0) return null
+
+  const good = invert ? change < 0 : change > 0
+
+  return <span className={cn('block text-[0.75rem]', good ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]')} dir="ltr" data-testid="shared-campaign-change">{change > 0 ? '+' : ''}{change}%</span>
+}
+
 const CAMPAIGN_SORTS = ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won', 'spend', 'revenue'] as const
 
 /**
@@ -291,6 +304,7 @@ export function CampaignsSection({ ctx }: { ctx: ReportCtx }) {
   const all = data.campaigns?.rows ?? []
   const [query, setQuery] = useState('')
   const [platform, setPlatform] = useState('')
+  const [project, setProject] = useState('')
   const [sort, setSort] = useState<(typeof CAMPAIGN_SORTS)[number]>('leads')
   const [open, setOpen] = useState<string | null>(null)
   const steps = ['interested', 'visits', 'reservations', 'won'] as const
@@ -298,11 +312,12 @@ export function CampaignsSection({ ctx }: { ctx: ReportCtx }) {
   if (all.length === 0) return <Card data-testid="shared-campaigns"><CardBody><h2 className="t-card-title mb-2">{t('rsec.campaigns.title')}</h2><p className="t-caption">{t('rsec.campaigns.empty')}</p></CardBody></Card>
 
   const platforms = [...new Set(all.map((c) => c.platform))]
+  const projects = [...new Set(all.map((c) => c.project).filter((p): p is string => Boolean(p)))]
   const hasSpend = all.some((c) => 'spend' in c)
   const hasRevenue = all.some((c) => 'revenue' in c)
   const sorts = CAMPAIGN_SORTS.filter((k) => (k === 'spend' ? hasSpend : k === 'revenue' ? hasRevenue : true))
   const rows = all
-    .filter((c) => (platform === '' || c.platform === platform) && c.name.toLowerCase().includes(query.trim().toLowerCase()))
+    .filter((c) => (platform === '' || c.platform === platform) && (project === '' || c.project === project) && c.name.toLowerCase().includes(query.trim().toLowerCase()))
     .toSorted((a, b) => ((b[sort] as number | null | undefined) ?? -1) - ((a[sort] as number | null | undefined) ?? -1))
   const cell = (v: number | null | undefined, fmt: (n: number) => string) => (v == null ? <span className="text-[var(--color-ink-subtle)]">{t('rsec.unavailable')}</span> : fmt(v))
 
@@ -326,6 +341,12 @@ export function CampaignsSection({ ctx }: { ctx: ReportCtx }) {
           <option value="">{t('rsec.campaigns.allPlatforms')}</option>
           {platforms.map((p) => <option key={p} value={p}>{t(`platforms.${p}`, { defaultValue: p })}</option>)}
         </select>
+        {projects.length > 1 && (
+          <select value={project} onChange={(e) => setProject(e.target.value)} aria-label={t('rsec.projects.title')} data-testid="shared-campaign-project" className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[0.9375rem]">
+            <option value="">{t('library.allProjects')}</option>
+            {projects.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        )}
         <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label={t('rsec.campaigns.sort')} data-testid="shared-campaign-sort" className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[0.9375rem]">
           {sorts.map((k) => <option key={k} value={k}>{t(`rsec.col.${k === 'won' ? 'won' : k}`)}</option>)}
         </select>
@@ -350,8 +371,8 @@ export function CampaignsSection({ ctx }: { ctx: ReportCtx }) {
                   <td>{t(`platforms.${c.platform}`, { defaultValue: c.platform })}</td>
                   {all.some((x) => x.impressions != null) && <td dir="ltr">{cell(c.impressions, num)}</td>}
                   {all.some((x) => x.clicks != null) && <><td dir="ltr">{cell(c.clicks, num)}</td><td dir="ltr">{cell(c.ctr, (n) => `${n}%`)}</td></>}
-                  <td>{num(c.leads)}</td><td>{num(c.qualified)}</td><td>{num(c.interested)}</td><td>{num(c.visits)}</td><td>{num(c.reservations)}</td><td>{num(c.won)}</td>
-                  {hasSpend && <><td dir="ltr">{cell(c.spend, money)}</td><td dir="ltr">{cell(c.cpc, money)}</td><td dir="ltr">{cell(c.cpl, money)}</td></>}
+                  <td>{num(c.leads)}{c.leads_previous != null && <Change now={c.leads} before={c.leads_previous} />}</td><td>{num(c.qualified)}</td><td>{num(c.interested)}</td><td>{num(c.visits)}</td><td>{num(c.reservations)}</td><td>{num(c.won)}</td>
+                  {hasSpend && <><td dir="ltr">{cell(c.spend, money)}{c.spend != null && c.spend_previous != null && <Change now={c.spend} before={c.spend_previous} invert />}</td><td dir="ltr">{cell(c.cpc, money)}</td><td dir="ltr">{cell(c.cpl, money)}</td></>}
                   {hasRevenue && <td dir="ltr">{cell(c.revenue, money)}</td>}
                   {hasSpend && hasRevenue && <td dir="ltr">{cell(c.roas, (n) => `${n}x`)}</td>}
                 </tr>

@@ -1,6 +1,6 @@
 import {
   BarChart3, Building2, Columns3, LayoutDashboard, Network, Plug, Rocket, Settings,
-  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar, HandCoins, ScrollText,
+  ShieldCheck, Target, Users2, CalendarClock, CalendarCheck, Contact2, Workflow, Megaphone, Bot, Radar, HandCoins, ScrollText, FileBarChart, Share2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -95,6 +95,9 @@ export function useNavigation(): Navigation {
       // Rules act on everybody's leads, so the same authority as the API.
       ...(entitled(subscription, 'automations') ? item('/automation', 'nav.automation', Workflow, 'automation.view') : []),
       ...item('/reports', 'nav.reports', BarChart3, 'analytics.view'),
+      // The reports library and the one place that lists every link handed to a client; a plan with reports only.
+      ...(entitled(subscription, 'advanced_reports') ? item('/report-library', 'nav.reportLibrary', FileBarChart, 'analytics.view') : []),
+      ...(entitled(subscription, 'advanced_reports') ? item('/client-reports', 'nav.clientReports', Share2, 'analytics.view') : []),
       ...item('/audit', 'nav.audit', ScrollText, 'audit.view'),
     ],
     [

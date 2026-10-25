@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Gate } from '@/components/access/Gate'
 import { Card, CardBody, Skeleton } from '@/components/ui'
 import { platformColor, TEMPERATURE_COLOR } from '@/components/charts'
-import { AreaTrend, Donut, KpiCard, PipelineFunnel, RankBars, RingProgress } from '@/components/visual'
+import { AreaTrend, Donut, KpiCard, PipelineFunnel, RankBars, RealEstateFunnel, RingProgress } from '@/components/visual'
 import { InterestBadge } from '@/components/visual/InterestBadge'
 import { fetchManager, type ManagerData } from '@/features/manager'
 import { formatMoneyCompact, formatNumber } from '@/lib/format'
@@ -69,13 +69,13 @@ export function ManagerCommandCenter() {
             <Card className="lg:col-span-4" data-testid="manager-funnel">
               <CardBody>
                 <h3 className="t-card-title mb-3">{t('manager.funnel')}</h3>
-                {/* Lead → Qualified → Interested → Visit → Reservation → Won: each lead counted at every step it reached. */}
-                <PipelineFunnel
+                {/* وعي → اهتمام → تفاعل → حجز معاينة → قرار شراء → إحالة: each lead counted at every stage it reached. */}
+                {data.real_estate_funnel ? <RealEstateFunnel funnel={data.real_estate_funnel} testId="manager-re-funnel" /> : <PipelineFunnel
                   testId="manager-re-funnel"
                   steps={data.re_funnel
                     ? (['leads', 'qualified', 'interested', 'visit', 'reservation', 'won'] as const).map((key) => ({ key, label: t(`manager.reFunnel.${key}`), count: data.re_funnel!.steps[key] }))
                     : data.funnel.map((step) => ({ key: step.key, label: t(`campaigns.stage.${step.key}`), count: step.count }))}
-                />
+                />}
                 {data.re_funnel && data.re_funnel.booked > 0 && (
                   <p className="t-caption mt-2" data-testid="manager-visits-booked">{t('manager.visitsBooked', { count: data.re_funnel.booked })}</p>
                 )}

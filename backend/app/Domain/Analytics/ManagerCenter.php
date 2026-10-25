@@ -88,6 +88,8 @@ class ManagerCenter
             ],
             // Lead → Qualified → Interested → Visit → Reservation → Won, for the leads that arrived in the period.
             're_funnel' => $reFunnel,
+            // The official funnel — وعي → اهتمام → تفاعل → حجز معاينة → قرار شراء → إحالة — over the same days.
+            'real_estate_funnel' => app(\App\Domain\Funnel\RealEstateFunnel::class)->build(new \App\Domain\Funnel\FunnelFilters($since, now()), $user, \App\Domain\Access\Permissions::has($user, 'revenue.view')),
             // What each figure measures over: a tile says its period, so two numbers never look like one disagreeing.
             'periods' => ['leads_today' => 'today', 'qualified' => 'period', 'overdue_follow_ups' => 'now', 'stalled' => 'now',
                 'avg_response_seconds' => 'period', 'appointment_rate' => 'period', 'conversion_rate' => 'period', 'revenue' => 'period',

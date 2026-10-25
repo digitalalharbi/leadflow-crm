@@ -17,6 +17,7 @@ import { Gate } from '@/components/access/Gate'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { DashboardBoard } from '@/components/dashboard/DashboardBoard'
 import { ManagerCommandCenter } from '@/components/dashboard/ManagerCommandCenter'
+import { RealEstateFunnel } from '@/components/visual'
 import { HoldingOverview } from '@/components/company/HoldingOverview'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDue, formatNumber } from '@/lib/format'
@@ -232,14 +233,14 @@ export function DashboardPage() {
           <div className={cn('space-y-3', !analyticsOpen && 'hidden')}>
           <section className="grid gap-3 lg:grid-cols-2">
             <Gate element="dashboard.chart.funnel"><ChartCard
-              title={t('dashboard.funnelTitle')}
-              description={t('dashboard.funnelHint')}
-              height={290}
+              title={data.real_estate_funnel ? t('reFunnel.title') : t('dashboard.funnelTitle')}
+              description={data.real_estate_funnel ? undefined : t('dashboard.funnelHint')}
+              height={data.real_estate_funnel ? 420 : 290}
               empty={data.summary.total_leads === 0}
               emptyMessage={t('dashboard.noLeadsYet')}
               testId="funnel-card"
             >
-              <ConversionFunnel stages={data.funnel} />
+              {data.real_estate_funnel ? <RealEstateFunnel funnel={data.real_estate_funnel} testId="re-funnel" /> : <ConversionFunnel stages={data.funnel} />}
             </ChartCard></Gate>
 
             {/*

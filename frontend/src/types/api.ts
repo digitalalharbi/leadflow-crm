@@ -473,6 +473,8 @@ export interface ChartPoint {
 }
 
 export interface DashboardData {
+  /** The official funnel: وعي → اهتمام → تفاعل → حجز معاينة → قرار شراء → إحالة. */
+  real_estate_funnel?: import('@/features/reportShares').RealEstateFunnelData
   /** Median hours per funnel step, for the leads that actually made it. */
   velocity: { step: string; median_hours: number | null; count: number }[]
   /** One point per day, each event counted on the day it happened. */
@@ -722,6 +724,7 @@ export interface NextAction {
 export type Feature =
   | 'tracking_hub' | 'advanced_forms' | 'automations' | 'attribution' | 'exports'
   | 'api' | 'advanced_reports' | 'whatsapp' | 'custom_branding' | 'multiple_projects'
+  | 'report_pdf' | 'report_excel' | 'advanced_templates' | 'advanced_attribution' | 'white_label_reports' | 'client_otp'
 
 export interface UsageMeter {
   used: number

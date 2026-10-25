@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeDollarSign, CalendarCheck, Coins, Eye, KeyRound, Sparkles, Target, TrendingUp, UserCheck, Users } from 'lucide-react'
+import { BadgeDollarSign, CalendarCheck, Coins, Eye, KeyRound, Percent, ShieldCheck, Sparkles, Target, TrendingUp, UserCheck, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody } from '@/components/ui'
-import { AreaTrend, ComparisonCard, Donut, HeatGrid, KpiCard, PipelineFunnel, RankBars, RingProgress, StatusPill, type StatusKey } from '@/components/visual'
+import { AreaTrend, ComparisonCard, Donut, HeatGrid, KpiCard, RankBars, RealEstateFunnel, RingProgress, StatusPill, type StatusKey } from '@/components/visual'
 import { platformColor } from '@/components/charts'
 import type { KpiKey, SharedReportData } from '@/features/reportShares'
 import { formatCompact, formatMoneyCompact, formatNumber } from '@/lib/format'
@@ -18,13 +18,13 @@ import { findingText } from '@/lib/findings'
  * Each takes the whole report and draws its own part of it, so the page is just the sections the
  * owner chose in the order they chose.
  */
-interface Ctx {
+export interface ReportCtx {
   data: SharedReportData
   money: (v: number | null | undefined) => string
   num: (v: number | null | undefined) => string
 }
 
-export function useReportCtx(data: SharedReportData): Ctx {
+export function useReportCtx(data: SharedReportData): ReportCtx {
   const { i18n } = useTranslation()
 
   return {
@@ -35,26 +35,29 @@ export function useReportCtx(data: SharedReportData): Ctx {
 }
 
 const KPI_ICON: Record<KpiKey, LucideIcon> = {
-  leads: Users, interested: Sparkles, visits: Eye, reservations: KeyRound, won: UserCheck, spend: Coins, cpl: BadgeDollarSign, cac: Target, roas: TrendingUp, revenue: Coins,
+  leads: Users, qualified: ShieldCheck, interested: Sparkles, visits: Eye, reservations: KeyRound, won: UserCheck, conversion_rate: Percent,
+  spend: Coins, cpl: BadgeDollarSign, cpa: Target, cac: Target, roas: TrendingUp, revenue: Coins,
 }
 const SECTION_KPIS: Record<string, KpiKey[]> = {
-  kpi_volume: ['leads', 'interested', 'visits', 'reservations', 'won'],
-  kpi_cost: ['spend', 'cpl', 'cac', 'roas'],
+  kpi_volume: ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won', 'conversion_rate'],
+  kpi_cost: ['spend', 'cpl', 'cpa', 'cac', 'roas'],
   kpi_revenue: ['revenue'],
 }
 /** Lower is better for what the company pays. */
-const LOWER_IS_BETTER: KpiKey[] = ['spend', 'cpl', 'cac']
+const LOWER_IS_BETTER: KpiKey[] = ['spend', 'cpl', 'cpa', 'cac']
+const MONEY_KPIS: KpiKey[] = ['spend', 'cpl', 'cpa', 'cac', 'revenue']
 
 /**
  * The headline figures of a section, each with a sparkline and — when the report compares — against
  * the last period. Cards only: the page lays consecutive KPI sections out as one grid.
  */
-export function KpiCards({ ctx, section }: { ctx: Ctx; section: 'kpi_volume' | 'kpi_cost' | 'kpi_revenue' }) {
+export function KpiCards({ ctx, section }: { ctx: ReportCtx; section: 'kpi_volume' | 'kpi_cost' | 'kpi_revenue' }) {
   const { t } = useTranslation()
   const { data, money, num } = ctx
   const kpis = data.kpis ?? {}
   const keys = SECTION_KPIS[section].filter((key) => key in kpis)
-  const format = (key: KpiKey, v: number | null | undefined) => (key === 'roas' ? (v == null ? '—' : `${v}x`) : ['spend', 'cpl', 'cac', 'revenue'].includes(key) ? money(v) : num(v))
+  // A figure that cannot be worked out is “not available”, never a zero.
+  const format = (key: KpiKey, v: number | null | undefined) => (v == null ? t('rsec.unavailable') : key === 'roas' ? `${v}x` : key === 'conversion_rate' ? `${v}%` : MONEY_KPIS.includes(key) ? money(v) : num(v))
   const spark = (key: KpiKey) => (data.trend ?? []).map((p) => Number((p as unknown as Record<string, number | undefined>)[key] ?? 0))
 
   if (keys.length === 0) return null
@@ -65,7 +68,7 @@ export function KpiCards({ ctx, section }: { ctx: Ctx; section: 'kpi_volume' | '
         const value = kpis[key]
         const before = data.previous?.[key]
 
-        if (data.previous && typeof value === 'number') {
+        if (data.previous && typeof value === 'number' && key !== 'conversion_rate') {
           return (
             <ComparisonCard
               key={key}
@@ -91,7 +94,7 @@ export function KpiCards({ ctx, section }: { ctx: Ctx; section: 'kpi_volume' | '
             icon={KPI_ICON[key]}
             tone={key === 'revenue' || key === 'won' || key === 'roas' ? 'good' : 'neutral'}
             value={<span dir="ltr">{format(key, value)}</span>}
-            spark={spark(key).length > 1 && key !== 'cpl' && key !== 'cac' && key !== 'roas' ? spark(key) : undefined}
+            spark={spark(key).length > 1 && !['cpl', 'cpa', 'cac', 'roas', 'qualified', 'conversion_rate'].includes(key) ? spark(key) : undefined}
           />
         )
       })}
@@ -99,14 +102,16 @@ export function KpiCards({ ctx, section }: { ctx: Ctx; section: 'kpi_volume' | '
   )
 }
 
-export function FunnelSection({ ctx }: { ctx: Ctx }) {
+export function FunnelSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
-  const { data, money } = ctx
+  const { data } = ctx
+
+  if (!data.funnel) return null
 
   return (
     <Card data-testid="shared-funnel"><CardBody>
-      <h2 className="t-card-title mb-3">{t('revenue.funnel')}</h2>
-      <PipelineFunnel steps={(data.funnel ?? []).map((s) => ({ key: s.key, label: t(`revenue.step.${s.key}`), count: s.count, costPer: s.cost != null ? money(s.cost) : null }))} />
+      <h2 className="t-card-title mb-3">{t('reFunnel.title')}</h2>
+      <RealEstateFunnel funnel={data.funnel} currency={data.report.currency} />
     </CardBody></Card>
   )
 }
@@ -116,7 +121,7 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 /** Who is interested, how much, and whether they were answered in time. */
-export function InterestedSection({ ctx }: { ctx: Ctx }) {
+export function InterestedSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const d = ctx.data.interested
 
@@ -139,7 +144,7 @@ export function InterestedSection({ ctx }: { ctx: Ctx }) {
   )
 }
 
-export function QualificationSection({ ctx }: { ctx: Ctx }) {
+export function QualificationSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const d = ctx.data.qualification
 
@@ -163,7 +168,7 @@ export function QualificationSection({ ctx }: { ctx: Ctx }) {
   )
 }
 
-export function VisitsSection({ ctx }: { ctx: Ctx }) {
+export function VisitsSection({ ctx }: { ctx: ReportCtx }) {
   const { t, i18n } = useTranslation()
   const d = ctx.data.visits
 
@@ -196,7 +201,7 @@ export function VisitsSection({ ctx }: { ctx: Ctx }) {
   )
 }
 
-export function ReservationsSection({ ctx }: { ctx: Ctx }) {
+export function ReservationsSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const d = ctx.data.reservations
 
@@ -227,7 +232,7 @@ export function ReservationsSection({ ctx }: { ctx: Ctx }) {
 const TREND_KEYS = ['leads', 'interested', 'visits', 'reservations', 'won', 'spend', 'revenue'] as const
 type TrendKey = (typeof TREND_KEYS)[number]
 
-export function TrendSection({ ctx, className }: { ctx: Ctx; className?: string }) {
+export function TrendSection({ ctx, className }: { ctx: ReportCtx; className?: string }) {
   const { t, i18n } = useTranslation()
   const { data, money } = ctx
   const trend = data.trend ?? []
@@ -260,7 +265,7 @@ export function TrendSection({ ctx, className }: { ctx: Ctx; className?: string 
   )
 }
 
-export function PlatformsSection({ ctx }: { ctx: Ctx }) {
+export function PlatformsSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
 
   if ((ctx.data.platforms ?? []).every((p) => p.leads === 0)) return null
@@ -274,93 +279,197 @@ export function PlatformsSection({ ctx }: { ctx: Ctx }) {
   )
 }
 
-/** Campaigns as a picture first — who brought the most, and how far their leads got — and the table behind “details”. */
-export function CampaignsSection({ ctx }: { ctx: Ctx }) {
+const CAMPAIGN_SORTS = ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won', 'spend', 'revenue'] as const
+
+/**
+ * Campaigns: a picture first — who brought the most, and how far their leads got — then the table the spec asks for, with
+ * search, a sort, a platform filter and a row you can open. The columns are only the ones the report may show.
+ */
+export function CampaignsSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const { data, money, num } = ctx
-  const rows = data.campaigns ?? []
+  const all = data.campaigns?.rows ?? []
+  const [query, setQuery] = useState('')
+  const [platform, setPlatform] = useState('')
+  const [sort, setSort] = useState<(typeof CAMPAIGN_SORTS)[number]>('leads')
+  const [open, setOpen] = useState<string | null>(null)
   const steps = ['interested', 'visits', 'reservations', 'won'] as const
 
-  if (rows.length === 0) return null
+  if (all.length === 0) return <Card data-testid="shared-campaigns"><CardBody><h2 className="t-card-title mb-2">{t('rsec.campaigns.title')}</h2><p className="t-caption">{t('rsec.campaigns.empty')}</p></CardBody></Card>
+
+  const platforms = [...new Set(all.map((c) => c.platform))]
+  const hasSpend = all.some((c) => 'spend' in c)
+  const hasRevenue = all.some((c) => 'revenue' in c)
+  const sorts = CAMPAIGN_SORTS.filter((k) => (k === 'spend' ? hasSpend : k === 'revenue' ? hasRevenue : true))
+  const rows = all
+    .filter((c) => (platform === '' || c.platform === platform) && c.name.toLowerCase().includes(query.trim().toLowerCase()))
+    .toSorted((a, b) => ((b[sort] as number | null | undefined) ?? -1) - ((a[sort] as number | null | undefined) ?? -1))
+  const cell = (v: number | null | undefined, fmt: (n: number) => string) => (v == null ? <span className="text-[var(--color-ink-subtle)]">{t('rsec.unavailable')}</span> : fmt(v))
 
   return (
     <Card data-testid="shared-campaigns"><CardBody>
-      <h2 className="t-card-title mb-3">{t('reportView.campaigns')}</h2>
-      {rows.length >= 2 && (
+      <h2 className="t-card-title mb-3">{t('rsec.campaigns.title')}</h2>
+      {all.length >= 2 && (
         <HeatGrid
           testId="shared-campaign-heat"
           className="mb-3"
           columns={steps.map((s) => t(`revenue.step.${s}`))}
-          rows={rows.slice(0, 6).map((c) => ({ key: c.name, label: c.name, cells: steps.map((s) => (c.leads > 0 ? Math.round((c[s] / c.leads) * 100) : null)) }))}
+          rows={all.slice(0, 6).map((c) => ({ key: c.name, label: c.name, cells: steps.map((s) => (c.leads > 0 ? Math.round((c[s] / c.leads) * 100) : null)) }))}
         />
       )}
-      <RankBars limit={6} items={rows.map((c) => ({ key: c.name, label: c.name, value: c.leads, note: <span className="tabular-nums" dir="ltr">{c.won} {t('revenue.kpi.won')}</span> }))} />
-      <details className="mt-3" data-testid="shared-campaigns-details">
-        <summary className="t-small cursor-pointer font-medium">{t('reportView.details')}</summary>
-        <div className="scroll-x mt-2">
-          <table className="w-full border-collapse text-[0.875rem]">
-            <thead><tr className="text-[var(--color-ink-muted)]">
-              <th className="p-1.5 text-start">{t('revenue.table.campaign')}</th><th>{t('revenue.kpi.leads')}</th><th>{t('revenue.kpi.interested')}</th><th>{t('revenue.kpi.visits')}</th><th>{t('revenue.kpi.reservations')}</th><th>{t('revenue.kpi.won')}</th>
-              {rows.some((c) => 'spend' in c) && <th>{t('revenue.kpi.spend')}</th>}
-              {rows.some((c) => 'revenue' in c) && <th>{t('revenue.kpi.revenue')}</th>}
-            </tr></thead>
-            <tbody>
-              {rows.map((c) => (
-                <tr key={c.name} className="border-t border-[var(--color-line)] text-center tabular-nums">
+      <RankBars limit={6} items={all.map((c) => ({ key: c.name, label: c.name, value: c.leads, note: <span className="tabular-nums" dir="ltr">{c.won} {t('revenue.kpi.won')}</span> }))} />
+
+      <div className="mt-4 flex flex-wrap items-end gap-2" data-testid="shared-campaign-controls">
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('rsec.campaigns.search')} aria-label={t('rsec.campaigns.search')} data-testid="shared-campaign-search"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[0.9375rem]" />
+        <select value={platform} onChange={(e) => setPlatform(e.target.value)} aria-label={t('rsec.col.platform')} data-testid="shared-campaign-platform" className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[0.9375rem]">
+          <option value="">{t('rsec.campaigns.allPlatforms')}</option>
+          {platforms.map((p) => <option key={p} value={p}>{t(`platforms.${p}`, { defaultValue: p })}</option>)}
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label={t('rsec.campaigns.sort')} data-testid="shared-campaign-sort" className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[0.9375rem]">
+          {sorts.map((k) => <option key={k} value={k}>{t(`rsec.col.${k === 'won' ? 'won' : k}`)}</option>)}
+        </select>
+      </div>
+
+      <div className="scroll-x mt-2">
+        <table className="w-full border-collapse text-[0.875rem]" data-testid="shared-campaign-table">
+          <thead><tr className="text-[var(--color-ink-muted)]">
+            <th className="p-1.5 text-start">{t('rsec.col.campaign')}</th><th>{t('rsec.col.platform')}</th>
+            {all.some((c) => c.impressions != null) && <th>{t('rsec.col.impressions')}</th>}
+            {all.some((c) => c.clicks != null) && <><th>{t('rsec.col.clicks')}</th><th>{t('rsec.col.ctr')}</th></>}
+            <th>{t('rsec.col.leads')}</th><th>{t('rsec.col.qualified')}</th><th>{t('rsec.col.interested')}</th><th>{t('rsec.col.visits')}</th><th>{t('rsec.col.reservations')}</th><th>{t('rsec.col.won')}</th>
+            {hasSpend && <><th>{t('rsec.col.spend')}</th><th>{t('rsec.col.cpc')}</th><th>{t('rsec.col.cpl')}</th></>}
+            {hasRevenue && <th>{t('rsec.col.revenue')}</th>}
+            {hasSpend && hasRevenue && <th>{t('rsec.col.roas')}</th>}
+          </tr></thead>
+          <tbody>
+            {rows.map((c) => (
+              <>
+                <tr key={c.name} className="cursor-pointer border-t border-[var(--color-line)] text-center tabular-nums hover:bg-[var(--color-surface-muted)]" onClick={() => setOpen(open === c.name ? null : c.name)} data-testid="shared-campaign-row" aria-expanded={open === c.name}>
                   <td className="max-w-[14rem] truncate p-1.5 text-start font-medium">{c.name}</td>
-                  <td>{num(c.leads)}</td><td>{num(c.interested)}</td><td>{num(c.visits)}</td><td>{num(c.reservations)}</td><td>{num(c.won)}</td>
-                  {'spend' in c && <td dir="ltr">{money(c.spend)}</td>}
-                  {'revenue' in c && <td dir="ltr">{money(c.revenue)}</td>}
+                  <td>{t(`platforms.${c.platform}`, { defaultValue: c.platform })}</td>
+                  {all.some((x) => x.impressions != null) && <td dir="ltr">{cell(c.impressions, num)}</td>}
+                  {all.some((x) => x.clicks != null) && <><td dir="ltr">{cell(c.clicks, num)}</td><td dir="ltr">{cell(c.ctr, (n) => `${n}%`)}</td></>}
+                  <td>{num(c.leads)}</td><td>{num(c.qualified)}</td><td>{num(c.interested)}</td><td>{num(c.visits)}</td><td>{num(c.reservations)}</td><td>{num(c.won)}</td>
+                  {hasSpend && <><td dir="ltr">{cell(c.spend, money)}</td><td dir="ltr">{cell(c.cpc, money)}</td><td dir="ltr">{cell(c.cpl, money)}</td></>}
+                  {hasRevenue && <td dir="ltr">{cell(c.revenue, money)}</td>}
+                  {hasSpend && hasRevenue && <td dir="ltr">{cell(c.roas, (n) => `${n}x`)}</td>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+                {open === c.name && (
+                  <tr key={`${c.name}-detail`} className="bg-[var(--color-surface-muted)]" data-testid="shared-campaign-detail">
+                    <td colSpan={14} className="p-3 text-start">
+                      <p className="t-small font-semibold">{c.name}</p>
+                      <p className="t-caption">{[t(`platforms.${c.platform}`, { defaultValue: c.platform }), c.status ? t(`rsec.campaigns.status.${c.status}`, { defaultValue: c.status }) : null, c.project].filter(Boolean).join(' · ')}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        {([['leads', c.leads], ['qualified', c.qualified], ['interested', c.interested], ['visits', c.visits], ['won', c.won]] as const).map(([k, v]) => (
+                          <div key={k} className="rounded-lg bg-[var(--color-surface)] p-2 text-center"><p className="t-metric" dir="ltr">{num(v)}</p><p className="t-caption">{t(`rsec.col.${k}`)}</p></div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {data.campaigns && data.campaigns.total > all.length && <p className="t-caption mt-2">{t('rsec.campaigns.more', { shown: all.length, total: data.campaigns.total })}</p>}
     </CardBody></Card>
   )
 }
 
 const MODELS = ['first', 'last', 'linear', 'position'] as const
 
-/** Who gets the credit under each way of counting it, side by side. */
-export function AttributionSection({ ctx }: { ctx: Ctx }) {
+/**
+ * Who gets the credit, under the model the report was made with — always named on the card. On a plan with advanced
+ * attribution the other three are one tap away; otherwise there is only the one.
+ */
+export function AttributionSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const d = ctx.data.attribution
-  const [model, setModel] = useState<(typeof MODELS)[number]>('last')
+  const [model, setModel] = useState<(typeof MODELS)[number] | null>(null)
 
   if (!d) return null
+
+  const shown = model ?? d.model
+  const rows = (shown === d.model ? d.rows : d.models?.[shown]) ?? []
 
   return (
     <Card data-testid="shared-attribution"><CardBody>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="t-card-title">{t('reportView.attribution')}</h2>
-        <div role="group" className="flex flex-wrap gap-1">
+        <h2 className="t-card-title">{t('rsec.attribution.title')}</h2>
+        <span className="rounded-full bg-[var(--brand-soft)] px-2.5 py-0.5 text-[0.8125rem] font-semibold text-[var(--brand)]" data-testid="shared-attr-model">{t('rsec.modelBadge', { model: t(`builder.modelName.${shown}`) })}</span>
+      </div>
+      {d.models && (
+        <div role="group" aria-label={t('rsec.attribution.compare')} className="mb-3 flex flex-wrap gap-1">
           {MODELS.map((m) => (
-            <button key={m} type="button" aria-pressed={model === m} data-testid={`shared-attr-${m}`} onClick={() => setModel(m)}
-              className={cn('pressable rounded-full px-2.5 py-0.5 text-[0.875rem] font-semibold', model === m ? 'bg-[var(--brand)] text-[var(--brand-ink)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
-              {t(`tracking.models.${m}`)}
+            <button key={m} type="button" aria-pressed={shown === m} data-testid={`shared-attr-${m}`} onClick={() => setModel(m)}
+              className={cn('pressable rounded-full px-2.5 py-0.5 text-[0.875rem] font-semibold', shown === m ? 'bg-[var(--brand)] text-[var(--brand-ink)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
+              {t(`builder.modelName.${m}`)}
             </button>
           ))}
         </div>
-      </div>
-      <RankBars limit={6} items={(d.models[model] ?? []).map((r) => ({ key: r.key, label: r.label ?? t('tracking.unattributed'), value: Math.round(r.leads * 10) / 10, note: <span className="tabular-nums" dir="ltr">{Math.round(r.reservations * 10) / 10} {t('revenue.kpi.reservations')}</span> }))} />
+      )}
+      {rows.length === 0 ? <p className="t-caption">{t('rsec.attribution.empty')}</p> : (
+        <>
+          <p className="t-caption mb-2">{t('rsec.attribution.columns')}</p>
+          <div className="scroll-x">
+            <table className="w-full border-collapse text-[0.875rem]" data-testid="shared-attr-table">
+              <thead><tr className="text-[var(--color-ink-muted)]"><th className="p-1.5 text-start">{t('rsec.col.source')}</th><th>{t('rsec.col.leads')}</th><th>{t('rsec.col.qualified')}</th><th>{t('rsec.col.interested')}</th><th>{t('rsec.col.visits')}</th><th>{t('rsec.col.reservations')}</th>{rows.some((r) => r.revenue != null) && <th>{t('rsec.col.revenue')}</th>}</tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.key} className="border-t border-[var(--color-line)] text-center tabular-nums">
+                    <td className="p-1.5 text-start font-medium">{r.label ? t(`rsec.channel.${r.label}`, { defaultValue: r.label }) : t('tracking.unattributed')}</td>
+                    <td>{Math.round(r.leads * 10) / 10}</td><td>{Math.round((r.qualified ?? 0) * 10) / 10}</td><td>{Math.round(r.interested * 10) / 10}</td><td>{Math.round(r.visits * 10) / 10}</td><td>{Math.round(r.reservations * 10) / 10}</td>
+                    {rows.some((x) => x.revenue != null) && <td dir="ltr">{ctx.money(r.revenue)}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </CardBody></Card>
   )
 }
 
-export function TeamSection({ ctx }: { ctx: Ctx }) {
+/** Per salesperson: names and rates only, never a contact detail. Shown on a public link only if the owner switched it on. */
+export function TeamSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
+  const rows = ctx.data.team ?? []
+  const pct = (v: number | null) => (v == null ? t('rsec.unavailable') : `${v}%`)
+  const hasRevenue = rows.some((r) => r.revenue != null)
 
   return (
     <Card data-testid="shared-team"><CardBody>
-      <h2 className="t-card-title mb-3">{t('manager.team')}</h2>
-      <RankBars limit={8} items={(ctx.data.team ?? []).map((m) => ({ key: m.name, label: m.name, value: m.won, note: <span className="tabular-nums" dir="ltr">{m.leads} · {m.won}</span> }))} />
+      <h2 className="t-card-title mb-3">{t('rsec.team.title')}</h2>
+      {rows.length === 0 ? <p className="t-caption">{t('rsec.team.empty')}</p> : (
+        <div className="scroll-x">
+          <table className="w-full border-collapse text-[0.875rem]" data-testid="shared-team-table">
+            <thead><tr className="text-[var(--color-ink-muted)]">
+              <th className="p-1.5 text-start">{t('rsec.team.name')}</th><th>{t('rsec.team.leads')}</th><th>{t('rsec.team.contactRate')}</th><th>{t('rsec.team.response')}</th><th>{t('rsec.team.followUp')}</th>
+              <th>{t('rsec.col.qualified')}</th><th>{t('rsec.col.interested')}</th><th>{t('rsec.col.visits')}</th><th>{t('rsec.col.reservations')}</th><th>{t('rsec.col.won')}</th><th>{t('rsec.team.conversion')}</th>{hasRevenue && <th>{t('rsec.col.revenue')}</th>}
+            </tr></thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr key={m.name} className="border-t border-[var(--color-line)] text-center tabular-nums" data-testid="shared-team-row">
+                  <td className="max-w-[12rem] truncate p-1.5 text-start font-medium">{m.name}</td>
+                  <td>{ctx.num(m.leads)}</td><td dir="ltr">{pct(m.contact_rate)}</td>
+                  <td dir="ltr">{m.response_minutes == null ? t('rsec.unavailable') : t('rsec.sales.responseValue', { m: m.response_minutes })}</td>
+                  <td dir="ltr">{pct(m.follow_up_completion)}</td>
+                  <td>{ctx.num(m.qualified)}</td><td>{ctx.num(m.interested)}</td><td>{ctx.num(m.visits)}</td><td>{ctx.num(m.reservations)}</td><td>{ctx.num(m.won)}</td><td dir="ltr">{pct(m.conversion_rate)}</td>
+                  {hasRevenue && <td dir="ltr">{ctx.money(m.revenue)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </CardBody></Card>
   )
 }
 
-export function AutomationSection({ ctx }: { ctx: Ctx }) {
+export function AutomationSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const d = ctx.data.automation
 
@@ -388,7 +497,7 @@ export function AutomationSection({ ctx }: { ctx: Ctx }) {
 
 const HEALTH_STATUS: Record<string, StatusKey> = { production_verified: 'healthy', live_verified: 'healthy', ready: 'attention', code_verified: 'attention', not_configured: 'pending' }
 
-export function TrackingHealthSection({ ctx }: { ctx: Ctx }) {
+export function TrackingHealthSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const rows = ctx.data.tracking_health ?? []
 
@@ -415,7 +524,7 @@ export function TrackingHealthSection({ ctx }: { ctx: Ctx }) {
 
 const say = findingText
 
-export function InsightsSection({ ctx }: { ctx: Ctx }) {
+export function InsightsSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const items = ctx.data.insights ?? []
 
@@ -431,7 +540,7 @@ export function InsightsSection({ ctx }: { ctx: Ctx }) {
   )
 }
 
-export function RecommendationsSection({ ctx }: { ctx: Ctx }) {
+export function RecommendationsSection({ ctx }: { ctx: ReportCtx }) {
   const { t } = useTranslation()
   const items = ctx.data.recommendations ?? []
 
@@ -456,7 +565,7 @@ export function RecommendationsSection({ ctx }: { ctx: Ctx }) {
 }
 
 /** A partner's statement: what they are owed, what has been paid, what is left — and the payments behind it. */
-export function StatementSection({ ctx }: { ctx: Ctx }) {
+export function StatementSection({ ctx }: { ctx: ReportCtx }) {
   const { t, i18n } = useTranslation()
   const d = ctx.data.statement
 

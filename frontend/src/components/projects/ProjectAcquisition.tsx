@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, EmptyState, ErrorState, Select, Skeleton } from '@/components/ui'
 import { FunnelBars } from '@/components/tracking/FunnelBars'
+import { RealEstateFunnel } from '@/components/visual'
 import { HealthBadge } from '@/components/tracking/HealthChecks'
 import { ReadinessBadge } from '@/components/tracking/DestinationsPanel'
 import { LinkAnalyticsDrawer } from '@/components/tracking/LinkAnalyticsDrawer'
@@ -75,6 +76,12 @@ export function ProjectAcquisition({ projectId }: { projectId: string }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card><CardBody>
+          {data.real_estate_funnel && (
+            <div className="mb-4" data-testid="acquisition-re-funnel">
+              <h3 className="mb-2 font-extrabold">{t('reFunnel.title')}</h3>
+              <RealEstateFunnel funnel={data.real_estate_funnel} testId="re-funnel" />
+            </div>
+          )}
           <h3 className="mb-2 font-extrabold">{t('hub.funnel.title')}</h3>
           <FunnelBars rows={data.funnel} testId="acquisition-funnel" />
         </CardBody></Card>

@@ -1,13 +1,19 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, BarChart3, CalendarClock, Copy, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, Plus, RefreshCw, ShieldOff, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BarChart3, CalendarClock, Copy, Download, Files, History, Mail, Eye, EyeOff, GripVertical, KeyRound, Link2, NotebookPen, Plus, Rocket, ShieldOff, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui'
 import {
-  createShare, deleteShare, fetchShareAnalytics, fetchSharePreview, fetchShares, MONEY_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, updateShare,
+  ADVANCED_TEMPLATES, createShare, deleteShare, fetchShareAnalytics, fetchSharePreview, fetchShares, MONEY_SECTIONS, REPORT_TEMPLATES, revokeShare, updateShare,
   type LayoutItem, type ReportPreset, type ReportPresetKey, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
 } from '@/features/reportShares'
 import { createSchedule, deleteSchedule, fetchSchedules, updateSchedule, type ScheduleFrequency } from '@/features/reportSchedules'
+import { archiveReport, duplicateReport, exportReport, publishReport, unarchiveReport } from '@/features/reportLibrary'
+import { HistoryPanel } from '@/components/reports/library/HistoryPanel'
+import { LinksPanel } from '@/components/reports/library/LinksPanel'
+import { NotesPanel } from '@/components/reports/library/NotesPanel'
+import { BuilderSettings, type SettingsState, settingsFrom, settingsPayload } from '@/components/reports/library/BuilderSettings'
+import { useEntitled } from '@/stores/auth'
 import { AreaTrend } from '@/components/visual'
 import { emailReport } from '@/features/emailDeliveries'
 import { Modal, Textarea } from '@/components/ui'
@@ -18,7 +24,9 @@ import { useUi } from '@/stores/ui'
 import { formatLastSeen, formatDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
-const STATUS_TONE: Record<ShareStatus, 'success' | 'warning' | 'danger'> = { active: 'success', expired: 'warning', revoked: 'danger' }
+const STATUS_TONE: Record<ShareStatus, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', expired: 'warning', revoked: 'danger', inactive: 'neutral' }
+const STATE_TONE: Record<ReportShare['state'], 'success' | 'warning' | 'neutral'> = { live: 'success', draft: 'warning', archived: 'neutral' }
+const FILTERS = ['all', 'live', 'draft', 'archived'] as const
 
 /**
  * Live reports behind a link: the links a workspace has handed out, who has opened them, and the
@@ -48,38 +56,84 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
     }
   }
 
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('all')
+  const [search, setSearch] = useState('')
+  const [linksFor, setLinksFor] = useState<ReportShare | null>(null)
+  const [notesFor, setNotesFor] = useState<ReportShare | null>(null)
+  const [historyFor, setHistoryFor] = useState<ReportShare | null>(null)
+  const pdf = useEntitled('report_pdf')
+  const excel = useEntitled('report_excel')
+  const exportsOn = useEntitled('exports')
+  const verify = useEntitled('client_otp')
+
   const act = useMutation({
-    mutationFn: async ({ kind, id }: { kind: 'revoke' | 'regenerate' | 'delete'; id: string }) => {
+    mutationFn: async ({ kind, id }: { kind: 'revoke' | 'delete' | 'publish' | 'archive' | 'unarchive' | 'duplicate'; id: string }) => {
       if (kind === 'revoke') await revokeShare(id)
-      else if (kind === 'regenerate') await regenerateShare(id)
-      else await deleteShare(id)
+      else if (kind === 'delete') await deleteShare(id)
+      else if (kind === 'publish') await publishReport(id)
+      else if (kind === 'archive') await archiveReport(id)
+      else if (kind === 'unarchive') await unarchiveReport(id)
+      else await duplicateReport(id)
     },
-    onSuccess: (_, { kind }) => { toast(t(`share.done.${kind}`), 'success'); refresh() },
+    onSuccess: (_, { kind }) => { toast(t(kind === 'delete' || kind === 'revoke' ? `share.done.${kind}` : `library.done.${kind}`), 'success'); refresh() },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const download = useMutation({
+    mutationFn: ({ share, format }: { share: ReportShare; format: 'csv' | 'xlsx' | 'pdf' }) => exportReport(share.id, format, share.name),
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
   if (isError) return <Card><ErrorState onRetry={() => void refetch()} /></Card>
   if (isLoading || !data) return <Skeleton className="h-48" />
 
+  const shares = data.shares.filter((s) => (filter === 'all' ? s.state !== 'archived' : s.state === filter)
+    && `${s.name} ${s.client_name ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()))
+
   return (
     <div className="space-y-3" data-testid="share-tab">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="t-caption">{t('share.intro')}</p>
-        <Button icon={<Plus className="size-4" />} onClick={() => setEditing('new')} data-testid="new-share">{t('share.new')}</Button>
+        <p className="t-caption">{t('library.subtitle')}</p>
+        <Button icon={<Plus className="size-4" />} onClick={() => setEditing('new')} data-testid="new-share">{t('library.new')}</Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2" data-testid="library-controls">
+        <div role="group" className="flex flex-wrap gap-1">
+          {FILTERS.map((key) => (
+            <button key={key} type="button" aria-pressed={filter === key} data-testid={`library-filter-${key}`} onClick={() => setFilter(key)}
+              className={cn('pressable rounded-full px-3 py-1 text-[0.875rem] font-semibold', filter === key ? 'bg-[var(--brand)] text-[var(--brand-ink)]' : 'bg-[var(--color-chrome-fill)] text-[var(--color-ink-muted)]')}>
+              {t(`library.filter.${key}`)}
+            </button>
+          ))}
+        </div>
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('library.search')} aria-label={t('library.search')} data-testid="library-search"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[0.9375rem]" />
       </div>
 
       {data.shares.length === 0 ? (
-        <Card><CardBody><EmptyState icon={<Link2 className="size-6" />} title={t('share.emptyTitle')} body={t('share.emptyBody')} /></CardBody></Card>
+        <Card><CardBody><EmptyState icon={<Link2 className="size-6" />} title={t('library.empty.title')} body={t('library.empty.body')} /></CardBody></Card>
+      ) : shares.length === 0 ? (
+        <Card><CardBody><p className="t-caption" data-testid="library-nomatch">{t('library.noMatch')}</p></CardBody></Card>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2" data-testid="share-list">
-          {data.shares.map((share) => (
-            <li key={share.id} className="space-y-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]" data-testid={`share-${share.id}`} data-status={share.status}>
+          {shares.map((share) => (
+            <li key={share.id} className="space-y-2 rounded-[var(--radius-card)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]" data-testid={`share-${share.id}`} data-status={share.status} data-state={share.state}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="t-section-title truncate">{share.name}</h3>
-                  <p className="t-caption">{t(`share.template.${share.template}`)}{share.partner ? ` · ${share.partner.name}` : ''} · {t('share.lastDays', { count: share.days })}{share.project ? ` · ${share.project.name}` : ''}</p>
+                  <h3 className="t-section-title truncate" data-testid="share-name-line">{share.name}</h3>
+                  <p className="t-caption">
+                    {t(`share.template.${share.template}`)}{share.partner ? ` · ${share.partner.name}` : ''}
+                    {share.client_name ? ` · ${share.client_name}` : ''}
+                    {' · '}{share.projects.length > 0 ? share.projects.map((p) => p.name).join('، ') : t('library.allProjects')}
+                  </p>
+                  <p className="t-caption">
+                    {share.period && share.period !== 'last_n' ? t(`builder.periodRange.${share.period}`) : t('share.lastDays', { count: share.days })}
+                    {share.owner ? ` · ${t('library.col.owner')}: ${share.owner.name}` : ''}
+                    {' · '}{t('library.lastUpdated', { when: formatLastSeen(share.updated_at, i18n.language) })}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge tone={STATE_TONE[share.state]} testId="share-state">{t(`library.state.${share.state}`)}</Badge>
                   <Badge tone={STATUS_TONE[share.status]} testId="share-status">{t(`share.status.${share.status}`)}</Badge>
                   {share.has_password && <Badge tone="neutral"><KeyRound className="size-3" aria-hidden />{t('share.protected')}</Badge>}
                 </div>
@@ -88,6 +142,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="t-caption inline-flex items-center gap-1" data-testid="share-views"><Eye className="size-3.5" aria-hidden />{t('share.views', { count: share.view_count })}</span>
                 <span className="t-caption" data-testid="share-last">{share.last_viewed_at ? t('share.lastViewed', { when: formatLastSeen(share.last_viewed_at, i18n.language) }) : t('share.neverViewed')}</span>
+                <span className="t-caption" data-testid="share-sharing">{(share.links_count ?? 0) > 0 ? t('library.sharing.links', { n: share.links_count }) : t('library.sharing.none')}</span>
                 {share.expires_at && <span className="t-caption">{t('share.expiresOn', { date: formatDate(share.expires_at, i18n.language) })}</span>}
               </div>
 
@@ -99,16 +154,31 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
               )}
 
               <div className="flex flex-wrap gap-1.5">
-                <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked'} data-testid="share-copy">{t('share.copy')}</Button>
+                {share.state === 'draft' && <Button size="sm" icon={<Rocket className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'publish', id: share.id })} data-testid="share-publish">{t('library.action.publish')}</Button>}
+                <Button size="sm" icon={<Copy className="size-3.5" aria-hidden />} onClick={() => void copy(share.url)} disabled={share.status === 'revoked' || share.state !== 'live'} data-testid="share-copy">{t('share.copy')}</Button>
                 <Button size="sm" variant="secondary" onClick={() => setEditing(share)} data-testid="share-edit">{t('share.edit')}</Button>
                 <Button size="sm" variant="outline" icon={<Eye className="size-3.5" aria-hidden />} onClick={() => setPreview(share)} data-testid="share-preview">{t('share.preview')}</Button>
+                <Button size="sm" variant="outline" icon={<Link2 className="size-3.5" aria-hidden />} onClick={() => setLinksFor(share)} data-testid="share-links">{t('library.action.links')}</Button>
                 {share.status === 'active' && <Button size="sm" variant="outline" icon={<Mail className="size-3.5" aria-hidden />} onClick={() => setMailing(share)} data-testid="share-email">{t('emailDelivery.send')}</Button>}
                 <Button size="sm" variant="outline" icon={<CalendarClock className="size-3.5" aria-hidden />} onClick={() => setScheduling(share)} data-testid="share-schedule">{t('schedule.action')}</Button>
                 <Button size="sm" variant="outline" icon={<BarChart3 className="size-3.5" aria-hidden />} onClick={() => setAnalytics(share)} data-testid="share-analytics">{t('share.analytics')}</Button>
-                <Button size="sm" variant="outline" icon={<RefreshCw className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'regenerate', id: share.id })} data-testid="share-regenerate">{t('share.regenerate')}</Button>
-                {share.status !== 'revoked' && (
+                <Button size="sm" variant="outline" icon={<NotebookPen className="size-3.5" aria-hidden />} onClick={() => setNotesFor(share)} data-testid="share-notes">{t('library.action.notes')}</Button>
+                <Button size="sm" variant="outline" icon={<History className="size-3.5" aria-hidden />} onClick={() => setHistoryFor(share)} data-testid="share-history">{t('library.action.history')}</Button>
+                <Button size="sm" variant="outline" icon={<Files className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'duplicate', id: share.id })} data-testid="share-duplicate">{t('library.action.duplicate')}</Button>
+                {exportsOn && (['csv', 'xlsx', 'pdf'] as const).map((format) => {
+                  const allowed = format === 'csv' || (format === 'xlsx' ? excel : pdf)
+
+                  return (
+                    <Button key={format} size="sm" variant="outline" icon={<Download className="size-3.5" aria-hidden />} disabled={!allowed} loading={download.isPending} title={allowed ? undefined : t('library.exports.locked')}
+                      onClick={() => download.mutate({ share, format })} data-testid={`share-export-${format}`}>{t(`library.exports.${format}`)}</Button>
+                  )
+                })}
+                {share.status !== 'revoked' && share.links_count !== 0 && (
                   <Button size="sm" variant="outline" icon={<ShieldOff className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'revoke', id: share.id })} data-testid="share-revoke">{t('share.revoke')}</Button>
                 )}
+                {share.state === 'archived'
+                  ? <Button size="sm" variant="outline" icon={<ArchiveRestore className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'unarchive', id: share.id })} data-testid="share-unarchive">{t('library.action.unarchive')}</Button>
+                  : <Button size="sm" variant="outline" icon={<Archive className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'archive', id: share.id })} data-testid="share-archive">{t('library.action.archive')}</Button>}
                 <Button size="sm" variant="ghost" icon={<Trash2 className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'delete', id: share.id })} data-testid="share-delete">{t('common.delete')}</Button>
               </div>
             </li>
@@ -120,6 +190,9 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
       <SharePreviewDrawer share={preview} onClose={() => setPreview(null)} />
       <ShareEmailDialog share={mailing} onClose={() => setMailing(null)} />
       <ScheduleDialog share={scheduling} onClose={() => setScheduling(null)} onChanged={refresh} />
+      <LinksPanel share={linksFor} onClose={() => setLinksFor(null)} canVerify={verify} />
+      <NotesPanel share={notesFor} onClose={() => setNotesFor(null)} />
+      <HistoryPanel share={historyFor} onClose={() => setHistoryFor(null)} />
 
       <ShareBuilder
         key={typeof editing === 'object' && editing ? editing.id : 'new'}
@@ -129,7 +202,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
         presets={data.presets ?? []}
         unavailable={data.unavailable ?? []}
         onClose={() => setEditing(null)}
-        onSaved={(share) => { setEditing(null); refresh(); void copy(share.url) }}
+        onSaved={(share) => { setEditing(null); refresh(); if (share.state === 'live') void copy(share.url) }}
       />
     </div>
   )
@@ -166,6 +239,9 @@ function ShareBuilder({ open, share, templates, presets, unavailable, onClose, o
   const { data: partners } = useQuery({ queryKey: ['partners-simple'], queryFn: () => fetchPartners(30), enabled: open, select: (d) => d.partners })
 
   const [preset, setPreset] = useState<ReportPresetKey | null>(null)
+  const [settings, setSettings] = useState<SettingsState>(() => settingsFrom(share))
+  const advancedTemplates = useEntitled('advanced_templates')
+  const [asDraft, setAsDraft] = useState(false)
 
   const pick = (key: ReportTemplate) => {
     setPreset(null)
@@ -209,6 +285,8 @@ function ShareBuilder({ open, share, templates, presets, unavailable, onClose, o
         days: Number(days) || 30,
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : null,
         partner_id: template === 'partner' ? partnerId || null : null,
+        ...settingsPayload(settings),
+        ...(!share ? { state: asDraft ? ('draft' as const) : ('live' as const) } : {}),
         ...(password ? { password } : removePassword ? { password: null } : {}),
       }
 
@@ -227,7 +305,14 @@ function ShareBuilder({ open, share, templates, presets, unavailable, onClose, o
       title={share ? t('share.edit') : t('share.new')}
       size="lg"
       testId="share-builder"
-      footer={<Button disabled={!name.trim()} loading={save.isPending} onClick={() => save.mutate()} data-testid="share-save">{t('common.save')}</Button>}
+      footer={(
+        <div className="flex flex-wrap items-center gap-2">
+          <Button disabled={!name.trim()} loading={save.isPending} onClick={() => save.mutate()} data-testid="share-save">{share ? t('common.save') : asDraft ? t('builder.saveDraft') : t('builder.saveLive')}</Button>
+          {!share && (
+            <label className="t-caption flex items-center gap-2"><input type="checkbox" checked={asDraft} data-testid="share-as-draft" onChange={(e) => setAsDraft(e.target.checked)} className="size-4 accent-[var(--brand)]" />{t('builder.saveDraft')}</label>
+          )}
+        </div>
+      )}
     >
       <div className="space-y-5">
         <Input label={t('share.name')} value={name} data-testid="share-name" onChange={(e) => setName(e.target.value)} />
@@ -263,9 +348,11 @@ function ShareBuilder({ open, share, templates, presets, unavailable, onClose, o
                 key={key}
                 type="button"
                 aria-pressed={template === key}
+                disabled={ADVANCED_TEMPLATES.includes(key) && !advancedTemplates}
+                title={ADVANCED_TEMPLATES.includes(key) && !advancedTemplates ? t('builder.advancedLocked') : undefined}
                 data-testid={`share-template-${key}`}
                 onClick={() => pick(key)}
-                className={cn('pressable rounded-xl border p-2 text-start', template === key ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-[var(--color-border)]')}
+                className={cn('pressable rounded-xl border p-2 text-start disabled:opacity-50', template === key ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-[var(--color-border)]')}
               >
                 <span className="t-small block font-semibold">{t(`share.template.${key}`)}</span>
                 <span className="t-caption block">{t(`share.templateHint.${key}`)}</span>
@@ -284,6 +371,8 @@ function ShareBuilder({ open, share, templates, presets, unavailable, onClose, o
             <p className="t-caption">{t('share.partnerHint')}</p>
           </div>
         )}
+
+        <BuilderSettings value={settings} onChange={setSettings} partner={template === 'partner'} />
 
         <fieldset className="space-y-2">
           <legend className="t-small mb-1 font-medium">{t('share.step.sections')}</legend>

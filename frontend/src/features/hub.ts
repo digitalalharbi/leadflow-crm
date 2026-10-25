@@ -221,6 +221,7 @@ export const fetchLinkAnalytics = (id: string, days: number) => apiGet<LinkAnaly
 /* ------------------------------------------------------------------ project acquisition */
 
 export interface AcquisitionData {
+  real_estate_funnel?: import('@/features/reportShares').RealEstateFunnelData
   project: { id: string; name: string }
   range: { from: string; to: string; days: number }
   links: { id: string; name: string; channel: string; mode: string; token: string; url: string; is_live: boolean; health: Health | null; stats: Record<string, number | null> }[]

@@ -24,6 +24,8 @@ const DesignSystemPage = import.meta.env.DEV
   ? lazy(() => import('@/pages/dev/DesignSystem').then((m) => ({ default: m.DesignSystemPage })))
   : () => null
 const AccessPage = lazy(() => import('@/pages/Access').then((m) => ({ default: m.AccessPage })))
+const ReportLibraryPage = lazy(() => import('@/pages/ReportLibrary').then((m) => ({ default: m.ReportLibraryPage })))
+const ClientAccessPage = lazy(() => import('@/pages/ClientAccess').then((m) => ({ default: m.ClientAccessPage })))
 const WorkPage = lazy(() => import('@/pages/Work').then((m) => ({ default: m.WorkPage })))
 // A phone gets the sales flow's own screens, as chunks of their own: the desktop lead page and its charts are never downloaded there.
 // The public pages: no session, no app chrome, each its own small chunk.
@@ -230,6 +232,8 @@ export function App() {
                   <Route path="/projects" element={<RequirePermission any={['projects.view']}><ProjectsPage /></RequirePermission>} />
                   <Route path="/projects/:id" element={<RequirePermission any={['projects.view']}><ProjectDetailPage /></RequirePermission>} />
                   <Route path="/reports" element={<RequirePermission any={['analytics.view']}><ReportsPage /></RequirePermission>} />
+                  <Route path="/report-library" element={<RequirePermission any={['analytics.view']}><RequireFeature any={['advanced_reports']}><Suspense fallback={<PageFallback />}><ReportLibraryPage /></Suspense></RequireFeature></RequirePermission>} />
+                  <Route path="/client-reports" element={<RequirePermission any={['analytics.view']}><RequireFeature any={['advanced_reports']}><Suspense fallback={<PageFallback />}><ClientAccessPage /></Suspense></RequireFeature></RequirePermission>} />
                   <Route path="/integrations" element={<RequirePermission any={['integrations.view']}><IntegrationsPage /></RequirePermission>} />
                   <Route path="/readiness" element={<ReadinessPage />} />
                   <Route path="/access" element={<RequirePermission any={['users.edit']}><AccessPage /></RequirePermission>} />

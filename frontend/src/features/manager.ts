@@ -40,6 +40,7 @@ export interface ManagerData {
     trend: { date: string; leads: number; automated: number; human: number }[]
   }
   /** Lead → Qualified → Interested → Visit → Reservation → Won, every lead counted at each step it reached. */
+  real_estate_funnel?: import('@/features/reportShares').RealEstateFunnelData
   re_funnel?: { steps: Record<'leads' | 'qualified' | 'interested' | 'visit' | 'reservation' | 'won', number>; booked: number }
   funnel: { key: 'leads' | 'valid' | 'engaged' | 'qualified' | 'appointments' | 'won'; count: number }[]
   temperature: { key: 'hot' | 'warm' | 'cold'; count: number }[]

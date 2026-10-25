@@ -500,6 +500,7 @@ class ReportShareController extends Controller
             'view_count' => (int) $share->links->sum('view_count'),
             'last_viewed_at' => $share->links->max('last_viewed_at')?->toIso8601String(),
             'created_at' => $share->created_at?->toIso8601String(),
+            'updated_at' => $share->updated_at?->toIso8601String(),
             // How it sends itself, at a glance; the schedules themselves are managed on their own endpoint.
             'schedules' => $share->relationLoaded('schedules') ? $share->schedules->map(fn ($s) => ['id' => $s->uuid, 'frequency' => $s->frequency, 'enabled' => $s->enabled, 'next_run_at' => $s->next_run_at?->toIso8601String(), 'recipients' => count((array) $s->recipients)])->values()->all() : [],
         ];

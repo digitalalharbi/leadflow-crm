@@ -172,6 +172,7 @@ export function BillingPanel() {
 const FEATURE_ORDER: Record<Feature, true> = {
   tracking_hub: true, advanced_forms: true, automations: true, attribution: true, exports: true,
   api: true, advanced_reports: true, whatsapp: true, custom_branding: true, multiple_projects: true,
+  report_pdf: true, report_excel: true, advanced_templates: true, advanced_attribution: true, white_label_reports: true, client_otp: true,
 }
 
 function Line({ label, value }: { label: string; value: React.ReactNode }) {

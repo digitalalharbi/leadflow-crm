@@ -52,6 +52,7 @@ export interface PlatformSubscription extends Subscription {
 export const ALL_FEATURES: Feature[] = [
   'tracking_hub', 'advanced_forms', 'automations', 'attribution', 'exports',
   'api', 'advanced_reports', 'whatsapp', 'custom_branding', 'multiple_projects',
+  'report_pdf', 'report_excel', 'advanced_templates', 'advanced_attribution', 'white_label_reports', 'client_otp',
 ]
 
 export const LIMIT_KEYS = ['projects', 'leads_per_month', 'storage_mb'] as const

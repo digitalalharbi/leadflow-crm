@@ -473,10 +473,10 @@ class ReportSections
 
         $sla = (int) Thresholds::workspace('sla_minutes');
         $waiting = (int) $this->ctx->narrow(Lead::query()->reorder())->whereNull('leads.first_contact_at')->whereIn('leads.status', ['new'])->where('leads.created_at', '<', now()->subMinutes($sla))->count();
-        $waiting > 0 && $add('leads_not_contacted', 'warning', ['count' => $waiting]);
-        $sales['sla_breaches'] > 0 && $add('sla_breaches', 'critical', ['count' => $sales['sla_breaches']]);
-        $sales['unassigned'] > 0 && $add('unassigned_leads', 'warning', ['count' => $sales['unassigned']]);
-        $sales['overdue_follow_ups'] > 0 && $add('overdue_follow_ups', 'warning', ['count' => $sales['overdue_follow_ups']]);
+        $waiting > 0 && $add('leads_not_contacted', 'warning', ['n' => $waiting]);
+        $sales['sla_breaches'] > 0 && $add('sla_breaches', 'critical', ['n' => $sales['sla_breaches']]);
+        $sales['unassigned'] > 0 && $add('unassigned_leads', 'warning', ['n' => $sales['unassigned']]);
+        $sales['overdue_follow_ups'] > 0 && $add('overdue_follow_ups', 'warning', ['n' => $sales['overdue_follow_ups']]);
 
         $cpl = $figures['cpl'] ?? null;
         $cplBefore = $before['cpl'] ?? null;
@@ -493,14 +493,14 @@ class ReportSections
         }
 
         $failedExports = (int) ConversionExport::query()->whereBetween('created_at', [$window['from'], $window['to']])->where('status', ConversionExport::FAILED)->count();
-        $failedExports > 0 && $add('tracking_issues', 'warning', ['count' => $failedExports]);
+        $failedExports > 0 && $add('tracking_issues', 'warning', ['n' => $failedExports]);
 
         $failedRuns = (int) AutomationActionLog::query()->whereBetween('happened_at', [$window['from'], $window['to']])->where('result', AutomationActionLog::FAILED)->count();
-        $failedRuns > 0 && $add('automation_failures', 'warning', ['count' => $failedRuns]);
+        $failedRuns > 0 && $add('automation_failures', 'warning', ['n' => $failedRuns]);
 
         if ($this->ctx->money) {
             $silent = $this->silentSpend($window);
-            $silent > 0 && $add('spend_without_conversion', 'warning', ['count' => $silent]);
+            $silent > 0 && $add('spend_without_conversion', 'warning', ['n' => $silent]);
         }
 
         return $items;

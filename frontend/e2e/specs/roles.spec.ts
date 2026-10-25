@@ -150,7 +150,7 @@ test.describe('Roles and permissions', () => {
     await page.goto('/')
 
     const links = await railLinks(page)
-    for (const shown of ['/campaigns', '/tracking', '/reports']) expect(links).toContain(shown)
+    for (const shown of ['/campaigns', '/tracking', '/report-library']) expect(links).toContain(shown)
     for (const hidden of ['/work', '/users', '/companies']) expect(links, hidden).not.toContain(hidden)
 
     const session = await apiLogin(ALPHA.marketing.email)
@@ -192,7 +192,7 @@ test.describe('Roles and permissions', () => {
     await authenticateAs(page, ALPHA.manager.email)
     await page.goto('/')
     const manager = await railLinks(page)
-    for (const shown of ['/campaigns', '/reports', '/automation', '/users']) expect(manager).toContain(shown)
+    for (const shown of ['/campaigns', '/report-library', '/automation', '/users']) expect(manager).toContain(shown)
     expect(manager).not.toContain('/integrations')
   })
 

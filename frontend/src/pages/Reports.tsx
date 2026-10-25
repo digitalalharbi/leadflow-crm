@@ -12,6 +12,7 @@ import { MarketingSalesTab } from '@/components/reports/MarketingSalesTab'
 import { WeeklyReportsTab } from '@/components/reports/WeeklyReportsTab'
 import { SalesIntelligence } from '@/components/reports/SalesIntelligence'
 import { ShareTab } from '@/components/reports/ShareTab'
+import { ReportsTabs } from '@/components/reports/library/ReportsTabs'
 import { QualityTab } from '@/components/reports/QualityTab'
 import { SpendModal } from '@/components/reports/SpendModal'
 import { InsightStrip } from '@/components/reports/InsightStrip'
@@ -131,6 +132,7 @@ export function ReportsPage() {
 
   return (
     <>
+      {advanced && <ReportsTabs />}
       <PageHeader
         title={t('reports.title')}
         subtitle={t('reports.subtitle')}

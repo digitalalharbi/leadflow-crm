@@ -94,10 +94,8 @@ export function useNavigation(): Navigation {
       ...item('/projects', 'nav.projects', Building2, 'projects.view'),
       // Rules act on everybody's leads, so the same authority as the API.
       ...(entitled(subscription, 'automations') ? item('/automation', 'nav.automation', Workflow, 'automation.view') : []),
-      ...item('/reports', 'nav.reports', BarChart3, 'analytics.view'),
-      // The reports library and the one place that lists every link handed to a client; a plan with reports only.
-      ...(entitled(subscription, 'advanced_reports') ? item('/report-library', 'nav.reportLibrary', FileBarChart, 'analytics.view') : []),
-      ...(entitled(subscription, 'advanced_reports') ? item('/client-reports', 'nav.clientReports', Share2, 'analytics.view') : []),
+      // التقارير: the reports library. Its tabs reach تقارير العملاء and the analytics page, so the rail stays the height it was.
+      ...(entitled(subscription, 'advanced_reports') && has('reports_share.view') ? item('/report-library', 'nav.reportLibrary', FileBarChart, 'reports_share.view') : item('/reports', 'nav.reports', BarChart3, 'analytics.view')),
       ...item('/audit', 'nav.audit', ScrollText, 'audit.view'),
     ],
     [
@@ -109,7 +107,12 @@ export function useNavigation(): Navigation {
   ].filter((group) => group.length > 0)
 
   const settings: NavItem | null = has('settings.view') ? { to: '/settings', labelKey: 'nav.settings', Icon: Settings } : null
-  const all = settings ? [...groups.flat(), settings] : groups.flat()
+  // The analytics page and the client access center are not in the rail (the library's tabs lead to them) but are still destinations: the header, the drawer and the palette know them.
+  const extra: NavItem[] = [
+    ...item('/reports', 'nav.reports', BarChart3, 'analytics.view'),
+    ...(entitled(subscription, 'advanced_reports') && has('reports_share.view') ? item('/client-reports', 'nav.clientReports', Share2, 'reports_share.view') : []),
+  ].filter((e) => !groups.flat().some((g) => g.to === e.to))
+  const all = settings ? [...groups.flat(), ...extra, settings] : [...groups.flat(), ...extra]
 
   return {
     primary: PRIMARY.map((to) => all.find((item) => item.to === to)).filter((item): item is NavItem => Boolean(item)),

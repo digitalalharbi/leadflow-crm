@@ -13,7 +13,7 @@ test.describe('Dashboard', () => {
     // The task row is on the page; the funnel is in the analytics section,
     // which folds by default so the morning numbers own the first viewport.
     await page.getByTestId('toggle-analytics').click()
-    await expect(page.getByRole('heading', { name: 'ملخص المسار' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'مسار العملاء العقاري' })).toBeVisible()
 
     // The questions a rep opens the app to answer. Bound to the tiles rather
     // than to the words: the rebuilt dashboard says "مواعيد" in the KPI row,

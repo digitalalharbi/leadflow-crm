@@ -4,6 +4,7 @@ import { Copy, Download, ExternalLink, Files, KeyRound, Pencil, ShieldOff } from
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, EmptyState, ErrorState, PageHeader, Skeleton } from '@/components/ui'
+import { ReportsTabs } from '@/components/reports/library/ReportsTabs'
 import { protectionOf } from '@/components/reports/library/LinksPanel'
 import { duplicateReport, exportReport, fetchClientLinks, markShared, revokeLink, type ClientLink } from '@/features/reportLibrary'
 import type { ShareStatus } from '@/features/reportShares'
@@ -54,6 +55,7 @@ export function ClientAccessPage() {
   return (
     <>
       <PageHeader title={t('clientAccess.title')} subtitle={t('clientAccess.subtitle')} />
+      <ReportsTabs />
 
       {isError ? <Card><ErrorState onRetry={() => void refetch()} /></Card> : isLoading || !data ? <Skeleton className="h-48" /> : data.links.length === 0 ? (
         <Card><CardBody><EmptyState title={t('clientAccess.empty.title')} body={t('clientAccess.empty.body')} /></CardBody></Card>

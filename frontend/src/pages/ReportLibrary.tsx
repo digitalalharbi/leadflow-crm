@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ReportsTabs } from '@/components/reports/library/ReportsTabs'
 import { PageHeader } from '@/components/ui'
 import { ShareTab } from '@/components/reports/ShareTab'
 
@@ -15,6 +16,7 @@ export function ReportLibraryPage() {
   return (
     <>
       <PageHeader title={t('library.title')} subtitle={t('library.subtitle')} />
+      <ReportsTabs />
       <ShareTab startOpen={params.get('new') === '1'} />
     </>
   )

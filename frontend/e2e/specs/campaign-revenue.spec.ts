@@ -36,10 +36,11 @@ test.describe('الحملات — from spend to revenue', () => {
   })
 
   test('the funnel runs lead to sale with what each step cost', async ({ page }) => {
-    const funnel = page.getByTestId('revenue-funnel')
+    // The official funnel, with what each stage cost.
+    const funnel = page.getByTestId('revenue-re-funnel')
     await expect(funnel).toBeVisible()
 
-    for (const label of ['عملاء', 'مؤهلون', 'مهتمون', 'زيارات', 'حجوزات', 'مبيعات']) {
+    for (const label of ['وعي', 'اهتمام', 'تفاعل', 'حجز معاينة', 'قرار شراء', 'إحالة']) {
       await expect(funnel).toContainText(label)
     }
   })

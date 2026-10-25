@@ -232,8 +232,8 @@ export function App() {
                   <Route path="/projects" element={<RequirePermission any={['projects.view']}><ProjectsPage /></RequirePermission>} />
                   <Route path="/projects/:id" element={<RequirePermission any={['projects.view']}><ProjectDetailPage /></RequirePermission>} />
                   <Route path="/reports" element={<RequirePermission any={['analytics.view']}><ReportsPage /></RequirePermission>} />
-                  <Route path="/report-library" element={<RequirePermission any={['analytics.view']}><RequireFeature any={['advanced_reports']}><Suspense fallback={<PageFallback />}><ReportLibraryPage /></Suspense></RequireFeature></RequirePermission>} />
-                  <Route path="/client-reports" element={<RequirePermission any={['analytics.view']}><RequireFeature any={['advanced_reports']}><Suspense fallback={<PageFallback />}><ClientAccessPage /></Suspense></RequireFeature></RequirePermission>} />
+                  <Route path="/report-library" element={<RequirePermission any={['reports_share.view']}><RequireFeature any={['advanced_reports']}><Suspense fallback={<PageFallback />}><ReportLibraryPage /></Suspense></RequireFeature></RequirePermission>} />
+                  <Route path="/client-reports" element={<RequirePermission any={['reports_share.view']}><RequireFeature any={['advanced_reports']}><Suspense fallback={<PageFallback />}><ClientAccessPage /></Suspense></RequireFeature></RequirePermission>} />
                   <Route path="/integrations" element={<RequirePermission any={['integrations.view']}><IntegrationsPage /></RequirePermission>} />
                   <Route path="/readiness" element={<ReadinessPage />} />
                   <Route path="/access" element={<RequirePermission any={['users.edit']}><AccessPage /></RequirePermission>} />

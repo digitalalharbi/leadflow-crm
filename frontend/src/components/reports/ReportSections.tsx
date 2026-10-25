@@ -93,7 +93,7 @@ export function KpiCards({ ctx, section }: { ctx: ReportCtx; section: 'kpi_volum
             label={t(`revenue.kpi.${key}`)}
             icon={KPI_ICON[key]}
             tone={key === 'revenue' || key === 'won' || key === 'roas' ? 'good' : 'neutral'}
-            value={<span dir="ltr">{format(key, value)}</span>}
+            value={value == null ? <span className="text-[1rem] font-medium text-[var(--color-ink-subtle)]" data-testid={`sk-${key}-na`}>{t('rsec.unavailable')}</span> : <span dir="ltr">{format(key, value)}</span>}
             spark={spark(key).length > 1 && !['cpl', 'cpa', 'cac', 'roas', 'qualified', 'conversion_rate'].includes(key) ? spark(key) : undefined}
           />
         )

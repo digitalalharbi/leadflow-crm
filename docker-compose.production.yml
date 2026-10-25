@@ -15,6 +15,13 @@ x-backend-env: &backend-env
   APP_URL: ${APP_SCHEME:-https}://${PRODUCTION_API_DOMAIN:?set PRODUCTION_API_DOMAIN}
   APP_CENTRAL_DOMAIN: ${PRODUCTION_DOMAIN:?set PRODUCTION_DOMAIN}
   FRONTEND_URL: ${APP_SCHEME:-https}://${PRODUCTION_DOMAIN}
+  # The short links people outside the workspace receive (/r report, /f form, /t tracking, /i invitation, /s shared file) live on the
+  # public domain; go.mohtam.pro takes over only when LINKS_SHORT_ENABLED is switched on, and old addresses keep working.
+  LINKS_PUBLIC_BASE: ${LINKS_PUBLIC_BASE:-${APP_SCHEME:-https}://${PRODUCTION_DOMAIN}}
+  LINKS_TRACKING_BASE: ${LINKS_TRACKING_BASE:-${APP_SCHEME:-https}://${PRODUCTION_DOMAIN}}
+  LINKS_SHORT_ENABLED: ${LINKS_SHORT_ENABLED:-false}
+  LINKS_SHORT_BASE: ${LINKS_SHORT_BASE:-https://go.mohtam.pro}
+  REPORT_CACHE_SECONDS: ${REPORT_CACHE_SECONDS:-20}
   DB_CONNECTION: pgsql
   DB_HOST: postgres
   DB_PORT: 5432

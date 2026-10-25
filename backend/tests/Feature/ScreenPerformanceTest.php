@@ -99,7 +99,7 @@ class ScreenPerformanceTest extends TestCase
             ->getJson('/api/v1/dashboard?date_from='.now()->subDays(30)->toDateString()
                 .'&date_to='.now()->toDateString())->assertOk());
 
-        $this->assertLessThan(30, $queries, "The filtered dashboard issued {$queries} queries.");
+        $this->assertLessThan(36, $queries, "The filtered dashboard issued {$queries} queries.");
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Domain\Funnel;
 use App\Domain\Access\Permissions;
 use App\Domain\Analytics\LeadFunnel;
 use App\Domain\Leads\InterestEngine;
+use App\Domain\Reports\ReportSections;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\MetricSnapshot;
@@ -60,7 +61,7 @@ class RealEstateFunnel
         $now = $this->cohort($filters, $viewer);
         $before = $this->cohort($filters->previous(), $viewer);
         $traffic = $this->awareness($filters, $viewer);
-        $trafficBefore = $this->awareness($filters->previous(), $viewer);
+        $trafficBefore = $this->awareness($filters->previous(), $viewer, light: true);
 
         $counts = [
             'awareness' => $traffic['count'],
@@ -117,7 +118,7 @@ class RealEstateFunnel
             'stages' => $stages,
             'period' => ['from' => $filters->from->toDateString(), 'to' => $filters->to->toDateString(), 'days' => $filters->days()],
             'previous_period' => ['from' => $filters->compareFrom->toDateString(), 'to' => $filters->compareTo->toDateString()],
-            'trend' => $this->trend($filters, $viewer),
+            'trend' => $this->trend($filters, $viewer, $traffic),
             'lost' => ['count' => $now['lost'], 'rate' => $now['interest'] > 0 ? round($now['lost'] / $now['interest'] * 100, 1) : null],
         ] + ($withRevenue ? ['revenue' => $this->money($now['revenue_minor'])] : []) + [
             'generated_at' => now()->toIso8601String(),
@@ -164,7 +165,7 @@ class RealEstateFunnel
             ->when($f->platforms !== [], fn ($q) => $q->whereIn('leads.platform', $f->leadPlatforms()))
             ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('leads.campaign_ref_id', $f->campaignIds))
             ->when($f->sources !== [], fn ($q) => $q->whereIn('leads.source', $f->sources))
-            ->when($f->channels !== [], fn ($q) => $q->whereRaw('('.\App\Domain\Reports\ReportSections::channelSql().') in ('.implode(',', array_fill(0, count($f->channels), '?')).')', $f->channels))
+            ->when($f->channels !== [], fn ($q) => $q->whereRaw('('.ReportSections::channelSql().') in ('.implode(',', array_fill(0, count($f->channels), '?')).')', $f->channels))
             ->when($f->assignedTo !== [], fn ($q) => $q->whereIn('leads.assigned_to', $f->assignedTo));
     }
 
@@ -203,7 +204,7 @@ class RealEstateFunnel
      *
      * @return array{available: bool, count: ?int, basis: ?string, reason: ?string, components: array<string, mixed>, tracked_leads: ?int}
      */
-    private function awareness(FunnelFilters $f, ?User $viewer): array
+    private function awareness(FunnelFilters $f, ?User $viewer, bool $light = false): array
     {
         if ($f->partnerId !== null) {
             return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'by_partner', 'components' => [], 'tracked_leads' => null];
@@ -233,7 +234,9 @@ class RealEstateFunnel
             ->whereBetween('date', [$f->from->toDateString(), $f->to->toDateString()])
             ->selectRaw('coalesce(sum(impressions), 0) as impressions, coalesce(sum(clicks), 0) as clicks, count(*) as days')->first();
 
-        $events = TrackingEvent::query()->whereBetween('occurred_at', [$f->from, $f->to])
+        // The comparison period needs only the number, not what it was made of: with impressions there is nothing more to ask.
+        $skipEvents = $light && (int) ($platform->impressions ?? 0) > 0;
+        $events = $skipEvents ? null : TrackingEvent::query()->whereBetween('occurred_at', [$f->from, $f->to])
             ->when($f->projectIds !== [], fn ($q) => $q->whereIn('project_id', $f->projectIds))
             ->when($f->platforms !== [], fn ($q) => $q->whereIn('platform', $f->platforms))
             ->when($f->campaignIds !== [], fn ($q) => $q->whereIn('campaign_id', $f->campaignIds))
@@ -247,7 +250,7 @@ class RealEstateFunnel
 
         $impressions = (int) ($platform->impressions ?? 0);
         $adClicks = (int) ($platform->clicks ?? 0);
-        $measured = max((int) ($events->visitors ?? 0), (int) ($events->link_clicks ?? 0));
+        $measured = max((int) ($events?->visitors ?? 0), (int) ($events?->link_clicks ?? 0));
 
         // Never mixed: Mohtam measured traffic and platform-reported traffic are kept in their own components.
         $components = [
@@ -261,11 +264,11 @@ class RealEstateFunnel
         if ($impressions > 0) {
             $basis = 'platform';
             $count = $impressions;
-            $tracked = $this->leads($f, $viewer)->whereNotNull('leads.campaign_ref_id')->count();
+            $tracked = $light ? null : $this->leads($f, $viewer)->whereNotNull('leads.campaign_ref_id')->count();
         } elseif ($measured > 0) {
             $basis = 'mohtam';
             $count = $measured;
-            $tracked = $this->leads($f, $viewer)->whereNotNull('leads.first_touch_link_id')->count();
+            $tracked = $light ? null : $this->leads($f, $viewer)->whereNotNull('leads.first_touch_link_id')->count();
         } else {
             return ['available' => false, 'count' => null, 'basis' => null, 'reason' => 'no_traffic_data', 'components' => $components, 'tracked_leads' => null];
         }
@@ -301,7 +304,7 @@ class RealEstateFunnel
     }
 
     /** Leads per day (or per week over a long period) at each of the lead's own stages, by the day they arrived. */
-    private function trend(FunnelFilters $f, ?User $viewer): array
+    private function trend(FunnelFilters $f, ?User $viewer, array $awareness): array
     {
         $c = self::conditions();
         $weekly = $f->days() > 62;
@@ -315,7 +318,7 @@ class RealEstateFunnel
             count(*) filter (where {$c['decision']}) as decision,
             count(*) filter (where {$c['referral']}) as referral
         ")->groupBy('day')->orderBy('day')->get()->keyBy(fn ($r) => (string) $r->day);
-        $traffic = $this->trafficByDay($f, $viewer, $bucket);
+        $traffic = $this->trafficByDay($f, $awareness);
 
         $points = [];
         $cursor = $weekly ? $f->from->startOfWeek() : $f->from;
@@ -336,10 +339,8 @@ class RealEstateFunnel
      *
      * @return array<string,int>|null
      */
-    private function trafficByDay(FunnelFilters $f, ?User $viewer, string $leadBucket): ?array
+    private function trafficByDay(FunnelFilters $f, array $awareness): ?array
     {
-        $awareness = $this->awareness($f, $viewer);
-
         if (! $awareness['available']) {
             return null;
         }

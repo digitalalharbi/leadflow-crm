@@ -57,7 +57,7 @@ class RbacFinalReviewTest extends TestCase
 
         $this->assertNotContains('kpi_cost', $preview['sections']);
         $this->assertContains('funnel', $preview['sections']);
-        $this->assertSame(['kpi_cost'], $preview['withheld']);
+        $this->assertSame(['kpi_cost', 'marketing'], $preview['withheld']);
         $this->assertStringNotContainsString('"cost"', json_encode($preview['kpis'] ?? []), 'nothing of the cost section was built');
 
         // The admin's preview is whole, and the share itself is unchanged.

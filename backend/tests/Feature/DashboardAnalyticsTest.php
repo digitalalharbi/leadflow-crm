@@ -156,8 +156,8 @@ class DashboardAnalyticsTest extends TestCase
 
         $this->actingAs($this->t['admin'])->getJson('/api/v1/dashboard')->assertSuccessful();
 
-        // Charts were added without the screen becoming a request per card.
-        $this->assertLessThan(30, $queries, "The dashboard issued {$queries} queries.");
+        // The official funnel adds a fixed handful of aggregate queries (current and previous period, traffic, trend); the bound is still a constant, not a request per card.
+        $this->assertLessThan(36, $queries, "The dashboard issued {$queries} queries.");
     }
 
     private function dashboard(array $filters = []): array

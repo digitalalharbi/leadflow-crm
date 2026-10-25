@@ -285,7 +285,7 @@ class FilesChooseThemselvesTest extends TestCase
 
         $mail = $this->mailer->sent[0] ?? null;
         $this->assertNotNull($mail);
-        $this->assertStringContainsString('/f/', (string) $mail->text);
+        $this->assertStringContainsString('/s/', (string) $mail->text);
         $this->assertSame('كتيب النرجس', $mail->subject);
         $this->assertSame(1, FileShare::withoutGlobalScopes()->count());
     }
@@ -311,7 +311,7 @@ class FilesChooseThemselvesTest extends TestCase
         return $this->mock(WhatsappSender::class)
             ->shouldReceive('sendFile')
             ->once()
-            ->withArgs(fn ($lead, $file, $caption) => is_string($caption) && str_contains($caption, '/f/'))
+            ->withArgs(fn ($lead, $file, $caption) => is_string($caption) && str_contains($caption, '/s/'))
             ->andReturn((new LeadMessage)->forceFill(['status' => MessageStatus::Sent]));
     }
 

@@ -258,7 +258,7 @@ class ReportSectionsTest extends TestCase
     {
         $this->seedJourney();
         $data = $this->report(['kpi_volume', 'funnel', 'sources', 'sales', 'lead_quality', 'loss', 'projects', 'units', 'attention']);
-        $text = json_encode($data);
+        $text = json_encode($data, JSON_UNESCAPED_UNICODE);
 
         foreach (['marketing', 'campaigns', 'team', 'revenue', 'tracking_hub'] as $absent) {
             $this->assertArrayNotHasKey($absent, $data);
@@ -271,7 +271,7 @@ class ReportSectionsTest extends TestCase
     public function test_cost_and_revenue_leave_with_the_sections_they_belong_to(): void
     {
         $this->seedJourney();
-        $text = json_encode($this->report(['kpi_volume', 'funnel', 'sources', 'sales', 'projects', 'campaigns', 'attention']));
+        $text = json_encode($this->report(['kpi_volume', 'funnel', 'sources', 'sales', 'projects', 'campaigns', 'attention']), JSON_UNESCAPED_UNICODE);
 
         foreach (['"spend"', '"cpl"', '"cac"', '"roas"', '"revenue"', '"cpc"'] as $money) {
             $this->assertStringNotContainsString($money, $text, "{$money} appeared in a report with no money sections");

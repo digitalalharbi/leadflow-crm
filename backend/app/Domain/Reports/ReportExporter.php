@@ -40,8 +40,8 @@ class ReportExporter
         $tables = [];
         $meta = $data['report'] ?? [];
         $tables['report'] = ['headers' => ['name', 'value'], 'rows' => [
-            ['name', (string) ($meta['name'] ?? '')], ['from', (string) ($meta['from'] ?? '')], ['to', (string) ($meta['to'] ?? '')],
-            ['currency', (string) ($meta['currency'] ?? '')], ['generated_at', (string) ($meta['generated_at'] ?? '')],
+            ['name', $this->cell($meta['name'] ?? '')], ['from', $this->cell($meta['from'] ?? '')], ['to', $this->cell($meta['to'] ?? '')],
+            ['currency', $this->cell($meta['currency'] ?? '')], ['generated_at', $this->cell($meta['generated_at'] ?? '')],
         ]];
 
         foreach ($data as $key => $value) {

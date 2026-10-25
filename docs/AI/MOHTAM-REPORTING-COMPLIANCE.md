@@ -18,7 +18,7 @@ Evidence names the code and the test that proves it; a status here is a claim ab
 | 11 | Short-link standard | COMPLETE | `/r /f /t /i /s` on `mohtam.pro`; 22-char base-62 tokens, no ids, no tenant or project names. `config/links.php`, `ShortLink::urlFor`, `ReportSecurityTest` |
 | 12 | Short-link service | COMPLETE | One layer: `short_links` + `Domain/Links/ShortLinks` (type, resource, workspace, project, creator, active, expiry, password, views, last viewed, revoked). Reports, tracking, forms, invitations and files issue their addresses through it. |
 | 13 | Client report header | COMPLETE | Company logo, project logo, company and project names, report name, period, last update + live badge, client, account manager (when switched on), contact/footer text. |
-| 14 | Executive summary | COMPLETE | Spend, leads, qualified, interested, visits, reservations, sales, revenue, CPL, CPA (cost per booked viewing), CAC, conversion rate, ROAS; unavailable = "غير متاح", never a zero. |
+| 14 | Executive summary | COMPLETE | Spend, leads, qualified, interested, visits, reservations, sales, revenue, CPL, cost per viewing (تكلفة المعاينة), CAC, conversion rate, ROAS; unavailable = "غير متاح", never a zero. |
 | 15 | Marketing performance | COMPLETE | `marketing` section: per platform spend, impressions, clicks, CTR, CPC (reported) and leads → revenue, CPL, CAC, ROAS (attributed), for Meta, TikTok, Snapchat, Google Ads, X, LinkedIn, organic, referral, WhatsApp, portals, broker, influencer, QR, landing page, form, manual, import. |
 | 16 | Platform vs Mohtam | COMPLETE | Two separately labelled blocks that are never merged; awareness names its basis. `ReportSectionsTest::marketing_keeps…` |
 | 17 | Campaign reporting | COMPLETE | Full column set; search, sort, platform and project filters, previous-period change, row detail. |
@@ -63,7 +63,7 @@ Evidence names the code and the test that proves it; a status here is a claim ab
 
 ## Known interpretations and limits
 
-- **CPA** is "cost per action": spend divided by booked/held viewings. **CAC** is spend divided by sales.
+- **Cost per viewing** (تكلفة المعاينة) is spend divided by held viewings; it is not labelled CPA anywhere in a report, because CPA would need its conversion event stated. **CAC** is spend divided by sales.
 - **Awareness** is impressions when ad accounts report them; otherwise Mohtam's own measurement. They are never added together.
 - **Handoff** (§3.6) is read as a broker/partner hand-off. The automation-to-human handoff is an operational state.
 - **Sales team** has no entity of its own in the data model; the rep filter is the team filter.

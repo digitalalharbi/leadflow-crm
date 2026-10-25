@@ -208,7 +208,7 @@ export interface ExecPage<K extends string> {
   previous: Partial<Record<K, number | null>> | null
 }
 
-export type KpiKey = 'leads' | 'qualified' | 'interested' | 'visits' | 'reservations' | 'won' | 'conversion_rate' | 'spend' | 'cpl' | 'cpa' | 'cac' | 'roas' | 'revenue'
+export type KpiKey = 'leads' | 'qualified' | 'interested' | 'visits' | 'reservations' | 'won' | 'conversion_rate' | 'spend' | 'cpl' | 'cost_per_viewing' | 'cac' | 'roas' | 'revenue'
 
 /** The official funnel — وعي → اهتمام → تفاعل → حجز معاينة → قرار شراء → إحالة — as the API draws it. */
 export type FunnelStageKey = 'awareness' | 'interest' | 'engagement' | 'booking' | 'decision' | 'referral'

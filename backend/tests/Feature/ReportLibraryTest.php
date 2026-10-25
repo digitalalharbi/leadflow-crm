@@ -307,7 +307,7 @@ class ReportLibraryTest extends TestCase
         $text = json_encode($data);
 
         $this->assertSame(['kpi_volume', 'funnel'], array_values(array_intersect($data['sections'], ['kpi_volume', 'kpi_cost', 'kpi_revenue', 'funnel', 'marketing', 'revenue', 'sources', 'campaigns', 'team', 'attention'])));
-        foreach (['"spend"', '"cpl"', '"cac"', '"roas"', '"revenue"', '"cpa"'] as $money) {
+        foreach (['"spend"', '"cpl"', '"cac"', '"roas"', '"revenue"', '"cost_per_viewing"'] as $money) {
             $this->assertStringNotContainsString($money, $text);
         }
     }

@@ -36,16 +36,16 @@ export function useReportCtx(data: SharedReportData): ReportCtx {
 
 const KPI_ICON: Record<KpiKey, LucideIcon> = {
   leads: Users, qualified: ShieldCheck, interested: Sparkles, visits: Eye, reservations: KeyRound, won: UserCheck, conversion_rate: Percent,
-  spend: Coins, cpl: BadgeDollarSign, cpa: Target, cac: Target, roas: TrendingUp, revenue: Coins,
+  spend: Coins, cpl: BadgeDollarSign, cost_per_viewing: Target, cac: Target, roas: TrendingUp, revenue: Coins,
 }
 const SECTION_KPIS: Record<string, KpiKey[]> = {
   kpi_volume: ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won', 'conversion_rate'],
-  kpi_cost: ['spend', 'cpl', 'cpa', 'cac', 'roas'],
+  kpi_cost: ['spend', 'cpl', 'cost_per_viewing', 'cac', 'roas'],
   kpi_revenue: ['revenue'],
 }
 /** Lower is better for what the company pays. */
-const LOWER_IS_BETTER: KpiKey[] = ['spend', 'cpl', 'cpa', 'cac']
-const MONEY_KPIS: KpiKey[] = ['spend', 'cpl', 'cpa', 'cac', 'revenue']
+const LOWER_IS_BETTER: KpiKey[] = ['spend', 'cpl', 'cost_per_viewing', 'cac']
+const MONEY_KPIS: KpiKey[] = ['spend', 'cpl', 'cost_per_viewing', 'cac', 'revenue']
 
 /**
  * The headline figures of a section, each with a sparkline and — when the report compares — against
@@ -94,7 +94,7 @@ export function KpiCards({ ctx, section }: { ctx: ReportCtx; section: 'kpi_volum
             icon={KPI_ICON[key]}
             tone={key === 'revenue' || key === 'won' || key === 'roas' ? 'good' : 'neutral'}
             value={value == null ? <span className="text-[1rem] font-medium text-[var(--color-ink-subtle)]" data-testid={`sk-${key}-na`}>{t('rsec.unavailable')}</span> : <span dir="ltr">{format(key, value)}</span>}
-            spark={spark(key).length > 1 && !['cpl', 'cpa', 'cac', 'roas', 'qualified', 'conversion_rate'].includes(key) ? spark(key) : undefined}
+            spark={spark(key).length > 1 && !['cpl', 'cost_per_viewing', 'cac', 'roas', 'qualified', 'conversion_rate'].includes(key) ? spark(key) : undefined}
           />
         )
       })}

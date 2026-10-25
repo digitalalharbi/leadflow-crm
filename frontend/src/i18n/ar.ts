@@ -271,7 +271,7 @@ export default {
   },
   revenue: {
     tab: { overview: 'نظرة عامة', revenue: 'من الإنفاق إلى الإيراد' },
-    kpi: { spend: 'الإنفاق', leads: 'العملاء', qualified: 'مؤهلون', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'صفقات', conversion_rate: 'نسبة التحويل', revenue: 'الإيراد', roas: 'العائد على الإنفاق', cpa: 'تكلفة المعاينة', cac: 'تكلفة الصفقة', cpl: 'تكلفة العميل' },
+    kpi: { spend: 'الإنفاق', leads: 'العملاء', qualified: 'مؤهلون', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'صفقات', conversion_rate: 'نسبة التحويل', revenue: 'الإيراد', roas: 'العائد على الإنفاق', cost_per_viewing: 'تكلفة المعاينة', cac: 'تكلفة الصفقة', cpl: 'تكلفة العميل' },
     step: { leads: 'عملاء', qualified: 'مؤهلون', interested: 'مهتمون', visits: 'زيارات', reservations: 'حجوزات', won: 'مبيعات' },
     funnel: 'من العميل إلى الصفقة',
     beforeStep: 'قبل «{{step}}»',

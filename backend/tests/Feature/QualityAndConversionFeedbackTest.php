@@ -81,10 +81,13 @@ class QualityAndConversionFeedbackTest extends TestCase
         $this->assertNull($tiktok['cac']);
     }
 
+    /** A counter, not a dice roll: nine hundred random numbers collide often enough to fail a run now and then. */
+    private int $phones = 0;
+
     private function export(string $platform, ConversionEvent $event = ConversionEvent::Won): ConversionExport
     {
         return $this->asTenant($this->t['tenant'], function () use ($platform, $event) {
-            $lead = Lead::create(['full_name' => 'ع', 'phone_normalized' => '+966500888'.random_int(100, 999), 'email' => 'a@example.test', 'status' => 'won', 'deal_value_minor' => 100000, 'platform' => $platform]);
+            $lead = Lead::create(['full_name' => 'ع', 'phone_normalized' => '+9665008'.str_pad((string) ++$this->phones, 5, '0', STR_PAD_LEFT), 'email' => 'a@example.test', 'status' => 'won', 'deal_value_minor' => 100000, 'platform' => $platform]);
 
             return ConversionExport::create(['lead_id' => $lead->id, 'platform' => $platform, 'event' => $event->value, 'occurred_at' => now(), 'value' => 1000, 'currency' => 'SAR', 'status' => 'pending']);
         });

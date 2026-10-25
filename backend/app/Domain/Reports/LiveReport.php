@@ -185,8 +185,8 @@ class LiveReport
             'conversion_rate' => $counts['leads'] > 0 ? round($counts['won'] / $counts['leads'] * 100, 2) : null,
             'spend' => $spend,
             'cpl' => $spend !== null && $counts['leads'] > 0 ? round($spend / $counts['leads'], 2) : null,
-            // Cost of an action: one booked viewing. Cost of an acquisition: one sale.
-            'cpa' => $spend !== null && $counts['visit'] > 0 ? round($spend / $counts['visit'], 2) : null,
+            // What one held viewing cost (spend / viewings). Not called CPA: that word needs its conversion event stated.
+            'cost_per_viewing' => $spend !== null && $counts['visit'] > 0 ? round($spend / $counts['visit'], 2) : null,
             'cac' => $spend !== null && $counts['won'] > 0 ? round($spend / $counts['won'], 2) : null,
             'roas' => $spend !== null && $spend > 0 ? round($earned / $spend, 2) : null,
             'revenue' => $earned,
@@ -196,7 +196,7 @@ class LiveReport
     private const KPI_KEYS = [
         'kpi_volume' => ['leads', 'qualified', 'interested', 'visits', 'reservations', 'won', 'conversion_rate'],
         // A cost nobody has entered is null — a dash on the page, not a zero.
-        'kpi_cost' => ['spend', 'cpl', 'cpa', 'cac', 'roas'],
+        'kpi_cost' => ['spend', 'cpl', 'cost_per_viewing', 'cac', 'roas'],
         'kpi_revenue' => ['revenue'],
     ];
 

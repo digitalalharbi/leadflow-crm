@@ -212,7 +212,7 @@ export default {
   },
   revenue: {
     tab: { overview: 'Overview', revenue: 'Spend to revenue' },
-    kpi: { spend: 'Spend', leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', won: 'Won', conversion_rate: 'Conversion rate', revenue: 'Revenue', roas: 'ROAS', cpa: 'Cost per viewing', cac: 'CAC', cpl: 'CPL' },
+    kpi: { spend: 'Spend', leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', won: 'Won', conversion_rate: 'Conversion rate', revenue: 'Revenue', roas: 'ROAS', cost_per_viewing: 'Cost per viewing', cac: 'CAC', cpl: 'CPL' },
     step: { leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visited', reservations: 'Reserved', won: 'Won' },
     funnel: 'From lead to sale',
     beforeStep: 'before “{{step}}”',

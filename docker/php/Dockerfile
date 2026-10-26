@@ -63,6 +63,7 @@ ARG APP_RELEASE=""
 RUN composer dump-autoload --optimize --classmap-authoritative \
  && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
  && printf '%s\n' "$APP_RELEASE" > .release \
+ && chmod -R u=rwX,go=rX /var/www/html \
  && chown -R www-data:www-data storage bootstrap/cache
 
 USER www-data

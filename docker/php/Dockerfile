@@ -25,6 +25,12 @@ RUN apk add --no-cache \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Alpine's PHP 8.4 image can bind the bare `9000` listener as IPv6-only.
+# The API proxy reaches FPM over the private IPv4 Compose network, so bind
+# explicitly to IPv4. This port is never published on the host.
+RUN printf '%s\n' '[www]' 'listen = 0.0.0.0:9000' \
+    > /usr/local/etc/php-fpm.d/zzz-listen.conf
+
 # Sensible production PHP defaults; overridden by the dev stage below.
 RUN { \
       echo 'opcache.enable=1'; \

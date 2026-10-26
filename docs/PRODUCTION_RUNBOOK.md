@@ -2,6 +2,14 @@
 
 One document, copy/paste in order.
 
+> **Shared Hostinger VPS override:** the audited `mohtam.pro` deployment does
+> not use the generic provisioning, Nginx, `/var/www`, or Docker-group examples
+> below. It uses `/opt/leadflow-crm`, the existing Dockerized Caddy,
+> `leadflow-deploy` with a forced-command gate, one apex domain, and the
+> architecture/gates in `docs/VPS_CADDY_PLAN.md`. Keep
+> `PRODUCTION_ENABLED=false` until internal validation, database backup restore,
+> and an explicitly approved Caddy/DNS activation are complete.
+
 ## The one road to production
 
 ```

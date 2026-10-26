@@ -79,6 +79,10 @@ services:
       retries: 10
     restart: unless-stopped
     logging: *default-logging
+    mem_limit: 384m
+    cpus: "0.40"
+    pids_limit: 128
+    networks: [app]
 
   redis:
     image: redis:7-alpine
@@ -94,6 +98,10 @@ services:
       retries: 10
     restart: unless-stopped
     logging: *default-logging
+    mem_limit: 96m
+    cpus: "0.20"
+    pids_limit: 64
+    networks: [app]
 
   backend:
     build:
@@ -124,18 +132,36 @@ services:
       redis: { condition: service_healthy }
     restart: unless-stopped
     logging: *default-logging
+    mem_limit: 384m
+    cpus: "0.60"
+    pids_limit: 128
+    networks: [app, egress]
 
   api:
     image: nginx:1.27-alpine
     volumes:
       - ./docker/nginx/api.conf:/etc/nginx/conf.d/default.conf:ro
-    # Bound to loopback; the host Nginx terminates TLS and proxies in.
+    # Loopback remains available for internal validation. Production traffic
+    # arrives from the existing Dockerized Caddy over web_proxy.
     ports:
       - "127.0.0.1:9081:80"
     depends_on:
       - backend
     restart: unless-stopped
     logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/api/health | grep -q '\"status\":\"healthy\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 48m
+    cpus: "0.20"
+    pids_limit: 64
+    networks:
+      app:
+      web_proxy:
+        aliases: [leadflow-api]
 
   frontend:
     build:
@@ -144,6 +170,10 @@ services:
       target: production
       args:
         VITE_API_URL: ${APP_SCHEME:-https}://${PRODUCTION_API_DOMAIN}/api/v1
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
+        VITE_REVERB_HOST: ${VITE_REVERB_HOST:-${PRODUCTION_DOMAIN}}
+        VITE_REVERB_PORT: ${VITE_REVERB_PORT:-443}
+        VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-https}
         VITE_PUBLIC_LEGAL_NAME: ${VITE_PUBLIC_LEGAL_NAME:-}
         VITE_PUBLIC_CONTACT_EMAIL: ${VITE_PUBLIC_CONTACT_EMAIL:-}
         VITE_PUBLIC_ADDRESS: ${VITE_PUBLIC_ADDRESS:-}
@@ -152,6 +182,12 @@ services:
       - "127.0.0.1:9080:80"
     restart: unless-stopped
     logging: *default-logging
+    mem_limit: 48m
+    cpus: "0.20"
+    pids_limit: 64
+    networks:
+      web_proxy:
+        aliases: [leadflow-frontend]
 
   horizon:
     build:
@@ -182,6 +218,10 @@ services:
       redis: { condition: service_healthy }
     restart: unless-stopped
     logging: *default-logging
+    mem_limit: 320m
+    cpus: "0.50"
+    pids_limit: 128
+    networks: [app, egress]
 
   # Runs Laravel's scheduler (follow-up reminders, Horizon snapshots).
   scheduler:
@@ -212,6 +252,10 @@ services:
       backend: { condition: service_started }
     restart: unless-stopped
     logging: *default-logging
+    mem_limit: 128m
+    cpus: "0.25"
+    pids_limit: 64
+    networks: [app, egress]
 
   # The websocket server behind the live feed.
   #
@@ -256,8 +300,32 @@ services:
     # a certificate.
     expose:
       - '8080'
+    healthcheck:
+      test: ["CMD-SHELL", "php -r '$$s=@fsockopen(\"127.0.0.1\",8080); exit($$s ? 0 : 1);'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    mem_limit: 192m
+    cpus: "0.35"
+    pids_limit: 128
+    networks:
+      app:
+      web_proxy:
+        aliases: [leadflow-reverb]
 
 volumes:
   production-postgres:
   production-redis:
   production-storage:
+
+networks:
+  app:
+    name: leadflow-production-internal
+    internal: true
+  # PHP services need outbound HTTPS for mail and explicitly configured SaaS
+  # integrations. Data services remain only on the internal network.
+  egress:
+    name: leadflow-production-egress
+  web_proxy:
+    external: true

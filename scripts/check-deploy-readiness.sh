@@ -65,10 +65,11 @@ check_secret() {
 }
 
 check_secret VPS_HOST        "server IP or hostname — gates every deploy step"
-check_secret VPS_USER        "the deploy user, usually 'deploy'"
+check_secret VPS_USER        "the dedicated 'leadflow-deploy' user"
 check_secret VPS_SSH_KEY     "the PRIVATE half of the deploy key"
+check_secret VPS_SSH_KNOWN_HOSTS "pre-verified SSH host key line(s)"
 check_secret STAGING_PATH    "/var/www/leads-crm/staging"
-check_secret PRODUCTION_PATH "/var/www/leads-crm/production"
+check_secret PRODUCTION_PATH "/opt/leadflow-crm"
 
 if printf '%s\n' "$SECRETS" | grep -qx VPS_PORT; then
   ok "VPS_PORT"
@@ -113,10 +114,11 @@ else
   say "  deploy key (2.2), then set the secrets from your own machine:"
   say ""
   say "    gh secret set VPS_HOST        --body '203.0.113.10'"
-  say "    gh secret set VPS_USER        --body 'deploy'"
+  say "    gh secret set VPS_USER        --body 'leadflow-deploy'"
   say "    gh secret set VPS_SSH_KEY     < ~/.ssh/leadflow_deploy"
+  say "    gh secret set VPS_SSH_KNOWN_HOSTS < ./leadflow-known-hosts"
   say "    gh secret set STAGING_PATH    --body '/var/www/leads-crm/staging'"
-  say "    gh secret set PRODUCTION_PATH --body '/var/www/leads-crm/production'"
+  say "    gh secret set PRODUCTION_PATH --body '/opt/leadflow-crm'"
   say ""
   say "  Then re-run this script, and re-run the last deploy workflow."
 fi

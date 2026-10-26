@@ -135,7 +135,10 @@ services:
     mem_limit: 384m
     cpus: "0.60"
     pids_limit: 128
-    networks: [app, egress]
+    networks:
+      app:
+        aliases: [leadflow-backend]
+      egress:
 
   api:
     image: nginx:1.27-alpine

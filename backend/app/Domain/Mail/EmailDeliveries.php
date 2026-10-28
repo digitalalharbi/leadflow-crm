@@ -6,6 +6,7 @@ use App\Jobs\SendQueuedEmail;
 use App\Models\EmailDelivery;
 use App\Models\EmailDeliveryAttempt;
 use App\Models\User;
+use App\Support\Brand;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -34,7 +35,7 @@ class EmailDeliveries
 
         $delivery = EmailDelivery::create([
             'kind' => $meta['kind'] ?? 'report',
-            'to_email' => $email->toEmail, 'to_name' => $email->toName, 'subject' => $email->subject, 'html' => $email->html, 'text' => $email->text,
+            'to_email' => $email->toEmail, 'to_name' => $email->toName, 'subject' => Brand::subject($email->subject), 'html' => $email->html, 'text' => $email->text,
             'provider' => $this->registry->current()->key(),
             'status' => EmailDelivery::QUEUED,
             'max_attempts' => count((array) config('leadflow_mail.backoff', [])) + 1,

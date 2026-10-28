@@ -10,6 +10,7 @@ import { SampleReportDialog } from '@/components/public/SampleReportDialog'
 import { LANDING } from '@/content/landing'
 import { useEntryAction } from '@/hooks/useEntryAction'
 import { usePublicMeta } from '@/hooks/usePublicMeta'
+import { BRAND, brandTitle } from '@/lib/brand'
 
 const VALUE_ICONS: LucideIcon[] = [Inbox, Zap, TrendingUp]
 
@@ -31,7 +32,7 @@ export function LandingPage() {
   const entry = useEntryAction()
 
   // The one canonical address of the product's front door.
-  usePublicMeta(`مهتم | ${copy.headline}`, copy.sub, '/')
+  usePublicMeta(brandTitle(lang), copy.metaDescription, '/', lang)
 
   const nav = (
     <>
@@ -47,6 +48,7 @@ export function LandingPage() {
         {/* The idea, and a picture of the product. */}
         <section className="grid items-center gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-6" aria-labelledby="hero-title">
           <div className="space-y-3 lg:space-y-2.5">
+            <p className="text-[1.5rem] font-bold text-[var(--brand-text)]" data-testid="landing-brand">{BRAND[lang].name}</p>
             <p className="inline-flex rounded-full bg-[var(--brand-soft)] px-3.5 py-1 text-[0.9375rem] font-semibold text-[var(--brand-text)]" data-testid="landing-badge">{copy.badge}</p>
             <h1 id="hero-title" className="text-[2.25rem] font-bold leading-[1.15] sm:text-[2.75rem] lg:text-[2.875rem]" data-testid="landing-headline">{copy.headline}</h1>
             <p className="max-w-xl text-[1.0625rem] leading-relaxed text-[var(--color-ink-muted)] lg:text-[1.125rem]" data-testid="landing-sub">{copy.sub}</p>

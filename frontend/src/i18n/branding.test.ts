@@ -33,12 +33,10 @@ const FORBIDDEN: Array<[label: string, pattern: RegExp]> = [
   // The reference the GitHub work was modelled on. A good idea to borrow, not
   // a name to inherit.
   ['CampaignsHub', /campaigns?[\s_-]*hub/i],
-  // The product is written in Arabic everywhere, English included. A Latin
-  // spelling is a second name — and there had already been two of them, "Muhtam"
-  // in the strings and "Mahtam" in the wordmark, which agreed with each other
-  // about nothing.
-  // (The official domain, mohtam.pro, is an address and not a name, and is the one place a Latin spelling belongs.)
-  ['a Latin spelling of مهتم', /\b(muhtam|mahtam|mohtam|muhtam)\b(?!\.pro\b)/i],
+  // The official names are مهتم (Arabic) and Mohtam (English) — exactly those. Any other Latin spelling is a second name: there had
+  // already been two, "Muhtam" in the strings and "Mahtam" in the wordmark. Lower-case "mohtam" is only ever the domain.
+  ['a misspelling of the name', /\b(muhtam|mahtam)\b/i],
+  ['a lower-case name outside the domain', /\bmohtam\b(?!\.pro\b)/],
 ]
 
 /** Every string a person can read, with the path that produced it. */
@@ -66,6 +64,20 @@ describe('the product has one name', () => {
     )
 
     expect(offences).toEqual([])
+  })
+
+  it('the Arabic interface says مهتم, never Mohtam; the English one says Mohtam, never مهتم', () => {
+    expect(strings(ar).filter(([, v]) => /\bMohtam\b/.test(v)).map(([k]) => k)).toEqual([])
+    expect(strings(en).filter(([, v]) => v.includes('مهتم')).map(([k]) => k)).toEqual([])
+    expect(ar.brand.name).toBe('مهتم')
+    expect(en.brand.name).toBe('Mohtam')
+    expect(ar.brand.tagline).toBe('حوّل الاهتمام إلى فرصة')
+    expect(en.brand.tagline).toBe('Turn Interest Into Opportunity')
+  })
+
+  it('no title in either language uses a pipe as a separator', () => {
+    const piped = [...strings(ar), ...strings(en)].filter(([, v]) => /\s\|\s/.test(v)).map(([k, v]) => `${k}: ${v}`)
+    expect(piped).toEqual([])
   })
 
   it('reads enough of the bundle to be worth believing', () => {
@@ -114,5 +126,16 @@ describe('the browser chrome', () => {
 
     expect(manifest.name).toBe('مهتم')
     expect(manifest.short_name).toBe('مهتم')
+    // The installed app wears the official icons, from the brand folder.
+    expect(manifest.icons.map((i: { src: string }) => i.src.split('?')[0])).toEqual(['/brand/pwa-192.png', '/brand/pwa-512.png', '/brand/pwa-maskable-512.png', '/brand/favicon.svg'])
+    expect(manifest.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true)
+  })
+
+  it('the tab title is the official one, with the dash and not a pipe', () => {
+    expect(chrome['/index.html']).toContain('<title>مهتم — حوّل الاهتمام إلى فرصة</title>')
+    expect(chrome['/index.html']).not.toMatch(/<title>[^<]*\|/)
+    expect(chrome['/index.html']).toContain('href="/brand/favicon.ico')
+    expect(chrome['/index.html']).toContain('href="/brand/apple-touch-icon.png')
+    expect(chrome['/index.html']).toContain('<link rel="canonical" href="https://mohtam.pro/" />')
   })
 })

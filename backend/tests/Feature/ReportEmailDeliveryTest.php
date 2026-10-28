@@ -308,7 +308,7 @@ class ReportEmailDeliveryTest extends TestCase
         $this->assertStringNotContainsString('secret-pass', $html);
         $this->assertStringContainsString('محميّ بكلمة مرور', $html, 'the reader is told a password is needed');
         $this->assertStringNotContainsString('kpis', $html);
-        $this->assertSame('تقرير الإدارة', $deliveries[0]->subject);
+        $this->assertSame('تقرير الإدارة — مهتم', $deliveries[0]->subject);
         $this->assertSame('report_share', $deliveries[0]->subject_type);
         $this->assertSame('logged', $deliveries[0]->status);
 

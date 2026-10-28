@@ -106,7 +106,8 @@ test.describe('Tenant onboarding', () => {
     await signIn(page, adminEmail)
 
     await expect(page.getByText(systemName).first()).toBeVisible()
-    await expect(page).toHaveTitle(systemName)
+    // The tab is `<screen> — <the workspace's own name>`.
+    await expect(page).toHaveTitle(`لوحة التحكم — ${systemName}`)
 
     // A brand-new tenant starts empty, and says so usefully.
     await page.goto('/leads')

@@ -129,7 +129,7 @@ describe('landing page', () => {
     const stages = screen.getAllByTestId('funnel-stage').map((li) => li.querySelector('h3')?.textContent)
     expect(stages).toEqual(['وعي', 'اهتمام', 'تفاعل', 'حجز معاينة', 'قرار شراء', 'إحالة'])
     // The product's name is مهتم alone.
-    expect(container.textContent).not.toMatch(/Mohtam|LeadFlow/i)
+    expect(container.textContent).not.toMatch(/Mohtam(?!\.pro)|LeadFlow/i)
   })
 
   it('footer links lead to the six public pages', () => {

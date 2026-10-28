@@ -11,14 +11,14 @@
  * a new build is a new file, so the browser sees an update and the app can offer it.
  */
 const BUILD = '__BUILD_ID__'
-const SHELL_CACHE = `mahtam-shell-${BUILD}`
-const ASSET_CACHE = `mahtam-assets-${BUILD}`
+const SHELL_CACHE = `mohtam-shell-${BUILD}`
+const ASSET_CACHE = `mohtam-assets-${BUILD}`
 
 // What the offline page and the install prompt need, and nothing that carries data.
 /** Icons, launch screens, fonts for the offline page and the manifest: small, rarely changed, safe to serve from cache. */
-const STATIC_ASSET = /^\/(splash\/|fonts\/|favicon|android-chrome|maskable-icon|apple-touch-icon|site\.webmanifest)/
+const STATIC_ASSET = /^\/(brand\/|splash\/|fonts\/|favicon|android-chrome|maskable-icon|apple-touch-icon|site\.webmanifest)/
 
-const PRECACHE = ['/offline.html', '/site.webmanifest', '/favicon.svg', '/android-chrome-192x192.png', '/android-chrome-512x512.png', '/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2', '/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2']
+const PRECACHE = ['/offline.html', '/site.webmanifest?v=2', '/brand/favicon.svg?v=2', '/brand/pwa-192.png?v=2', '/brand/pwa-512.png?v=2', '/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2', '/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2']
 
 self.addEventListener('install', (event) => {
   // No skipWaiting here: a waiting worker is what lets the app tell the person "an update is ready"

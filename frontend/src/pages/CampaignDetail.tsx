@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/api'
+import { useDocumentTitle } from '@/lib/brand'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, RefreshCcw, Type, Users, Waves } from 'lucide-react'
@@ -29,6 +30,8 @@ export function CampaignDetailPage() {
   const translateError = useApiError()
   const [days, setDays] = useState(30)
   const { data, isLoading, isError, error, refetch } = useCampaign(id, days)
+  // The tab reads `<campaign> — مهتم`.
+  useDocumentTitle(data?.campaign?.name ?? null)
   const Back = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft
 
   if (isError) return <Card><ErrorState message={translateError(error)} onRetry={error instanceof ApiError && error.status === 404 ? undefined : () => void refetch()} back={{ to: '/campaigns', label: t('nav.campaigns') }} /></Card>

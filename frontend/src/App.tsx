@@ -1,6 +1,8 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { HOME, INDEXABLE_PATHS } from '@/lib/routes'
+import { useTitleStore, useTitleWriter } from '@/lib/brand'
+import { routeTitleKey } from '@/lib/routeTitle'
 import { RequireFeature } from '@/components/billing/FeatureLocked'
 import { useTranslation } from 'react-i18next'
 import { seesPage } from '@/lib/permissions'
@@ -170,6 +172,14 @@ export function App() {
       document.querySelector<HTMLMetaElement>("meta[name='robots']")?.setAttribute('content', 'noindex, nofollow')
     }
   }, [pathname])
+
+  // Every screen's tab reads `<screen> — مهتم` (`<screen> — Mohtam` in English); a screen about one thing names that thing.
+  const setTitle = useTitleStore((s) => s.set)
+  useEffect(() => {
+    const key = routeTitleKey(pathname)
+    setTitle({ route: key ? i18n.t(key) : null })
+  }, [pathname, i18n, i18n.language, setTitle])
+  useTitleWriter()
 
   // Keep <html dir> in sync whenever the language changes anywhere in the app.
   useEffect(() => {

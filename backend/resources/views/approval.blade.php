@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
+<link rel="icon" href="/favicon.ico" sizes="any">
 <title>مهتم — قرار</title>
 <style>
   :root { --ink:#0f1720; --muted:#667085; --line:#e6e8ec; --brand:#1D5E52; --danger:#d1435b; --bg:#f3f4f6; }

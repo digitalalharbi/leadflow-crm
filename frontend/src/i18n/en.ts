@@ -1,7 +1,7 @@
 export default {
   common: {
     others: 'Others',
-    appName: 'مهتم',
+    appName: 'Mohtam',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
     delete: 'Delete', edit: 'Edit', add: 'Add', create: 'Create', search: 'Search',
     filter: 'Filter', clearFilters: 'Clear filters', export: 'Export', retry: 'Try again', loadFailed: 'Could not load this.',
@@ -15,7 +15,7 @@ export default {
   },
   pwa: {
     offline: 'You are offline. What you see may be out of date, and nothing can be changed until the connection is back.',
-    updateReady: 'A newer version of مهتم is ready.', updateNow: 'Update now',
+    updateReady: 'A newer version of Mohtam is ready.', updateNow: 'Update now',
   },
   errors: {
     offline: 'There is no internet connection, so the change was not made. Try again when you are back online.',
@@ -36,8 +36,8 @@ export default {
     email: 'Email', password: 'Password', currentPassword: 'Current password',
     newPassword: 'New password', confirmPassword: 'Confirm password',
     changePassword: 'Change password', passwordChanged: 'Password updated.',
-    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your مهتم workspace',
-    forgot: 'Forgot your password?', moreOrganizations: 'More than one organisation?', about: 'What is مهتم?',
+    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your Mohtam workspace',
+    forgot: 'Forgot your password?', moreOrganizations: 'More than one organisation?', about: 'What is Mohtam?',
     organization: 'Organisation', organizationHint: 'Leave blank if you only have one account',
   },
   nav: {
@@ -2089,7 +2089,7 @@ export default {
     result: { executed: 'Change made.', approved: 'Approved.', rejected: 'Rejected.', blocked: 'Stopped by the client rules.', failed: 'The platform refused the change.', default: 'Done.' },
     block: {
       unknown_action: 'Unknown action',
-      platform_not_built: 'This platform is not connected to مهتم yet',
+      platform_not_built: 'This platform is not connected to Mohtam yet',
       not_supported: 'The platform does not allow this',
       not_connected: 'The ad account is not connected',
       no_platform_id: 'Known only from its leads, not linked to the platform',
@@ -2542,7 +2542,7 @@ export default {
     mockNotice: 'Demo mode: messages are recorded here but never reach the customer. Add a phone number id and an access token to send for real.',
     conversation: 'Conversation', noMessages: 'No messages yet',
     noMessagesHint: 'Start the conversation with a WhatsApp message.',
-    send: 'Send', sendVia: 'Send via مهتم', openWhatsapp: 'Open WhatsApp',
+    send: 'Send', sendVia: 'Send via Mohtam', openWhatsapp: 'Open WhatsApp',
     messagePlaceholder: 'Write your message…',
     templates: 'Saved messages', chooseTemplate: 'Choose a saved message',
     notConnectedHint: 'WhatsApp is not connected, so this opens the WhatsApp app instead.',
@@ -2896,7 +2896,8 @@ export default {
   },
 
   brand: {
-    tagline: 'Turn interest into opportunity',
+    name: 'Mohtam',
+    tagline: 'Turn Interest Into Opportunity',
     links: { privacy: 'Privacy', terms: 'Terms' },
     badge: 'The marketing and sales operating platform for real estate',
     subtext: 'Gather leads, automate qualification and follow-up, and put your sales team on the most ready customers first — from the first click to the deal.',
@@ -3569,10 +3570,15 @@ export default {
     inviteInvalidTitle: 'Invitation not valid',
     inviteInvalid: 'This invitation has expired, was revoked or was already accepted. Ask the company admin for a new one.',
     inviteBody: 'You are invited to join {{company}} as {{role}}.',
-    inviteExisting: 'You already have a مهتم account with this email. Enter your current password to add this company to your workspaces.',
+    inviteExisting: 'You already have a Mohtam account with this email. Enter your current password to add this company to your workspaces.',
     yourName: 'Your name',
     acceptInvite: 'Accept invitation',
     sendSetupLink: 'Send password setup link',
     setupLinkSent: 'Password setup link sent.',
+  },
+  titles: {
+    dashboard: 'Dashboard', platform: 'Platform Administration', login: 'Sign In', platformLogin: 'Platform Sign In',
+    invitation: 'Invitation', setPassword: 'Set Password', forgotPassword: 'Forgot Password', report: 'Report', form: 'Form',
+    poweredBy: 'Powered by Mohtam', notFound: 'Page not found',
   },
 }

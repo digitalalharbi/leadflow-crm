@@ -58,7 +58,7 @@ test.describe('White label', () => {
     expect(await brandColour(page)).toBe(BETA.primaryColor)
 
     // The document title is the customer's product name, not ours.
-    await expect(page).toHaveTitle(BETA.systemName)
+    await expect(page).toHaveTitle(`لوحة التحكم — ${BETA.systemName}`)
   })
 
   test('the public branding endpoint exposes nothing operational', async ({ request }) => {

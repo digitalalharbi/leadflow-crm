@@ -163,7 +163,7 @@ class MonthlyExecutiveDigestTest extends TestCase
         Artisan::call('leadflow:send-digests', ['--now' => true, '--kind' => 'monthly', '--tenant' => $this->t['tenant']->slug]);
         $mail = $this->deliveries()->first()->makeVisible('html');
 
-        $this->assertSame('الملخص التنفيذي الشهري', $mail->subject);
+        $this->assertSame('الملخص التنفيذي الشهري — مهتم', $mail->subject);
         $this->assertStringContainsString('dir="rtl"', $mail->html);
         $this->assertStringContainsString('الملخص التنفيذي الشهري', $mail->html);
         $this->assertStringContainsString('عملاء جدد', $mail->html);

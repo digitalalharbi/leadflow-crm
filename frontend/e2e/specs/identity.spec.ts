@@ -20,9 +20,11 @@ test.describe('Product identity', () => {
 
     const before = await identity(page)
 
-    expect(before.title).toBe(PLATFORM_TITLE)
-    // The platform's whole icon set (the kit's .ico, .svg and PNGs), led by the .ico the kit lists first.
-    expect(before.icons).toEqual(expect.arrayContaining(['/favicon.ico', '/favicon.svg']))
+    // The login names itself: `تسجيل الدخول — مهتم`; the platform's title stays the official one.
+    expect(before.title).toBe('تسجيل الدخول — مهتم')
+    expect(PLATFORM_TITLE).toBe('مهتم — حوّل الاهتمام إلى فرصة')
+    // The platform's whole icon set (the kit's .ico, .svg and PNGs), from the brand folder, versioned so an old icon is not kept.
+    expect(before.icons).toEqual(expect.arrayContaining(['/brand/favicon.ico?v=2', '/brand/favicon.svg?v=2']))
   })
 
   test('a tenant owns the tab, not just the page', async ({ page }) => {
@@ -30,8 +32,8 @@ test.describe('Product identity', () => {
 
     const applied = await identity(page)
 
-    // This workspace has not renamed the product, so the tab carries the platform's own title.
-    expect(applied.title).toBe(PLATFORM_TITLE)
+    // This workspace has not renamed the product, so the tab is `<screen> — مهتم`.
+    expect(applied.title).toBe('لوحة التحكم — مهتم')
     expect(applied.brand.toLowerCase()).toBe(ALPHA.primaryColor)
     // The phone's browser chrome follows the customer too.
     expect(applied.theme?.toLowerCase()).toBe(ALPHA.primaryColor)
@@ -49,7 +51,7 @@ test.describe('Product identity', () => {
     await expect(page.getByTestId('page-title')).toBeVisible()
     const beta = await identity(page)
 
-    expect(beta.title).toBe(BETA.systemName)
+    expect(beta.title).toBe(`لوحة التحكم — ${BETA.systemName}`)
     expect(beta.title).not.toBe(alpha.title)
     expect(beta.brand).not.toBe(alpha.brand)
   })
@@ -65,7 +67,7 @@ test.describe('Product identity', () => {
 
     // Alpha supplies no favicon, so the platform's is what must be showing —
     // not whatever the previous session resolved to.
-    expect(icons).toEqual(expect.arrayContaining(['/favicon.ico', '/favicon.svg']))
+    expect(icons).toEqual(expect.arrayContaining(['/brand/favicon.ico?v=2', '/brand/favicon.svg?v=2']))
   })
 
   test('the theme can be switched and survives a reload', async ({ page }) => {

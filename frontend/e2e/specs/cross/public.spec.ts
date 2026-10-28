@@ -46,7 +46,7 @@ test.describe('Public pages', () => {
 
     await ready(page, '/')
     expect(await robots()).toBe('index, follow')
-    expect(await page.title()).toBe('مهتم | حوّل الاهتمام إلى فرصة')
+    expect(await page.title()).toBe('مهتم — حوّل الاهتمام إلى فرصة')
 
     await ready(page, '/login')
     expect(await robots()).toBe('noindex, nofollow')

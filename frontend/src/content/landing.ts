@@ -30,6 +30,8 @@ export interface LandingCopy {
   /** The official real-estate funnel. */
   funnel: { title: string; sub: string; stages: Array<{ title: string; body: string }> }
   cta: { start: string; dashboard: string; contact: string }
+  /** What search engines and link previews say about the product. */
+  metaDescription: string
   closing: string
   footer: { tagline: string; links: { privacy: string; terms: string; deletion: string; security: string; contact: string; about: string }; copyright: string }
 }
@@ -104,20 +106,21 @@ export const LANDING: { ar: LandingCopy; en: LandingCopy } = {
       ],
     },
     cta: { start: 'ابدأ مع مهتم', dashboard: 'فتح لوحة التحكم', contact: 'تواصل معنا' },
+    metaDescription: 'مهتم منصة تربط الحملات التسويقية والعملاء المحتملين وفريق المبيعات والمتابعة والزيارات والحجوزات والإيرادات في مكان واحد، بعزل كامل لكل شركة ومشروع.',
     closing: 'كل اهتمام يستحق أن يصبح فرصة.',
     footer: {
       tagline: 'حوّل الاهتمام إلى فرصة',
       links: { privacy: 'الخصوصية', terms: 'الشروط', deletion: 'حذف البيانات', security: 'الأمان', contact: 'التواصل', about: 'عن مهتم' },
-      copyright: '© 2026 مهتم',
+      copyright: '© 2026 مهتم · mohtam.pro',
     },
   },
   en: {
-    nav: { features: 'Features', how: 'The journey', reports: 'The view', login: 'Sign in', trial: 'Get started with مهتم', menu: 'Menu' },
+    nav: { features: 'Features', how: 'The journey', reports: 'The view', login: 'Sign In', trial: 'Get Started with Mohtam', menu: 'Menu' },
     badge: 'The marketing and sales operating platform for real estate',
-    headline: 'Turn interest into opportunity',
-    sub: 'Everyone who showed interest in your project is an opportunity within reach. مهتم makes you the first to reach them, and the last to let them go.',
-    ctaTrial: 'Get started with مهتم',
-    ctaLogin: 'Sign in',
+    headline: 'Turn Interest Into Opportunity',
+    sub: 'Everyone who showed interest in your project is an opportunity within reach. Mohtam makes you the first to reach them, and the last to let them go.',
+    ctaTrial: 'Get Started with Mohtam',
+    ctaLogin: 'Sign In',
     trialNote: 'Sign-in is for registered workspaces. To ask about a workspace for your company, contact us.',
     journeyTitle: 'Every lead’s journey',
     journey: ['Arrived', 'Contacted', 'Qualified', 'Viewing', 'Deal'],
@@ -130,7 +133,7 @@ export const LANDING: { ar: LandingCopy; en: LandingCopy } = {
     },
     values: [
       { title: 'No interest is lost', body: 'Everyone who asked about your project reaches you, whichever way they came.' },
-      { title: 'Speed makes the difference', body: 'Whoever answers first wins the customer. مهتم keeps your team first to answer.' },
+      { title: 'Speed makes the difference', body: 'Whoever answers first wins the customer. Mohtam keeps your team first to answer.' },
       { title: 'From interest to revenue', body: 'Know which effort made a deal, and invest in it with confidence.' },
     ],
     reports: {
@@ -162,7 +165,7 @@ export const LANDING: { ar: LandingCopy; en: LandingCopy } = {
       ],
     },
     funnel: {
-      title: 'The real-estate funnel in مهتم',
+      title: 'The real-estate funnel in Mohtam',
       sub: 'One funnel that everything is measured by: the dashboard, the reports and the digests.',
       stages: [
         { title: 'Awareness', body: 'Impressions, clicks, link and page visits.' },
@@ -173,12 +176,13 @@ export const LANDING: { ar: LandingCopy; en: LandingCopy } = {
         { title: 'Referral', body: 'Customers through a partner, a recommendation, or one who came back.' },
       ],
     },
-    cta: { start: 'Get started with مهتم', dashboard: 'Open the dashboard', contact: 'Contact us' },
+    cta: { start: 'Get Started with Mohtam', dashboard: 'Open Dashboard', contact: 'Contact us' },
+    metaDescription: 'Mohtam connects marketing campaigns, leads, sales teams, follow-ups, viewings, reservations and revenue in one platform, with complete isolation for every company and project.',
     closing: 'Every interest deserves to become an opportunity.',
     footer: {
-      tagline: 'Turn interest into opportunity',
+      tagline: 'Turn Interest Into Opportunity',
       links: { privacy: 'Privacy', terms: 'Terms', deletion: 'Data deletion', security: 'Security', contact: 'Contact', about: 'About' },
-      copyright: '© 2026 مهتم',
+      copyright: '© 2026 Mohtam · mohtam.pro',
     },
   },
 }

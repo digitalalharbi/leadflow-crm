@@ -37,7 +37,8 @@ const FORBIDDEN: Array<[label: string, pattern: RegExp]> = [
   // spelling is a second name — and there had already been two of them, "Muhtam"
   // in the strings and "Mahtam" in the wordmark, which agreed with each other
   // about nothing.
-  ['a Latin spelling of مهتم', /\b(muhtam|mahtam|mohtam|muhtam)\b/i],
+  // (The official domain, mohtam.pro, is an address and not a name, and is the one place a Latin spelling belongs.)
+  ['a Latin spelling of مهتم', /\b(muhtam|mahtam|mohtam|muhtam)\b(?!\.pro\b)/i],
 ]
 
 /** Every string a person can read, with the path that produced it. */

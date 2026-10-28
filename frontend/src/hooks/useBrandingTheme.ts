@@ -136,7 +136,9 @@ export function useBrandingTheme(branding: Branding | null) {
       ?.setAttribute('content', own ? primary : PLATFORM_THEME_COLOR)
 
     // The tab is written by the title system (`<screen> — مهتم`); a workspace with a name of its own puts that name after the dash.
-    useTitleStore.getState().set({ suffix: branding.system_name || null })
+    // Only when it changes: callers may pass a fresh branding object on every render, and a store write per render would loop.
+    const suffix = branding.system_name || null
+    if (useTitleStore.getState().suffix !== suffix) useTitleStore.getState().set({ suffix })
 
     /*
      * Written on every branding change, not only when the tenant has one of

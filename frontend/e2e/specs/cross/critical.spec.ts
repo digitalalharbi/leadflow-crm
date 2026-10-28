@@ -16,7 +16,7 @@ test.describe('Critical paths, in every browser', () => {
   test('sign in with the real form lands on the dashboard', async ({ page }) => {
     const errors = collectPageErrors(page)
     await signIn(page, ALPHA.admin.email)
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
     await expectNoSidewaysScroll(page, 'dashboard after sign-in')
     expect(errors).toEqual([])
   })

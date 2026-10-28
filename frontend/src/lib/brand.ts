@@ -54,7 +54,9 @@ export function useDocumentTitle(page: string | null | undefined): void {
 /** Writes `document.title` from the route, the screen's own name and the workspace's name, whenever any of them changes. */
 export function useTitleWriter(): void {
   const { i18n } = useTranslation()
-  const { route, override, suffix } = useTitleStore()
+  const route = useTitleStore((s) => s.route)
+  const override = useTitleStore((s) => s.override)
+  const suffix = useTitleStore((s) => s.suffix)
 
   useEffect(() => {
     const page = override ?? route

@@ -115,7 +115,7 @@ test.describe('Visits and reservations', () => {
 
   test('the manager funnel runs from lead to won', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const funnel = page.getByTestId('manager-re-funnel')
     await expect(funnel).toBeVisible()

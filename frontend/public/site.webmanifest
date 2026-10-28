@@ -5,7 +5,7 @@
   "description": "إدارة العملاء المحتملين، التأهيل والمتابعة في مكان واحد.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/?source=pwa",
+  "start_url": "/dashboard?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": [

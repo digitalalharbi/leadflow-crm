@@ -45,7 +45,7 @@ test.describe('Product identity', () => {
     await page.evaluate(() => localStorage.clear())
 
     await authenticateAs(page, BETA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('page-title')).toBeVisible()
     const beta = await identity(page)
 

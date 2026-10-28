@@ -22,7 +22,7 @@ import { artisan } from '../fixtures/seed'
 const OWNER = 'owner@e2e-visual.test'
 
 const SCREENS = [
-  { name: 'dashboard', path: '/' },
+  { name: 'dashboard', path: '/dashboard' },
   { name: 'leads', path: '/leads' },
   { name: 'pipeline', path: '/pipeline' },
   { name: 'follow-ups-overdue', path: '/follow-ups?bucket=overdue' },

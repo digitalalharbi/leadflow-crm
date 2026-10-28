@@ -59,7 +59,7 @@ export function BottomNav() {
         <NavLink
           key={to}
           to={to}
-          end={to === '/'}
+          end={to === '/dashboard'}
           onClick={() => setSidebarOpen(false)}
           // Its own prefix: the bar is in the DOM at every width (hidden from the laptop breakpoint), and
           // the pages' own tab strips use `tab-<key>`, so sharing the prefix made two elements answer to one id.

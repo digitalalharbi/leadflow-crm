@@ -44,7 +44,7 @@ export async function authenticateAs(page: Page, email: string, password: string
  */
 export async function signInAs(page: Page, email: string, password: string = PASSWORD) {
   await authenticateAs(page, email, password)
-  await page.goto('/')
+  await page.goto('/dashboard')
   await expect(page.getByTestId('page-title')).toBeVisible()
   await expect(page).not.toHaveURL(/\/login/)
 }

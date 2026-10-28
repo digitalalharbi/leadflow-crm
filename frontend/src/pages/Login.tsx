@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { HOME } from '@/lib/routes'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
@@ -44,7 +45,7 @@ export function LoginPage() {
    */
   const wanted = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
   const landing =
-    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' ? `${wanted.pathname}${wanted.search ?? ''}` : '/'
+    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' && wanted.pathname !== '/' ? `${wanted.pathname}${wanted.search ?? ''}` : HOME
 
   useBrandingTheme(branding)
 
@@ -283,7 +284,7 @@ export function LoginPage() {
           )}
 
           <nav aria-label="مهتم" className="flex flex-wrap justify-center gap-x-1 text-[0.9375rem]">
-            <Link to="/welcome" className="inline-flex min-h-11 items-center rounded-lg px-2.5 font-medium text-[var(--brand-text)] hover:underline" data-testid="login-about">{t('auth.about')}</Link>
+            <Link to="/" className="inline-flex min-h-11 items-center rounded-lg px-2.5 font-medium text-[var(--brand-text)] hover:underline" data-testid="login-about">{t('auth.about')}</Link>
             <Link to="/privacy" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-[var(--color-ink-muted)] hover:underline">{t('brand.links.privacy')}</Link>
             <Link to="/terms" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-[var(--color-ink-muted)] hover:underline">{t('brand.links.terms')}</Link>
           </nav>

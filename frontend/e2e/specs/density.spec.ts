@@ -16,7 +16,7 @@ import { resetFixtures } from '../fixtures/seed'
  * without scrolling at all.
  */
 const ROUTES = [
-  '/',
+  '/dashboard',
   '/work',
   '/leads',
   '/pipeline',

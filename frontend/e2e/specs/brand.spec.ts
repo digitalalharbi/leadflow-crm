@@ -12,7 +12,7 @@ import { signInAs } from '../fixtures/pages'
  * name found too late.
  */
 const ROUTES = [
-  '/', '/work', '/leads', '/pipeline', '/follow-ups', '/projects', '/automation',
+  '/dashboard', '/work', '/leads', '/pipeline', '/follow-ups', '/projects', '/automation',
   '/reports', '/data-quality', '/integrations', '/readiness', '/users', '/settings',
 ]
 

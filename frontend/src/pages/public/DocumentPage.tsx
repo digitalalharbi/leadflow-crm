@@ -24,7 +24,7 @@ export function DocumentPage({ page }: { page: LegalKey }) {
   const [params] = useSearchParams()
   const highlight = params.get('intent') === 'trial' ? 'trial' : location.hash.replace('#', '')
 
-  usePublicMeta(`مهتم | ${doc.title}`, doc.summary)
+  usePublicMeta(`مهتم | ${doc.title}`, doc.summary, location.pathname)
 
   // A link to a section (the contact page's "#password") lands on it.
   useEffect(() => {
@@ -94,8 +94,8 @@ function PublicNav() {
   const { i18n } = useTranslation()
   const lang = i18n.language.startsWith('ar') ? 'ar' : 'en'
   const items: Array<[string, string]> = lang === 'ar'
-    ? [['/welcome', 'الرئيسية'], ['/about', 'عن مهتم'], ['/security', 'الأمان'], ['/contact', 'التواصل']]
-    : [['/welcome', 'Home'], ['/about', 'About'], ['/security', 'Security'], ['/contact', 'Contact']]
+    ? [['/', 'الرئيسية'], ['/about', 'عن مهتم'], ['/security', 'الأمان'], ['/contact', 'التواصل']]
+    : [['/', 'Home'], ['/about', 'About'], ['/security', 'Security'], ['/contact', 'Contact']]
 
   return (
     <>

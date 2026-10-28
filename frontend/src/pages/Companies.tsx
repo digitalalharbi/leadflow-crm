@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { HOME } from '@/lib/routes'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpLeft, Building, Flame, Plus, Trophy, Users2 } from 'lucide-react'
@@ -122,7 +123,7 @@ export function CompaniesPage() {
   function enter(company: Company) {
     select(company.id)
     void queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'companies' })
-    navigate('/')
+    navigate(HOME)
   }
 
   const companies = data?.companies ?? []

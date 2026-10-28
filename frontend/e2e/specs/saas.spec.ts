@@ -45,7 +45,7 @@ test.describe('SaaS', () => {
 
     try {
       await authenticateAs(page, ALPHA.admin.email)
-      await page.goto('/')
+      await page.goto('/dashboard')
       await expect(page.getByTestId('page-title')).toBeVisible()
       await expect(page.getByRole('link', { name: 'الأتمتة', exact: true })).toHaveCount(0)
 

@@ -64,7 +64,7 @@ test.describe('The journey strip', () => {
   test('draws the whole promise, in order, on the dashboard', async ({ page }) => {
     resetFixtures()
     await signInAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const strip = page.getByTestId('journey-strip')
     await expect(strip).toBeVisible()

@@ -9,7 +9,7 @@ test.describe('Manager command center', () => {
 
   test('shows the nine figures, the SLA ring, the funnel, the team, the sources and the trend', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const center = page.getByTestId('manager-center')
     await expect(center).toBeVisible()
@@ -28,7 +28,7 @@ test.describe('Manager command center', () => {
 
   test('shows how much the automation did: rings, time to qualify, recovered, lost to silence, revenue by quality and a trend', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const automation = page.getByTestId('manager-center').getByTestId('manager-automation')
     await expect(automation).toBeVisible()
@@ -50,7 +50,7 @@ test.describe('Manager command center', () => {
 
   test('the automation figures follow the period', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     const center = page.getByTestId('manager-center')
 
     const asked = page.waitForResponse((r) => r.url().includes('/dashboard/manager') && r.url().includes('days=7'))
@@ -63,7 +63,7 @@ test.describe('Manager command center', () => {
 
   test('the period can be changed and the tiles follow', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     const center = page.getByTestId('manager-center')
     await expect(center.getByTestId('kpi-period-value')).toHaveText(/\d/)
 
@@ -74,7 +74,7 @@ test.describe('Manager command center', () => {
 
   test('a tile opens the list it counts', async ({ page }) => {
     await signInAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.getByTestId('kpi-stalled').click()
     await expect(page).toHaveURL(/view=stalled/)
     await expect(page.getByTestId('segment-stalled')).toHaveAttribute('aria-pressed', 'true')
@@ -85,7 +85,7 @@ test.describe('Manager command center', () => {
     page.on('request', (request) => { if (request.url().includes('/dashboard/manager')) asked.push(request.url()) })
 
     await signInAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('toggle-analytics')).toBeVisible()
     await expect(page.getByTestId('manager-center')).toHaveCount(0)
     expect(asked).toEqual([])

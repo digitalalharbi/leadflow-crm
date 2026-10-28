@@ -52,7 +52,7 @@ test.describe('Dynamic access', () => {
     await person.dispose()
 
     await authenticateAs(page, email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('icon-rail')).toBeVisible()
     await expect(page.getByTestId('funnel-card')).toHaveCount(0)
     await page.goto('/campaigns')

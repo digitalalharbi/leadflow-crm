@@ -106,7 +106,7 @@ test.describe('Holding → company → project', () => {
 
     await page.getByTestId(`enter-company-${first}`).click()
 
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
     await expect(page.getByTestId('company-level')).toBeVisible()
   })
 

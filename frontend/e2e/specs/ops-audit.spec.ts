@@ -11,7 +11,7 @@ test.describe('Operations home, history and the command palette', () => {
 
   test('the home answers the nine questions and shows four lights, each a link to what it counts', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     for (const key of ['leads_today', 'interested', 'hot', 'needs_human', 'visits_today', 'reservations_pending', 'won_today', 'revenue_today', 'sla_late']) {
       await expect(page.getByTestId(`ops-${key}`)).toBeVisible()
@@ -27,7 +27,7 @@ test.describe('Operations home, history and the command palette', () => {
 
   test('a rep sees their own nine answers and no health lights', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('ops-answers')).toBeVisible()
     await expect(page.getByTestId('ops-health')).toHaveCount(0)
   })
@@ -66,7 +66,7 @@ test.describe('Operations home, history and the command palette', () => {
 
   test('the palette finds units, campaigns and partners — and offers what to do, only what the role may', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.getByTestId('open-command-palette').click()
 
     // Nothing typed: the things to do.
@@ -90,7 +90,7 @@ test.describe('Operations home, history and the command palette', () => {
     }
 
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.getByTestId('open-command-palette').click()
     await page.getByTestId('command-palette-input').fill('البحث السريع')
     const results = page.getByTestId('command-palette-results')
@@ -101,7 +101,7 @@ test.describe('Operations home, history and the command palette', () => {
 
   test('a rep is not offered reports or automation in the palette', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.getByTestId('open-command-palette').click()
     const results = page.getByTestId('command-palette-results')
     await expect(results).toContainText('إنشاء عميل')

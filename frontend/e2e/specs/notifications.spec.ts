@@ -49,7 +49,7 @@ test.describe('Notifications', () => {
   /** The same notification, in the bell the person actually opens. */
   async function inTheBell(page: Page, text: string, kind?: string) {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.getByTestId('notifications-toggle').click()
     // A lead nobody owns also tells the managers that it arrived, so one lead can have two notices:
     // name the kind when it is the kind that is being checked.

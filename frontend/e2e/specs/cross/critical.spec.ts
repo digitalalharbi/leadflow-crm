@@ -56,7 +56,9 @@ test.describe('Critical paths, in every browser', () => {
   test('campaigns: the operations tab opens', async ({ page }) => {
     const errors = collectPageErrors(page)
     await signInAs(page, ALPHA.admin.email)
+    // The platform strip arrives on its own and pushes the tabs down; press the tab once it has landed.
     await page.goto('/campaigns')
+    await expect(page.getByTestId('platform-strip').locator('[data-testid^="platform-"]').first()).toBeVisible()
     await page.getByRole('tab', { name: 'التشغيل' }).click()
     await expect(page.getByTestId('campaign-operations')).toBeVisible()
     await expectNoSidewaysScroll(page, 'campaigns')

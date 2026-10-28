@@ -9,6 +9,9 @@ import { artisan, resetFixtures } from '../fixtures/seed'
  * as a customer would, submit a form that carries the visitor id, and see the credit land.
  */
 test.describe('Tracking links and attribution', () => {
+  // One journey: each test builds on the link (token, visitor id) the one before made. Serial, so a failure stops it
+  // there instead of letting the rest run on a fresh worker with those values empty (`open-link-`).
+  test.describe.configure({ mode: 'serial' })
   const SECRET = 'e2e-track-secret-0123456789abcdefgh'
   let webhookKey = ''
   let token = ''

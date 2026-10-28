@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { ALPHA, PASSWORD } from '../fixtures/data'
 import { apiGet, apiLogin } from '../fixtures/api'
 import { authenticateAs, signInAs } from '../fixtures/pages'
@@ -12,6 +12,10 @@ import { resetFixtures } from '../fixtures/seed'
  * density spec would notice. So this spec builds its own structure through the
  * API and puts the fixtures back afterwards.
  */
+/** The page's own request for the companies list has been answered. */
+const companiesLoaded = (page: Page) =>
+  page.waitForResponse((r) => new URL(r.url()).pathname === '/api/v1/companies' && r.request().method() === 'GET' && r.ok())
+
 test.describe('Holding → company → project', () => {
   let first = ''
   let second = ''
@@ -55,11 +59,14 @@ test.describe('Holding → company → project', () => {
 
     const all = Number(await page.getByTestId('kpi-total').locator('[class*="tabular"], span').first().textContent().then((t) => (t ?? '').replace(/\D/g, '')) || 0)
 
+    // The company's projects are their own request, made once the company is chosen; the count is read after it answers.
+    const projects = page.waitForResponse((r) => new URL(r.url()).pathname === `/api/v1/companies/${first}/projects` && r.request().method() === 'GET' && r.ok())
     await page.getByTestId(`holding-company-${first}`).click()
 
     // The level changes: a breadcrumb, a way back, and the company's projects.
     await expect(page.getByTestId('company-level')).toBeVisible()
     await expect(page.getByTestId('back-to-holding')).toBeVisible()
+    await projects
     await expect(page.getByTestId('company-projects').locator('li')).toHaveCount(2)
     await expect(page.getByTestId('company-switcher')).toContainText('شركة الواحة')
 
@@ -81,15 +88,23 @@ test.describe('Holding → company → project', () => {
 
     await page.getByTestId('company-switcher').click()
     await page.getByTestId(`company-option-${second}`).click()
+    // The choice is committed (and stored) before the page is left.
+    await expect(page.getByTestId('company-switcher')).toContainText('شركة الأفق')
 
+    // The switcher is drawn only once the signed-in person and then the list of companies have both arrived;
+    // after a full navigation it waits for exactly that answer rather than a fixed allowance.
+    const companies = companiesLoaded(page)
     await page.goto('/leads')
+    await companies
     await expect(page.getByTestId('company-switcher')).toContainText('شركة الأفق')
 
     if (total) {
       await expect(page.getByTestId('lead-count')).not.toHaveText(total)
     }
 
+    const reloaded = companiesLoaded(page)
     await page.reload()
+    await reloaded
     await expect(page.getByTestId('company-switcher')).toContainText('شركة الأفق')
 
     await page.getByTestId('company-switcher').click()

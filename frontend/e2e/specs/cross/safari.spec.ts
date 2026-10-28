@@ -51,7 +51,10 @@ test.describe('Safari-sensitive surfaces', () => {
     await signInAs(page, ALPHA.admin.email)
     await makeSharedReport(ALPHA.admin.email, 'للمعاينة')
     await page.goto('/reports')
+    // The tab draws a skeleton until its list of shares arrives; the button exists only after that answer.
+    const shares = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/v1/report-shares' && r.request().method() === 'GET' && r.ok())
     await page.getByTestId('tab-share').click()
+    await shares
 
     await page.getByTestId('new-share').click()
     const drawer = page.getByTestId('share-builder')

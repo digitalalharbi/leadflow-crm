@@ -23,23 +23,26 @@ test.describe('Screen sizes', () => {
 
   for (const size of SIZES) {
     test(`${size.name}: the working pages fit and draw`, async ({ page, browser }) => {
+      // The out-of-band API calls go first, before the page fills the server with its own (and polling) requests:
+      // made mid-walk they queued behind eight pages' worth of loads and missed their deadline in a long run.
+      const lead = await firstLeadId(ALPHA.admin.email)
+      const { token } = await makeSharedReport(ALPHA.admin.email, `تقرير ${size.name}`)
+
       await page.setViewportSize({ width: size.width, height: size.height })
       await signInAs(page, ALPHA.admin.email)
-      const lead = await firstLeadId(ALPHA.admin.email)
 
-      for (const path of ['/', '/work', '/leads', `/leads/${lead}`, '/campaigns', '/reports', '/settings', '/access']) {
+      for (const path of ['/dashboard', '/work', '/leads', `/leads/${lead}`, '/campaigns', '/reports', '/settings', '/access']) {
         await page.goto(path)
         await expect(page.getByTestId('page-title').or(page.getByRole('heading', { level: 1 })).first(), `${size.name} ${path}`).toBeVisible()
         await expectNoSidewaysScroll(page, `${size.name} ${path}`)
       }
 
       // Below the laptop breakpoint the navigation is a tab bar with "More" for the drawer; above it, the header's own track.
-      await page.goto('/')
+      await page.goto('/dashboard')
       await expect(page.getByTestId('page-title').or(page.getByRole('heading', { level: 1 })).first()).toBeVisible()
       if (size.width < 1024) await expect(page.getByTestId('bottom-nav-more')).toBeVisible()
       else await expect(page.getByTestId('bottom-nav')).toBeHidden()
 
-      const { token } = await makeSharedReport(ALPHA.admin.email, `تقرير ${size.name}`)
       const stranger = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'ar-SA' })
       const open = await stranger.newPage()
       await open.goto(`/reports/share/${token}`)

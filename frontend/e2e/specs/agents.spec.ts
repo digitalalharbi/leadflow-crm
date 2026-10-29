@@ -45,7 +45,7 @@ test.describe('الوكلاء — talking to the agents', () => {
 
   test('a sales rep is not offered the agents', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.locator('a[href="/agents"]')).toHaveCount(0)
   })
 })

@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { HOME } from '@/lib/routes'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { apiGet, apiPost, tokenStorage } from '@/lib/api'
@@ -37,7 +38,7 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
       tokenStorage.set(result.token)
       onDone()
       await restore()
-      window.location.assign('/')
+      window.location.assign(HOME)
     },
     onError: (caught) => toast(translateError(caught), 'error'),
   })

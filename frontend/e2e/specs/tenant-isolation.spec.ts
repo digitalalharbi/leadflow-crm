@@ -123,7 +123,7 @@ test.describe('Tenant isolation', () => {
 
     await page.goto('/platform')
     // The route is not part of a tenant workspace, so it bounces home.
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
 
     const alpha = await apiLogin(ALPHA.admin.email)
     try {

@@ -10,7 +10,7 @@ test.describe('Operations home', () => {
 
   test('a manager opens to the nine answers, then the attention queue, the health panels, the ranking and the tops', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     await expect(page.getByTestId('ops-answers')).toBeVisible()
     await expect(page.getByTestId('ops-answers').locator('a')).toHaveCount(9)
@@ -32,18 +32,18 @@ test.describe('Operations home', () => {
 
   test('an attention row opens what it counts', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const row = page.getByTestId('operations-home').locator('[data-testid^="home-attention-"]:not([data-testid="home-attention-clear"])').first()
     if (await row.count()) {
       await row.click()
-      await expect(page).not.toHaveURL(/^[^?]*\/$/)
+      await expect(page).not.toHaveURL(/^[^?]*\/dashboard$/)
     }
   })
 
   test('a rep sees their own nine answers and none of the team’s health, ranking or campaigns', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     await expect(page.getByTestId('ops-answers')).toBeVisible()
     for (const hidden of ['home-campaigns', 'home-tracking', 'home-automation', 'home-ranking', 'home-top-campaign', 'home-top-partner']) {
@@ -53,7 +53,7 @@ test.describe('Operations home', () => {
 
   test('the panels that carry money or the team are not drawn for a client', async ({ page }) => {
     await authenticateAs(page, ALPHA.client.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('ops-answers')).toBeVisible()
     for (const hidden of ['home-revenue', 'home-ranking', 'home-campaigns', 'home-automation']) await expect(page.getByTestId(hidden)).toHaveCount(0)
   })

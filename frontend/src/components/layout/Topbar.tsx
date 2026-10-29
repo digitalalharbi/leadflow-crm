@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { HOME } from '@/lib/routes'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, ChevronDown, LogOut, User as UserIcon } from 'lucide-react'
@@ -61,7 +62,7 @@ export function Topbar() {
       data-testid="app-header"
     >
       {/* The console's header is dark in either theme, so it takes the reverse logo. */}
-      <BrandLockup to="/" size="md" variant={isSuperAdmin ? 'reverse' : 'auto'} onDark={isSuperAdmin} />
+      <BrandLockup to={HOME} size="md" variant={isSuperAdmin ? 'reverse' : 'auto'} onDark={isSuperAdmin} />
 
       {/*
         The console says so in words as well as in colour. Colour alone is the
@@ -84,7 +85,7 @@ export function Topbar() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             className={({ isActive }) => cn('nav-pill', isActive && 'nav-pill-active')}
           >
             {t(labelKey)}

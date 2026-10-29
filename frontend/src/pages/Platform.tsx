@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { HOME } from '@/lib/routes'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Check, Copy, Plus, Search, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -735,7 +736,7 @@ function SupportEntry({ tenantId }: { tenantId: string }) {
     onSuccess: (result) => {
       stashPlatformToken()
       tokenStorage.set(result.token)
-      window.location.assign('/')
+      window.location.assign(HOME)
     },
     onError: (caught) => toast(translateError(caught), 'error'),
   })

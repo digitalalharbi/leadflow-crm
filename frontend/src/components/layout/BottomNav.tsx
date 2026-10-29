@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import { useUi } from '@/stores/ui'
+import { HOME } from '@/lib/routes'
 import { useNavigation } from './navigation'
 
 /** How many destinations sit on the bar; the fifth place is always "More". */
@@ -59,11 +60,11 @@ export function BottomNav() {
         <NavLink
           key={to}
           to={to}
-          end={to === '/'}
+          end={to === '/dashboard'}
           onClick={() => setSidebarOpen(false)}
           // Its own prefix: the bar is in the DOM at every width (hidden from the laptop breakpoint), and
           // the pages' own tab strips use `tab-<key>`, so sharing the prefix made two elements answer to one id.
-          data-testid={`bottom-tab-${to === '/' ? 'home' : to.slice(1)}`}
+          data-testid={`bottom-tab-${to === HOME ? 'home' : to.slice(1)}`}
           className={({ isActive }) => cn('bottom-tab', isActive && 'bottom-tab-active')}
         >
           <Icon className="size-[1.375rem]" aria-hidden />

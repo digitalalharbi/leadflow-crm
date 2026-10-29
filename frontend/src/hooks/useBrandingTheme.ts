@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTitleStore } from '@/lib/brand'
 import { useUi } from '@/stores/ui'
 import type { Branding } from '@/types/api'
 
@@ -9,9 +10,9 @@ import type { Branding } from '@/types/api'
  */
 const PLATFORM_NAME = 'مهتم'
 /** What the tab says when the workspace has not renamed the product. */
-export const PLATFORM_TITLE = 'مهتم | حوّل الاهتمام إلى فرصة'
-const PLATFORM_FAVICON = '/favicon.svg'
-const PLATFORM_MANIFEST = '/site.webmanifest'
+export const PLATFORM_TITLE = 'مهتم — حوّل الاهتمام إلى فرصة'
+const PLATFORM_FAVICON = '/brand/favicon.svg?v=2'
+const PLATFORM_MANIFEST = '/site.webmanifest?v=2'
 /** The browser chrome on a phone, and the installed app's splash: pine and limestone, from the kit. */
 const PLATFORM_THEME_COLOR = '#0C2A25'
 const PLATFORM_BACKGROUND = '#F6F3EE'
@@ -134,7 +135,10 @@ export function useBrandingTheme(branding: Branding | null) {
       .querySelector<HTMLMetaElement>("meta[name='theme-color']")
       ?.setAttribute('content', own ? primary : PLATFORM_THEME_COLOR)
 
-    document.title = branding.system_name || PLATFORM_TITLE
+    // The tab is written by the title system (`<screen> — مهتم`); a workspace with a name of its own puts that name after the dash.
+    // Only when it changes: callers may pass a fresh branding object on every render, and a store write per render would loop.
+    const suffix = branding.system_name || null
+    if (useTitleStore.getState().suffix !== suffix) useTitleStore.getState().set({ suffix })
 
     /*
      * Written on every branding change, not only when the tenant has one of
@@ -182,7 +186,7 @@ function setManifest(branding: Branding): void {
     short_name: name,
     lang: branding.locale || 'ar',
     dir: (branding.locale || 'ar') === 'ar' ? 'rtl' : 'ltr',
-    start_url: `${origin}/?source=pwa`,
+    start_url: `${origin}/dashboard?source=pwa`,
     scope: `${origin}/`,
     display: 'standalone',
     display_override: ['standalone', 'minimal-ui'],
@@ -191,9 +195,9 @@ function setManifest(branding: Branding): void {
     theme_color: hasOwnColours(branding) ? branding.primary_color : PLATFORM_THEME_COLOR,
     icons: [
       ...(own ? [{ src: own, sizes: 'any', type: own.split('?')[0].endsWith('.svg') ? 'image/svg+xml' : 'image/png', purpose: 'any' }] : []),
-      { src: abs('/android-chrome-192x192.png'), sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: abs('/android-chrome-512x512.png'), sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: abs('/maskable-icon-512x512.png'), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: abs('/brand/pwa-192.png?v=2'), sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: abs('/brand/pwa-512.png?v=2'), sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: abs('/brand/pwa-maskable-512.png?v=2'), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 

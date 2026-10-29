@@ -15,7 +15,7 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
 
     await expect(page.getByTestId('page-title')).toBeVisible()
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
     expect(await storedToken(page)).toBeTruthy()
   })
 
@@ -78,7 +78,7 @@ test.describe('Authentication', () => {
   })
 
   test('an anonymous visitor cannot reach a protected page', async ({ page }) => {
-    for (const path of ['/', '/leads', '/pipeline', '/follow-ups', '/settings']) {
+    for (const path of ['/dashboard', '/leads', '/pipeline', '/follow-ups', '/settings']) {
       await page.goto(path)
       await expect(page).toHaveURL(/\/login/)
     }

@@ -70,7 +70,7 @@ function RailLink({ item }: { item: NavItem }) {
   return (
     <NavLink
       to={to}
-      end={to === '/'}
+      end={to === '/dashboard'}
       aria-label={t(labelKey)}
       className={({ isActive }) => cn('rail-item group', isActive && 'rail-item-active')}
     >

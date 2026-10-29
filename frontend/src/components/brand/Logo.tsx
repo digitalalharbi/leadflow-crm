@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+import { BRAND, brandLang } from '@/lib/brand'
 import { cn } from '@/lib/cn'
 
 /**
@@ -87,11 +89,14 @@ export function Logo({
   className?: string
 }) {
   const px = Math.max(height ?? DEFAULT_HEIGHT[layout], MIN_HEIGHT[layout])
+  // The name in the reader's language: مهتم in Arabic, Mohtam in English.
+  const { i18n } = useTranslation()
+  const label = BRAND[brandLang(i18n.language)].name
 
   return (
-    <span role="img" aria-label="مهتم" data-testid="logo" data-variant={variant} data-layout={layout} className={cn('inline-flex shrink-0 leading-none', className)}>
+    <span role="img" aria-label={label} data-testid="logo" data-variant={variant} data-layout={layout} className={cn('inline-flex shrink-0 leading-none', className)}>
       {/* The name for anything that reads text rather than looks at the drawing. */}
-      <span className="sr-only">مهتم</span>
+      <span className="sr-only">{label}</span>
       {variant === 'auto' ? (
         <>
           <Drawing variant="primary" layout={layout} px={px} className="dark:hidden" />

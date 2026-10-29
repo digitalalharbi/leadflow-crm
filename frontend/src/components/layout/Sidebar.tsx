@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { HOME } from '@/lib/routes'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth'
@@ -50,7 +51,7 @@ export function Sidebar() {
       >
         <div className="flex h-16 items-center justify-between gap-2 px-3">
           {/* One component decides whose identity this is — see BrandLockup. The drawer is pine, so the reverse logo. */}
-          <BrandLockup to="/" size="md" variant="reverse" onDark />
+          <BrandLockup to={HOME} size="md" variant="reverse" onDark />
 
           <button
             type="button"
@@ -79,7 +80,7 @@ export function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
-                end={to === '/'}
+                end={to === '/dashboard'}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   cn(

@@ -68,7 +68,7 @@ test.describe('Intelligence', () => {
     `])
 
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const finding = page.getByTestId('rec-cheap_but_weak')
     await expect(finding).toBeVisible()

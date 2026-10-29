@@ -106,7 +106,8 @@ test.describe('Tenant onboarding', () => {
     await signIn(page, adminEmail)
 
     await expect(page.getByText(systemName).first()).toBeVisible()
-    await expect(page).toHaveTitle(systemName)
+    // The tab is `<screen> — <the workspace's own name>`.
+    await expect(page).toHaveTitle(`لوحة التحكم — ${systemName}`)
 
     // A brand-new tenant starts empty, and says so usefully.
     await page.goto('/leads')
@@ -116,7 +117,7 @@ test.describe('Tenant onboarding', () => {
     await expect(page.getByRole('button', { name: 'إضافة عميل' })).toHaveCount(2)
 
     // The onboarding checklist points at what is still to do.
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByText('لنجهّز نظامك')).toBeVisible()
   })
 

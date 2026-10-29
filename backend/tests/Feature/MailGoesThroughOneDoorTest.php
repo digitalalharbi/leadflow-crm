@@ -105,7 +105,7 @@ class MailGoesThroughOneDoorTest extends TestCase
         $delivery = EmailDelivery::withoutGlobalScopes()->where('tenant_id', $this->t['tenant']->id)->where('kind', 'alert.hot_lead')->first();
         $this->assertNotNull($delivery, 'the alert went through the delivery queue');
         $this->assertSame($rep->email, $delivery->to_email);
-        $this->assertSame('عميل ساخن', $delivery->subject);
+        $this->assertSame('عميل ساخن — مهتم', $delivery->subject);
         $this->assertSame('logged', $delivery->status, 'the log provider never says sent');
         $this->assertSame('user', $delivery->subject_type);
         $this->assertSame($rep->id, $delivery->subject_id);

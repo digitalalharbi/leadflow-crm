@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { HOME } from '@/lib/routes'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet, apiPost, tokenStorage } from '@/lib/api'
@@ -102,7 +103,7 @@ export function SetPasswordPage() {
       const result = await apiPost<{ token: string }>('/auth/password/reset', { token, password, password_confirmation: confirm })
       tokenStorage.set(result.token)
       await restore()
-      navigate('/', { replace: true })
+      navigate(HOME, { replace: true })
     } catch (caught) {
       const next = fieldErrorsOf(caught)
       setErrors(Object.keys(next).length ? next : { form: translateError(caught) })
@@ -173,7 +174,7 @@ export function InvitationPage() {
       const result = await apiPost<{ token: string }>(`/public/invitations/${token}/accept`, info?.has_account ? { password } : { name, password, password_confirmation: confirm })
       tokenStorage.set(result.token)
       await restore()
-      navigate('/', { replace: true })
+      navigate(HOME, { replace: true })
     } catch (caught) {
       const next = fieldErrorsOf(caught)
       setErrors(Object.keys(next).length ? next : { form: translateError(caught) })

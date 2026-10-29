@@ -22,7 +22,7 @@ test.describe('Public pages', () => {
     test(`${size.width}×${size.height}: the marketing page, the login and the six information pages fit without scrolling sideways`, async ({ page }) => {
       await page.setViewportSize(size)
 
-      for (const path of ['/welcome', '/login', ...INFO]) {
+      for (const path of ['/', '/login', ...INFO]) {
         await ready(page, path)
         await expect(page.getByRole('heading', { level: 1 }).first(), `${size.width} ${path}`).toBeVisible()
         await expectNoSidewaysScroll(page, `${size.width} ${path}`)
@@ -44,9 +44,9 @@ test.describe('Public pages', () => {
   test('the public pages are open to search engines; the app and the login are not', async ({ page }) => {
     const robots = () => page.locator('meta[name="robots"]').getAttribute('content')
 
-    await ready(page, '/welcome')
+    await ready(page, '/')
     expect(await robots()).toBe('index, follow')
-    expect(await page.title()).toBe('مهتم | حوّل الاهتمام إلى فرصة')
+    expect(await page.title()).toBe('مهتم — حوّل الاهتمام إلى فرصة')
 
     await ready(page, '/login')
     expect(await robots()).toBe('noindex, nofollow')
@@ -87,7 +87,7 @@ test.describe('Public pages', () => {
 
   test('the footer reaches the six pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
     test.skip(isMobile, 'keyboard order is a desktop concern')
-    await ready(page, '/welcome')
+    await ready(page, '/')
 
     const skip = page.getByRole('link', { name: 'تخطَّ إلى المحتوى' })
 
@@ -107,7 +107,7 @@ test.describe('Public pages', () => {
 
   test('anchor links glide unless the visitor asked for less motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await ready(page, '/welcome')
+    await ready(page, '/')
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior)).toBe('auto')
 
     await page.emulateMedia({ reducedMotion: 'no-preference' })
@@ -117,24 +117,23 @@ test.describe('Public pages', () => {
 })
 
 test.describe('Marketing page', () => {
-  test('the whole idea is on the first screen at 1366×768: header, headline, calls to action, the picture, three promises, the reports and the closing line', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'the one-screen rule is the laptop’s; a phone stacks the same blocks')
+  test('the first screen at 1366×768 has the header, the headline, the calls to action and the picture; the rest follows below', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the first-screen rule is the laptop’s; a phone stacks the same blocks')
     await page.setViewportSize({ width: 1366, height: 768 })
-    await ready(page, '/welcome')
+    await ready(page, '/')
 
-    for (const id of ['public-header', 'landing-headline', 'landing-trial', 'landing-login', 'product-preview', 'reports-card', 'landing-closing', 'public-footer']) {
+    for (const id of ['public-header', 'landing-headline', 'landing-trial', 'landing-login', 'product-preview']) {
       await expect(page.getByTestId(id), id).toBeInViewport({ ratio: 0.95 })
     }
-    await expect(page.getByTestId('value-card')).toHaveCount(3)
-    for (const card of await page.getByTestId('value-card').all()) await expect(card).toBeInViewport({ ratio: 0.95 })
-
-    // Nothing to scroll to: the page is exactly the screen.
-    const { scroll, inner } = await page.evaluate(() => ({ scroll: document.documentElement.scrollHeight, inner: window.innerHeight }))
-    expect(scroll).toBeLessThanOrEqual(inner + 1)
+    // What the product does, the whole path and the official funnel are on the page, below the fold.
+    await expect(page.getByTestId('feature-card')).toHaveCount(14)
+    await expect(page.getByTestId('funnel-stage')).toHaveCount(6)
+    await expect(page.getByTestId('landing-chain')).toBeAttached()
+    await expect(page.getByTestId('public-footer')).toBeAttached()
   })
 
   test('it says the official things, with the deal in copper, and labels the preview as sample data', async ({ page }) => {
-    await ready(page, '/welcome')
+    await ready(page, '/')
 
     await expect(page.getByTestId('landing-badge')).toHaveText('منصة تشغيل التسويق والمبيعات العقارية')
     await expect(page.getByTestId('landing-headline')).toHaveText('حوّل الاهتمام إلى فرصة')
@@ -146,15 +145,14 @@ test.describe('Marketing page', () => {
     expect(copper).not.toBe(ink)
   })
 
-  test('the calls to action lead somewhere real: sign in, and a request for a trial on the contact page — there is no sign-up', async ({ page }) => {
-    await ready(page, '/welcome')
+  test('the calls to action lead somewhere real: start and sign in both go to the login — there is no sign-up', async ({ page }) => {
+    await ready(page, '/')
     await expect(page.getByText(/إنشاء حساب|Sign up/)).toHaveCount(0)
 
     await page.getByTestId('landing-trial').click()
-    await expect(page).toHaveURL(/\/contact\?intent=trial/)
-    await expect(page.locator('#trial')).toBeInViewport()
+    await expect(page).toHaveURL(/\/login/)
 
-    await page.goto('/welcome')
+    await page.goto('/')
     await page.getByTestId('landing-login').click()
     await expect(page).toHaveURL(/\/login/)
   })
@@ -162,7 +160,7 @@ test.describe('Marketing page', () => {
   test('the header links reach the part of the page they name', async ({ page, isMobile }) => {
     test.skip(isMobile, 'the header links are the laptop’s; a phone has the menu')
     await page.setViewportSize({ width: 1366, height: 768 })
-    await ready(page, '/welcome')
+    await ready(page, '/')
 
     for (const [link, target] of [['landing-nav-features', '#features'], ['landing-nav-how', '#how'], ['landing-nav-reports', '#reports']] as const) {
       await page.getByTestId(link).click()
@@ -172,7 +170,7 @@ test.describe('Marketing page', () => {
   })
 
   test('the sample report opens as a dialog, says it is not real data, and closes with Escape', async ({ page }) => {
-    await ready(page, '/welcome')
+    await ready(page, '/')
 
     await page.getByTestId('sample-report-open').click()
     const dialog = page.getByRole('dialog')
@@ -185,13 +183,13 @@ test.describe('Marketing page', () => {
     await expect(dialog).toHaveCount(0)
   })
 
-  test('a phone gets a menu with the same destinations and the trial request', async ({ page, isMobile }) => {
+  test('a phone gets a menu with the same destinations and the way in', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'the menu is the phone’s')
-    await ready(page, '/welcome')
+    await ready(page, '/')
 
     await expect(page.getByTestId('public-menu-toggle')).toBeVisible()
     await page.getByTestId('public-menu-toggle').click()
-    await expect(page.locator('#public-menu').getByRole('link', { name: 'طلب تجربة' })).toBeVisible()
+    await expect(page.locator('#public-menu').getByRole('link', { name: 'ابدأ مع مهتم' })).toBeVisible()
     await expect(page.getByTestId('public-menu-toggle')).toHaveAttribute('aria-expanded', 'true')
   })
 })
@@ -263,7 +261,7 @@ test.describe('Login', () => {
 
   test('the login still signs in, and the way to the marketing page is there', async ({ page }) => {
     await ready(page, '/login')
-    await expect(page.getByTestId('login-about')).toHaveAttribute('href', '/welcome')
+    await expect(page.getByTestId('login-about')).toHaveAttribute('href', '/')
 
     await page.getByLabel('البريد الإلكتروني').fill(ALPHA.admin.email)
     await page.getByLabel('كلمة المرور', { exact: true }).fill(PASSWORD)

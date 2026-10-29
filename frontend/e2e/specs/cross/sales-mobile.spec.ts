@@ -349,7 +349,8 @@ test.describe('Mobile sales flow', () => {
 
     try {
       const me = (await apiGet<{ user: { id: string } }>(rep, '/api/v1/auth/me')).user.id
-      const created = await apiPost(admin, '/api/v1/leads', { full_name: `عميل الإشعار ${Date.now()}`, phone: `05${String(Date.now()).slice(-8)}`, assigned_to: me })
+      const name = `عميل الإشعار ${Date.now()}`
+      const created = await apiPost(admin, '/api/v1/leads', { full_name: name, phone: `05${String(Date.now()).slice(-8)}`, assigned_to: me })
       expect(created.ok(), await created.text()).toBeTruthy()
       const leadId = (await created.json()).data.lead.id as string
 
@@ -359,7 +360,9 @@ test.describe('Mobile sales flow', () => {
       await asRep(page)
       await page.goto('/leads')
       await page.getByTestId('notifications-toggle').click()
-      const item = page.getByTestId('notification-item').first()
+      // This lead's own notification, found by the name this test gave it — never "whichever is on top", which in a
+      // long run can be an older alert about another lead.
+      const item = page.getByTestId('notification-item').filter({ hasText: name }).first()
       await expect(item).toBeVisible()
       await item.click()
 

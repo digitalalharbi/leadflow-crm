@@ -4,6 +4,7 @@ import { LandingPage } from './Landing'
 import { DocumentPage } from './DocumentPage'
 import { LoginPage } from '@/pages/Login'
 import { LEGAL, type LegalKey } from '@/content/legal'
+import { useAuth } from '@/stores/auth'
 import { renderWithProviders } from '@/test/utils'
 
 const PAGES: Array<[LegalKey, string]> = [['privacy', 'سياسة الخصوصية'], ['terms', 'الشروط والأحكام'], ['deletion', 'طلب حذف البيانات'], ['security', 'الأمان وحماية البيانات'], ['contact', 'التواصل'], ['about', 'عن مهتم']]
@@ -68,14 +69,35 @@ describe('landing page', () => {
     expect(steps).toEqual(['وصل', 'تواصل', 'تأهّل', 'موعد', 'صفقة'])
   })
 
-  it('has only calls to action that lead somewhere real: sign in, and a request for a trial (a contact page)', () => {
+  it('has only calls to action that lead somewhere real: start and sign in both go to the login — there is no sign-up to pretend', () => {
     const { container } = renderWithProviders(<LandingPage />)
 
     expect(screen.getByTestId('landing-login')).toHaveAttribute('href', '/login')
-    expect(screen.getByTestId('landing-trial')).toHaveAttribute('href', '/contact?intent=trial')
+    expect(screen.getByTestId('landing-trial')).toHaveAttribute('href', '/login')
+    expect(screen.getByTestId('landing-trial')).toHaveTextContent('ابدأ مع مهتم')
+    expect(screen.getByTestId('landing-login')).toHaveTextContent('تسجيل الدخول')
     expect(container.querySelector('form, input')).toBeNull()
     // No sign-up, no Google, no demo-booking that does not exist.
     expect(container.textContent).not.toMatch(/Google (Login|sign)|تسجيل بحساب|إنشاء حساب|Sign up/i)
+  })
+
+  it('a signed-in visitor stays on the page and is offered the dashboard instead of the login', () => {
+    useAuth.setState({ status: 'authenticated', isSuperAdmin: false })
+    renderWithProviders(<LandingPage />)
+
+    expect(screen.getByTestId('landing-trial')).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByTestId('landing-trial')).toHaveTextContent('فتح لوحة التحكم')
+    expect(screen.getByTestId('public-login')).toHaveAttribute('href', '/dashboard')
+    expect(screen.queryByTestId('landing-login')).toBeNull()
+    useAuth.setState({ status: 'anonymous' })
+  })
+
+  it('a platform owner who is signed in is offered the platform, not a company dashboard', () => {
+    useAuth.setState({ status: 'authenticated', isSuperAdmin: true })
+    renderWithProviders(<LandingPage />)
+
+    expect(screen.getByTestId('landing-trial')).toHaveAttribute('href', '/platform')
+    useAuth.setState({ status: 'anonymous', isSuperAdmin: false })
   })
 
   it('draws the product preview from sample data and labels it as such', () => {
@@ -88,16 +110,26 @@ describe('landing page', () => {
     expect(within(preview).getByTestId('preview-funnel').querySelectorAll('li')).toHaveLength(6)
   })
 
-  it('sells the idea, not the workings: three promises, the picture of the reports, the closing line — and no platforms, features or mechanisms', () => {
+  it('presents the product: the promises, the whole path, the fourteen things it does and the official funnel', () => {
     const { container } = renderWithProviders(<LandingPage />)
 
     expect(screen.getAllByTestId('value-card')).toHaveLength(3)
     expect(screen.getByTestId('reports-card')).toHaveTextContent('صورة واضحة في أي لحظة')
     expect(screen.getByTestId('landing-closing')).toHaveTextContent('كل اهتمام يستحق أن يصبح فرصة')
-    expect(screen.queryByTestId('landing-capabilities')).toBeNull()
-    expect(screen.queryByTestId('landing-integrations')).toBeNull()
-    // How it is done stays with the product: no platform names, no "connects to", no feature or SLA detail.
-    expect(container.textContent).not.toMatch(/يتصل بـ|Meta|TikTok|Snapchat|Google|WhatsApp|واتساب|API|SLA|ويب هوك|Webhook|أتمتة|Automation|attribution|مصفوفة|قمع|pipeline/i)
+
+    const chain = within(screen.getByTestId('landing-chain-steps')).getAllByRole('listitem').map((li) => li.textContent?.replace(/[←→]/g, '').trim())
+    expect(chain).toEqual(['الحملات التسويقية', 'الاهتمام', 'العملاء المحتملون', 'فريق المبيعات', 'المتابعة', 'حجز المعاينة', 'قرار الشراء', 'الإحالة', 'الإيرادات'])
+
+    const features = screen.getAllByTestId('feature-card').map((c) => c.querySelector('h3')?.textContent)
+    for (const needed of ['إدارة العملاء المحتملين', 'الحملات ومصادر العملاء', 'التتبع والإسناد', 'اعمل الآن', 'الزيارات والحجوزات', 'التقارير الحية', 'رابط واحد لمتابعة المشروع', 'عزل كامل لكل شركة ومشروع', 'الأتمتة', 'الروابط المختصرة', 'المسار العقاري']) {
+      expect(features).toContain(needed)
+    }
+    expect(features).toHaveLength(14)
+
+    const stages = screen.getAllByTestId('funnel-stage').map((li) => li.querySelector('h3')?.textContent)
+    expect(stages).toEqual(['وعي', 'اهتمام', 'تفاعل', 'حجز معاينة', 'قرار شراء', 'إحالة'])
+    // The product's name is مهتم alone.
+    expect(container.textContent).not.toMatch(/Mohtam(?!\.pro)|LeadFlow/i)
   })
 
   it('footer links lead to the six public pages', () => {
@@ -142,6 +174,6 @@ describe('login page', () => {
     expect(screen.getByTestId('login-badge')).toHaveTextContent('منصة تشغيل التسويق والمبيعات العقارية')
     expect(screen.getByTestId('login-description')).toHaveTextContent('امنح فريق المبيعات الأولوية للعملاء الأكثر جاهزية')
     expect(within(screen.getByTestId('login-pillars')).getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByTestId('login-about')).toHaveAttribute('href', '/welcome')
+    expect(screen.getByTestId('login-about')).toHaveAttribute('href', '/')
   })
 })

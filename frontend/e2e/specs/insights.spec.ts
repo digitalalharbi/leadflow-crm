@@ -22,7 +22,7 @@ test.describe('Insights and anomalies', () => {
 
   test('the dashboard opens on what moved and the few facts to look at, each with a place to go', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const strip = page.getByTestId('insights')
     await expect(strip).toBeVisible()
@@ -40,7 +40,7 @@ test.describe('Insights and anomalies', () => {
 
   test('an anomaly is dismissed with one press and does not come back', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     await page.getByTestId('dismiss-spend_no_qualified').click()
     await expect(page.getByTestId('anomaly-spend_no_qualified')).toHaveCount(0)
@@ -52,7 +52,7 @@ test.describe('Insights and anomalies', () => {
 
   test('a rep sees facts about their own work, and no team-wide anomalies', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('anomaly-lead_spike')).toHaveCount(0)
     await expect(page.getByTestId('dismiss-lead_spike')).toHaveCount(0)
   })

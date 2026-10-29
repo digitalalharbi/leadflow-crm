@@ -109,7 +109,9 @@ jobs:
       - name: Start the API
         working-directory: backend
         run: |
-          php artisan serve --host=127.0.0.1 --port=8000 > /tmp/api.log 2>&1 &
+          # Several workers: a page makes many requests at once and polls. Laravel only honours
+          # PHP_CLI_SERVER_WORKERS with --no-reload; without it the API serves one request at a time.
+          PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=127.0.0.1 --port=8000 --no-reload > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8000/api/health >/dev/null && break
             sleep 1

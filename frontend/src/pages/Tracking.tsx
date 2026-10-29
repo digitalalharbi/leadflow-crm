@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { HOME } from '@/lib/routes'
 import { Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Eye, MousePointerClick, Plus, Target, TrendingUp, Users } from 'lucide-react'
@@ -56,7 +57,7 @@ export function TrackingPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['tracking-links', days], queryFn: () => fetchLinks(days), enabled: canSee && hasLinks })
 
   // Money and attribution: the people who may read reports, as in the navigation and the API.
-  if (!canSee) return <Navigate to="/" replace />
+  if (!canSee) return <Navigate to={HOME} replace />
 
   const links = data?.links ?? []
   const sum = (key: 'clicks' | 'visitors' | 'leads' | 'won' | 'revenue') => links.reduce((n, l) => n + (l.stats[key] ?? 0), 0)

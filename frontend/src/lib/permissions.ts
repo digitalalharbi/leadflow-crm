@@ -74,7 +74,8 @@ const PAGE_ELEMENTS: Record<string, string> = {
 
 /** May this person open the page at `path`? Pages nobody can switch off are always allowed here (permissions decide those). */
 export function seesPage(user: User | null | undefined, path: string): boolean {
-  const element = PAGE_ELEMENTS[path.split('/').filter(Boolean)[0] ?? '']
+  const first = path.split('/').filter(Boolean)[0] ?? ''
+  const element = PAGE_ELEMENTS[first === 'dashboard' ? '' : first]
 
   return element === undefined || sees(user, element)
 }

@@ -114,7 +114,7 @@ test.describe('Interested queue — اعمل الآن', () => {
     artisan(['leadflow:sweep-sla'], { QUEUE_CONNECTION: 'sync' })
 
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const row = page.getByTestId('manager-interest')
     await expect(row).toBeVisible()

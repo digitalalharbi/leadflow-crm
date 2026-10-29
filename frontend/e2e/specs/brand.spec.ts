@@ -12,7 +12,7 @@ import { signInAs } from '../fixtures/pages'
  * name found too late.
  */
 const ROUTES = [
-  '/', '/work', '/leads', '/pipeline', '/follow-ups', '/projects', '/automation',
+  '/dashboard', '/work', '/leads', '/pipeline', '/follow-ups', '/projects', '/automation',
   '/reports', '/data-quality', '/integrations', '/readiness', '/users', '/settings',
 ]
 
@@ -26,7 +26,9 @@ test.describe('The product has one name', () => {
   test('a workspace that has not renamed it shows مهتم in the chrome', async ({ page }) => {
     // The brand sits in the floating header now, not in a sidebar.
     await expect(page.getByRole('banner')).toContainText('مهتم')
-    await expect(page).toHaveTitle(PLATFORM_TITLE)
+    // Every screen's tab is `<screen> — مهتم`.
+    await expect(page).toHaveTitle('لوحة التحكم — مهتم')
+    expect(PLATFORM_TITLE).toBe('مهتم — حوّل الاهتمام إلى فرصة')
   })
 
   for (const route of ROUTES) {

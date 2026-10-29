@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { HOME } from '@/lib/routes'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, ExternalLink, PartyPopper, Timer, Zap } from 'lucide-react'
@@ -60,7 +61,7 @@ export function MobileWork() {
 
   const header = (
     <header className="flex items-center gap-2">
-      <Link to="/" aria-label={t('mobileSales.back')} className="pressable grid size-11 shrink-0 place-items-center rounded-full bg-[var(--color-surface)] ring-1 ring-inset ring-[var(--color-line)]" data-testid="mobile-back">
+      <Link to={HOME} aria-label={t('mobileSales.back')} className="pressable grid size-11 shrink-0 place-items-center rounded-full bg-[var(--color-surface)] ring-1 ring-inset ring-[var(--color-line)]" data-testid="mobile-back">
         <Back className="size-5" aria-hidden />
       </Link>
       <div className="min-w-0 flex-1">

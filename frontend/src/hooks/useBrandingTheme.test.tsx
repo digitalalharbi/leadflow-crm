@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { PLATFORM_TITLE, useBrandingTheme } from './useBrandingTheme'
+import { useTitleStore } from '@/lib/brand'
 import type { Branding } from '@/types/api'
 
 function branding(overrides: Partial<Branding> = {}): Branding {
@@ -40,7 +41,8 @@ describe('useBrandingTheme', () => {
     renderHook(() => useBrandingTheme(branding()))
 
     expect(document.documentElement.style.getPropertyValue('--brand')).toBe('#aa3366')
-    expect(document.title).toBe('Acme CRM')
+    // The workspace's own name goes after the dash in every tab title.
+    expect(useTitleStore.getState().suffix).toBe('Acme CRM')
     expect(document.querySelector<HTMLMetaElement>("meta[name='theme-color']")?.content)
       .toBe('#aa3366')
   })
@@ -70,7 +72,9 @@ describe('useBrandingTheme', () => {
     rerender({ b: branding({ system_name: '', favicon_url: null, slug: 'other' }) })
 
     expect(icon()).toBe('/favicon.svg')
-    expect(document.title).toBe(PLATFORM_TITLE)
+    // No name of its own: the tab says مهتم again, not the previous workspace.
+    expect(useTitleStore.getState().suffix).toBeNull()
+    expect(PLATFORM_TITLE).toBe('مهتم — حوّل الاهتمام إلى فرصة')
   })
 
   it('picks a readable contrast colour rather than assuming white', () => {

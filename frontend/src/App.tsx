@@ -1,5 +1,8 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { HOME, INDEXABLE_PATHS } from '@/lib/routes'
+import { useTitleStore, useTitleWriter } from '@/lib/brand'
+import { routeTitleKey } from '@/lib/routeTitle'
 import { RequireFeature } from '@/components/billing/FeatureLocked'
 import { useTranslation } from 'react-i18next'
 import { seesPage } from '@/lib/permissions'
@@ -98,7 +101,7 @@ function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
 
   if (status === 'idle' || status === 'loading') return <PageFallback />
 
-  return isSuperAdmin ? <>{children}</> : <Navigate to="/" replace />
+  return isSuperAdmin ? <>{children}</> : <Navigate to={HOME} replace />
 }
 
 /**
@@ -118,7 +121,7 @@ function RequirePermission({ any, children }: { any: string[]; children: React.R
 
 /** Where somebody lands who asked for a screen they do not have: the first one they do. */
 function firstHome(user: ReturnType<typeof useAuth.getState>['user']): string {
-  const home = ([['dashboard.view', '/'], ['leads.view', '/leads'], ['visits.view', '/visits']] as const).find(([p, path]) => can.has(user, p) && seesPage(user, path))
+  const home = ([['dashboard.view', HOME], ['leads.view', '/leads'], ['visits.view', '/visits']] as const).find(([p, path]) => can.has(user, p) && seesPage(user, path))
 
   return home?.[1] ?? '/settings/profile'
 }
@@ -127,7 +130,7 @@ function firstHome(user: ReturnType<typeof useAuth.getState>['user']): string {
 function HomeRoute() {
   const user = useAuth((s) => s.user)
 
-  return seesPage(user, '/') ? <Suspense fallback={<PageFallback />}><DashboardPage /></Suspense> : <Navigate to={firstHome(user)} replace />
+  return seesPage(user, HOME) ? <Suspense fallback={<PageFallback />}><DashboardPage /></Suspense> : <Navigate to={firstHome(user)} replace />
 }
 
 /** Blocks a route until the session is known, so no flash of the login screen. */
@@ -162,6 +165,22 @@ export function App() {
     void restore()
   }, [restore])
 
+  // Only the marketing and legal pages are for search engines; the login and the app are not (the public pages say so themselves).
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (!(INDEXABLE_PATHS as readonly string[]).includes(pathname)) {
+      document.querySelector<HTMLMetaElement>("meta[name='robots']")?.setAttribute('content', 'noindex, nofollow')
+    }
+  }, [pathname])
+
+  // Every screen's tab reads `<screen> — مهتم` (`<screen> — Mohtam` in English); a screen about one thing names that thing.
+  const setTitle = useTitleStore((s) => s.set)
+  useEffect(() => {
+    const key = routeTitleKey(pathname)
+    setTitle({ route: key ? i18n.t(key) : null })
+  }, [pathname, i18n, i18n.language, setTitle])
+  useTitleWriter()
+
   // Keep <html dir> in sync whenever the language changes anywhere in the app.
   useEffect(() => {
     document.documentElement.dir = i18n.dir()
@@ -179,7 +198,9 @@ export function App() {
         {/* The platform owner's own door; a company's login never signs the owner in. */}
         <Route path="/platform/login" element={<Suspense fallback={<PageFallback />}><PlatformLoginPage /></Suspense>} />
         {/* Public, no session: what مهتم is, and the pages a visitor, a customer's lead or a platform reviewer expects to find. */}
-        <Route path="/welcome" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
+        {/* The marketing page is the front door, for everybody; a signed-in person is not moved off it. */}
+        <Route path="/" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
+        <Route path="/welcome" element={<Navigate to="/" replace />} />
         <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPage /></Suspense>} />
         <Route path="/terms" element={<Suspense fallback={<PageFallback />}><TermsPage /></Suspense>} />
         <Route path="/data-deletion" element={<Suspense fallback={<PageFallback />}><DataDeletionPage /></Suspense>} />
@@ -199,7 +220,7 @@ export function App() {
           }
         >
           <Route
-            index
+            path="/dashboard"
             element={isSuperAdmin ? <Navigate to="/platform" replace /> : <HomeRoute />}
           />
 
@@ -252,7 +273,7 @@ export function App() {
                       </RequireSuperAdmin>
                     }
                   />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to={HOME} replace />} />
                 </Routes>
               </Suspense>
             }

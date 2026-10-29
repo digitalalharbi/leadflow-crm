@@ -11,6 +11,7 @@ import {
   QualificationSection, RecommendationsSection, ReservationsSection, StatementSection, TeamSection, TrackingHealthSection, TrendSection, useReportCtx, VisitsSection,
 } from '@/components/reports/ReportSections'
 import { useBrandingTheme, usesOwnColours } from '@/hooks/useBrandingTheme'
+import { useDocumentTitle } from '@/lib/brand'
 import { Logo } from '@/components/brand'
 import { fetchSharedReport, type SharedReportData } from '@/features/reportShares'
 import type { Branding } from '@/types/api'
@@ -50,11 +51,10 @@ export function SharedReportPage() {
   const result = query.data
   useEffect(() => { if (result?.kind === 'ok') loaded.current = true }, [result])
   const brand = result?.kind === 'ok' ? result.data.workspace : result?.kind === 'password' ? result.workspace : null
-  useBrandingTheme(brand ? themeFor(brand.color, brand.name) : null)
+  useBrandingTheme(brand ? themeFor(brand.color, null) : null)
 
-  useEffect(() => {
-    document.title = result?.kind === 'ok' ? result.data.report.name : t('share.public.title')
-  }, [result, t])
+  // `<report name> — مهتم`; a white-labelled workspace's name takes مهتم's place after the dash.
+  useDocumentTitle(result?.kind === 'ok' ? result.data.report.name : null)
 
   if (query.isLoading || !result) {
     return <Shell><Skeleton className="h-64" /></Shell>

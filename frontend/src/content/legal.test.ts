@@ -20,11 +20,15 @@ describe('the public pages’ content', () => {
     }
   })
 
-  /** The product is «مهتم» in every language: a Latin spelling is a second name (see the branding specs). */
-  it('never spells the product in Latin letters', () => {
-    const all = KEYS.flatMap((key) => [everyText(key, 'ar'), everyText(key, 'en')]).join('\n') + JSON.stringify(LANDING)
+  /** مهتم in the Arabic text, Mohtam in the English — and no other name or spelling anywhere (see the branding specs). */
+  it('names the product officially in each language and never by another name', () => {
+    const arabic = KEYS.map((key) => everyText(key, 'ar')).join('\n') + JSON.stringify(LANDING.ar)
+    const english = KEYS.map((key) => everyText(key, 'en')).join('\n') + JSON.stringify(LANDING.en)
 
-    expect(all).not.toMatch(/\b(mohtam|mahtam|muhtam|leadflow|campaignshub|influencerhub|appsflyer)\b/i)
+    expect(arabic + english).not.toMatch(/\b(mahtam|muhtam|leadflow|campaignshub|influencerhub|appsflyer)\b/i)
+    expect(arabic).not.toMatch(/\bMohtam\b/)
+    expect(english).not.toContain('مهتم')
+    expect(english).toContain('Mohtam')
   })
 
   it('invents no company, address or mailbox: the only addresses in the text are the markers the deployment fills', () => {

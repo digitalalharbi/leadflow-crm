@@ -26,7 +26,7 @@ export interface Navigation {
   all: NavItem[]
 }
 
-const PRIMARY = ['/', '/work', '/leads', '/pipeline', '/campaigns', '/projects', '/reports']
+const PRIMARY = ['/dashboard', '/work', '/leads', '/pipeline', '/campaigns', '/projects', '/reports']
 
 /**
  * Where a person can go, decided once.
@@ -70,7 +70,7 @@ export function useNavigation(): Navigation {
 
   const groups: NavItem[][] = [
     [
-      ...item('/', 'nav.dashboard', LayoutDashboard, 'dashboard.view'),
+      ...item('/dashboard', 'nav.dashboard', LayoutDashboard, 'dashboard.view'),
       // Directly under the dashboard: a rep who opens the list first starts by
       // choosing; this screen is the one that tells them.
       ...item('/work', 'nav.work', Target, 'leads.execute'),

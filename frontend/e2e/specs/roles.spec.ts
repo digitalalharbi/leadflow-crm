@@ -36,10 +36,10 @@ test.describe('Roles and permissions', () => {
 
   test('finance sees the money and nothing to work or configure', async ({ page }) => {
     await authenticateAs(page, ALPHA.finance.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const links = await railLinks(page)
-    for (const shown of ['/', '/leads', '/campaigns', '/reports']) expect(links).toContain(shown)
+    for (const shown of ['/dashboard', '/leads', '/campaigns', '/reports']) expect(links).toContain(shown)
     for (const hidden of ['/work', '/follow-ups', '/automation', '/integrations', '/users', '/tracking', '/companies']) expect(links, hidden).not.toContain(hidden)
 
     // Typing the address of a screen it was not given goes home, not to a wall of errors.
@@ -72,7 +72,7 @@ test.describe('Roles and permissions', () => {
     await expect(page).not.toHaveURL(/\/campaigns/)
 
     // The dashboard carries no revenue tile.
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('kpi-revenue')).toHaveCount(0)
   })
 
@@ -147,7 +147,7 @@ test.describe('Roles and permissions', () => {
 
   test('marketing runs campaigns and shares reports but does not touch leads', async ({ page }) => {
     await authenticateAs(page, ALPHA.marketing.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const links = await railLinks(page)
     for (const shown of ['/campaigns', '/tracking', '/reports']) expect(links).toContain(shown)
@@ -165,7 +165,7 @@ test.describe('Roles and permissions', () => {
 
   test('a sales manager works the team and sees no ad spend', async ({ page }) => {
     await authenticateAs(page, ALPHA.salesManager.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
 
     const links = await railLinks(page)
     for (const shown of ['/work', '/leads', '/visits', '/users']) expect(links).toContain(shown)
@@ -183,14 +183,14 @@ test.describe('Roles and permissions', () => {
 
   test('the long-standing roles are exactly as they were', async ({ page }) => {
     await authenticateAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     const rep = await railLinks(page)
     expect(rep).toContain('/work')
     expect(rep).not.toContain('/campaigns')
     expect(rep).not.toContain('/users')
 
     await authenticateAs(page, ALPHA.manager.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     const manager = await railLinks(page)
     for (const shown of ['/campaigns', '/reports', '/automation', '/users']) expect(manager).toContain(shown)
     expect(manager).not.toContain('/integrations')

@@ -3192,6 +3192,7 @@ export default {
   },
 
   brand: {
+    name: 'مهتم',
     tagline: 'حوّل الاهتمام إلى فرصة',
     links: { privacy: 'الخصوصية', terms: 'الشروط' },
     badge: 'منصة تشغيل التسويق والمبيعات العقارية',
@@ -3963,5 +3964,10 @@ export default {
     acceptInvite: 'قبول الدعوة',
     sendSetupLink: 'إرسال رابط تعيين كلمة المرور',
     setupLinkSent: 'أُرسل رابط تعيين كلمة المرور.',
+  },
+  titles: {
+    dashboard: 'لوحة التحكم', platform: 'إدارة المنصة', login: 'تسجيل الدخول', platformLogin: 'دخول إدارة المنصة',
+    invitation: 'دعوة للانضمام', setPassword: 'تعيين كلمة المرور', forgotPassword: 'استعادة كلمة المرور', report: 'تقرير', form: 'نموذج',
+    poweredBy: 'مدعوم بواسطة مهتم', notFound: 'الصفحة غير موجودة',
   },
 }

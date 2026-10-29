@@ -6,6 +6,7 @@ import { Logo } from '@/components/brand'
 import { LANDING } from '@/content/landing'
 import { applyLocale } from '@/i18n'
 import { cn } from '@/lib/cn'
+import { useEntryAction } from '@/hooks/useEntryAction'
 
 const language = (lang: string) => (lang.startsWith('ar') ? 'ar' : 'en')
 
@@ -19,6 +20,7 @@ export function PublicLayout({ children, nav, active, compactFooter = false }: {
   const lang = language(i18n.language)
   const copy = LANDING[lang]
   const [open, setOpen] = useState(false)
+  const entry = useEntryAction()
 
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--color-canvas)] text-[var(--color-ink)]" data-testid="public-page">
@@ -28,7 +30,7 @@ export function PublicLayout({ children, nav, active, compactFooter = false }: {
 
       <header className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[var(--color-surface)]/95 pt-[env(safe-area-inset-top)] backdrop-blur" data-testid="public-header">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-          <Link to="/welcome" aria-label={lang === 'ar' ? 'مهتم — الرئيسية' : 'مهتم — home'} className="shrink-0 rounded-xl">
+          <Link to="/" aria-label={lang === 'ar' ? 'مهتم — الرئيسية' : 'مهتم — home'} className="shrink-0 rounded-xl">
             <Logo variant="auto" layout="horizontal" height={44} />
           </Link>
 
@@ -45,12 +47,15 @@ export function PublicLayout({ children, nav, active, compactFooter = false }: {
             >
               {lang === 'ar' ? 'English' : 'العربية'}
             </button>
-            <Link to="/login" className="pressable inline-flex min-h-11 items-center rounded-full px-4 text-[0.9375rem] font-semibold hover:bg-[var(--color-chrome-fill)]" data-testid="public-login">
-              {copy.nav.login}
+            {/* A visitor signs in; somebody already signed in is offered their dashboard instead — never moved there. */}
+            <Link to={entry.to} className="pressable inline-flex min-h-11 items-center rounded-full px-4 text-[0.9375rem] font-semibold hover:bg-[var(--color-chrome-fill)]" data-testid="public-login" data-authenticated={entry.authenticated}>
+              {entry.authenticated ? copy.cta.dashboard : copy.nav.login}
             </Link>
-            <Link to="/contact?intent=trial" className="pressable hidden min-h-11 items-center rounded-full bg-[var(--brand)] px-5 text-[0.9375rem] font-semibold text-[var(--brand-contrast)] hover:bg-[var(--brand-hover)] sm:inline-flex" data-testid="public-trial">
-              {copy.nav.trial}
-            </Link>
+            {!entry.authenticated && (
+              <Link to="/login" className="pressable hidden min-h-11 items-center rounded-full bg-[var(--brand)] px-5 text-[0.9375rem] font-semibold text-[var(--brand-contrast)] hover:bg-[var(--brand-hover)] sm:inline-flex" data-testid="public-trial">
+                {copy.nav.trial}
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => setOpen((value) => !value)}
@@ -69,7 +74,7 @@ export function PublicLayout({ children, nav, active, compactFooter = false }: {
           <div id="public-menu" className="border-t border-[var(--color-line)] px-4 py-3 lg:hidden" onClick={() => setOpen(false)}>
             <nav className="grid gap-1" aria-label={copy.nav.menu}>{nav}</nav>
             <div className="mt-2 flex gap-2">
-              <Link to="/contact?intent=trial" className="pressable inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[var(--brand)] font-semibold text-[var(--brand-contrast)]">{copy.nav.trial}</Link>
+              <Link to={entry.to} className="pressable inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-[var(--brand)] font-semibold text-[var(--brand-contrast)]" data-testid="public-menu-entry">{entry.authenticated ? copy.cta.dashboard : copy.nav.trial}</Link>
               <button type="button" onClick={() => applyLocale(lang === 'ar' ? 'en' : 'ar')} className="pressable min-h-12 rounded-full px-5 font-medium ring-1 ring-inset ring-[var(--color-line)]">{lang === 'ar' ? 'English' : 'العربية'}</button>
             </div>
           </div>

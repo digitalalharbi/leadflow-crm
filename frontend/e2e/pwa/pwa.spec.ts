@@ -77,7 +77,7 @@ test.describe('Installable app', () => {
   test('a service worker takes control, and nothing from the API is ever stored', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
     await openLogin(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('page-title')).toBeVisible()
     await page.goto('/leads')
     await expect(page.getByTestId('page-title')).toBeVisible()
@@ -157,7 +157,7 @@ test.describe('Installable app', () => {
 
   test('a signed-in workspace’s own manifest is just as installable: absolute addresses and PNG icons', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('page-title')).toBeVisible()
     await page.waitForFunction(() => document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href.startsWith('blob:'), undefined, { timeout: 20_000 })
 
@@ -178,7 +178,7 @@ test.describe('Installable app', () => {
 
   test('nobody is nagged to install: the browser’s install offer produces no banner of ours, on any engine', async ({ page }) => {
     await authenticateAs(page, ALPHA.admin.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.getByTestId('page-title')).toBeVisible()
 
     // What Chrome would fire once the app qualifies; our page must neither hide it nor show anything for it.

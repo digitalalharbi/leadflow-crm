@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDocumentTitle } from '@/lib/brand'
 import { ExternalLink, GitBranch, GitMerge, GitPullRequest, Rocket, Tag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet } from '@/lib/api'
@@ -68,6 +69,8 @@ export function ProjectDetailPage() {
     queryKey: ['project', id],
     queryFn: () => apiGet<{ project: Project }>(`/projects/${id}`).then((r) => r.project),
   })
+  // The tab reads `<project> — مهتم`.
+  useDocumentTitle(project?.name ?? null)
 
   return (
     <>

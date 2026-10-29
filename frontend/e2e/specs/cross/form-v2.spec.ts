@@ -132,6 +132,8 @@ test.describe('Advanced form', () => {
     await expect(page.getByTestId('input-name')).toHaveValue('سامي المتحقق')
 
     await page.getByTestId('input-mobile').fill('0555003344')
+    // The corrected number is in the field before the step is submitted, not still on its way in.
+    await expect(page.getByTestId('input-mobile')).toHaveValue('0555003344')
     await page.getByTestId('landing-submit').click()
     await expect(page.getByTestId('form-progress')).toHaveAttribute('aria-valuenow', '2')
 

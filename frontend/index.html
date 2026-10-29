@@ -6,17 +6,35 @@
     <!-- The platform's own identity (brand kit): pine for the browser chrome until a workspace's colour
          resolves and repoints it at runtime. -->
     <meta name="theme-color" content="#0C2A25" />
-    <meta name="description" content="إدارة العملاء المحتملين، التأهيل والمتابعة في مكان واحد." />
-    <meta name="robots" content="noindex, nofollow" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
-    <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- The front door (https://mohtam.pro/) is the one indexable page here; the app, the login and the shares say noindex themselves,
+         and nginx says it for /login and /platform before any script runs. -->
+    <meta name="description" content="مهتم منصة تربط الحملات التسويقية والعملاء المحتملين وفريق المبيعات والمتابعة والزيارات والحجوزات والإيرادات في مكان واحد، بعزل كامل لكل شركة ومشروع." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://mohtam.pro/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="مهتم" />
+    <meta property="og:locale" content="ar_SA" />
+    <meta property="og:title" content="مهتم — حوّل الاهتمام إلى فرصة" />
+    <meta property="og:description" content="مهتم منصة تربط الحملات التسويقية والعملاء المحتملين وفريق المبيعات والمتابعة والزيارات والحجوزات والإيرادات في مكان واحد، بعزل كامل لكل شركة ومشروع." />
+    <meta property="og:url" content="https://mohtam.pro/" />
+    <meta property="og:image" content="https://mohtam.pro/brand/social-preview.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="مهتم — حوّل الاهتمام إلى فرصة" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="مهتم — حوّل الاهتمام إلى فرصة" />
+    <meta name="twitter:description" content="مهتم منصة تربط الحملات التسويقية والعملاء المحتملين وفريق المبيعات والمتابعة والزيارات والحجوزات والإيرادات في مكان واحد، بعزل كامل لكل شركة ومشروع." />
+    <meta name="twitter:image" content="https://mohtam.pro/brand/social-preview.png" />
+    <link rel="icon" href="/brand/favicon.ico?v=2" sizes="any" />
+    <link rel="icon" href="/brand/favicon.svg?v=2" type="image/svg+xml" />
+    <link rel="icon" href="/brand/favicon-48x48.png?v=2" sizes="48x48" type="image/png" />
+    <link rel="icon" href="/brand/favicon-32x32.png?v=2" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/brand/favicon-16x16.png?v=2" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png?v=2" />
     <link rel="mask-icon" href="/mask-icon.svg" color="#1D5E52" />
     <!-- The platform default. Replaced at runtime by one built from the tenant's own branding, so a customer
          who installs this to a home screen gets their product and not ours. -->
-    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="manifest" href="/site.webmanifest?v=2" />
     <meta name="apple-mobile-web-app-title" content="مهتم" />
     <!-- Home-screen launch on iOS and Android: no browser chrome, a status bar that follows the page. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -35,7 +53,8 @@
     <link rel="apple-touch-startup-image" href="/splash/2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
     <!-- Replaced at runtime by the tenant's own system name; this is only what
          shows before branding resolves. -->
-    <title>مهتم | حوّل الاهتمام إلى فرصة</title>
+    <title>مهتم — حوّل الاهتمام إلى فرصة</title>
+    <script type="application/ld+json">[{"@context": "https://schema.org", "@type": "Organization", "name": "Mohtam", "alternateName": "مهتم", "url": "https://mohtam.pro", "logo": "https://mohtam.pro/brand/pwa-512.png"}, {"@context": "https://schema.org", "@type": "WebSite", "name": "Mohtam", "alternateName": "مهتم", "url": "https://mohtam.pro", "inLanguage": ["ar", "en"]}, {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Mohtam", "alternateName": "مهتم", "url": "https://mohtam.pro", "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "description": "مهتم منصة تربط الحملات التسويقية والعملاء المحتملين وفريق المبيعات والمتابعة والزيارات والحجوزات والإيرادات في مكان واحد، بعزل كامل لكل شركة ومشروع."}]</script>
   </head>
   <body>
     <div id="root"></div>

@@ -178,7 +178,7 @@ test.describe('الحملات — the campaign command center', () => {
 
   test('a sales rep is not offered campaigns at all', async ({ page }) => {
     await signInAs(page, ALPHA.rep1.email)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await expect(page.locator('a[href="/campaigns"]')).toHaveCount(0)
   })
 })

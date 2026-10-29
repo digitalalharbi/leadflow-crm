@@ -1,0 +1,21 @@
+# The front door and the public pages are for search engines; the app and the logins are not.
+User-agent: *
+Allow: /$
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /security
+Allow: /data-deletion
+Disallow: /login
+Disallow: /platform
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /r/
+Disallow: /s/
+Disallow: /f/
+Disallow: /t/
+Disallow: /i/
+Disallow: /l/
+
+Sitemap: https://mohtam.pro/sitemap.xml

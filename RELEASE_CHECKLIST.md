@@ -1,4 +1,4 @@
-# RELEASE CHECKLIST — «مهتم» v0.6.0
+# RELEASE CHECKLIST — «مهتم» v0.6.1
 
 **v0.5.1 supersedes v0.5.0.** v0.5.0 was tagged before a cross-workspace leak was found and fixed (#204: the lists of
 managers and salespeople, WhatsApp approval and SLA escalation recipients, agent notes, user search and onboarding read users
@@ -10,6 +10,19 @@ supply; the feature stays honest-off until it is there) · **OPTIONAL AFTER LAUN
 The product is tested Local-only. Nothing below has been exercised against a real server; the gates
 are the repository's own suites (see "Gates" at the end). `./scripts/check-deploy-readiness.sh` reports
 which of these exist on a machine without printing any value.
+
+## v0.6.1 — the public face of مهتم (2026-10-29)
+
+**Why a patch, not a minor:** nothing changes for a workspace's data or its API. v0.6.1 puts the marketing homepage at
+`https://mohtam.pro/`, the sign-in at `/login` and the app at `/dashboard`, and ships the official brand identity:
+titles «مهتم — حوّل الاهتمام إلى فرصة» (em dash, no `|`), favicon and PWA icons served from the brand folder, the social
+card, structured data, and branded emails and error pages. It also fixes the shared-report render loop caused by the
+title suffix and keeps the phone bottom bar's home tab stable now that home is `/dashboard`.
+
+Contents: #214. No migrations. Deploy the `v0.6.1` tag with `deploy-production.sh`; nothing else to run.
+
+Gate: Full Playwright on `01cd023` (the code of this tag) — 846 passed, 0 failed, 64 skipped; backend, frontend,
+lint, typecheck and build green.
 
 ## v0.6.0 — مهتم as a commercial multi-company SaaS (2026-10-24)
 

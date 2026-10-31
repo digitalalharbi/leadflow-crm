@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Root-owned command gate for the dedicated LeadFlow SSH identity.
+set -Eeuo pipefail
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+
+PROJECT=/opt/leadflow-crm
+ACTION="${1:-}"
+COMMIT="${2:-}"
+
+die() { printf 'leadflow-deploy: %s\n' "$1" >&2; exit "${2:-1}"; }
+section() { printf '\n===== %s =====\n' "$1"; }
+
+valid_commit() {
+  [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || die "a full lowercase 40-character commit SHA is required" 64
+}
+
+secure_checkout() {
+  [ -d "$PROJECT/.git" ] || die "$PROJECT is not a Git checkout" 65
+  [ "$(stat -c %u "$PROJECT")" = 0 ] || die "$PROJECT must be owned by root" 65
+  if find "$PROJECT" -xdev \( -perm -0020 -o -perm -0002 \) -print -quit | grep -q .; then
+    die "$PROJECT contains group- or world-writable paths" 65
+  fi
+}
+
+clean_checkout() {
+  local dirty
+  dirty="$(git -C "$PROJECT" status --porcelain --untracked-files=all -- . \
+    ':(exclude).last-good-commit' ':(exclude).last-good-commit.tmp')"
+  [ -z "$dirty" ] || {
+    printf 'ABORT DEPLOY — the LeadFlow checkout is not clean:\n' >&2
+    printf '%s\n' "$dirty" | head -40 | sed 's/^/    /' >&2
+    exit 66
+  }
+}
+
+verify_commit() {
+  valid_commit
+  secure_checkout
+  clean_checkout
+  git -C "$PROJECT" fetch --prune origin main
+  git -C "$PROJECT" cat-file -e "${COMMIT}^{commit}" 2>/dev/null || die "$COMMIT was not fetched from origin/main" 67
+  git -C "$PROJECT" merge-base --is-ancestor "$COMMIT" origin/main || die "$COMMIT is not on origin/main" 67
+  printf 'checkout=clean\ncommit=%s\nmain_membership=verified\n' "$COMMIT"
+}
+
+audit() {
+  section "Restricted SSH identity"
+  printf 'SSH_AUTHENTICATION=PASS\n'
+  printf 'DEPLOYMENT_USER=%s\n' "${SUDO_USER:-unknown}"
+  [ "${SUDO_USER:-}" = leadflow-deploy ] || die "unexpected sudo caller" 68
+  printf 'COMMAND_GATE=root-owned forced command\n'
+
+  section "Deployment checkout"
+  secure_checkout
+  stat -c 'PATH_MODE=%A PATH_OWNER=%U PATH_GROUP=%G PATH=%n' "$PROJECT"
+  if runuser -u leadflow-deploy -- test -w "$PROJECT"; then
+    die "the SSH deployment identity must not be able to modify the checkout" 69
+  fi
+  printf 'DEPLOYMENT_PATH_ACCESS=PASS (root-owned; SSH identity is not writable)\n'
+  git -C "$PROJECT" rev-parse --verify HEAD
+
+  section "Host capacity"
+  uptime
+  free -h
+  df -hT "$PROJECT" /var/lib/docker
+
+  section "Docker"
+  docker --version
+  docker compose version
+  docker info --format 'DockerRootDir={{.DockerRootDir}} CgroupDriver={{.CgroupDriver}} ServerVersion={{.ServerVersion}}'
+  docker ps -a --no-trunc --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+
+  section "Compose projects"
+  docker compose ls -a
+
+  section "Docker networks"
+  docker network ls
+
+  section "Docker volumes"
+  docker volume ls
+
+  section "Listening ports"
+  ss -lntup
+  for port in 9080 9081; do
+    if ss -H -lnt "sport = :$port" | grep -q .; then
+      printf 'LOOPBACK_PORT_%s=IN_USE\n' "$port"
+    else
+      printf 'LOOPBACK_PORT_%s=AVAILABLE\n' "$port"
+    fi
+  done
+
+  section "Projects under /opt"
+  find /opt -mindepth 1 -maxdepth 1 -type d -printf '%M %u:%g %p\n' | sort
+  find /opt -maxdepth 4 -type f \
+    \( -name 'compose.yml' -o -name 'compose.yaml' -o -name 'docker-compose.yml' -o -name 'docker-compose.yaml' -o -name 'docker-compose.*.yml' -o -name 'docker-compose.*.yaml' \) \
+    -print | sort
+
+  section "Caddy"
+  docker ps -a --filter 'label=com.docker.compose.service=caddy' \
+    --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+  printf 'READ_ONLY_VPS_AUDIT=PASS\n'
+}
+
+release() {
+  local secret body served
+  valid_commit
+  secure_checkout
+  [ -f "$PROJECT/.env.production" ] || die ".env.production is not present" 70
+  secret="$(sed -n 's/^DEPLOY_SECRET=//p' "$PROJECT/.env.production" | tail -1 | tr -d "\"'")"
+  [ -n "$secret" ] || die "DEPLOY_SECRET is empty" 70
+  body="$(curl -fsS --max-time 15 -H "X-Deploy-Secret: $secret" http://127.0.0.1:9081/api/health)"
+  served="$(printf '%s' "$body" | sed -n 's/.*"release":"\([0-9a-f]\{40\}\)".*/\1/p')"
+  [ "$served" = "$COMMIT" ] || die "the internal health endpoint is not serving the expected commit" 71
+  printf 'release=%s\n' "$served"
+}
+
+case "$ACTION" in
+  audit)
+    [ "$#" -eq 1 ] || die "audit takes no arguments" 64
+    audit
+    ;;
+  verify)
+    [ "$#" -eq 2 ] || die "verify requires one commit" 64
+    verify_commit
+    ;;
+  deploy)
+    [ "$#" -eq 2 ] || die "deploy requires one commit" 64
+    exec 9>/run/lock/leadflow-deploy.lock
+    flock -n 9 || die "another LeadFlow deployment is running" 72
+    verify_commit
+    exec env PRODUCTION_PATH="$PROJECT" DEPLOY_BRANCH=main DEPLOY_COMMIT="$COMMIT" \
+      "$PROJECT/scripts/deploy-production.sh"
+    ;;
+  release)
+    [ "$#" -eq 2 ] || die "release requires one commit" 64
+    release
+    ;;
+  *)
+    die "allowed actions: audit, verify, deploy, release" 64
+    ;;
+esac

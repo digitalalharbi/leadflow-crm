@@ -8,7 +8,7 @@ on GitHub.
 
 ```
 local → push → PR → CI → merge to develop → staging (when configured)
-      → release (merge to main) → "Deploy production" workflow, run from main (when approved)
+      → release (merge to main) → automatic "Deploy production" workflow
 ```
 
 CI (`ci.yml`) decides whether the code is healthy; the deploy workflows only ship what CI passed and
@@ -81,8 +81,9 @@ A failed health check triggers an automatic rollback to the previous commit.
 
 ## Production deploy
 
-Started by hand (`workflow_dispatch`, type `deploy`) — never by a push — and only when
-`PRODUCTION_ENABLED=true`; otherwise it ends with **PRODUCTION NOT CONFIGURED**. Extra gates:
+Started automatically by a push/merge to `main` and only when `PRODUCTION_ENABLED=true`;
+`workflow_dispatch` with `deploy` is retained for a manual re-run. Otherwise it ends with
+**PRODUCTION NOT CONFIGURED**. Extra gates:
 
 1. **Pre-flight job** — installs production dependencies, caches config, routes
    and events, and applies every migration to an empty database. A broken config

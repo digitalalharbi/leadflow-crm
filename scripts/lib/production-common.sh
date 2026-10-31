@@ -47,8 +47,9 @@ public_host() {
 }
 
 ssh_server() {
+  local known_hosts="${DEPLOY_KNOWN_HOSTS:-$HOME/.ssh/known_hosts}"
   ssh -i "$DEPLOY_SSH_KEY" -p "$DEPLOY_PORT" \
-    -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
+    -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts" -o ConnectTimeout=10 \
     "${DEPLOY_USER}@${DEPLOY_HOST}" "$@"
 }
 

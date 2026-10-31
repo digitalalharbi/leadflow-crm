@@ -13,6 +13,7 @@
 const BUILD = '__BUILD_ID__'
 const SHELL_CACHE = `mohtam-shell-${BUILD}`
 const ASSET_CACHE = `mohtam-assets-${BUILD}`
+const OLD_CACHE = /^(mohtam|mahtam)-/
 
 // What the offline page and the install prompt need, and nothing that carries data.
 /** Icons, launch screens, fonts for the offline page and the manifest: small, rarely changed, safe to serve from cache. */
@@ -23,7 +24,13 @@ const PRECACHE = ['/offline.html', '/site.webmanifest?v=2', '/brand/favicon.svg?
 self.addEventListener('install', (event) => {
   // No skipWaiting here: a waiting worker is what lets the app tell the person "an update is ready"
   // and swap at a moment they choose, rather than changing code under a form they are filling in.
-  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(PRECACHE)))
+  // One file missing or slow must not stop the worker installing: each is fetched on its own, and a miss is
+  // simply not cached (it is fetched normally later). `cache: 'reload'` skips the HTTP cache for a fresh copy.
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) =>
+      Promise.allSettled(PRECACHE.map((path) => cache.add(new Request(path, { cache: 'reload' })))),
+    ),
+  )
 })
 
 self.addEventListener('activate', (event) => {
@@ -32,7 +39,8 @@ self.addEventListener('activate', (event) => {
       const keep = new Set([SHELL_CACHE, ASSET_CACHE])
 
       for (const key of await caches.keys()) {
-        if (key.startsWith('mahtam-') && !keep.has(key)) await caches.delete(key)
+        // Every earlier build's caches, under today's name and the old spelling, so an installed app never piles them up.
+        if (OLD_CACHE.test(key) && !keep.has(key)) await caches.delete(key)
       }
 
       await self.clients.claim()

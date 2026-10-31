@@ -34,6 +34,21 @@ verify, deploy, and release actions implemented by the root-owned
 `/usr/local/sbin/leadflow-deploy`; arbitrary shells and Docker commands are
 refused. GitHub repository access uses a separate read-only deploy key.
 
+Install or rotate that identity once, from an existing root session, with the
+public half of the same key stored in GitHub as `VPS_SSH_KEY`:
+
+```bash
+cd /opt/leadflow-crm
+sudo ./scripts/vps/install-leadflow-deploy.sh /root/leadflow_deploy.pub
+```
+
+The installer validates the Ed25519 key and sudoers file, installs both
+root-owned command gates, removes any unrestricted occurrence of the same key,
+and writes a `restrict,command=...` authorized-key entry. It preserves unrelated
+authorized keys. Delete the temporary public-key file after its fingerprint has
+been compared with the operator copy. Keep `PRODUCTION_ENABLED=false` until the
+read-only GitHub Actions VPS audit passes.
+
 ## Routing
 
 `docker/caddy/leadflow.Caddyfile.example` routes the React SPA and Laravel API

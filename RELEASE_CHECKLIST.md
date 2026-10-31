@@ -1,4 +1,4 @@
-# RELEASE CHECKLIST — «مهتم» v0.6.1
+# RELEASE CHECKLIST — «مهتم» v0.6.2
 
 **v0.5.1 supersedes v0.5.0.** v0.5.0 was tagged before a cross-workspace leak was found and fixed (#204: the lists of
 managers and salespeople, WhatsApp approval and SLA escalation recipients, agent notes, user search and onboarding read users
@@ -10,6 +10,22 @@ supply; the feature stays honest-off until it is there) · **OPTIONAL AFTER LAUN
 The product is tested Local-only. Nothing below has been exercised against a real server; the gates
 are the repository's own suites (see "Gates" at the end). `./scripts/check-deploy-readiness.sh` reports
 which of these exist on a machine without printing any value.
+
+## v0.6.2 — guarded production delivery (2026-10-31)
+
+This patch carries the v0.6.1 public site unchanged and makes the audited shared
+VPS topology deployable without granting GitHub Actions an unrestricted shell.
+Production uses the dedicated `leadflow-deploy` identity, a forced-command
+dispatcher, a root-owned deployment gate, `/opt/leadflow-crm`, strict known-host
+verification, the existing Dockerized Caddy `web_proxy` network, bounded
+container resources, and explicit free-disk and swap gates. The public site and
+API use the single `https://mohtam.pro` origin.
+
+Before activation: install the restricted identity with
+`scripts/vps/install-leadflow-deploy.sh`, keep `PRODUCTION_ENABLED=false`, pass
+the read-only VPS audit, verify an off-server backup and restore, then run the
+manual production workflow from `main`. The release commit must be the commit
+reported by the authenticated internal health endpoint.
 
 ## v0.6.1 — the public face of مهتم (2026-10-29)
 

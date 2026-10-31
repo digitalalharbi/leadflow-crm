@@ -28,6 +28,7 @@ import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
 import { LeadFiles } from '@/components/leads/LeadFiles'
+import { LeadTasks } from '@/components/leads/LeadTasks'
 import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
 import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
@@ -664,6 +665,8 @@ export function LeadDetailPage() {
           <div id="lead-files">
             <LeadFiles lead={lead} />
           </div>
+
+          <LeadTasks leadId={lead.id} />
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>

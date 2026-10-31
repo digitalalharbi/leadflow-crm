@@ -20,7 +20,7 @@ class RoutePermission
     /** First path segment → area. */
     private const AREAS = [
         'dashboard' => 'dashboard', 'audit' => 'audit', 'insights' => 'analytics', 'anomalies' => 'analytics', 'anomaly-settings' => 'automation',
-        'leads' => 'leads', 'work' => 'leads', 'pipeline' => 'leads', 'follow-ups' => 'leads', 'qualification' => 'leads',
+        'leads' => 'leads', 'tasks' => 'leads', 'work' => 'leads', 'pipeline' => 'leads', 'follow-ups' => 'leads', 'qualification' => 'leads',
         'imports' => 'leads', 'search' => 'leads', 'data-quality' => 'leads', 'message-templates' => 'leads', 'saved-views' => 'leads',
         'appointments' => 'visits', 'reservations' => 'reservations', 'properties' => 'properties',
         'projects' => 'projects', 'companies' => 'companies',

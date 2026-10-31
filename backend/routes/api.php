@@ -81,6 +81,7 @@ use App\Http\Controllers\Api\V1\SuperAdmin\PlatformController;
 use App\Http\Controllers\Api\V1\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\V1\SuppressionController;
+use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
 use App\Http\Controllers\Api\V1\TrackingDestinationController;
@@ -284,6 +285,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/companies/{uuid}', [CompanyController::class, 'destroy']);
             Route::put('/companies/{uuid}/members', [CompanyController::class, 'members']);
             Route::get('/companies/{uuid}/projects', [CompanyController::class, 'projects']);
+
+            // Tasks
+            Route::get('/tasks', [TaskController::class, 'index']);
+            Route::post('/tasks', [TaskController::class, 'store']);
+            Route::patch('/tasks/{uuid}', [TaskController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tasks/{uuid}', [TaskController::class, 'destroy'])->whereUuid('uuid');
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);

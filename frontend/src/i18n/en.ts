@@ -1388,6 +1388,11 @@ export default {
     },
   },
 
+  tasks: {
+    title: 'Tasks', new: 'New task', due: 'Due', priority: 'Priority', add: 'Add', done: 'Done',
+    overdue: 'Overdue', unassigned: 'Unassigned', empty: 'No open tasks.',
+    priorities: { urgent: 'Urgent', high: 'High', normal: 'Normal', low: 'Low' },
+  },
   security: {
     title: 'Security', hint: 'Two-step verification with an authenticator app, and the devices you are signed in on.',
     on: 'Two-step verification on', off: 'Two-step verification off',

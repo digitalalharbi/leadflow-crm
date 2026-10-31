@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\AccountAccessController;
+use App\Http\Controllers\Api\V1\AccountSecurityController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
@@ -96,6 +97,7 @@ use App\Http\Controllers\EmailInboundController;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\RequireWorkspaceMfa;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -215,10 +217,16 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', RequireWorkspaceMfa::class, 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
+        Route::get('/auth/security', [AccountSecurityController::class, 'show']);
+        Route::post('/auth/security/mfa/setup', [AccountSecurityController::class, 'setup'])->middleware('throttle:10,1');
+        Route::post('/auth/security/mfa/confirm', [AccountSecurityController::class, 'confirm'])->middleware('throttle:10,1');
+        Route::post('/auth/security/mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:10,1');
+        Route::get('/auth/security/sessions', [AccountSecurityController::class, 'sessions']);
+        Route::delete('/auth/security/sessions/{id}', [AccountSecurityController::class, 'endSession'])->whereNumber('id');
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
         // One person in several companies: the server lists their memberships and moves the session.
         Route::get('/auth/workspaces', [WorkspaceController::class, 'index']);
@@ -258,6 +266,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/anomaly-settings', [AnomalySettingsController::class, 'update']);
             Route::get('/settings/self-approval', [SelfApprovalController::class, 'show']);
             Route::patch('/settings/self-approval', [SelfApprovalController::class, 'update']);
+            Route::patch('/settings/security', [AccountSecurityController::class, 'policy']);
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);

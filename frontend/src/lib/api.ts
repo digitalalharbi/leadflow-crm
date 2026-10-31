@@ -96,6 +96,13 @@ export function setUnauthenticatedHandler(handler: () => void) {
   onUnauthenticated = handler
 }
 
+/** Called when the workspace requires a second factor and this person has none yet. */
+let onMfaRequired: (() => void) | null = null
+
+export function setMfaRequiredHandler(handler: () => void) {
+  onMfaRequired = handler
+}
+
 /** Called when the server says the workspace's subscription is closed (402), with the state it named. */
 let onSubscriptionClosed: ((state: string) => void) | null = null
 
@@ -160,6 +167,11 @@ http.interceptors.response.use(
     if (status === 401) {
       tokenStorage.clear()
       onUnauthenticated?.()
+    }
+
+    // The workspace requires a second factor this person has not set up: send them to set it up.
+    if (status === 403 && (data?.data as { code?: string } | null | undefined)?.code === 'mfa_enrolment_required') {
+      onMfaRequired?.()
     }
 
     if (status === 402) {

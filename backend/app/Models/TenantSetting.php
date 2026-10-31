@@ -38,7 +38,7 @@ class TenantSetting extends Model
         'assignment_strategy',
         'score_warm_threshold', 'score_hot_threshold', 'first_contact_target_minutes',
         'sla_remind_after_minutes', 'sla_escalate_after_minutes', 'sla_reassign_after_minutes',
-        'whatsapp_template', 'onboarding',
+        'whatsapp_template', 'onboarding', 'require_mfa',
         'work_days', 'work_starts_at', 'work_ends_at',
         'score_priority_threshold', 'high_value_from', 'stalled_after_days',
         'sla_hot_minutes', 'sla_interested_minutes', 'sla_visit_minutes', 'sla_reservation_minutes',
@@ -53,6 +53,7 @@ class TenantSetting extends Model
     {
         return [
             'work_days' => 'array',
+            'require_mfa' => 'boolean',
             'anomaly_settings' => 'array',
             'self_approval' => 'array',
             'score_priority_threshold' => 'integer',

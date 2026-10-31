@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { queryConfig } from '@/lib/queryConfig'
 import { BrowserRouter } from 'react-router-dom'
-import { setSubscriptionClosedHandler, setUnauthenticatedHandler } from '@/lib/api'
+import { setMfaRequiredHandler, setSubscriptionClosedHandler, setUnauthenticatedHandler } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { applyAppearance, useUi } from '@/stores/ui'
 import { App } from '@/App'
@@ -49,6 +49,11 @@ setUnauthenticatedHandler(() => {
 })
 
 // A 402 anywhere: the workspace's subscription is closed. The shell swaps the page for the screen that says why.
+// One place to go when the workspace requires a second factor: the profile's security card.
+setMfaRequiredHandler(() => {
+  if (window.location.pathname !== '/profile') window.location.assign('/profile#security')
+})
+
 setSubscriptionClosedHandler((state) => {
   useAuth.getState().closeSubscription(state as never)
 })

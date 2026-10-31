@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
+use App\Domain\Auth\SecondFactor;
 use App\Domain\Billing\SubscriptionSummary;
 use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
 use App\Http\Controllers\Controller;
@@ -16,6 +17,7 @@ use App\Services\AuditLogger;
 use App\Services\Leads\PhoneLanguage;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -92,7 +94,37 @@ class AuthController extends Controller
             ]);
         }
 
+        // The password was right; an account with a second factor still needs its code before any session exists.
+        if ($refused = $this->secondFactorStep($user, $request->input('code'), $request)) {
+            return $refused;
+        }
+
         return ApiResponse::success($this->issueSession($user, $request));
+    }
+
+    /**
+     * Null when the account has no second factor or the code passed; otherwise the answer to give: "a code is needed"
+     * (no session, no hint whether the password was the problem — it was not) or a refusal for a wrong code.
+     */
+    public function secondFactorStep(User $user, mixed $code, Request $request): ?JsonResponse
+    {
+        $factor = app(SecondFactor::class);
+
+        if (! $factor->enabled($user)) {
+            return null;
+        }
+
+        if (blank($code)) {
+            return ApiResponse::success(['mfa_required' => true]);
+        }
+
+        if (! $factor->passes($user, (string) $code)) {
+            $this->audit->logForTenant((int) $user->tenant_id, 'auth.mfa_failed', $user, $user, ['ip' => $request->ip()]);
+
+            throw ValidationException::withMessages(['code' => ['That code is not valid.']]);
+        }
+
+        return null;
     }
 
     /**
@@ -122,7 +154,10 @@ class AuthController extends Controller
         $user->loadMissing('tenant.branding', 'tenant.settings');
 
         // One token per device; logging in again elsewhere does not kill this session.
-        $token = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8))->plainTextToken;
+        $issued = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8));
+        // What the person sees in their list of signed-in devices.
+        $issued->accessToken->forceFill(['ip' => $request->ip(), 'user_agent' => mb_substr((string) $request->userAgent(), 0, 255)])->save();
+        $token = $issued->plainTextToken;
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 

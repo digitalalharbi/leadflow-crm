@@ -32,6 +32,8 @@ export default {
     title: 'Could not load this',
   },
   auth: {
+    mfaCode: 'Verification code', mfaCodeHint: 'From your authenticator app, or one of your recovery codes.',
+    mfaAfterReset: 'Password changed. Sign in with the code from your authenticator app.',
     signIn: 'Sign in', signingIn: 'Signing in…', signOut: 'Sign out',
     email: 'Email', password: 'Password', currentPassword: 'Current password',
     newPassword: 'New password', confirmPassword: 'Confirm password',
@@ -1386,6 +1388,18 @@ export default {
     },
   },
 
+  security: {
+    title: 'Security', hint: 'Two-step verification with an authenticator app, and the devices you are signed in on.',
+    on: 'Two-step verification on', off: 'Two-step verification off',
+    turnOn: 'Turn on two-step verification', turnOff: 'Turn off two-step verification', confirm: 'Confirm',
+    scan: 'Add this key to your authenticator app (such as Google Authenticator or Microsoft Authenticator), then type the code it shows.',
+    openApp: 'Open in authenticator app',
+    recoveryCodes: 'Recovery codes: keep them somewhere safe; each works once in place of a code.',
+    disabled: 'Two-step verification turned off',
+    requiredNotice: 'Your workspace requires two-step verification. Turn it on to continue.',
+    requireForAll: 'Require two-step verification for every member of this workspace',
+    sessions: 'Signed-in devices', thisDevice: 'This device', endSession: 'Sign out of it', unknownDevice: 'Unknown device',
+  },
   webhooks: {
     title: 'Webhooks',
     hint: 'Tell your systems the moment a lead arrives, a visit or unit is booked, or a sale closes. Every request is signed with your own secret.',

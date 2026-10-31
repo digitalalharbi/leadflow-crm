@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Mail\EmailDnsReadiness;
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\AccountAccessController;
@@ -100,6 +101,7 @@ use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\RequireWorkspaceMfa;
+use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -611,6 +613,8 @@ Route::prefix('v1')->group(function () {
             // Is this deployment live, and what is it waiting for — and the
             // button that uses a credential once, against the real provider.
             Route::get('/readiness', [ReadinessController::class, 'workspace']);
+            // SPF / DKIM / DMARC for the sending domain, read from live DNS (never assumed).
+            Route::get('/readiness/email-dns', fn (EmailDnsReadiness $dns) => ApiResponse::success($dns->check()))->middleware('throttle:10,1');
             Route::post('/readiness/{key}/commission', [ReadinessController::class, 'commission'])
                 ->middleware('throttle:10,1');
 

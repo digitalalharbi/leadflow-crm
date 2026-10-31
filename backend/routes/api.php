@@ -80,6 +80,7 @@ use App\Http\Controllers\Api\V1\SuperAdmin\PlanController;
 use App\Http\Controllers\Api\V1\SuperAdmin\PlatformController;
 use App\Http\Controllers\Api\V1\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
+use App\Http\Controllers\Api\V1\SuppressionController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
 use App\Http\Controllers\Api\V1\TrackingDestinationController;
@@ -267,6 +268,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/settings/self-approval', [SelfApprovalController::class, 'show']);
             Route::patch('/settings/self-approval', [SelfApprovalController::class, 'update']);
             Route::patch('/settings/security', [AccountSecurityController::class, 'policy']);
+            Route::get('/settings/suppressions', [SuppressionController::class, 'index']);
+            Route::post('/settings/suppressions', [SuppressionController::class, 'store']);
+            Route::delete('/settings/suppressions/{uuid}', [SuppressionController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);

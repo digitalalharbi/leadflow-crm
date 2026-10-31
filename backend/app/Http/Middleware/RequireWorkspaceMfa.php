@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Domain\Auth\SecondFactor;
 use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
+use App\Support\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -25,7 +26,8 @@ class RequireWorkspaceMfa
     {
         $user = $request->user();
 
-        if ($user === null || $user->tenant_id === null || ! $user->tenant?->settings?->require_mfa || $this->factor->enabled($user)) {
+        // The tenant the context resolved for this request (settings usually already loaded), not a second lookup.
+        if ($user === null || $user->tenant_id === null || $this->factor->enabled($user) || ! app(TenantContext::class)->get()?->settings?->require_mfa) {
             return $next($request);
         }
 

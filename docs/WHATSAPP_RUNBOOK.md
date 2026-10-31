@@ -6,7 +6,7 @@ in behind the same interface. Each workspace connects its own number; credential
 ## Connecting a workspace
 1. Meta Business verified, a WhatsApp Business Account and a phone number (owner action).
 2. Integrations → WhatsApp: phone number ID, WABA ID, access token (system-user, permanent), app secret, verify token.
-3. In Meta's app → WhatsApp → Configuration: callback URL `https://mohtam.pro/api/v1/webhooks/whatsapp` (or the API host
+3. In Meta's app → WhatsApp → Configuration: callback URL `https://mohtam.pro/api/v1/integrations/whatsapp/webhook` (Integrations → WhatsApp shows the exact one) (or the API host
    once `api.mohtam.pro` resolves), the same verify token; subscribe to `messages`.
 4. Test connection. Templates sync from Meta; only **approved** templates can be sent outside the 24-hour window.
 

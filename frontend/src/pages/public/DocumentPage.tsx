@@ -14,8 +14,7 @@ import { cn } from '@/lib/cn'
  * A public information page — privacy, terms, data deletion, security, contact, about — from one template.
  *
  * Text only, by design: nothing here is a form, so a page cannot promise an action the backend does not
- * have. Where a fact is not confirmed yet (the legal name, the mailbox, the address) the text carries a
- * visible marker (see `Rich`), and the page says at the top that it is a draft until they are supplied.
+ * have. The service's facts (name, mailbox, phone, city, site) come from `publicInfo.ts` through `Rich`.
  */
 export function DocumentPage({ page }: { page: LegalKey }) {
   const { i18n } = useTranslation()
@@ -35,7 +34,6 @@ export function DocumentPage({ page }: { page: LegalKey }) {
   }, [location.hash, params, page])
 
   const nav = <PublicNav />
-  const incomplete = page !== 'about' && [PUBLIC_INFO.companyName, PUBLIC_INFO.email].some((value) => value === null)
 
   return (
     <PublicLayout nav={nav} active={page}>
@@ -47,14 +45,6 @@ export function DocumentPage({ page }: { page: LegalKey }) {
             {(page === 'privacy' || page === 'terms' || page === 'deletion' || page === 'security') && (
               <p className="mt-2 text-[0.9375rem] text-[var(--color-ink-muted)]" data-testid="doc-updated">
                 {lang === 'ar' ? 'آخر مراجعة: ' : 'Last reviewed: '}<time dateTime={PUBLIC_INFO.updated} dir="ltr">{PUBLIC_INFO.updated}</time>
-              </p>
-            )}
-
-            {incomplete && (
-              <p role="note" className="notice notice-warning mt-4" data-testid="doc-draft">
-                {lang === 'ar'
-                  ? 'مسودة: بعض بيانات الجهة (الاسم القانوني أو البريد الرسمي) لم تُضف بعد، وتظهر في النص بعلامة «يُضاف قبل الإطلاق».'
-                  : 'Draft: some details of the provider (legal name or official email) have not been added yet; they appear in the text marked “to be added before launch”.'}
               </p>
             )}
 

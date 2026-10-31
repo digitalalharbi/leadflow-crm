@@ -23,8 +23,8 @@ API use the single `https://mohtam.pro` origin.
 
 Before activation: install the restricted identity with
 `scripts/vps/install-leadflow-deploy.sh`, keep `PRODUCTION_ENABLED=false`, pass
-the read-only VPS audit, verify an off-server backup and restore, then run the
-manual production workflow from `main`. The release commit must be the commit
+the read-only VPS audit, verify an off-server backup and restore, then enable
+production. Every subsequent merge to `main` deploys automatically after CI. The release commit must be the commit
 reported by the authenticated internal health endpoint.
 
 ## v0.6.1 — the public face of مهتم (2026-10-29)

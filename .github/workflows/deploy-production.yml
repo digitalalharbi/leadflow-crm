@@ -4,17 +4,19 @@ name: Deploy production
 # maintainer's machine, no file upload, no copy of source onto the server: the server
 # fetches one exact commit from GitHub.
 #
-#   PR -> CI -> merge to develop -> release (merge to main) -> this workflow, run from main
+#   PR -> CI -> merge to develop -> release (merge to main) -> this workflow automatically
 #     -> CI must have passed for that exact SHA -> the server's working tree must be clean
 #     -> SSH: git fetch the SHA from GitHub -> backup -> build -> migrate -> restart
 #     -> health -> smoke -> the serving SHA is asserted.
 #
-# It is manual and approved: it never runs on a push. Someone starts it from `main`,
-# types the word "deploy", and it runs only when the owner has switched production on
+# A push/merge to `main` starts it automatically. It can also be re-run manually by
+# typing "deploy". It runs only when the owner has switched production on
 # (repository variable PRODUCTION_ENABLED=true) after the server, the domain, HTTPS,
 # the secrets and the backups exist (docs/PRODUCTION_RUNBOOK.md). Until then it says
 # PRODUCTION NOT CONFIGURED and fails clearly without contacting the VPS.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirm:
@@ -62,7 +64,7 @@ jobs:
           # The commit being shipped is one GitHub has on main.
           git merge-base --is-ancestor "$SHA" origin/main || { echo "::error title=Production deploy refused::$SHA is not on main."; exit 1; }
 
-  # A manually dispatched deploy must never go green when it shipped nothing.
+  # A deploy trigger must never go green when production is disabled.
   awaiting:
     name: Production deployment blocked
     needs: [branch]
@@ -83,7 +85,7 @@ jobs:
   confirmation:
     name: Deployment confirmation required
     needs: [branch]
-    if: vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm != 'deploy'
+    if: vars.PRODUCTION_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.event.inputs.confirm != 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -96,7 +98,7 @@ jobs:
   verify:
     name: Pre-flight verification
     needs: [branch]
-    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -165,7 +167,7 @@ jobs:
   deploy:
     name: Deploy to production VPS
     needs: [branch, verify]
-    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:

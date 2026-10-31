@@ -2,8 +2,8 @@
 # ---------------------------------------------------------------------------
 # Fails if the repository stops being the only source of a production release.
 #
-# Production has one road: PR -> CI -> develop -> main -> the "Deploy production"
-# workflow -> the server fetches one exact commit from GitHub. This checks the
+# Production has one road: PR -> CI -> develop -> main -> the automatic
+# "Deploy production" workflow -> the server fetches one exact commit from GitHub. This checks the
 # things that keep it that way, so a later change cannot quietly open a second road:
 #
 #   - nothing in the deploy path uploads or copies files (scp, rsync, ftp, sftp)
@@ -61,6 +61,7 @@ grep -q 'BRANCH" = "main"' "$PROD" && pass "deploy-production.sh refuses any bra
 
 # 4. The workflow's guards, and the smoke test after the health check.
 grep -q "refs/heads/main" "$WF" && grep -q 'Refuse any ref but main' "$WF" && pass "workflow refuses any ref but main" || fail "$WF needs an explicit refs/heads/main guard"
+[ "$(grep -c 'branches: \[main\]' "$WF")" -ge 1 ] && pass "a push to main triggers production" || fail "$WF must trigger production on pushes to main"
 [ "$(grep -c "github.ref == 'refs/heads/main'" "$WF")" -ge 2 ] && pass "verify and deploy are locked to main" || fail "the verify and deploy jobs must both require github.ref == 'refs/heads/main'"
 grep -q 'ci-is-green.sh' "$WF" && pass "workflow requires CI green for the exact SHA" || fail "$WF must run ci-is-green.sh"
 if grep -q 'leadflow-deploy verify' "$WF" \

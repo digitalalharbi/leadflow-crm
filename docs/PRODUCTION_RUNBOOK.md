@@ -13,7 +13,7 @@ One document, copy/paste in order.
 ## The one road to production
 
 ```
-PR → CI → merge to develop → release (merge to main) → "Deploy production" workflow, run from main
+PR → CI → merge to develop → release (merge to main) → automatic "Deploy production" workflow
    → CI must have passed for that exact SHA → the server's working tree must be clean
    → SSH: git fetch that SHA from GitHub → backup → build → migrate → restart
    → health → smoke → the serving SHA is asserted
@@ -207,6 +207,7 @@ cd /var/www/leads-crm/production
 
 ## 11. Deploy — the workflow
 
+Merging to **`main`** starts **Deploy production** automatically. For an explicit re-run:
 GitHub → Actions → **Deploy production** → *Run workflow* → branch **`main`** → type `deploy`.
 
 It runs, in order, and stops at the first failure:
@@ -271,5 +272,5 @@ destructively, restore the pre-deploy backup with `scripts/restore-db.sh`.
   on the Readiness screen only when that event is recorded.
 * Sentry SDK is not installed yet (`composer require sentry/sentry-laravel`
   on `develop`); until it is, error tracking reads *Not configured*.
-* Every later release is the same road: merge `develop` into `main`, CI on that commit,
-  run **Deploy production** from `main`.
+* Every later release is the same road: merge `develop` into `main`; CI passes for that commit,
+  then **Deploy production** ships it automatically.

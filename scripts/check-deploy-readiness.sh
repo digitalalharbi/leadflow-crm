@@ -103,7 +103,7 @@ say ""
 say "${BOLD}Verdict${OFF}"
 
 if [ "$MISSING" -eq 0 ]; then
-  say "  ${GREEN}Ready.${OFF} A push to develop deploys staging (once CI has passed); production is started by hand."
+  say "  ${GREEN}Ready.${OFF} A push to develop deploys staging; a push to main deploys production after CI passes."
 else
   say "  ${RED}Not ready — $MISSING required secret(s) missing.${OFF}"
   say ""

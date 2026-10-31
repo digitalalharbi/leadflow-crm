@@ -230,7 +230,7 @@ test.describe('Roles and permissions', () => {
     await page.getByTestId('invite-password').fill('Password123!')
     await page.getByTestId('invite-confirm').fill('Password123!')
     await page.getByTestId('invite-accept').click()
-    await expect(page).not.toHaveURL(/\/invite\//)
+    await expect(page).not.toHaveURL(/\/(i|invite)\//)
 
     await expect.poll(async () => (await asApi<{ project: { name: string } | null }[]>('newclient@e2e.test', '/api/v1/leads')).length).toBeGreaterThan(0)
     const seen = await asApi<{ project: { name: string } | null }[]>('newclient@e2e.test', '/api/v1/leads')

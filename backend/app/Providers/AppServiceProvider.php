@@ -179,6 +179,11 @@ class AppServiceProvider extends ServiceProvider
                 ->by($request->ip()),
         ]);
 
+        // The public API, per key (by its hash, so the limiter's store never holds a usable key), else per address.
+        RateLimiter::for('api-key', fn (Request $request) => Limit::perMinute(120)->by(
+            ($token = $request->bearerToken()) ? 'key:'.hash('sha256', $token) : 'ip:'.$request->ip()
+        ));
+
         RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(
             config('integrations.webhooks.rate_limit_per_minute')
         )->by($request->route('key').'|'.$request->ip()));

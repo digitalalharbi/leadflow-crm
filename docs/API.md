@@ -192,3 +192,22 @@ a source event.
 | Authenticated API | 120 / minute / user |
 | Login | 5 / minute / email+IP, 20 / minute / IP |
 | Webhook | `WEBHOOK_RATE_LIMIT_PER_MINUTE` (default 120) per endpoint + IP |
+
+## Public API (`/api/v1/public`) — workspace API keys
+
+A company admin creates a key under **Integrations → API keys**, choosing its scopes and an optional expiry. The full key
+(`mht_<prefix>_<secret>`) is shown once; only its SHA-256 is stored. Send it as `Authorization: Bearer mht_…`.
+
+| Method | Path | Scope | Notes |
+| --- | --- | --- | --- |
+| GET | `/public/leads?status=&project=<uuid>&updated_since=&per_page=` | `leads:read` | paginated, newest first |
+| GET | `/public/leads/{uuid}` | `leads:read` | another company's lead is a 404 |
+| POST | `/public/leads` | `leads:write` | `full_name`, `phone` or `email`, `project` (uuid), `source`, `campaign`, `external_id`, `utm_*`; deduplicated (200 + `duplicate: true`) |
+| GET | `/public/projects` | `projects:read` | |
+| GET | `/public/visits` | `visits:read` | |
+| GET | `/public/reservations` | `reservations:read` | `amount_minor` in halalas |
+| GET | `/public/revenue?from=&to=` | `revenue:read` | `revenue_minor` is `null` when no won deal has a recorded value |
+
+Rules: responses carry UUIDs only; 120 requests/minute per key; reads need the plan's `api` feature (402 otherwise);
+sending a lead in never does, so no enquiry is lost over a plan. Revoked or expired keys get 401. Key creation and
+revocation are in the audit trail (prefix only).

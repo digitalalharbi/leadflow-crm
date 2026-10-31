@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AnomalySettingsController;
+use App\Http\Controllers\Api\V1\ApiKeyController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AttributionController;
 use App\Http\Controllers\Api\V1\AuditTrailController;
@@ -58,6 +59,7 @@ use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\PropertyController;
+use App\Http\Controllers\Api\V1\PublicApiController;
 use App\Http\Controllers\Api\V1\PublicLandingController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
@@ -90,6 +92,7 @@ use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
 use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\EmailInboundController;
+use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Support\Facades\Route;
@@ -141,6 +144,17 @@ Route::prefix('v1')->group(function () {
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
+
+    // The public API: a company's own data through one of its API keys (Authorization: Bearer mht_…). No session.
+    Route::prefix('public')->middleware('throttle:api-key')->group(function () {
+        Route::get('/leads', [PublicApiController::class, 'leads'])->middleware(AuthenticateApiKey::class.':leads:read');
+        Route::post('/leads', [PublicApiController::class, 'storeLead'])->middleware(AuthenticateApiKey::class.':leads:write');
+        Route::get('/leads/{uuid}', [PublicApiController::class, 'showLead'])->middleware(AuthenticateApiKey::class.':leads:read')->whereUuid('uuid');
+        Route::get('/projects', [PublicApiController::class, 'projects'])->middleware(AuthenticateApiKey::class.':projects:read');
+        Route::get('/visits', [PublicApiController::class, 'visits'])->middleware(AuthenticateApiKey::class.':visits:read');
+        Route::get('/reservations', [PublicApiController::class, 'reservations'])->middleware(AuthenticateApiKey::class.':reservations:read');
+        Route::get('/revenue', [PublicApiController::class, 'revenue'])->middleware(AuthenticateApiKey::class.':revenue:read');
+    });
 
     // Lead ingestion. Authenticated by the per-endpoint shared secret, not a session.
     Route::prefix('integrations/webhooks/{key}')->middleware('throttle:webhook')->group(function () {
@@ -619,6 +633,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/integrations/{uuid}/webhooks', [IntegrationController::class, 'createWebhook']);
             Route::post('/webhook-endpoints/{uuid}/rotate', [IntegrationController::class, 'rotateWebhookSecret']);
             Route::delete('/webhook-endpoints/{uuid}', [IntegrationController::class, 'deleteWebhook']);
+            Route::get('/api-keys', [ApiKeyController::class, 'index']);
+            Route::post('/api-keys', [ApiKeyController::class, 'store']);
+            Route::delete('/api-keys/{uuid}', [ApiKeyController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/webhook-logs', [IntegrationController::class, 'logs']);
 
             // CSV import

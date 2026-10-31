@@ -5,6 +5,7 @@ import {
   Check, Copy, FileUp, KeyRound, RefreshCw, Sparkles, Upload, Rocket,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ApiKeysCard } from '@/components/integrations/ApiKeysCard'
 import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
 import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel'
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
@@ -271,6 +272,12 @@ export function IntegrationsPage() {
       {can.manageIntegrations(user) && (
         <div className="mb-4">
           <CallSettingsCard />
+        </div>
+      )}
+
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <ApiKeysCard />
         </div>
       )}
 

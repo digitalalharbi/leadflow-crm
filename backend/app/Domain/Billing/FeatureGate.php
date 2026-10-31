@@ -34,6 +34,7 @@ class FeatureGate
             $segments[0] === 'projects' && ($segments[2] ?? null) === 'automation-pack' => 'automations',
             $segments[0] === 'leads' && ($segments[2] ?? null) === 'automation-runs' => 'automations',
             $segments[0] === 'webhook-endpoints' && $method === 'POST' && count($segments) === 1 => 'api',
+            $segments[0] === 'api-keys' && $method === 'POST' => 'api',
             in_array($segments[0], ['report-shares', 'report-schedules', 'agent-reports'], true) => 'advanced_reports',
             $segments[0] === 'reports' && in_array($segments[1] ?? '', ['drivers', 'quality', 'campaign-quality'], true) => 'advanced_reports',
             $path === 'integrations/whatsapp' || str_starts_with($path, 'integrations/whatsapp/') => 'whatsapp',

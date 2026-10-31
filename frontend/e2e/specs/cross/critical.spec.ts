@@ -85,7 +85,7 @@ test.describe('Critical paths, in every browser', () => {
     const open = await stranger.newPage()
     const errors = collectPageErrors(open)
 
-    await open.goto(`/reports/share/${token}`)
+    await open.goto(`/r/${token}`)
     await expect(open.getByTestId('shared-title')).toBeVisible()
     await expect(open.getByTestId('shared-exec_marketing')).toBeVisible()
     await expect(open.getByTestId('shared-exec_sales')).toBeVisible()

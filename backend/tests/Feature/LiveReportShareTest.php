@@ -55,7 +55,7 @@ class LiveReportShareTest extends TestCase
     public function test_a_link_opens_the_live_numbers_without_logging_in(): void
     {
         $share = $this->make();
-        $this->assertStringContainsString('/reports/share/', $share['url']);
+        $this->assertStringContainsString('/r/', $share['url']);
         $this->assertSame('active', $share['status']);
 
         // Anonymous: no session.

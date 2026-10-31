@@ -87,6 +87,7 @@ use App\Http\Controllers\Api\V1\TrackingLinkController;
 use App\Http\Controllers\Api\V1\TwilioStatusController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
+use App\Http\Controllers\Api\V1\WebhookSubscriptionController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
@@ -636,6 +637,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/api-keys', [ApiKeyController::class, 'index']);
             Route::post('/api-keys', [ApiKeyController::class, 'store']);
             Route::delete('/api-keys/{uuid}', [ApiKeyController::class, 'destroy'])->whereUuid('uuid');
+            Route::get('/webhook-subscriptions', [WebhookSubscriptionController::class, 'index']);
+            Route::post('/webhook-subscriptions', [WebhookSubscriptionController::class, 'store']);
+            Route::patch('/webhook-subscriptions/{uuid}', [WebhookSubscriptionController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/webhook-subscriptions/{uuid}', [WebhookSubscriptionController::class, 'destroy'])->whereUuid('uuid');
+            Route::post('/webhook-subscriptions/{uuid}/rotate', [WebhookSubscriptionController::class, 'rotate'])->whereUuid('uuid');
+            Route::post('/webhook-subscriptions/{uuid}/test', [WebhookSubscriptionController::class, 'test'])->whereUuid('uuid');
+            Route::get('/webhook-subscriptions/{uuid}/deliveries', [WebhookSubscriptionController::class, 'deliveries'])->whereUuid('uuid');
+            Route::post('/webhook-deliveries/{uuid}/replay', [WebhookSubscriptionController::class, 'replay'])->whereUuid('uuid');
             Route::get('/webhook-logs', [IntegrationController::class, 'logs']);
 
             // CSV import

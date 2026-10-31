@@ -768,6 +768,7 @@ export default {
       'lead.no_reply': 'No reply',
       'lead.score_changed': 'Score changed',
       'lead.appointment_created': 'Appointment booked',
+      'lead.reservation_created': 'Unit reserved',
       'lead.call_completed': 'Call completed',
       'lead.re_engaged': 'Known lead came back',
       'lead.sla_breached': 'First-contact SLA breached',
@@ -1385,6 +1386,21 @@ export default {
     },
   },
 
+  webhooks: {
+    title: 'Webhooks',
+    hint: 'Tell your systems the moment a lead arrives, a visit or unit is booked, or a sale closes. Every request is signed with your own secret.',
+    name: 'Name', url: 'Receiving address (HTTPS)', events: 'Events', create: 'Add',
+    secretOnce: 'Copy the signing secret now: it will not be shown again.',
+    test: 'Test connection', testOk: 'Test delivered', testFailed: 'Test not delivered: {{reason}}',
+    pause: 'Pause', resume: 'Resume', log: 'Log', delete: 'Delete', replay: 'Resend',
+    empty: 'No addresses yet.', noDeliveries: 'Nothing sent yet.',
+    health: { healthy: 'Healthy', error: 'Error', paused: 'Paused after failures', disabled: 'Off', awaiting: 'Awaiting first event' },
+    status: { pending: 'Sending', succeeded: 'Delivered', failed: 'Failed' },
+    event: {
+      lead_created: 'New lead', lead_updated: 'Stage changed', lead_qualified: 'Lead qualified', lead_interested: 'Became interested',
+      lead_assigned: 'Lead assigned', visit_created: 'Visit booked', reservation_created: 'Unit reserved', sale_created: 'Sale closed', lead_lost: 'Lost',
+    },
+  },
   apiKeys: {
     title: 'API keys',
     hint: 'Keys that open your company\u2019s data to your other systems through the API, each with only the permissions you choose.',

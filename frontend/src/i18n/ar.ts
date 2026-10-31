@@ -867,6 +867,7 @@ export default {
       'lead.no_reply': 'لا رد',
       'lead.score_changed': 'عند تغيّر التقييم',
       'lead.appointment_created': 'عند حجز موعد',
+      'lead.reservation_created': 'عند حجز وحدة',
       'lead.call_completed': 'بعد انتهاء مكالمة',
       'lead.re_engaged': 'عند عودة عميل معروف',
       'lead.sla_breached': 'عند تجاوز مهلة أول تواصل',
@@ -1543,6 +1544,21 @@ export default {
     },
   },
 
+  webhooks: {
+    title: 'إشعارات الأنظمة الأخرى (Webhooks)',
+    hint: 'أخبر أنظمتك فور وصول عميل أو حجز زيارة أو وحدة أو إتمام بيع. كل طلب موقّع بسرّ خاص بك.',
+    name: 'الاسم', url: 'عنوان الاستقبال (HTTPS)', events: 'الأحداث', create: 'إضافة',
+    secretOnce: 'انسخ سرّ التوقيع الآن: لن يظهر مرة أخرى.',
+    test: 'اختبار الاتصال', testOk: 'وصل الاختبار بنجاح', testFailed: 'لم يصل الاختبار: {{reason}}',
+    pause: 'إيقاف مؤقت', resume: 'تشغيل', log: 'السجل', delete: 'حذف', replay: 'إعادة الإرسال',
+    empty: 'لا توجد عناوين بعد.', noDeliveries: 'لم يُرسل شيء بعد.',
+    health: { healthy: 'سليم', error: 'خطأ', paused: 'متوقف بعد إخفاقات', disabled: 'موقوف', awaiting: 'بانتظار أول حدث' },
+    status: { pending: 'قيد الإرسال', succeeded: 'وصل', failed: 'فشل' },
+    event: {
+      lead_created: 'عميل جديد', lead_updated: 'تغيّرت المرحلة', lead_qualified: 'تأهّل العميل', lead_interested: 'أصبح مهتمًا',
+      lead_assigned: 'أُسند العميل', visit_created: 'حُجزت زيارة', reservation_created: 'حُجزت وحدة', sale_created: 'تمّ البيع', lead_lost: 'خسارة',
+    },
+  },
   apiKeys: {
     title: 'مفاتيح الواجهة البرمجية',
     hint: 'مفاتيح تفتح بيانات شركتك لأنظمتك الأخرى عبر الواجهة البرمجية، كلٌّ بالصلاحيات التي تختارها فقط.',

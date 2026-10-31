@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiKeysCard } from '@/components/integrations/ApiKeysCard'
+import { WebhooksCard } from '@/components/integrations/WebhooksCard'
 import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
 import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel'
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
@@ -278,6 +279,12 @@ export function IntegrationsPage() {
       {can.manageIntegrations(user) && (
         <div className="mb-4">
           <ApiKeysCard />
+        </div>
+      )}
+
+      {can.manageIntegrations(user) && (
+        <div className="mb-4">
+          <WebhooksCard />
         </div>
       )}
 

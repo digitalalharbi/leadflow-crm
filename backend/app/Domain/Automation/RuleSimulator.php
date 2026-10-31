@@ -234,6 +234,7 @@ class RuleSimulator
             'lead.stage_changed' => $activity(['status_changed']),
             'lead.score_changed' => $activity(['score_changed']),
             'lead.appointment_created' => $activity(['appointment_created']),
+            'lead.reservation_created' => $activity(['reservation_created']),
             'lead.re_engaged' => $activity(['re_engaged']),
             'lead.call_completed', 'lead.outcome_recorded' => $activity(['called', 'no_answer']),
             'lead.no_reply' => $column('handed_off_at', fn ($q) => $q->where('needs_human_reason', 'no_reply')),

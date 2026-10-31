@@ -211,3 +211,18 @@ A company admin creates a key under **Integrations → API keys**, choosing its 
 Rules: responses carry UUIDs only; 120 requests/minute per key; reads need the plan's `api` feature (402 otherwise);
 sending a lead in never does, so no enquiry is lost over a plan. Revoked or expired keys get 401. Key creation and
 revocation are in the audit trail (prefix only).
+
+## Outbound webhooks
+
+A company admin adds a receiving address under **Integrations → Webhooks** (HTTPS, public host) and picks events:
+`lead.created`, `lead.updated` (stage change), `lead.qualified`, `lead.interested` (interest crossed into interested or
+above), `lead.assigned`, `visit.created`, `reservation.created`, `sale.created`, `lead.lost`.
+
+Each POST carries `{id, event, occurred_at, data}` with UUIDs only, and these headers:
+- `X-Mohtam-Event`
+- `X-Mohtam-Event-Id` — the idempotency key; a replay reuses it.
+- `X-Mohtam-Signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<raw body>">`, keyed with the subscription secret (shown once; rotatable).
+
+Verify the HMAC and reject a `t` older than five minutes. Failed deliveries are retried after 1 min, 5 min, 30 min, 2 h
+and 6 h. After 15 failed deliveries in a row the subscription pauses itself (audited as `webhook.paused`); resuming it
+closes the breaker. Every delivery is logged and a failed one can be resent. No redirects are followed.

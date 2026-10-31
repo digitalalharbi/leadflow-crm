@@ -48,7 +48,7 @@ class AutomationRuleController extends Controller
         // What the customer did, and what did not happen.
         'lead.sheet_row', 'lead.email_opened', 'lead.email_clicked', 'lead.file_opened',
         'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
-        'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed',
+        'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed', 'lead.reservation_created',
     ];
 
     private const FIELDS = [

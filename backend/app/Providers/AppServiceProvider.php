@@ -15,6 +15,7 @@ use App\Domain\Git\GitProviderRegistry;
 use App\Events\Contracts\LeadDomainEvent;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Listeners\BroadcastLeadChange;
+use App\Listeners\DispatchOutboundWebhooks;
 use App\Listeners\RecordConversionOutcome;
 use App\Listeners\RecordMarketingEvents;
 use App\Listeners\RunAutomationRules;
@@ -124,6 +125,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(LeadDomainEvent::class, RecordConversionOutcome::class);
         Event::listen(LeadDomainEvent::class, RecordMarketingEvents::class);
         Event::listen(LeadDomainEvent::class, BroadcastLeadChange::class);
+        Event::listen(LeadDomainEvent::class, DispatchOutboundWebhooks::class);
 
         // Mass-assignment protection stays on; we also fail loudly in dev when a
         // relation is accessed without eager loading, so N+1s never reach staging.

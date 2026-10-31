@@ -77,7 +77,7 @@ class ReportShare extends Model
 
     public function url(): string
     {
-        return rtrim((string) config('integrations.app_url'), '/').'/reports/share/'.$this->token();
+        return rtrim((string) config('integrations.app_url'), '/').'/r/'.$this->token();
     }
 
     public function setPassword(?string $password): void

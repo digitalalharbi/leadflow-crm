@@ -193,6 +193,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         {/* Into an account without a password in hand: an invitation, a first password, a forgotten one. */}
         <Route path="/invite/:token" element={<Suspense fallback={<PageFallback />}><InvitationPage /></Suspense>} />
+        <Route path="/i/:token" element={<Suspense fallback={<PageFallback />}><InvitationPage /></Suspense>} />
         <Route path="/set-password/:token" element={<Suspense fallback={<PageFallback />}><SetPasswordPage /></Suspense>} />
         <Route path="/forgot-password" element={<Suspense fallback={<PageFallback />}><ForgotPasswordPage /></Suspense>} />
         {/* The platform owner's own door; a company's login never signs the owner in. */}
@@ -211,6 +212,8 @@ export function App() {
         <Route path="/l/:token" element={<Suspense fallback={<PageFallback />}><LeadPage /></Suspense>} />
         {/* A live report behind a link: no session, no app chrome. */}
         <Route path="/reports/share/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
+        {/* The canonical short forms a client receives: /r for a report, /i for an invitation. The long ones keep working. */}
+        <Route path="/r/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
 
         <Route
           element={

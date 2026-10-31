@@ -1,12 +1,15 @@
 <?php
 
+use App\Domain\Mail\EmailDnsReadiness;
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\AccountAccessController;
+use App\Http\Controllers\Api\V1\AccountSecurityController;
 use App\Http\Controllers\Api\V1\ActionProposalController;
 use App\Http\Controllers\Api\V1\AdConnectionController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\AnomalySettingsController;
+use App\Http\Controllers\Api\V1\ApiKeyController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\AttributionController;
 use App\Http\Controllers\Api\V1\AuditTrailController;
@@ -58,6 +61,7 @@ use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\PropertyController;
+use App\Http\Controllers\Api\V1\PublicApiController;
 use App\Http\Controllers\Api\V1\PublicLandingController;
 use App\Http\Controllers\Api\V1\QualificationController;
 use App\Http\Controllers\Api\V1\ReadinessController;
@@ -77,6 +81,8 @@ use App\Http\Controllers\Api\V1\SuperAdmin\PlanController;
 use App\Http\Controllers\Api\V1\SuperAdmin\PlatformController;
 use App\Http\Controllers\Api\V1\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\Api\V1\SuperAdmin\TenantController;
+use App\Http\Controllers\Api\V1\SuppressionController;
+use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TestLeadController;
 use App\Http\Controllers\Api\V1\TrackBeaconController;
 use App\Http\Controllers\Api\V1\TrackingDestinationController;
@@ -85,13 +91,17 @@ use App\Http\Controllers\Api\V1\TrackingLinkController;
 use App\Http\Controllers\Api\V1\TwilioStatusController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WebhookController;
+use App\Http\Controllers\Api\V1\WebhookSubscriptionController;
 use App\Http\Controllers\Api\V1\WhatsappSettingsController;
 use App\Http\Controllers\Api\V1\WhatsappWebhookController;
 use App\Http\Controllers\Api\V1\WorkQueueController;
 use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\EmailInboundController;
+use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\RequireWorkspaceMfa;
+use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -141,6 +151,17 @@ Route::prefix('v1')->group(function () {
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
+
+    // The public API: a company's own data through one of its API keys (Authorization: Bearer mht_…). No session.
+    Route::prefix('public')->middleware('throttle:api-key')->group(function () {
+        Route::get('/leads', [PublicApiController::class, 'leads'])->middleware(AuthenticateApiKey::class.':leads:read');
+        Route::post('/leads', [PublicApiController::class, 'storeLead'])->middleware(AuthenticateApiKey::class.':leads:write');
+        Route::get('/leads/{uuid}', [PublicApiController::class, 'showLead'])->middleware(AuthenticateApiKey::class.':leads:read')->whereUuid('uuid');
+        Route::get('/projects', [PublicApiController::class, 'projects'])->middleware(AuthenticateApiKey::class.':projects:read');
+        Route::get('/visits', [PublicApiController::class, 'visits'])->middleware(AuthenticateApiKey::class.':visits:read');
+        Route::get('/reservations', [PublicApiController::class, 'reservations'])->middleware(AuthenticateApiKey::class.':reservations:read');
+        Route::get('/revenue', [PublicApiController::class, 'revenue'])->middleware(AuthenticateApiKey::class.':revenue:read');
+    });
 
     // Lead ingestion. Authenticated by the per-endpoint shared secret, not a session.
     Route::prefix('integrations/webhooks/{key}')->middleware('throttle:webhook')->group(function () {
@@ -200,10 +221,16 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', RequireWorkspaceMfa::class, 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
+        Route::get('/auth/security', [AccountSecurityController::class, 'show']);
+        Route::post('/auth/security/mfa/setup', [AccountSecurityController::class, 'setup'])->middleware('throttle:10,1');
+        Route::post('/auth/security/mfa/confirm', [AccountSecurityController::class, 'confirm'])->middleware('throttle:10,1');
+        Route::post('/auth/security/mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:10,1');
+        Route::get('/auth/security/sessions', [AccountSecurityController::class, 'sessions']);
+        Route::delete('/auth/security/sessions/{id}', [AccountSecurityController::class, 'endSession'])->whereNumber('id');
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
         // One person in several companies: the server lists their memberships and moves the session.
         Route::get('/auth/workspaces', [WorkspaceController::class, 'index']);
@@ -243,6 +270,10 @@ Route::prefix('v1')->group(function () {
             Route::patch('/anomaly-settings', [AnomalySettingsController::class, 'update']);
             Route::get('/settings/self-approval', [SelfApprovalController::class, 'show']);
             Route::patch('/settings/self-approval', [SelfApprovalController::class, 'update']);
+            Route::patch('/settings/security', [AccountSecurityController::class, 'policy']);
+            Route::get('/settings/suppressions', [SuppressionController::class, 'index']);
+            Route::post('/settings/suppressions', [SuppressionController::class, 'store']);
+            Route::delete('/settings/suppressions/{uuid}', [SuppressionController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/projects/{uuid}/questions', [ProjectQuestionController::class, 'index']);
             Route::post('/projects/{uuid}/questions', [ProjectQuestionController::class, 'store']);
             Route::post('/projects/{uuid}/questions/real-estate', [ProjectQuestionController::class, 'seedRealEstate']);
@@ -256,6 +287,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/companies/{uuid}', [CompanyController::class, 'destroy']);
             Route::put('/companies/{uuid}/members', [CompanyController::class, 'members']);
             Route::get('/companies/{uuid}/projects', [CompanyController::class, 'projects']);
+
+            // Tasks
+            Route::get('/tasks', [TaskController::class, 'index']);
+            Route::post('/tasks', [TaskController::class, 'store']);
+            Route::patch('/tasks/{uuid}', [TaskController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/tasks/{uuid}', [TaskController::class, 'destroy'])->whereUuid('uuid');
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
@@ -576,6 +613,8 @@ Route::prefix('v1')->group(function () {
             // Is this deployment live, and what is it waiting for — and the
             // button that uses a credential once, against the real provider.
             Route::get('/readiness', [ReadinessController::class, 'workspace']);
+            // SPF / DKIM / DMARC for the sending domain, read from live DNS (never assumed).
+            Route::get('/readiness/email-dns', fn (EmailDnsReadiness $dns) => ApiResponse::success($dns->check()))->middleware('throttle:10,1');
             Route::post('/readiness/{key}/commission', [ReadinessController::class, 'commission'])
                 ->middleware('throttle:10,1');
 
@@ -619,6 +658,17 @@ Route::prefix('v1')->group(function () {
             Route::post('/integrations/{uuid}/webhooks', [IntegrationController::class, 'createWebhook']);
             Route::post('/webhook-endpoints/{uuid}/rotate', [IntegrationController::class, 'rotateWebhookSecret']);
             Route::delete('/webhook-endpoints/{uuid}', [IntegrationController::class, 'deleteWebhook']);
+            Route::get('/api-keys', [ApiKeyController::class, 'index']);
+            Route::post('/api-keys', [ApiKeyController::class, 'store']);
+            Route::delete('/api-keys/{uuid}', [ApiKeyController::class, 'destroy'])->whereUuid('uuid');
+            Route::get('/webhook-subscriptions', [WebhookSubscriptionController::class, 'index']);
+            Route::post('/webhook-subscriptions', [WebhookSubscriptionController::class, 'store']);
+            Route::patch('/webhook-subscriptions/{uuid}', [WebhookSubscriptionController::class, 'update'])->whereUuid('uuid');
+            Route::delete('/webhook-subscriptions/{uuid}', [WebhookSubscriptionController::class, 'destroy'])->whereUuid('uuid');
+            Route::post('/webhook-subscriptions/{uuid}/rotate', [WebhookSubscriptionController::class, 'rotate'])->whereUuid('uuid');
+            Route::post('/webhook-subscriptions/{uuid}/test', [WebhookSubscriptionController::class, 'test'])->whereUuid('uuid');
+            Route::get('/webhook-subscriptions/{uuid}/deliveries', [WebhookSubscriptionController::class, 'deliveries'])->whereUuid('uuid');
+            Route::post('/webhook-deliveries/{uuid}/replay', [WebhookSubscriptionController::class, 'replay'])->whereUuid('uuid');
             Route::get('/webhook-logs', [IntegrationController::class, 'logs']);
 
             // CSV import

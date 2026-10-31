@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Deployment health gate. Reports component status only — no versions, no
@@ -31,9 +33,14 @@ class HealthController extends Controller
             'queue' => $this->check(fn () => Redis::connection(
                 config('queue.connections.'.config('queue.default').'.connection', 'default')
             )->ping() !== false),
+            // Uploads, exports and brochures live here: a full or read-only disk breaks them while everything else looks fine.
+            'storage' => $this->check(fn () => $this->storageWritable()),
         ];
 
         $healthy = ! in_array('error', $checks, true);
+
+        // Live updates are reported but do not fail the gate: without them every screen still works, it just refreshes on load.
+        $checks['realtime'] = config('broadcasting.default') === 'reverb' ? $this->check(fn () => $this->reverbListening()) : 'off';
 
         $data = ['status' => $healthy ? 'healthy' : 'degraded', 'checks' => $checks];
 
@@ -73,6 +80,34 @@ class HealthController extends Controller
         $sha = trim((string) file_get_contents($path));
 
         return preg_match('/^[0-9a-f]{40}$/', $sha) === 1 ? $sha : null;
+    }
+
+    private function storageWritable(): bool
+    {
+        $disk = Storage::disk(config('filesystems.default'));
+        $probe = '.health/'.Str::random(16);
+
+        try {
+            return $disk->put($probe, 'ok') && $disk->get($probe) === 'ok';
+        } finally {
+            $disk->delete($probe);
+        }
+    }
+
+    /** The Reverb server accepts a connection on its own port (no handshake: that is the browser's business). */
+    private function reverbListening(): bool
+    {
+        $server = config('reverb.servers.'.config('reverb.default', 'reverb'), []);
+        $host = in_array($server['host'] ?? '', ['0.0.0.0', '', '::'], true) ? '127.0.0.1' : $server['host'];
+        $socket = @fsockopen($host, (int) ($server['port'] ?? 8080), $errno, $errstr, 1.0);
+
+        if ($socket === false) {
+            return false;
+        }
+
+        fclose($socket);
+
+        return true;
     }
 
     private function check(callable $probe): string

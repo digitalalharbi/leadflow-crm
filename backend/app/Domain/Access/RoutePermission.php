@@ -20,7 +20,7 @@ class RoutePermission
     /** First path segment → area. */
     private const AREAS = [
         'dashboard' => 'dashboard', 'audit' => 'audit', 'insights' => 'analytics', 'anomalies' => 'analytics', 'anomaly-settings' => 'automation',
-        'leads' => 'leads', 'work' => 'leads', 'pipeline' => 'leads', 'follow-ups' => 'leads', 'qualification' => 'leads',
+        'leads' => 'leads', 'tasks' => 'leads', 'work' => 'leads', 'pipeline' => 'leads', 'follow-ups' => 'leads', 'qualification' => 'leads',
         'imports' => 'leads', 'search' => 'leads', 'data-quality' => 'leads', 'message-templates' => 'leads', 'saved-views' => 'leads',
         'appointments' => 'visits', 'reservations' => 'reservations', 'properties' => 'properties',
         'projects' => 'projects', 'companies' => 'companies',
@@ -29,7 +29,7 @@ class RoutePermission
         'client-rules' => 'campaigns', 'conversions' => 'campaigns',
         'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share', 'report-schedules' => 'reports_share', 'email-deliveries' => 'reports_share',
         'automation' => 'automation', 'scheduled-actions' => 'automation',
-        'integrations' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
+        'integrations' => 'integrations', 'api-keys' => 'integrations', 'webhook-subscriptions' => 'integrations', 'webhook-deliveries' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
         'users' => 'users', 'invitations' => 'users', 'access' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
     ];
 

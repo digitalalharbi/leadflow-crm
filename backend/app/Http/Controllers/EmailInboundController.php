@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Automation\Recovery;
+use App\Domain\Privacy\SuppressionList;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -243,6 +244,10 @@ class EmailInboundController extends Controller
             ])->save();
 
             $lead->forceFill(['email_bounced_at' => now()])->saveQuietly();
+
+            if ($lead->email) {
+                app(SuppressionList::class)->add($lead->tenant_id, 'email', $lead->email, 'bounced', null, Str::limit((string) ($event['reason'] ?? ''), 200, ''));
+            }
             $this->activities->log($lead, ActivityType::EmailBounced, null, Str::limit((string) ($event['reason'] ?? ''), 140));
 
             // An automated email that bounced: the same message on WhatsApp, else a person.

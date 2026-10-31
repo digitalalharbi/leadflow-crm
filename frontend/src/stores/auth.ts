@@ -44,7 +44,8 @@ interface AuthState {
   impersonation: { reason: string; expires_at: string } | null
   /** null until the first /me call settles, so the router can hold the redirect. */
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
-  login: (credentials: { email: string; password: string; tenant?: string }) => Promise<void>
+  /** Resolves `mfa` when the account has a second factor and no (valid) code was sent yet. */
+  login: (credentials: { email: string; password: string; tenant?: string; code?: string }) => Promise<'ok' | 'mfa'>
   /** The platform owner's own door. Resolves `mfa` when a code is still needed. */
   loginPlatform: (credentials: { email: string; password: string; code?: string }) => Promise<'ok' | 'mfa'>
   logout: () => Promise<void>
@@ -68,7 +69,9 @@ export const useAuth = create<AuthState>((set) => ({
   status: 'idle',
 
   login: async (credentials) => {
-    const data = await apiPost<LoginResponse>('/auth/login', credentials)
+    const data = await apiPost<LoginResponse | { mfa_required: true }>('/auth/login', credentials)
+
+    if ('mfa_required' in data) return 'mfa'
 
     tokenStorage.set(data.token)
 
@@ -80,6 +83,8 @@ export const useAuth = create<AuthState>((set) => ({
       subscription: data.subscription ?? null,
       status: 'authenticated',
     })
+
+    return 'ok'
   },
 
   loginPlatform: async (credentials) => {

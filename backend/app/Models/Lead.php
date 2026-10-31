@@ -6,6 +6,7 @@ use App\Domain\Automation\ActionLog;
 use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Leads\InterestEngine;
 use App\Domain\Notifications\ImportantAlerts;
+use App\Domain\Privacy\SuppressionList;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
 use App\Domain\Visits\VisitWorkflow;
@@ -70,6 +71,9 @@ class Lead extends Model
         static::addGlobalScope(new CompanyScope);
 
         static::saved(fn (self $lead) => ImportantAlerts::leadSaved($lead));
+
+        // A number or address on the company's do-not-contact list arrives already opted out.
+        static::creating(fn (self $lead) => app(SuppressionList::class)->applyTo($lead));
 
         static::saving(function (self $lead) {
             // The clock "time in stage" reads. A new lead starts it on arrival.

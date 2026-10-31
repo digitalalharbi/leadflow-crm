@@ -64,7 +64,7 @@ test.describe('Public pages', () => {
 
     await expect(page.getByText(/لا يوجد نموذج إلكتروني/)).toBeVisible()
     await expect(page.locator('main li').filter({ hasText: /^[1-4]\. / })).toHaveCount(4)
-    await expect(page.getByTestId('doc-draft')).toBeVisible()
+    await expect(page.getByTestId('page-deletion')).toContainText('info@mohtam.pro')
   })
 
   test('security: names only what exists, and says plainly which certifications are not held', async ({ page }) => {
@@ -78,11 +78,15 @@ test.describe('Public pages', () => {
     expect(body.replace(claims, '')).not.toMatch(/SOC ?2|ISO ?27001|PCI|GDPR/)
   })
 
-  test('where the deployment has not supplied the legal name or mailbox, the page says so in plain sight', async ({ page }) => {
-    await ready(page, '/privacy')
+  test('the official facts stand where placeholders used to: name, mailbox, phone, city, site', async ({ page }) => {
+    for (const path of ['/privacy', '/contact']) {
+      await ready(page, path)
+      const body = await page.locator('main').innerText()
 
-    expect(await page.getByTestId('to-add').count()).toBeGreaterThan(0)
-    await expect(page.getByTestId('doc-draft')).toBeVisible()
+      for (const fact of ['info@mohtam.pro', '+966 53 211 5582', 'الرياض، المملكة العربية السعودية', 'mohtam.pro']) expect(body, path).toContain(fact)
+      expect(body, path).not.toMatch(/يُضاف قبل الإطلاق|example\.com/)
+      await expect(page.getByTestId('doc-draft')).toHaveCount(0)
+    }
   })
 
   test('the footer reaches the six pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
@@ -101,7 +105,7 @@ test.describe('Public pages', () => {
     await expect(skip).toBeFocused()
     await expect(skip).toBeInViewport()
 
-    const hrefs = await page.getByTestId('public-footer').getByRole('link').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
+    const hrefs = await page.getByTestId('public-footer').getByRole('navigation').getByRole('link').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
     expect(hrefs).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
   })
 

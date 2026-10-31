@@ -46,6 +46,11 @@ class WorkspaceController extends Controller
             throw ValidationException::withMessages(['workspace' => ['You are already in this workspace.']]);
         }
 
+        // The account in the other company may have its own second factor: being signed in here does not prove it.
+        if ($refused = app(AuthController::class)->secondFactorStep($target, $request->input('code'), $request)) {
+            return $refused;
+        }
+
         $this->audit->log('auth.workspace_left', $user, null, ['to' => $target->tenant->slug]);
         $this->audit->logForTenant($target->tenant_id, 'auth.workspace_entered', $target, $target, ['from_session' => true]);
 

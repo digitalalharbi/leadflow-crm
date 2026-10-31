@@ -47,7 +47,9 @@ export function artisan(args: string[], env: Record<string, string> = {}): strin
 export function linkFromEmail(email: string, path: 'invite' | 'set-password'): string {
   const php = `echo App\\Models\\EmailDelivery::withoutGlobalScopes()->where('to_email', ${JSON.stringify(email.toLowerCase()).replace(/"/g, "'")})->latest('id')->value('html');`
   const html = execFileSync('php', ['artisan', 'tinker', `--execute=${php}`], { cwd: backendDir, encoding: 'utf8', timeout: 60_000, input: '' })
-  const match = html.match(new RegExp(`/${path}/([A-Za-z0-9]{48})`))
+  // An invitation is emailed as the short /i/ link; the long /invite/ form is still read for older mail.
+  const prefix = path === 'invite' ? '(?:invite|i)' : path
+  const match = html.match(new RegExp(`/${prefix}/([A-Za-z0-9]{48})`))
 
   if (!match) throw new Error(`No ${path} link was emailed to ${email}`)
 

@@ -26,11 +26,14 @@ describe('public information pages', () => {
     expect(container.querySelector('form, input, textarea, select')).toBeNull()
   })
 
-  it('shows a visible marker, not an invented value, where the deployment has not supplied a fact', () => {
-    renderWithProviders(<DocumentPage page="privacy" />)
+  it('carries the official facts and no placeholder marker', () => {
+    const { container } = renderWithProviders(<DocumentPage page="privacy" />)
 
-    expect(screen.getAllByTestId('to-add').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('doc-draft')).toBeInTheDocument()
+    expect(container.textContent).toContain('info@mohtam.pro')
+    expect(container.textContent).toContain('+966 53 211 5582')
+    expect(container.textContent).toContain('الرياض، المملكة العربية السعودية')
+    expect(container.textContent).not.toMatch(/يُضاف قبل الإطلاق|to be added before launch|example\.com/)
+    expect(screen.queryByTestId('doc-draft')).toBeNull()
   })
 
   it('every section has an id and a table-of-contents entry that leads to it', () => {
@@ -135,9 +138,11 @@ describe('landing page', () => {
   it('footer links lead to the six public pages', () => {
     renderWithProviders(<LandingPage />)
 
-    const links = within(screen.getByTestId('public-footer')).getAllByRole('link').map((a) => a.getAttribute('href'))
+    const footer = screen.getByTestId('public-footer')
+    const links = within(within(footer).getByRole('navigation')).getAllByRole('link').map((a) => a.getAttribute('href'))
 
     expect(links).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
+    expect(within(screen.getByTestId('footer-contact')).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['mailto:info@mohtam.pro', 'tel:+966532115582'])
   })
 })
 

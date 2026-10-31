@@ -56,6 +56,15 @@ describe('auth store', () => {
     expect(useAuth.getState().user?.role).toBe('admin')
   })
 
+  it('asks for the code, and stores nothing, when the account has a second factor', async () => {
+    vi.mocked(apiPost).mockResolvedValueOnce({ mfa_required: true } as never)
+
+    await expect(useAuth.getState().login({ email: 'a@b.test', password: 'secret' })).resolves.toBe('mfa')
+
+    expect(tokenStorage.get()).toBeNull()
+    expect(useAuth.getState().status).toBe('idle')
+  })
+
   it('goes straight to anonymous when there is no stored token', async () => {
     await useAuth.getState().restore()
 

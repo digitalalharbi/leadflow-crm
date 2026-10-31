@@ -24,7 +24,7 @@
                 <tr>
                     <td style="padding:12px 20px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;">
                         @yield('footer')
-                        <p style="margin:10px 0 0;color:#9ca3af;font-size:11px;">مهتم — {{ \App\Support\Brand::TAGLINE_AR }} · <a href="https://{{ \App\Support\Brand::DOMAIN }}" style="color:#1D5E52;text-decoration:none;">{{ \App\Support\Brand::DOMAIN }}</a></p>
+                        <p style="margin:10px 0 0;color:#9ca3af;font-size:11px;">مهتم — {{ \App\Support\Brand::TAGLINE_AR }} · <a href="https://{{ \App\Support\Brand::DOMAIN }}" style="color:#1D5E52;text-decoration:none;">{{ \App\Support\Brand::DOMAIN }}</a> · <a href="mailto:{{ \App\Support\Brand::EMAIL }}" style="color:#1D5E52;text-decoration:none;">{{ \App\Support\Brand::EMAIL }}</a></p>
                     </td>
                 </tr>
             </table>

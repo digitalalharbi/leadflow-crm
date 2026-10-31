@@ -18,7 +18,7 @@ return [
      * into null at runtime, which is how a default password slips into production.
      */
     'super_admin' => [
-        'email' => env('SUPER_ADMIN_EMAIL', 'owner@example.com'),
+        'email' => env('SUPER_ADMIN_EMAIL', 'info@mohtam.pro'),
         'name' => env('SUPER_ADMIN_NAME', 'Platform Owner'),
         'password' => env('SUPER_ADMIN_PASSWORD'),
     ],

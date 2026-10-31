@@ -24,10 +24,23 @@ class HealthEndpointTest extends TestCase
 
         $this->assertSame('healthy', $body['status']);
 
-        foreach (['application', 'database', 'redis', 'queue'] as $component) {
+        foreach (['application', 'database', 'redis', 'queue', 'storage'] as $component) {
             $this->assertArrayHasKey($component, $body['checks'], "'{$component}' is not checked.");
             $this->assertSame('ok', $body['checks'][$component]);
         }
+    }
+
+    public function test_realtime_is_reported_but_does_not_fail_the_gate(): void
+    {
+        config(['broadcasting.default' => 'reverb', 'reverb.servers.reverb.host' => '127.0.0.1', 'reverb.servers.reverb.port' => 1]);
+
+        $body = $this->getJson('/api/health')->assertOk()->json('data');
+
+        $this->assertSame('healthy', $body['status']);
+        $this->assertSame('error', $body['checks']['realtime']);
+
+        config(['broadcasting.default' => 'null']);
+        $this->assertSame('off', $this->getJson('/api/health')->json('data.checks.realtime'));
     }
 
     public function test_it_never_leaks_the_release_to_an_anonymous_caller(): void

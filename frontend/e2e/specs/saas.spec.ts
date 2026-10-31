@@ -100,11 +100,11 @@ test.describe('SaaS', () => {
     } finally {
       await beta.dispose()
     }
-    await page.goto(`/invite/${linkFromEmail(ALPHA.admin.email, 'invite')}`)
+    await page.goto(`/i/${linkFromEmail(ALPHA.admin.email, 'invite')}`)
     await expect(page.getByTestId('invite-company')).toContainText(BETA.companyName)
     await page.getByTestId('invite-password').fill(PASSWORD)
     await page.getByTestId('invite-accept').click()
-    await expect(page).not.toHaveURL(/\/invite\//)
+    await expect(page).not.toHaveURL(/\/(i|invite)\//)
 
     // Now in BETA: BETA's lead is there.
     await page.goto('/leads')

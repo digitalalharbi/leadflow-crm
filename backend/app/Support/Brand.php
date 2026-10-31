@@ -20,6 +20,17 @@ final class Brand
 
     public const DOMAIN = 'mohtam.pro';
 
+    /** The one official mailbox: the default sender, and where support, privacy and security reports go. */
+    public const EMAIL = 'info@mohtam.pro';
+
+    public const PHONE = '+966532115582';
+
+    public const PHONE_DISPLAY = '+966 53 211 5582';
+
+    public const ADDRESS_AR = 'الرياض، المملكة العربية السعودية';
+
+    public const ADDRESS_EN = 'Riyadh, Saudi Arabia';
+
     public const SEPARATOR = ' — ';
 
     /** `التقرير الأسبوعي — مهتم`: a pipe becomes the dash, and the name is added once if the subject does not carry it. */

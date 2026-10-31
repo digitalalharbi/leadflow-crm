@@ -46,7 +46,7 @@ test.describe('Qualification', () => {
     // High interest, because the answers say so — not because anything was
     // typed in.
     await expect(page.getByTestId('lead-quick-actions')).toBeVisible()
-    await expect(page.getByText('مرتفع').first()).toBeVisible()
+    await expect(page.getByText('مرتفع', { exact: true }).first()).toBeVisible()
   })
 
   test('the score explains itself', async ({ page }) => {

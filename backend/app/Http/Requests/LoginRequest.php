@@ -17,6 +17,7 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'max:255'],
             'tenant' => ['nullable', 'string', 'max:64'],
+            'code' => ['nullable', 'string', 'max:32'],
         ];
     }
 }

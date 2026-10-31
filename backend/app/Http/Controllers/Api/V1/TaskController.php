@@ -137,7 +137,7 @@ class TaskController extends Controller
 
         // Every reference is looked up through the scopes the person works under: something they cannot open is refused.
         if (array_key_exists('lead', $data)) {
-            $lead = $data['lead'] ? Lead::query()->where('uuid', $data['lead'])->first() : null;
+            $lead = $data['lead'] ? Lead::query()->visibleTo($request->user())->where('uuid', $data['lead'])->first() : null;
             abort_if($data['lead'] && $lead === null, 422, 'Unknown lead.');
             $out['lead_id'] = $lead?->id;
             $out['project_id'] ??= $lead?->project_id;

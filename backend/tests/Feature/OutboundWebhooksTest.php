@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Tracking\Destinations\SafeUrl;
 use App\Domain\Webhooks\OutboundWebhooks;
 use App\Events\LeadCreated;
 use App\Events\LeadSignal;
@@ -124,9 +125,16 @@ class OutboundWebhooksTest extends TestCase
 
     public function test_private_and_plain_http_addresses_are_refused(): void
     {
-        foreach (['http://hooks.alpha-crm.com/x', 'https://127.0.0.1/x', 'https://localhost/x', 'https://intranet.corp/x'] as $url) {
+        foreach (['http://hooks.alpha-crm.com/x', 'https://127.0.0.1/x', 'https://localhost/x', 'https://intranet.corp/x', 'https://hooks.alpha-crm.com:8443/x', 'https://hooks.alpha-crm.com:22/x'] as $url) {
             $this->actingAs($this->a['admin'])->postJson('/api/v1/webhook-subscriptions', ['name' => 'x', 'url' => $url, 'events' => ['lead.created']])->assertStatus(422);
         }
+    }
+
+    public function test_a_delivery_is_pinned_to_the_checked_address_and_follows_no_redirect(): void
+    {
+        $this->assertSame(['allow_redirects' => false], SafeUrl::pinned('https://hooks.alpha-crm.com/x'));
+        $this->assertTrue(SafeUrl::isAcceptable('https://hooks.alpha-crm.com:443/x'));
+        $this->assertFalse(SafeUrl::isAcceptable('https://hooks.alpha-crm.com:6379/x'));
     }
 
     public function test_another_company_cannot_read_change_or_replay_mine(): void

@@ -55,6 +55,17 @@ class TasksTest extends TestCase
         $this->actingAs($rep)->patchJson("/api/v1/tasks/{$theirs}", ['status' => 'done'])->assertNotFound();
     }
 
+    public function test_a_rep_cannot_attach_a_task_to_a_colleagues_lead(): void
+    {
+        $rep = $this->makeUser($this->a['tenant']);
+        $colleague = $this->makeUser($this->a['tenant']);
+        $theirs = $this->asTenant($this->a['tenant'], fn () => Lead::create(['full_name' => 'Not yours', 'phone' => '0553334444', 'assigned_to' => $colleague->id]));
+        $mine = $this->asTenant($this->a['tenant'], fn () => Lead::create(['full_name' => 'Yours', 'phone' => '0555556666', 'assigned_to' => $rep->id]));
+
+        $this->actingAs($rep)->postJson('/api/v1/tasks', ['title' => 'Snoop', 'lead' => $theirs->uuid])->assertStatus(422);
+        $this->actingAs($rep)->postJson('/api/v1/tasks', ['title' => 'Call back', 'lead' => $mine->uuid])->assertCreated();
+    }
+
     public function test_another_companys_task_lead_and_person_are_out_of_reach(): void
     {
         $b = $this->provisionTenant('Beta');

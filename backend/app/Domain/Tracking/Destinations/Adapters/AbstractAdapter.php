@@ -28,11 +28,11 @@ abstract class AbstractAdapter implements DestinationAdapter
      * @param  array<string,mixed>|string  $body  an array is sent as JSON; a string is sent as it is (a signature is over exactly these bytes)
      * @return array{ok:bool, summary:array<string,mixed>, error?:string}
      */
-    protected function post(string $url, array|string $body, array $headers = [], array $summary = []): array
+    protected function post(string $url, array|string $body, array $headers = [], array $summary = [], array $options = []): array
     {
         try {
             $raw = is_string($body) ? $body : json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            $response = Http::timeout($this->timeoutSeconds)->withHeaders($headers)->withBody($raw, 'application/json')->post($url);
+            $response = Http::timeout($this->timeoutSeconds)->withOptions($options)->withHeaders($headers)->withBody($raw, 'application/json')->post($url);
         } catch (\Throwable $e) {
             // The message, never the payload.
             return ['ok' => false, 'summary' => $summary, 'error' => $e->getMessage()];

@@ -53,6 +53,31 @@ class CompanyMfaAndSessionsTest extends TestCase
         $this->assertSame(1, AuditLog::withoutGlobalScopes()->where('action', 'auth.mfa_failed')->count());
     }
 
+    public function test_an_accepted_code_cannot_be_replayed(): void
+    {
+        [$secret] = $this->enrol($this->t['admin']);
+        $code = Totp::code($secret);
+
+        $this->login(['code' => $code])->assertOk()->assertJsonStructure(['data' => ['token']]);
+        $this->login(['code' => $code])->assertStatus(422)->assertJsonValidationErrors('code');
+    }
+
+    public function test_too_many_wrong_codes_lock_the_account_whatever_the_address(): void
+    {
+        [$secret] = $this->enrol($this->t['admin']);
+
+        foreach (range(1, 5) as $i) {
+            $this->withServerVariables(['REMOTE_ADDR' => "203.0.113.{$i}"])->login(['code' => '000000'])->assertStatus(422);
+        }
+
+        // Even the right code, from a new address, waits out the lockout.
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.9'])->login(['code' => Totp::code($secret)])->assertStatus(422)
+            ->assertJsonPath('errors.code.0', 'Too many wrong codes. Try again in 15 minutes.')->assertJsonMissingPath('data.token');
+
+        $this->travel(16)->minutes();
+        $this->login(['code' => Totp::code($secret)])->assertOk()->assertJsonStructure(['data' => ['token']]);
+    }
+
     public function test_a_recovery_code_works_exactly_once(): void
     {
         [, $codes] = $this->enrol($this->t['admin']);

@@ -128,6 +128,16 @@ class PublicApiKeysTest extends TestCase
         $this->api('')->getJson('/api/v1/public/leads')->assertUnauthorized();
     }
 
+    public function test_made_up_keys_from_one_address_meet_a_limit(): void
+    {
+        // Each made-up key is new to the per-key limit; the API-wide per-address limit still stops the stream.
+        foreach (range(1, 120) as $i) {
+            $this->api("mht_guess{$i}_x")->getJson('/api/v1/public/leads')->assertUnauthorized();
+        }
+
+        $this->api('mht_guess121_x')->getJson('/api/v1/public/leads')->assertStatus(429);
+    }
+
     public function test_one_company_cannot_revoke_anothers_key(): void
     {
         $this->issue($this->b, ['leads:read']);

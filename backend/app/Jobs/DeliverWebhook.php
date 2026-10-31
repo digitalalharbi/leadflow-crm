@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Http;
  * Retried with backoff (1 min → 5 → 30 → 2 h → 6 h). A delivery that exhausts its tries is marked failed and counts
  * against the subscription; after WebhookSubscription::PAUSE_AFTER failures in a row the subscription pauses itself (the
  * circuit breaker), so a dead endpoint is not hammered and the queue is not filled with hopeless work. No redirects are
- * followed and the host must resolve publicly at send time.
+ * followed, the host must resolve publicly at send time, and the connection is pinned to that checked address.
  */
 class DeliverWebhook implements ShouldQueue
 {
@@ -98,7 +98,9 @@ class DeliverWebhook implements ShouldQueue
     /** @return array{0: bool, 1: ?int, 2: ?string} */
     private function post(WebhookSubscription $subscription, WebhookDelivery $delivery): array
     {
-        if (! SafeUrl::isAcceptable($subscription->url) || ! SafeUrl::resolvesPublicly($subscription->url)) {
+        $pinned = SafeUrl::isAcceptable($subscription->url) ? SafeUrl::pinned($subscription->url) : null;
+
+        if ($pinned === null) {
             return [false, null, 'The address is not a public HTTPS address.'];
         }
 
@@ -107,7 +109,7 @@ class DeliverWebhook implements ShouldQueue
         $signature = hash_hmac('sha256', $timestamp.'.'.$body, (string) $subscription->secret);
 
         try {
-            $response = Http::timeout(10)->connectTimeout(5)->withoutRedirecting()
+            $response = Http::timeout(10)->connectTimeout(5)->withoutRedirecting()->withOptions($pinned)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'User-Agent' => 'Mohtam-Webhooks/1.0',

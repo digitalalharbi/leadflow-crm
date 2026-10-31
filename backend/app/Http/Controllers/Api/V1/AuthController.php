@@ -18,6 +18,7 @@ use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -71,6 +72,8 @@ class AuthController extends Controller
                 Hash::make($password);
             }
 
+            $this->recordFailedLogin($email, $candidates, $request);
+
             // Identical message either way — never reveal whether an email exists.
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
@@ -90,6 +93,24 @@ class AuthController extends Controller
         }
 
         return ApiResponse::success($this->issueSession($user, $request));
+    }
+
+    /**
+     * A wrong password is a security event. Each company that has this address sees it in its own audit trail (against the
+     * account, never with the password); an address nobody has goes to the log only as a hash, so the log is not a list of
+     * guessed emails.
+     */
+    private function recordFailedLogin(string $email, $candidates, Request $request): void
+    {
+        foreach ($candidates->unique('tenant_id') as $candidate) {
+            $this->audit->logForTenant((int) $candidate->tenant_id, 'auth.login_failed', $candidate, $candidate, ['ip' => $request->ip()]);
+        }
+
+        Log::warning('auth.login_failed', [
+            'email_hash' => hash('sha256', $email),
+            'known' => $candidates->isNotEmpty(),
+            'ip' => $request->ip(),
+        ]);
     }
 
     /**

@@ -40,9 +40,11 @@ const COLS: Record<number, string> = { 1: '', 2: '@md:grid-cols-2', 3: '@md:grid
  * Right-to-left, one column on a phone (the grid answers to the form's own width, not the screen's), a button that waits for the
  * server, errors beside their field, and nothing lost when something is wrong. In preview nothing is sent and nothing is recorded.
  */
-export function FormRenderer({ form, preview = false, initial, events, onSubmit }: {
+export function FormRenderer({ form, preview = false, initial, events, onSubmit, bare = false }: {
   form: RenderForm
   preview?: boolean
+  /** On a campaign page the page itself says who the project is: the form is only the questions. */
+  bare?: boolean
   initial?: { answers: Answers; step: number }
   events?: FormEvents
   /** Resolves when the lead is safely kept; rejects (an ApiError with `errors`) to be shown beside the fields. */
@@ -143,7 +145,7 @@ export function FormRenderer({ form, preview = false, initial, events, onSubmit 
   return (
     <div className="@container" style={designVars(design)} data-testid="form-root" data-preview={preview || undefined}>
       <div className="space-y-[var(--f-section-gap)] text-[var(--f-ink)]">
-        <FormHeader content={form} design={design} />
+        {!bare && <FormHeader content={form} design={design} />}
 
         <form onSubmit={(e) => void submit(e)} noValidate data-testid="landing-form" aria-label={form.headline ?? undefined}
           className={cn('space-y-[var(--f-section-gap)]', design.style.surface === 'card' ? 'rounded-[var(--f-radius)] bg-[var(--f-surface)] p-4 shadow-[0_1px_2px_rgb(0_0_0/0.06),0_4px_14px_rgb(0_0_0/0.06)]' : '')}>

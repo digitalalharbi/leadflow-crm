@@ -31,7 +31,7 @@ class TrackingDestinationController extends Controller
             'kind' => $k->value, 'label' => $k->label(), 'browser' => $k->browser(), 'server' => $k->server(),
             'config' => $k->config(), 'credentials' => array_merge($k->credentials(), $k->optionalCredentials()),
             'conversion_platform' => $k->conversionPlatform(),
-        ], DestinationKind::cases()), 'events' => DestinationKind::EVENTS, 'default_events' => DestinationKind::DEFAULT_EVENTS]);
+        ], DestinationKind::cases()), 'events' => DestinationKind::EVENTS, 'default_events' => DestinationKind::DEFAULT_EVENTS, 'platform_events' => DestinationKind::PLATFORM_EVENTS]);
     }
 
     public function index(Request $request)
@@ -184,6 +184,7 @@ class TrackingDestinationController extends Controller
             'send_value' => (bool) $d->send_value,
             'hash_identifiers' => (bool) $d->hash_identifiers,
             'consent_mode' => $d->consent_mode,
+            'event_map' => $d->event_map ?? [],
             'browser' => $kind->browser(),
             'server' => $kind->server(),
             'readiness' => $d->readiness(),

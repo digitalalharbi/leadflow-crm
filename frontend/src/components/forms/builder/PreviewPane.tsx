@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Monitor, Smartphone, Tablet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { LandingPageView, type PageContent } from '@/components/forms/page/LandingPageView'
 import { FormRenderer, type RenderForm } from '@/components/forms/FormRenderer'
 import { ThankYou } from '@/components/forms/ThankYou'
 import { Button } from '@/components/ui'
@@ -14,7 +15,9 @@ export type Device = keyof typeof DEVICES
  * The live form, at three widths. It is the very renderer the public page uses, in preview: nothing is sent, nothing is counted, and the
  * grid answers to the width of the frame — so "mobile" here is what a phone gets, not a squeezed laptop.
  */
-export function PreviewPane({ form, thanks, device, onDevice }: {
+export function PreviewPane({ form, thanks, device, onDevice, page }: {
+  /** A campaign page previews as the page itself, not only its form. */
+  page?: PageContent
   form: RenderForm
   thanks: { title: string | null; message: string | null }
   device: Device
@@ -46,7 +49,9 @@ export function PreviewPane({ form, thanks, device, onDevice }: {
         <div className="mx-auto overflow-hidden rounded-2xl bg-[var(--f-canvas)] p-4" style={{ width: DEVICES[device], maxWidth: '100%', ...designVars(form.design) }} data-testid="preview-frame" data-device={device}>
           {showThanks
             ? <ThankYou preview title={thanks.title} message={thanks.message} actions={form.settings.thanks.actions} redirectUrl={null} redirectDelay={0} design={form.design} />
-            : <FormRenderer form={form} preview />}
+            : page
+              ? <LandingPageView preview content={page} form={<FormRenderer form={form} preview bare />} />
+              : <FormRenderer form={form} preview />}
         </div>
       </div>
     </div>

@@ -159,7 +159,7 @@ class PublicLandingController extends Controller
         return TrackingDestination::query()->where('is_enabled', true)
             ->where(fn ($q) => $q->whereNull('project_id')->orWhere('project_id', $projectId))->get()
             ->filter(fn (TrackingDestination $d) => $d->destinationKind()->browser() && $d->destinationKind()->configErrors((array) $d->config) === [])
-            ->map(fn (TrackingDestination $d) => ['kind' => $d->kind, 'id' => (string) ((array) $d->config)[$d->destinationKind()->config()[0]]])
+            ->map(fn (TrackingDestination $d) => ['kind' => $d->kind, 'id' => (string) ((array) $d->config)[$d->destinationKind()->config()[0]], 'submit_event' => ((array) $d->event_map)['form_submitted'] ?? null])
             ->values()->all();
     }
 }

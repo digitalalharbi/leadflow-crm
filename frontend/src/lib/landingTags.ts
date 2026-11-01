@@ -83,8 +83,8 @@ export function loadTags(tags: LandingTag[]): void {
 export function trackSubmit(tags: LandingTag[], eventId: string): void {
   const w = window as unknown as Win
   for (const tag of tags.filter(isLoadable)) {
-    if (tag.kind === 'meta' && typeof w.fbq === 'function') (w.fbq as (...a: unknown[]) => void)('track', 'Lead', {}, { eventID: eventId })
-    if (tag.kind === 'tiktok' && w.ttq) (w.ttq as { track: (...a: unknown[]) => void }).track('SubmitForm', {}, { event_id: eventId })
-    if (tag.kind === 'ga4') gtag('event', 'generate_lead', { event_id: eventId })
+    if (tag.kind === 'meta' && typeof w.fbq === 'function') (w.fbq as (...a: unknown[]) => void)('track', tag.submit_event ?? 'Lead', {}, { eventID: eventId })
+    if (tag.kind === 'tiktok' && w.ttq) (w.ttq as { track: (...a: unknown[]) => void }).track(tag.submit_event ?? 'SubmitForm', {}, { event_id: eventId })
+    if (tag.kind === 'ga4') gtag('event', tag.submit_event ?? 'generate_lead', { event_id: eventId })
   }
 }

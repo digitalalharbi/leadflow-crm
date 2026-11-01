@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Skeleton } from '@/components/ui'
 import { FormRenderer, type FormEvents, type RenderForm } from '@/components/forms/FormRenderer'
+import { LandingPageView } from '@/components/forms/page/LandingPageView'
 import { ThankYou } from '@/components/forms/ThankYou'
-import { fetchLanding, submitLanding, type LandingSubmitResult, type PublicLanding } from '@/features/hub'
+import { fetchLanding, submitLanding, type LandingSubmitResult, type PageCtaKind, type PublicLanding } from '@/features/hub'
 import { designVars } from '@/lib/formDesign'
 import { loadTags, pushDataLayer, trackSubmit } from '@/lib/landingTags'
 import type { Answers } from '@/lib/formValidation'
@@ -63,7 +64,45 @@ export function LeadPage() {
   if (isLoading) return <Shell><Skeleton className="h-72" /></Shell>
   if (isError || !data) return <Shell><p className="py-16 text-center text-[1.0625rem] text-[var(--color-ink-muted)]" data-testid="landing-unavailable">{t('hub.public.unavailable')}</p></Shell>
 
+  // A campaign page lays itself out; a form on a tracking link keeps its one column.
+  if (data.landing.page) return <Landing token={token} page={data} address={address} />
+
   return <Shell design={data.landing.design}><Landing token={token} page={data} address={address} /></Shell>
+}
+
+/** The page's own words in the head. The address itself is noindex unless the manager opened it to search engines. */
+function usePageMeta(landing: PublicLanding['landing']) {
+  const config = landing.page
+
+  useEffect(() => {
+    if (!config) return
+
+    const title = config.seo.title || landing.headline || landing.project?.name
+
+    if (title) document.title = title
+
+    const set = (selector: string, attr: string, key: string, value: string | null | undefined) => {
+      if (!value) return
+
+      let el = document.head.querySelector<HTMLMetaElement>(selector)
+
+      if (!el) {
+        el = document.createElement('meta')
+        el.setAttribute(attr, key)
+        document.head.appendChild(el)
+      }
+
+      el.setAttribute('content', value)
+    }
+    const description = config.seo.description || landing.description
+    const image = config.seo.og_image || landing.image_url
+
+    set("meta[name='description']", 'name', 'description', description)
+    set("meta[property='og:title']", 'property', 'og:title', title)
+    set("meta[property='og:description']", 'property', 'og:description', description)
+    set("meta[property='og:image']", 'property', 'og:image', image ? new URL(image, window.location.origin).href : null)
+    set("meta[name='robots']", 'name', 'robots', config.seo.index ? 'index, follow' : 'noindex, nofollow')
+  }, [config, landing])
 }
 
 function Shell({ children, design }: { children: React.ReactNode; design?: PublicLanding['landing']['design'] }) {
@@ -84,6 +123,8 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
   const submissionId = useRef(crypto.randomUUID())
   const events = landing.settings.gtm.events
 
+  usePageMeta(landing)
+
   const form: RenderForm = useMemo(() => ({
     headline: landing.headline, description: landing.description, benefits: landing.benefits, logo_url: landing.logo_url, image_url: landing.image_url, project: landing.project,
     cta_label: landing.cta_label, fields: landing.fields, layout: landing.layout, design: landing.design, settings: landing.settings, consent: landing.consent,
@@ -93,6 +134,14 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
   useEffect(() => { if (events) pushDataLayer({ ...tracking.datalayer, event: 'form_view' }) }, [events, tracking.datalayer])
 
   const base = useCallback(() => ({ visitor_id: tracking.visitor_id, session_id: tracking.session_id, url: window.location.href, ...address.utm, click_ids: address.click_ids }), [tracking, address])
+
+  // On a page, the form being there is a step of its own in the funnel, and the store hears of it.
+  const viewed = useRef(false)
+  useEffect(() => {
+    if (!landing.page?.cta.form.enabled || viewed.current) return
+    viewed.current = true
+    beacon(token, { event: 'form_view', ...base() })
+  }, [landing.page, token, base])
 
   // Where a visitor stopped, if they leave: a step and a field's key, never a word they typed.
   useEffect(() => {
@@ -131,6 +180,9 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
     const result = await submitLanding(token, {
       submission_id: submissionId.current, answers, consent, website: typeof website === 'string' ? website : undefined,
       ...base(), referrer: document.referrer || undefined,
+    }).catch((caught: unknown) => {
+      beacon(token, { event: 'form_error', ...base(), meta: { step: String(reached.current.step) } })
+      throw caught
     })
 
     // Only now — the lead is kept — is the conversion announced, under the id the server recorded it with.
@@ -146,10 +198,34 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
   }
 
   if (done) {
+    if (landing.page) return <div className="mx-auto min-h-dvh max-w-lg px-4 py-10" style={designVars(landing.design)}><ThankYou title={done.thank_you.title ?? landing.thank_you.title} message={done.thank_you.message ?? landing.thank_you.message} actions={done.thank_you.actions} redirectUrl={done.thank_you.redirect_url} redirectDelay={done.thank_you.redirect_delay} design={landing.design} /></div>
+
     return <ThankYou title={done.thank_you.title ?? landing.thank_you.title} message={done.thank_you.message ?? landing.thank_you.message} actions={done.thank_you.actions} redirectUrl={done.thank_you.redirect_url} redirectDelay={done.thank_you.redirect_delay} design={landing.design} />
   }
 
-  return <FormRenderer form={form} initial={initial} events={hooks} onSubmit={onSubmit} />
+  const config = landing.page
+
+  if (!config) return <FormRenderer form={form} initial={initial} events={hooks} onSubmit={onSubmit} />
+
+  /*
+   * A tap on WhatsApp or call is a real step, and it leaves the page: it goes in a beacon that outlives it, carrying the reference the
+   * message says, so the conversation can find its way back to this visit, this page and this campaign.
+   */
+  const onCta = (kind: PageCtaKind, place: 'hero' | 'floating') => {
+    const meta = { cta: kind, place, ...(kind === 'whatsapp' && tracking.ref ? { ref: tracking.ref } : {}) }
+
+    beacon(token, { event: 'cta_click', ...base(), meta })
+    beacon(token, { event: kind === 'whatsapp' ? 'whatsapp_click' : 'call_click', ...base(), meta })
+    if (events) pushDataLayer({ event: kind === 'whatsapp' ? 'whatsapp_click' : 'call_click', event_id: crypto.randomUUID() })
+  }
+
+  return (
+    <LandingPageView
+      content={{ page: config, design: landing.design, headline: landing.headline, description: landing.description, benefits: landing.benefits, logo: landing.logo_url ?? landing.project?.logo_url ?? null, image: landing.image_url, project: landing.project?.name ?? null, cta_label: landing.cta_label, ref: tracking.ref }}
+      onCta={onCta}
+      form={<FormRenderer form={form} bare initial={initial} events={hooks} onSubmit={onSubmit} />}
+    />
+  )
 }
 
 /** Nothing is stored that the visitor did not type for this form; the honeypot never is. */

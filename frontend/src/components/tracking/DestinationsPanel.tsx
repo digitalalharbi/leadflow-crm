@@ -82,7 +82,7 @@ function DestinationEditor({ open, id, destinations, canEdit, onClose }: { open:
   useEffect(() => {
     if (!open) return
     setError(null)
-    setForm(current ? { kind: current.kind, name: current.name, is_enabled: current.is_enabled, config: current.config, credentials: {}, events: current.events, send_value: current.send_value, hash_identifiers: current.hash_identifiers, consent_mode: current.consent_mode } : { ...BLANK, events: catalogue?.default_events ?? [] })
+    setForm(current ? { kind: current.kind, name: current.name, is_enabled: current.is_enabled, config: current.config, credentials: {}, events: current.events, event_map: current.event_map ?? {}, send_value: current.send_value, hash_identifiers: current.hash_identifiers, consent_mode: current.consent_mode } : { ...BLANK, events: catalogue?.default_events ?? [] })
   }, [open, current, catalogue?.default_events])
 
   const save = useMutation({
@@ -140,6 +140,28 @@ function DestinationEditor({ open, id, destinations, canEdit, onClose }: { open:
               </label>
             ))}
           </div>
+        </fieldset>
+
+        <fieldset data-testid="event-map">
+          <legend className="mb-1.5 font-semibold">{t('hub.destinations.eventMap')}</legend>
+          <p className="t-caption mb-2">{t('hub.destinations.eventMapHint')}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {['form_submitted', 'qualified', 'appointment_booked', 'reservation_created', 'won'].map((e) => (
+              <Select key={e} label={t(`hub.destinations.eventNames.${e}`)} value={form.event_map?.[e] ?? ''} disabled={!canEdit} data-testid={`event-map-${e}`}
+                onChange={(ev) => setForm((f) => {
+                  const next = { ...f.event_map }
+
+                  if (ev.target.value) next[e] = ev.target.value
+                  else delete next[e]
+
+                  return { ...f, event_map: next }
+                })}>
+                <option value="">{t('hub.destinations.eventMapDefault')}</option>
+                {(catalogue?.platform_events ?? []).map((name) => <option key={name} value={name}>{name}</option>)}
+              </Select>
+            ))}
+          </div>
+          {['Purchase', 'purchase'].includes(form.event_map?.form_submitted ?? '') && <p role="alert" className="notice notice-warning mt-2 text-[0.875rem]" data-testid="event-map-warning">{t('hub.destinations.eventMapWarning')}</p>}
         </fieldset>
 
         <div className="space-y-2">

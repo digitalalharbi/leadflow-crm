@@ -17,6 +17,7 @@ import {
   fetchDevelopment, fetchRepositories, linkRepository, syncGitHub,
   type DevelopmentActivity, type DevelopmentDeployment, type DevelopmentRun,
 } from '@/features/development'
+import { ProjectLeadSources } from '@/components/projects/ProjectLeadSources'
 import { ProjectAcquisition } from '@/components/projects/ProjectAcquisition'
 import { ProjectFiles } from '@/components/projects/ProjectFiles'
 import { ProjectQuestions } from '@/components/projects/ProjectQuestions'
@@ -41,7 +42,7 @@ import type { Project } from '@/types/api'
  * for a different reader and was the only tab there was.
  */
 const TABS = [
-  'overview', 'leads', 'units', 'files', 'questions', 'campaigns', 'acquisition', 'automations',
+  'overview', 'leads', 'sources', 'units', 'files', 'questions', 'campaigns', 'acquisition', 'automations',
   'activities', 'reports', 'integrations', 'development',
 ] as const
 
@@ -62,7 +63,7 @@ export function ProjectDetailPage() {
   const linked = searchParams.get('tab') as ProjectTab | null
   const user = useAuth((s) => s.user)
   // Acquisition is the tracking screens, in the project: for those who hold them.
-  const tabs = TABS.filter((key) => key !== 'acquisition' || can.has(user, 'tracking.view'))
+  const tabs = TABS.filter((key) => (key !== 'acquisition' && key !== 'sources') || can.has(user, 'tracking.view'))
   const [tab, setTab] = useState<ProjectTab>(linked && (tabs as readonly string[]).includes(linked) ? linked : 'overview')
 
   const { data: project, isLoading } = useQuery({
@@ -111,6 +112,7 @@ export function ProjectDetailPage() {
       )}
 
       {tab === 'leads' && <ProjectLeads projectId={id} />}
+      {tab === 'sources' && project && <ProjectLeadSources projectId={id} projectName={project.name} />}
       {tab === 'units' && <ProjectUnits projectId={id} />}
       {tab === 'files' && <ProjectFiles projectId={id} />}
       {tab === 'questions' && <ProjectQuestions projectId={id} />}

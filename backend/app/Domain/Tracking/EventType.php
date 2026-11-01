@@ -12,6 +12,9 @@ namespace App\Domain\Tracking;
 enum EventType: string
 {
     case Visit = 'visit';
+    case CtaClick = 'cta_click';
+    case FormView = 'form_view';
+    case FormError = 'form_error';
     case Click = 'click';
     case FormStart = 'form_start';
     case FormSubmit = 'form_submit';
@@ -38,7 +41,7 @@ enum EventType: string
     /** What a landing page or a link may report about a visitor. */
     public static function browserSafe(): array
     {
-        return [self::Visit, self::Click, self::FormStart, self::FormStep, self::FormAbandon, self::FormSubmit, self::WhatsappClick, self::CallClick, self::BrochureOpen, self::ProjectView, self::PropertyView];
+        return [self::Visit, self::Click, self::CtaClick, self::FormView, self::FormError, self::FormStart, self::FormStep, self::FormAbandon, self::FormSubmit, self::WhatsappClick, self::CallClick, self::BrochureOpen, self::ProjectView, self::PropertyView];
     }
 
     /** @return array<int,string> */

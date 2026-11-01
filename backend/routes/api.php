@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\CommandCenterController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CreativeController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DataExportController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\EmailDeliveryController;
@@ -47,6 +48,7 @@ use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\LeadEmailController;
 use App\Http\Controllers\Api\V1\LeadMessageController;
+use App\Http\Controllers\Api\V1\LeadPrivacyController;
 use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
@@ -296,6 +298,9 @@ Route::prefix('v1')->group(function () {
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
+            Route::get('/exports', [DataExportController::class, 'index']);
+            Route::post('/exports', [DataExportController::class, 'store'])->middleware('throttle:10,1');
+            Route::post('/exports/{uuid}/link', [DataExportController::class, 'link']);
             Route::get('/leads/segments', [LeadController::class, 'segments']);
             Route::get('/leads/tags', [LeadController::class, 'tags']);
             Route::get('/leads/saved-views', [SavedViewController::class, 'index']);
@@ -320,6 +325,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/status', [LeadController::class, 'changeStatus']);
             Route::post('/leads/{uuid}/temperature', [LeadController::class, 'changeTemperature']);
             Route::put('/leads/{uuid}/tags', [LeadController::class, 'setTags']);
+            Route::get('/leads/{uuid}/personal-data', [LeadPrivacyController::class, 'export']);
+            Route::post('/leads/{uuid}/erase', [LeadPrivacyController::class, 'erase']);
             Route::post('/leads/{uuid}/interest', [LeadController::class, 'setInterest']);
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);

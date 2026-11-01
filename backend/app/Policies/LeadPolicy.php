@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Domain\Access\AccessResolver;
 use App\Models\Lead;
 use App\Models\User;
 
@@ -65,5 +66,18 @@ class LeadPolicy
     public function export(User $user): bool
     {
         return $user->seesAllLeads();
+    }
+
+    /**
+     * Handing a person their data, or erasing them, is the company's legal act, not a rep's: an admin, or a role
+     * the workspace gave settings rights.
+     */
+    public function managePersonalData(User $user, Lead $lead): bool
+    {
+        if (! $user->belongsToTenant($lead->tenant_id)) {
+            return false;
+        }
+
+        return $user->isAdmin() || ($user->usesMatrix() && AccessResolver::resolve($user, null)->has('settings.edit'));
     }
 }

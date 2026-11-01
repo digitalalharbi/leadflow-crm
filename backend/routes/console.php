@@ -133,6 +133,9 @@ Schedule::command('horizon:snapshot')->everyFiveMinutes();
  */
 Schedule::command('leadflow:prune-payloads')->dailyAt('03:30')->withoutOverlapping();
 
+// Export files live a day; stuck exports are failed so the screen stops waiting.
+Schedule::command('leadflow:prune-exports')->hourly()->withoutOverlapping();
+
 /*
  * The pulse the production-readiness screen reads.
  *

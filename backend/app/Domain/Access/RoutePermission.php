@@ -15,7 +15,10 @@ use Illuminate\Http\Request;
 class RoutePermission
 {
     /** Paths every signed-in person may use, whatever their role. */
-    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles', 'billing'];
+    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles', 'billing',
+        // Background exports check who may export what themselves: the leads list needs the export right, the
+        // company archive an admin — and each person sees only their own files.
+        'exports'];
 
     /** First path segment → area. */
     private const AREAS = [

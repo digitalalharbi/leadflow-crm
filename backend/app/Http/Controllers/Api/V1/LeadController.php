@@ -7,6 +7,7 @@ use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
 use App\Domain\Conversation\ConversationIntelligence;
+use App\Domain\Exports\LeadExportColumns;
 use App\Domain\Leads\DuplicateFinder;
 use App\Domain\Leads\HandoffBrief;
 use App\Domain\Leads\InterestEngine;
@@ -764,28 +765,11 @@ class LeadController extends Controller
             $out = fopen('php://output', 'w');
             $csv = CsvWriter::open($out);
 
-            $csv->writeRow([
-                'Name', 'Phone', 'Email', 'City', 'Project', 'Platform', 'Campaign',
-                'Status', 'Temperature', 'Score', 'Assigned To', 'Next Follow-up', 'Created At',
-            ]);
+            $csv->writeRow(LeadExportColumns::headings());
 
             $query->chunk(500, function ($leads) use ($csv) {
                 foreach ($leads as $lead) {
-                    $csv->writeRow([
-                        $lead->full_name,
-                        $lead->phone_normalized ?? $lead->phone,
-                        $lead->email,
-                        $lead->city,
-                        $lead->project?->name,
-                        $lead->platform,
-                        $lead->campaign_name,
-                        $lead->status?->value,
-                        $lead->temperature?->value,
-                        $lead->score,
-                        $lead->assignee?->name,
-                        $lead->next_follow_up_at?->toDateTimeString(),
-                        $lead->created_at?->toDateTimeString(),
-                    ]);
+                    $csv->writeRow(LeadExportColumns::row($lead));
                 }
             });
 

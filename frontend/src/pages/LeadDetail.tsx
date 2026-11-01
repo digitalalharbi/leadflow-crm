@@ -13,6 +13,7 @@ import {
 import { ApiError, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { LeadTagEditor } from '@/components/leads/LeadTagEditor'
+import { PersonalDataMenu } from '@/components/leads/PersonalDataMenu'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
@@ -615,6 +616,8 @@ export function LeadDetailPage() {
               )}
             </Dropdown>
           )}
+
+          {can.manageTenant(user) && <PersonalDataMenu leadId={lead.id} name={lead.full_name} />}
 
           {can.manageTenant(user) && (
             <Button variant="ghost" size="icon" aria-label={t('common.delete')} title={t('common.delete')} onClick={() => setDeleteOpen(true)} icon={<Trash2 className="size-4" />} />

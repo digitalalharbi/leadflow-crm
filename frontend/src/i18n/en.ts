@@ -697,6 +697,10 @@ export default {
     ifLabel: 'If',
     thenLabel: 'Then',
     addCondition: 'Add condition',
+    addGroup: 'Add group',
+    groupHint: 'Conditions read together, e.g. (Riyadh or Jeddah)',
+    elseLabel: 'Otherwise',
+    noElse: 'If the conditions do not hold, nothing happens. Add an action for the otherwise path.',
     removeCondition: 'Remove condition',
     addAction: 'Add action',
     removeAction: 'Remove action',
@@ -1781,6 +1785,21 @@ export default {
     },
   },
 
+  exports: {
+    title: 'Export leads', hint: 'A CSV straight away, or an Excel file made in the background for long lists. Files are kept for 24 hours, then deleted.',
+    csvNow: 'CSV now', xlsxBackground: 'Excel in the background', download: 'Download',
+    emptyTitle: 'No files yet', emptyBody: 'What you export appears here until it is deleted after a day.',
+    rows_one: '{{count}} row', rows_other: '{{count}} rows',
+    kinds: { leads: 'Leads', company: 'All company data' },
+    status: { queued: 'Queued', running: 'Preparing', ready: 'Ready', failed: 'Failed', expired: 'Expired' },
+    companyTitle: 'Export all company data', companyHint: 'A ZIP with leads, history, notes, appointments, reservations, projects, team and campaigns — no passwords or keys.',
+    companyStart: 'Prepare the file',
+  },
+  personalData: {
+    title: 'Personal data', export: 'Download their data', erase: 'Erase their data',
+    eraseTitle: 'Erase {{name}} permanently', eraseBody: 'Their name, number, email, messages, answers and notes are removed everywhere. The record stays, anonymous, so the numbers do not change. This cannot be undone.',
+    confirmLabel: 'Type the lead’s name to confirm', suppress: 'Add their number and email to the do-not-contact list', erased: 'The lead’s data was erased',
+  },
   suppressions: {
     title: 'Do-not-contact list', hint: 'Numbers and addresses whose owners asked to stop, that bounced, or that were added by hand. Nothing is sent to them from any lead.',
     channel: 'Channel', value: 'Number or email', note: 'Note (optional)', add: 'Add', remove: 'Remove', search: 'Search a number or email…',

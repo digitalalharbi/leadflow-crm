@@ -1781,6 +1781,15 @@ export default {
     },
   },
 
+  suppressions: {
+    title: 'Do-not-contact list', hint: 'Numbers and addresses whose owners asked to stop, that bounced, or that were added by hand. Nothing is sent to them from any lead.',
+    channel: 'Channel', value: 'Number or email', note: 'Note (optional)', add: 'Add', remove: 'Remove', search: 'Search a number or email…',
+    added: 'Added to the do-not-contact list', removed: 'Removed from the list', confirmRemove: 'Remove {{value}} from the do-not-contact list? Contact will be allowed again.',
+    emptyTitle: 'The list is empty', emptyBody: 'Anyone who asks to stop is added here automatically.',
+    total_one: '{{count}} entry', total_other: '{{count}} entries',
+    channels: { phone: 'Phone', email: 'Email' },
+    reasons: { opt_out: 'Asked to stop', bounced: 'Bounced', manual: 'Manual', complaint: 'Complaint' },
+  },
   tags: {
     label: 'Tags', add: 'Add tag', placeholder: 'New tag…', remove: 'Remove tag {{tag}}',
     full: 'At most {{count}} tags', saved: 'Tags saved', filter: 'Tag', any: 'All tags',
@@ -3372,6 +3381,7 @@ export default {
     alerts: 'Smart alerts',
     approvals: 'Self-approve',
     delivery: 'Email delivery',
+    privacy: 'Privacy & data',
     generalHint: 'Language, currency, timezone and how leads are assigned',
     scoringHint: 'What makes a lead hot, and how long before it counts as neglected',
     firstContactTarget: 'First-contact target (minutes)',

@@ -11,6 +11,7 @@ import { SetupCheck } from '@/components/onboarding/SetupCheck'
 import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel'
 import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
 import { SelfApprovalPanel } from '@/components/settings/SelfApprovalPanel'
+import { PrivacyTab } from '@/components/settings/PrivacyTab'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import {
@@ -29,7 +30,7 @@ interface SettingsResponse {
   custom_fields: CustomField[]
 }
 
-type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'approvals' | 'delivery' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'approvals' | 'delivery' | 'privacy' | 'subscription'
 
 
 /**
@@ -65,7 +66,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'approvals', 'delivery', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'approvals', 'delivery', 'privacy', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -166,6 +167,8 @@ export function SettingsPage() {
           {tab === 'approvals' && canManage && <SelfApprovalPanel />}
 
           {tab === 'delivery' && canManage && <EmailDeliveryPanel />}
+
+          {tab === 'privacy' && canManage && <PrivacyTab />}
 
           {tab === 'subscription' && <BillingPanel />}
         </>

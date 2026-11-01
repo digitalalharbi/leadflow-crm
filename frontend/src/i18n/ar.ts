@@ -1939,6 +1939,15 @@ export default {
     },
   },
 
+  suppressions: {
+    title: 'قائمة عدم التواصل', hint: 'أرقام وعناوين طلب أصحابها التوقف، أو ارتدّ البريد إليها، أو أُضيفت يدويًا. لا يُرسَل إليها شيء من أي عميل.',
+    channel: 'القناة', value: 'الرقم أو البريد', note: 'ملاحظة (اختياري)', add: 'إضافة', remove: 'إزالة', search: 'ابحث برقم أو بريد…',
+    added: 'أُضيف إلى قائمة عدم التواصل', removed: 'أُزيل من القائمة', confirmRemove: 'إزالة {{value}} من قائمة عدم التواصل؟ سيُسمح بالتواصل معه من جديد.',
+    emptyTitle: 'القائمة فارغة', emptyBody: 'من يطلب التوقف يُضاف هنا تلقائيًا.',
+    total_zero: 'لا مدخلات', total_one: 'مدخل واحد', total_two: 'مدخلان', total_few: '{{count}} مدخلات', total_many: '{{count}} مدخلًا', total_other: '{{count}} مدخل',
+    channels: { phone: 'رقم', email: 'بريد' },
+    reasons: { opt_out: 'طلب التوقف', bounced: 'بريد مرتدّ', manual: 'يدوي', complaint: 'شكوى' },
+  },
   tags: {
     label: 'الوسوم', add: 'إضافة وسم', placeholder: 'وسم جديد…', remove: 'إزالة الوسم {{tag}}',
     full: 'الحد الأقصى {{count}} وسوم', saved: 'حُفظت الوسوم', filter: 'الوسم', any: 'كل الوسوم',
@@ -3705,6 +3714,7 @@ export default {
     alerts: 'التنبيهات الذكية',
     approvals: 'الموافقة التلقائية',
     delivery: 'تسليم البريد',
+    privacy: 'الخصوصية والبيانات',
     generalHint: 'اللغة والعملة والمنطقة الزمنية وطريقة الإسناد',
     scoringHint: 'ما الذي يرفع اهتمام العميل، وكم ننتظر قبل اعتباره بلا متابعة',
     firstContactTarget: 'هدف أول تواصل (دقيقة)',

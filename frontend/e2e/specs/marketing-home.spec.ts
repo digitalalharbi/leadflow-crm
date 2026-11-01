@@ -15,10 +15,10 @@ test.describe('Marketing home and login routing', () => {
     await page.goto('/')
     await expect(page).toHaveURL(/^[^?#]*\/$/)
     await expect(page.getByTestId('landing-headline')).toHaveText('حوّل الاهتمام إلى فرصة')
-    await expect(page.getByTestId('landing-chain-steps')).toContainText('الحملات التسويقية')
-    await expect(page.getByTestId('landing-chain-steps')).toContainText('الإيرادات')
-    await expect(page.getByTestId('feature-card')).toHaveCount(14)
-    await expect(page.getByTestId('funnel-stage')).toHaveCount(6)
+    await expect(page.getByTestId('value-card')).toHaveCount(3)
+    // The long feature list and the funnel moved to their own pages.
+    await expect(page.getByTestId('feature-card')).toHaveCount(0)
+    await expect(page.getByTestId('funnel-stage')).toHaveCount(0)
     await expect(page.getByTestId('page-title')).toHaveCount(0)
   })
 
@@ -131,7 +131,7 @@ test.describe('Marketing home and login routing', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')
     await expect(page.getByTestId('landing-headline')).toBeVisible()
-    await page.getByTestId('feature-card').last().scrollIntoViewIfNeeded()
+    await page.getByTestId('public-footer').scrollIntoViewIfNeeded()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
 
     await page.getByTestId('public-menu-toggle').click()

@@ -196,9 +196,15 @@ test.describe('الرسوم البيانية — charts', () => {
     const fills = await marks.evaluateAll((nodes) =>
       nodes.map((node) => {
         const style = getComputedStyle(node)
+        // An SVG mark (a ring, a donut, an area) is drawn in its fill or stroke and never has a background.
+        const svg = node instanceof SVGElement
+        const painted = svg
+          ? [style.fill, style.stroke].some((paint) => paint !== 'none' && paint !== 'rgba(0, 0, 0, 0)')
+          : style.backgroundColor !== 'rgba(0, 0, 0, 0)'
 
         return {
-          background: style.backgroundColor,
+          mark: `${node.tagName} ${node.getAttribute('class') ?? ''}`.trim(),
+          painted,
           adjust: style.printColorAdjust || style.webkitPrintColorAdjust,
         }
       }),
@@ -206,8 +212,8 @@ test.describe('الرسوم البيانية — charts', () => {
 
     // Every mark keeps a colour, and every mark tells the browser to keep it.
     for (const fill of fills) {
-      expect(fill.background).not.toBe('rgba(0, 0, 0, 0)')
-      expect(fill.adjust).toBe('exact')
+      expect(fill.painted, `${fill.mark} has no colour`).toBe(true)
+      expect(fill.adjust, `${fill.mark} does not ask to keep its colour`).toBe('exact')
     }
 
     await page.emulateMedia({ media: 'screen' })

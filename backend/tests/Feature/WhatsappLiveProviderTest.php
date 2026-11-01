@@ -68,7 +68,7 @@ class WhatsappLiveProviderTest extends TestCase
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'سلمان القحطاني',
             'phone' => '0551234567',
-            'phone_normalized' => '+9665512'.random_int(10000, 99999),
+            'phone_normalized' => '+9665512'.self::uniqueDigits(5),
         ], $attributes)));
     }
 

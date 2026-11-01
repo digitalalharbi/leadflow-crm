@@ -131,9 +131,17 @@ test.describe('Safari-sensitive surfaces', () => {
 
     // Hover on a pointer device, tap on a touch one: either way a day is named.
     const touch = await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)
-    if (touch) await svg.tap({ position: { x: Math.min(300, box.width - 10), y: 100 } })
-    else await svg.hover({ position: { x: Math.min(300, box.width - 10), y: 100 } })
-    await expect(page.getByTestId('lead-flow').locator('div.pointer-events-none.absolute')).toBeVisible()
+    const position = { x: Math.min(300, box.width - 10), y: 100 }
+    const tooltip = page.getByTestId('lead-flow').locator('div.pointer-events-none.absolute')
+
+    // The cards above the chart are still loading on a slow machine, so the page can move between
+    // aiming and touching, and the press lands in the margin rather than on a bar. Press again until
+    // it lands: a press on a bar that names no day still fails here.
+    await expect(async () => {
+      if (touch) await svg.tap({ position })
+      else await svg.hover({ position })
+      await expect(tooltip).toBeVisible({ timeout: 1500 })
+    }).toPass({ timeout: 25_000 })
   })
 
   test('flex and grid layouts keep their order: the cards of a report line up in rows', async ({ browser }) => {

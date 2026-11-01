@@ -36,7 +36,7 @@ class ReportBuilderV2Test extends TestCase
     private function lead(array $attributes = [], string $daysAgo = '1'): Lead
     {
         return $this->asTenant($this->t['tenant'], function () use ($attributes, $daysAgo) {
-            $lead = Lead::create($attributes + ['full_name' => 'عميل', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'contacted', 'assigned_to' => $this->t['admin']->id]);
+            $lead = Lead::create($attributes + ['full_name' => 'عميل', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'contacted', 'assigned_to' => $this->t['admin']->id]);
             DB::table('leads')->where('id', $lead->id)->update(['created_at' => now()->subDays((int) $daysAgo)]);
 
             return $lead->fresh();

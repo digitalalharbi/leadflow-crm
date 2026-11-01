@@ -30,7 +30,7 @@ class ScheduledActionsSurviveTest extends TestCase
     private function waiting(int $minutesAgo = 0, array $action = ['type' => 'add_note', 'body' => 'ملاحظة آلية']): ScheduledAction
     {
         return $this->asTenant($this->t['tenant'], function () use ($minutesAgo, $action) {
-            $lead = Lead::create(['full_name' => 'عميل', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new']);
+            $lead = Lead::create(['full_name' => 'عميل', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new']);
 
             return ScheduledAction::create(['lead_id' => $lead->id, 'rule_name' => 'قاعدة', 'action' => $action, 'run_at' => now()->subMinutes($minutesAgo), 'status' => ScheduledAction::PENDING]);
         });

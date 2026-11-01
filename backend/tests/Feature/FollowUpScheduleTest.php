@@ -35,7 +35,7 @@ class FollowUpScheduleTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'عميل',
-            'phone_normalized' => '+96650011'.random_int(1000, 9999),
+            'phone_normalized' => '+96650011'.self::uniqueDigits(4),
             'status' => 'contacted',
             'assigned_to' => $this->t['admin']->id,
         ], $attributes)));

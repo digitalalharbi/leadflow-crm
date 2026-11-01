@@ -61,7 +61,7 @@ class DigestsCoverTheBriefTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], function () use ($attributes) {
             $lead = Lead::create([
-                'full_name' => 'عميل '.random_int(100, 999), 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new',
+                'full_name' => 'عميل '.self::uniqueDigits(3), 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new',
                 'assigned_to' => $this->rep->id,
             ]);
             // Dates, money and the machine's own columns are not mass-assignable: set the way the product sets them.
@@ -82,7 +82,7 @@ class DigestsCoverTheBriefTest extends TestCase
             MetricSnapshot::create(['platform' => 'meta', 'level' => 'campaign', 'campaign_id' => $campaign->id, 'date' => now()->subDays(2)->toDateString(), 'spend_minor' => 100_000, 'impressions' => 1000, 'clicks' => 100, 'currency' => 'SAR']);
 
             foreach ([['status' => 'won', 'deal_value_minor' => 50_000_000, 'won_at' => now()->subDay()], ['status' => 'new', 'deal_value_minor' => null]] as $i => $attributes) {
-                $lead = Lead::create(['full_name' => "عميل الحملة {$i}", 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new']);
+                $lead = Lead::create(['full_name' => "عميل الحملة {$i}", 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new']);
                 DB::table('leads')->where('id', $lead->id)->update(['campaign_ref_id' => $campaign->id, 'platform' => 'meta', 'created_at' => now()->subDay(), 'first_contact_at' => $attributes['status'] === 'won' ? now()->subDay() : null, 'last_contact_at' => $attributes['status'] === 'won' ? now()->subDay() : null] + $attributes);
             }
         });

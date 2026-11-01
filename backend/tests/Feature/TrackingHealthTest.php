@@ -41,7 +41,7 @@ class TrackingHealthTest extends TestCase
     private function lead(string $platform, array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], function () use ($platform, $attributes) {
-            $lead = Lead::create(['full_name' => 'عميل '.random_int(100, 999), 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'platform' => $platform] + $attributes);
+            $lead = Lead::create(['full_name' => 'عميل '.self::uniqueDigits(3), 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'platform' => $platform] + $attributes);
 
             return $lead;
         });

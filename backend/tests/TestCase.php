@@ -21,6 +21,20 @@ use Tests\Support\FakeMailer;
 
 abstract class TestCase extends BaseTestCase
 {
+    private static int $digits = 0;
+
+    /**
+     * Digits for a test's phone number, never the same twice in a run. A random draw from a
+     * few thousand numbers collided on the tenant/phone unique index often enough to fail a
+     * full run now and then — and a failed run stops a release.
+     */
+    protected static function uniqueDigits(int $length): string
+    {
+        $floor = 10 ** ($length - 1);
+
+        return (string) ($floor + (self::$digits++ % (9 * $floor)));
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

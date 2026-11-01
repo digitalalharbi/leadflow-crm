@@ -67,7 +67,7 @@ class AutomationGuardrailsTest extends TestCase
         return $this->asTenant($this->t['tenant'], function () use ($attributes, $guarded) {
             $lead = Lead::create(array_merge([
                 'full_name' => 'سلمان القحطاني', 'phone' => '0551234567',
-                'phone_normalized' => '+9665512'.random_int(10000, 99999),
+                'phone_normalized' => '+9665512'.self::uniqueDigits(5),
                 'status' => 'new', 'project_id' => $this->project->id,
             ], array_diff_key($attributes, $guarded)));
 

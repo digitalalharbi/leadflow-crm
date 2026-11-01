@@ -50,7 +50,7 @@ class RolesAndPermissionsTest extends TestCase
     private function lead(Project $project, string $name): Lead
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create([
-            'full_name' => $name, 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'email' => str()->random(6).'@example.test',
+            'full_name' => $name, 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'email' => str()->random(6).'@example.test',
             'project_id' => $project->id, 'status' => 'contacted', 'deal_value_minor' => 90_000_000,
         ]));
     }

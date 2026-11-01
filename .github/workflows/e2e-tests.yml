@@ -9,7 +9,10 @@ jobs:
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The whole suite, one worker because every spec reseeds one database: 1000 tests at the
+    # 7.7s a test measured on this runner is about 130 minutes, before any retry. The deploy
+    # gate waits longer than this (deploy-production.yml), and a test pins the two together.
+    timeout-minutes: 180
 
     services:
       postgres:
@@ -100,11 +103,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('frontend/package-lock.json') }}
+          key: playwright-all-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install Playwright browsers
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # Every browser the projects in playwright.config.ts run on.
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Start the API
         working-directory: backend
@@ -161,6 +165,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          # Both folders start with a dot, and upload-artifact skips hidden files unless told.
+          # Without this a failed run left no screenshot and no trace to read.
+          include-hidden-files: true
           path: |
             frontend/e2e/.report
             frontend/e2e/.results

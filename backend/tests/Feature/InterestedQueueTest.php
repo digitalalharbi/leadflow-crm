@@ -38,7 +38,7 @@ class InterestedQueueTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], function () use ($attributes) {
             $lead = Lead::create(array_diff_key($attributes, ['level' => 1, 'since' => 1]) + [
-                'full_name' => 'سلمان '.random_int(10, 99), 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999),
+                'full_name' => 'سلمان '.random_int(10, 99), 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5),
                 'project_id' => $this->project->id, 'status' => 'contacted', 'assigned_to' => $this->t['admin']->id,
             ]);
 

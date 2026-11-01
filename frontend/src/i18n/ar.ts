@@ -1748,6 +1748,7 @@ export default {
       external_verification_required: 'بانتظار التحقق الخارجي',
     },
     item: {
+      calendar: 'التقويم',
       email: 'البريد الإلكتروني',
       claude: 'Claude للوكلاء',
       vps: 'الخادم (VPS)',
@@ -1777,6 +1778,10 @@ export default {
       configured_per_workspace: 'يُضبط لكل مؤسسة على حدة.',
     },
     check: {
+      ics_feed: 'عنوان تقويم خاص',
+      feed_created: 'أُنشئ عنوان',
+      feed_read_by_a_calendar: 'قرأه تقويم فعلًا',
+      google_calendar_sync: 'مزامنة Google Calendar',
       mail_server: 'خادم بريد حقيقي',
       opened_by_a_customer: 'فتح عميل رسالة فعلًا',
       replies_routed: 'الردود تعود للمحادثة',
@@ -1962,6 +1967,12 @@ export default {
   slaRules: {
     title: 'مهلة أول تواصل حسب المصدر والأولوية', hint: 'المهلة العامة {{minutes}} دقيقة. يمكن هنا جعلها أقصر لبعض العملاء؛ يُطبَّق الأشد.',
     source: 'المصدر', minutes: 'الدقائق', minutesShort: 'دقيقة', addSource: 'إضافة مصدر', priority: 'العملاء ذوو الأولوية',
+  },
+  calendar: {
+    title: 'زياراتي في التقويم', hint: 'عنوان خاص تضيفه إلى تقويم Google أو Apple أو Outlook فتظهر زياراتك فيه وتتحدّث تلقائيًا.',
+    create: 'إنشاء عنوان التقويم', newAddress: 'عنوان جديد', disable: 'إيقاف', copy: 'نسخ', copied: 'نُسخ العنوان', address: 'عنوان التقويم',
+    onceOnly: 'يظهر العنوان الآن فقط. احفظه في تقويمك؛ إنشاء عنوان جديد يوقف القديم.', lastRead: 'قرأه تقويمك {{when}}', notReadYet: 'لم يقرأه تقويم بعد.',
+    addToCalendar: 'أضف إلى التقويم',
   },
   suppressions: {
     title: 'قائمة عدم التواصل', hint: 'أرقام وعناوين طلب أصحابها التوقف، أو ارتدّ البريد إليها، أو أُضيفت يدويًا. لا يُرسَل إليها شيء من أي عميل.',

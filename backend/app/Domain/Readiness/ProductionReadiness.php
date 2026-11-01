@@ -11,10 +11,12 @@ use App\Models\AgentMessage;
 use App\Models\CommissioningRun;
 use App\Models\SheetSyncRun;
 use App\Models\TenantSetting;
+use App\Models\User;
 use App\Services\Email\EmailManager;
 use App\Services\Whatsapp\WhatsappManager;
 use App\Support\Deployment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -72,6 +74,7 @@ class ProductionReadiness
             $workspace ? $this->ads($rows, $last) : $this->perWorkspace('ads'),
             $workspace ? $this->email($rows) : $this->perWorkspace('email'),
             $workspace ? $this->claude() : $this->perWorkspace('claude'),
+            $workspace ? $this->calendar() : $this->perWorkspace('calendar'),
         ];
 
         $items = $this->withLadder($items, $rows, $last, $workspace);
@@ -132,6 +135,10 @@ class ProductionReadiness
                     array_values(array_filter(array_map($health, ['meta', 'tiktok', 'google_ads', 'snapchat', 'linkedin']))),
                     $last['ads'] ?? null,
                 ),
+                // Built in, so "configured" from the start; the same honesty as the agents' row for whether it is live.
+                'calendar' => $workspace
+                    ? $ladder->claude(true, User::query()->max('calendar_feed_fetched_at') ? Carbon::parse(User::query()->max('calendar_feed_fetched_at'))->toIso8601String() : null)
+                    : ['state' => 'not_configured', 'evidence' => []],
                 'claude' => $workspace
                     ? $ladder->claude(
                         filled(config('services.anthropic.key')) || filled(TenantSetting::query()->value('ai_api_key')),
@@ -418,6 +425,26 @@ class ProductionReadiness
         }, [
             'api_key' => $key,
             'model_answered' => $answered,
+        ], commissionable: false);
+    }
+
+    /**
+     * Visits in people's calendars. The private feed needs nothing from anybody and is live once a calendar app has
+     * read one; two-way Google Calendar sync needs the Calendar scope approved on the Google project, which is the
+     * owner's to do.
+     */
+    private function calendar(): array
+    {
+        $feeds = User::query()->whereNotNull('calendar_token_hash')->count();
+        $read = User::query()->whereNotNull('calendar_feed_fetched_at')->exists();
+
+        $live = $read && Deployment::isProduction();
+
+        return $this->item('calendar', $live ? self::LIVE : self::READY, $live ? null : ($read ? 'not_recorded_in_production' : 'awaiting_first_event'), [
+            'ics_feed' => true,
+            'feed_created' => $feeds > 0,
+            'feed_read_by_a_calendar' => $read,
+            'google_calendar_sync' => false,
         ], commissionable: false);
     }
 

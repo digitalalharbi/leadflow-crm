@@ -1590,6 +1590,7 @@ export default {
       external_verification_required: 'External verification required',
     },
     item: {
+      calendar: 'Calendar',
       email: 'Email',
       claude: 'Claude for agents',
       vps: 'Server (VPS)',
@@ -1619,6 +1620,10 @@ export default {
       configured_per_workspace: 'Configured by each workspace on its own.',
     },
     check: {
+      ics_feed: 'Private calendar address',
+      feed_created: 'An address was created',
+      feed_read_by_a_calendar: 'A calendar has read it',
+      google_calendar_sync: 'Google Calendar sync',
       mail_server: 'A real mail server',
       opened_by_a_customer: 'A customer opened one',
       replies_routed: 'Replies come back to the thread',
@@ -1804,6 +1809,12 @@ export default {
   slaRules: {
     title: 'First-contact target by source and priority', hint: 'The general target is {{minutes}} minutes. Make it shorter here for some leads; the strictest applies.',
     source: 'Source', minutes: 'Minutes', minutesShort: 'min', addSource: 'Add source', priority: 'Priority leads',
+  },
+  calendar: {
+    title: 'My visits in my calendar', hint: 'A private address you add to Google, Apple or Outlook Calendar; your visits appear there and stay up to date.',
+    create: 'Create calendar address', newAddress: 'New address', disable: 'Turn off', copy: 'Copy', copied: 'Address copied', address: 'Calendar address',
+    onceOnly: 'The address is shown only now. Save it in your calendar; a new address retires the old one.', lastRead: 'Read by your calendar {{when}}', notReadYet: 'No calendar has read it yet.',
+    addToCalendar: 'Add to calendar',
   },
   suppressions: {
     title: 'Do-not-contact list', hint: 'Numbers and addresses whose owners asked to stop, that bounced, or that were added by hand. Nothing is sent to them from any lead.',

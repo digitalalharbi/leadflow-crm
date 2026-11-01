@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\BrandingController;
+use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
@@ -154,6 +155,9 @@ Route::prefix('v1')->group(function () {
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
 
+    // A person's calendar feed, read by their calendar app. The secret in the address is the credential.
+    Route::get('/public/calendar/{token}.ics', [CalendarController::class, 'publicFeed'])->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{48}');
+
     // The public API: a company's own data through one of its API keys (Authorization: Bearer mht_…). No session.
     Route::prefix('public')->middleware('throttle:api-key')->group(function () {
         Route::get('/leads', [PublicApiController::class, 'leads'])->middleware(AuthenticateApiKey::class.':leads:read');
@@ -241,6 +245,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/impersonation/stop', [ImpersonationController::class, 'stop']);
         // Outside `tenant.active`: a suspended company's admin can still read why, and what to do.
         Route::get('/billing', [BillingController::class, 'show']);
+        Route::get('/auth/calendar-feed', [CalendarController::class, 'feed']);
+        Route::post('/auth/calendar-feed/rotate', [CalendarController::class, 'rotate']);
+        Route::delete('/auth/calendar-feed', [CalendarController::class, 'disable']);
         Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
         Route::patch('/auth/notification-preferences', [NotificationPreferenceController::class, 'update']);
         Route::get('/auth/notification-preferences/whatsapp-log', [NotificationPreferenceController::class, 'whatsappLog']);
@@ -411,6 +418,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/appointments', [AppointmentController::class, 'index']);
             Route::post('/appointments', [AppointmentController::class, 'store']);
             Route::patch('/appointments/{uuid}', [AppointmentController::class, 'update']);
+            Route::get('/appointments/{uuid}/ics', [CalendarController::class, 'appointment']);
             Route::post('/appointments/{uuid}/transition', [AppointmentController::class, 'transition']);
             Route::post('/appointments/{uuid}/outcome', [AppointmentController::class, 'outcome']);
             Route::get('/reservations', [ReservationController::class, 'index']);

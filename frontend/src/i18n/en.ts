@@ -1655,8 +1655,12 @@ export default {
       scope: 'Scope',
       credentials: 'Credentials',
       number: 'Number',
+      send: 'Test message',
+      dns: 'SPF, DKIM and DMARC records',
     },
     detail: {
+      no_recipient: 'The person running the check has no email',
+      no_sender_domain: 'No sender domain',
       accepted: 'accepted by Google',
       client_rejected: 'Google rejected the id or the secret',
       not_configured: 'not configured',

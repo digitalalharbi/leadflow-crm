@@ -72,7 +72,7 @@ class ProductionReadiness
             $workspace ? $this->whatsapp($rows, $last) : $this->perWorkspace('whatsapp'),
             $workspace ? $this->twilio($rows, $last) : $this->perWorkspace('twilio'),
             $workspace ? $this->ads($rows, $last) : $this->perWorkspace('ads'),
-            $workspace ? $this->email($rows) : $this->perWorkspace('email'),
+            $workspace ? $this->email($rows, $last) : $this->perWorkspace('email'),
             $workspace ? $this->claude() : $this->perWorkspace('claude'),
             $workspace ? $this->calendar() : $this->perWorkspace('calendar'),
         ];
@@ -376,7 +376,7 @@ class ProductionReadiness
      * actually opened or clicked — a pixel or a link only a real inbox fetches
      * — is the proof it reaches people. The log driver proves nothing.
      */
-    private function email($rows): array
+    private function email($rows, array $last = []): array
     {
         $manager = app(EmailManager::class);
         $configured = $manager->provider() !== 'mock';
@@ -400,7 +400,7 @@ class ProductionReadiness
             'mail_server' => $configured,
             'opened_by_a_customer' => $proven,
             'replies_routed' => $replies,
-        ], commissionable: false);
+        ], commissionable: true, last: $last['email'] ?? null);
     }
 
     /**

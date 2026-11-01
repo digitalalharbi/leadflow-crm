@@ -1813,8 +1813,12 @@ export default {
       scope: 'الصلاحية',
       credentials: 'بيانات الاتصال',
       number: 'الرقم',
+      send: 'رسالة فحص',
+      dns: 'سجلات SPF وDKIM وDMARC',
     },
     detail: {
+      no_recipient: 'لا بريد لمن يُجري الفحص',
+      no_sender_domain: 'لا نطاق للمرسل',
       accepted: 'قبلها Google',
       client_rejected: 'رفض Google المعرّف أو السر',
       not_configured: 'غير مضبوط',

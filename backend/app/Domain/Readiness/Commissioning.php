@@ -3,6 +3,8 @@
 namespace App\Domain\Readiness;
 
 use App\Domain\Calls\Providers\TwilioCallProvider;
+use App\Domain\Mail\EmailDnsReadiness;
+use App\Domain\Mail\OutboundEmail;
 use App\Domain\Sheets\GoogleOAuth;
 use App\Domain\Sheets\GoogleTokens;
 use App\Enums\IntegrationProvider;
@@ -10,6 +12,7 @@ use App\Models\CommissioningRun;
 use App\Models\Integration;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Email\EmailManager;
 use App\Services\Integrations\LeadPuller;
 use App\Services\Integrations\ProviderRegistry;
 use App\Services\Whatsapp\WhatsappCloudProvider;
@@ -33,7 +36,7 @@ use Illuminate\Support\Facades\Http;
  */
 class Commissioning
 {
-    public const KEYS = ['google', 'whatsapp', 'twilio', 'ads'];
+    public const KEYS = ['google', 'whatsapp', 'twilio', 'ads', 'email'];
 
     public function __construct(
         private readonly GoogleOAuth $google,
@@ -43,6 +46,8 @@ class Commissioning
         private readonly TwilioCallProvider $twilio,
         private readonly ProviderRegistry $providers,
         private readonly LeadPuller $puller,
+        private readonly EmailManager $email,
+        private readonly EmailDnsReadiness $dns,
     ) {}
 
     /** @return array{ok:bool, steps:array<int,array{key:string,ok:?bool,detail:string}>} */
@@ -53,6 +58,7 @@ class Commissioning
             'whatsapp' => $this->whatsapp(),
             'twilio' => $this->twilio(),
             'ads' => $this->ads($tenant),
+            'email' => $this->email($by),
         };
 
         // Skipped steps neither pass nor fail the run.
@@ -251,6 +257,48 @@ class Commissioning
         }
 
         return $steps === [] ? [$this->step('credentials', false, 'credentials_missing')] : $steps;
+    }
+
+    // ---------------------------------------------------------------- email
+
+    /**
+     * The workspace's mail server: a real message to the person running the check, through the same door every
+     * lead email takes, and the sending domain's SPF, DKIM and DMARC — without them the message that did leave
+     * lands in spam, which is the same as not arriving.
+     */
+    private function email(?User $by): array
+    {
+        $integration = $this->email->integration();
+
+        if (! $this->email->isLive($integration)) {
+            return [$this->step('credentials', false, 'credentials_missing')];
+        }
+
+        $from = $this->email->from($integration, null);
+        $steps = [$this->step('credentials', true, 'present')];
+
+        if ($by === null || blank($by->email)) {
+            $steps[] = $this->step('send', null, 'no_recipient');
+        } else {
+            $text = 'هذه رسالة فحص من «مهتم». إن وصلتك فالبريد يعمل.';
+            $result = $this->email->door($integration)->send(new OutboundEmail(
+                $by->email, $by->name, 'فحص البريد — مهتم', '<p>'.e($text).'</p>', $text,
+                $from['address'], $from['name'], '', ['kind' => 'commissioning'],
+            ));
+            $steps[] = $this->step('send', $result->ok, $result->ok ? (string) $by->email : mb_substr((string) $result->error, 0, 240));
+        }
+
+        $domain = str_contains((string) $from['address'], '@') ? substr((string) $from['address'], strrpos((string) $from['address'], '@') + 1) : null;
+
+        if ($domain === null) {
+            $steps[] = $this->step('dns', null, 'no_sender_domain');
+        } else {
+            $dns = $this->dns->check($domain);
+            $missing = collect(['spf', 'dkim', 'dmarc'])->filter(fn ($k) => ($dns[$k]['status'] ?? null) !== 'ok')->values()->all();
+            $steps[] = $this->step('dns', $dns['ready'], $dns['ready'] ? $domain : $domain.': '.implode(', ', $missing));
+        }
+
+        return $steps;
     }
 
     private function step(string $key, ?bool $ok, string $detail): array

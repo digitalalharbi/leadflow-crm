@@ -37,7 +37,7 @@ class SlaBySourceAndPriorityTest extends TestCase
         $rep = $this->makeUser($this->t['tenant']);
 
         return $this->asTenant($this->t['tenant'], function () use ($ageMinutes, $attributes, $rep, $priority) {
-            $lead = Lead::create($attributes + ['full_name' => 'L', 'phone_normalized' => '+9665000'.random_int(10000, 99999), 'status' => 'new', 'assigned_to' => $rep->id]);
+            $lead = Lead::create($attributes + ['full_name' => 'L', 'phone_normalized' => '+9665000'.self::uniqueDigits(5), 'status' => 'new', 'assigned_to' => $rep->id]);
             $lead->forceFill(['created_at' => now()->subMinutes($ageMinutes), 'is_priority' => $priority])->saveQuietly();
 
             return $lead->fresh();

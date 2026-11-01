@@ -57,7 +57,7 @@ class PartnersAndQrTest extends TestCase
         $token = $link['token'];
 
         return $this->asTenant($this->t['tenant'], function () use ($token, $attributes) {
-            $lead = Lead::create($attributes + ['full_name' => 'عميل', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'contacted', 'project_id' => $this->project->id]);
+            $lead = Lead::create($attributes + ['full_name' => 'عميل', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'contacted', 'project_id' => $this->project->id]);
             $link = TrackingLink::where('token', $token)->first();
             // What stitching does when a visitor who clicked the link becomes a lead.
             DB::table('leads')->where('id', $lead->id)->update(['first_touch_link_id' => $link->id, 'partner_id' => $link->partner_id]);
@@ -111,7 +111,7 @@ class PartnersAndQrTest extends TestCase
         $link = $this->link($partner['id']);
 
         $lead = $this->asTenant($this->t['tenant'], function () use ($link) {
-            $lead = Lead::create(['full_name' => 'عميل', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new']);
+            $lead = Lead::create(['full_name' => 'عميل', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new']);
             $model = TrackingLink::where('token', $link['token'])->first();
             $incoming = IncomingLead::fromArray(IntegrationProvider::GoogleSheets, ['full_name' => 'عميل', 'phone' => '0551234567']);
             app(Attribution::class)->attachLead($lead, $incoming, $model);

@@ -84,7 +84,7 @@ class CompanyIsolationMatrixTest extends TestCase
             $this->makeUser($tenant, Role::Manager, ['name' => "{$tag} Manager", 'email' => strtolower($tag).'.manager@example.test']);
             $this->makeUser($tenant, Role::MarketingManager, ['email' => strtolower($tag).'.mkt@example.test']);
             $this->makeUser($tenant, Role::SalesManager, ['email' => strtolower($tag).'.sm@example.test']);
-            $lead = Lead::create(['full_name' => "{$tag} Lead", 'phone' => '0555'.random_int(100000, 999999), 'phone_normalized' => '+966555'.random_int(100000, 999999), 'project_id' => $project->id, 'assigned_to' => $rep->id, 'email' => strtolower($tag).'@lead.test']);
+            $lead = Lead::create(['full_name' => "{$tag} Lead", 'phone' => '0555'.self::uniqueDigits(6), 'phone_normalized' => '+966555'.self::uniqueDigits(6), 'project_id' => $project->id, 'assigned_to' => $rep->id, 'email' => strtolower($tag).'@lead.test']);
             FollowUp::create(['lead_id' => $lead->id, 'assigned_to' => $rep->id, 'due_at' => now()->addDay(), 'note' => "{$tag} call back", 'status' => 'pending']);
             $unit = Property::create(['project_id' => $project->id, 'code' => "{$tag}-101", 'title' => "{$tag} Unit", 'property_type' => 'apartment', 'status' => 'available']);
             Appointment::create(['lead_id' => $lead->id, 'project_id' => $project->id, 'assigned_to' => $rep->id, 'scheduled_at' => now()->addDays(2), 'status' => 'scheduled', 'notes' => "{$tag} visit"]);

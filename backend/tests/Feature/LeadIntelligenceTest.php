@@ -35,7 +35,7 @@ class LeadIntelligenceTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'نورة العتيبي', 'phone' => '0551234567',
-            'phone_normalized' => '+9665512'.random_int(10000, 99999),
+            'phone_normalized' => '+9665512'.self::uniqueDigits(5),
             'email' => 'noura@example.com', 'city' => 'الرياض', 'status' => 'contacted',
             'assigned_to' => $this->t['admin']->id, 'first_contact_at' => now()->subDays(2),
         ], $attributes)));

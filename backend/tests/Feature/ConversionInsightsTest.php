@@ -38,7 +38,7 @@ class ConversionInsightsTest extends TestCase
 
             $lead = Lead::create(array_merge([
                 'full_name' => 'عميل',
-                'phone_normalized' => '+9665007'.random_int(10000, 99999),
+                'phone_normalized' => '+9665007'.self::uniqueDigits(5),
                 'status' => $won ? 'won' : 'new',
                 'score' => 50,
             ], $attributes));

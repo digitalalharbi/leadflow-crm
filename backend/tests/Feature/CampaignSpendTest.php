@@ -34,7 +34,7 @@ class CampaignSpendTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'عميل',
-            'phone_normalized' => '+9665005'.random_int(10000, 99999),
+            'phone_normalized' => '+9665005'.self::uniqueDigits(5),
             'status' => 'new',
             'platform' => 'meta',
             'campaign_name' => $campaign,

@@ -134,7 +134,7 @@ class AwayRepsAreNotAssignedTest extends TestCase
 
         $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create([
             'full_name' => 'عميل',
-            'phone_normalized' => '+96650018'.random_int(1000, 9999),
+            'phone_normalized' => '+96650018'.self::uniqueDigits(4),
             'status' => 'new',
         ]));
 

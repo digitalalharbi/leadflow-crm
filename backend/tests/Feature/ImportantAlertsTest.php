@@ -35,7 +35,7 @@ class ImportantAlertsTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'خالد الشمري', 'phone' => '0551234567',
-            'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new',
+            'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new',
         ], $attributes)));
     }
 

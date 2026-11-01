@@ -30,10 +30,19 @@ trait MailsByPreference
 
     public function via(object $notifiable): array
     {
-        $channels = [TenantDatabaseChannel::class];
         $category = $this->alertCategory();
+        $person = $category !== null && $notifiable instanceof User ? $notifiable : null;
 
-        if ($category !== null && $notifiable instanceof User && filled($notifiable->email) && NotificationPrefs::modeFor($notifiable, $category) === 'instant') {
+        /*
+         * The bell, unless the person switched it off for this kind of alert. Still recorded when the alert is
+         * meant for a daily or weekly email: the summary is built from these records, and switching the bell off
+         * must not empty the summary the person asked for.
+         */
+        $mode = $person !== null ? NotificationPrefs::modeFor($person, $category) : null;
+        $forSummary = in_array($mode, ['daily', 'weekly'], true) && NotificationPrefs::allows($person, $category, 'email');
+        $channels = $person === null || $forSummary || NotificationPrefs::allows($person, $category, 'in_app') ? [TenantDatabaseChannel::class] : [];
+
+        if ($person !== null && filled($person->email) && $mode === 'instant' && NotificationPrefs::allows($person, $category, 'email')) {
             $channels[] = ProviderMailChannel::class;
         }
 

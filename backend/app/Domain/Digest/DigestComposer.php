@@ -437,7 +437,9 @@ class DigestComposer
      */
     public function rollup(User $user, string $mode, CarbonInterface $since): array
     {
-        $categories = collect(NotificationPrefs::for($user)['alerts'])->filter(fn (string $m) => $m === $mode)->keys();
+        $prefs = NotificationPrefs::for($user);
+        // A summary is an email: a kind whose email the person switched off is not in it.
+        $categories = collect($prefs['alerts'])->filter(fn (string $m, string $c) => $m === $mode && ($prefs['channels'][$c]['email'] ?? true))->keys();
 
         if ($categories->isEmpty()) {
             return [];

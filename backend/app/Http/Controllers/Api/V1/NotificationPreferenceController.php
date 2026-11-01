@@ -31,6 +31,10 @@ class NotificationPreferenceController extends Controller
             'alerts.*' => ['string', Rule::in(AlertKinds::MODES)],
             'digests' => ['sometimes', 'array'],
             'digests.*' => ['boolean'],
+            'channels' => ['sometimes', 'array'],
+            'channels.*' => ['array'],
+            'channels.*.in_app' => ['sometimes', 'boolean'],
+            'channels.*.email' => ['sometimes', 'boolean'],
             // WhatsApp alerts to the person themselves: switched on by them, per category, with their own quiet hours.
             'whatsapp' => ['sometimes', 'array'],
             'whatsapp.enabled' => ['sometimes', 'boolean'],
@@ -46,6 +50,7 @@ class NotificationPreferenceController extends Controller
         NotificationPrefs::save($request->user(), [
             'alerts' => array_intersect_key($data['alerts'] ?? [], array_flip(AlertKinds::CATEGORIES)),
             'digests' => array_intersect_key($data['digests'] ?? [], array_flip(AlertKinds::DIGESTS)),
+            'channels' => array_intersect_key($data['channels'] ?? [], array_flip(AlertKinds::CATEGORIES)),
         ]);
 
         if (isset($data['whatsapp'])) {

@@ -132,6 +132,7 @@ export default {
   alerts: {
     title: 'Alerts & summaries',
     subtitle: 'How you want to hear about what matters — email: {{email}}',
+    channels: 'Channels', channel: { in_app: 'In the app', email: 'Email' },
     mailOff: 'Email is not switched on at the server yet, so alerts reach you inside the app only until it is set up.',
     mode: { instant: 'At once', daily: 'Daily', weekly: 'Weekly', off: 'Off' },
     category: {

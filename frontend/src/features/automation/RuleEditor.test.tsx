@@ -223,4 +223,35 @@ describe('RuleEditor', () => {
     expect(screen.getByLabelText(/القيمة/).tagName).toBe('INPUT')
     expect(screen.getByText('افصل بينها بفاصلة')).toBeInTheDocument()
   })
+
+  it('saves a bracket of conditions with its own all/any, and an otherwise branch', async () => {
+    const user = userEvent.setup()
+    const onSave = render()
+
+    await user.type(screen.getByTestId('rule-name'), 'فرعان')
+    await user.click(screen.getByTestId('add-condition'))
+    await user.click(screen.getByTestId('add-condition-group'))
+    expect(screen.getAllByTestId('condition-row')).toHaveLength(3)
+    await user.selectOptions(screen.getByTestId('condition-group-match'), 'all')
+    await user.click(screen.getByTestId('add-else-action'))
+    await user.click(screen.getByTestId('save-rule'))
+
+    const payload = onSave.mock.calls[0][0]
+    expect(payload.conditions).toHaveLength(2)
+    expect(payload.conditions[1]).toMatchObject({ group: 'all' })
+    expect(payload.conditions[1].conditions).toHaveLength(2)
+    expect(payload.else_actions).toEqual([expect.objectContaining({ type: 'assign' })])
+  })
+
+  it('opens a bracket left with one condition into that condition', async () => {
+    const user = userEvent.setup()
+    const onSave = render()
+
+    await user.type(screen.getByTestId('rule-name'), 'x')
+    await user.click(screen.getByTestId('add-condition-group'))
+    await user.click(screen.getAllByLabelText('حذف الشرط')[0])
+    expect(screen.queryByTestId('condition-group')).toBeNull()
+    await user.click(screen.getByTestId('save-rule'))
+    expect(onSave.mock.calls[0][0].conditions[0]).toHaveProperty('field')
+  })
 })

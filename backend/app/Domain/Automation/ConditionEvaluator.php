@@ -18,12 +18,11 @@ use Illuminate\Support\Carbon;
  * that cannot be understood must not fire — silently doing nothing is the only
  * safe failure for something a tenant wrote through a form.
  *
- * Conditions are a flat list, and the rule says whether it needs all of them or
- * any one of them. Still flat on purpose: nested boolean trees are a second
- * rule, not a deeper structure nobody can read back. One choice for the whole
- * list is the most a builder can express honestly, and it is the thing people
- * actually reach for — "call back or no answer", "Riyadh or Jeddah" — which
- * otherwise has to be written as two rules kept in step by hand.
+ * Conditions are a list, and the rule says whether it needs all of them or
+ * any one of them. An item may also be a bracket — `{group: all|any,
+ * conditions: [...]}` — so "(Riyadh or Jeddah) and budget over a million" is
+ * one rule, not two kept in step by hand. One level deep on purpose: a bracket
+ * inside a bracket is a structure nobody reads back correctly in a form.
  */
 class ConditionEvaluator
 {
@@ -53,6 +52,30 @@ class ConditionEvaluator
         $failures = [];
 
         foreach ($conditions as $condition) {
+            if (is_array($condition) && isset($condition['group'])) {
+                $inner = $this->evaluateGroup($lead, $condition, $context);
+
+                if ($inner['malformed']) {
+                    return ['matched' => false, 'reason' => $inner['reason']];
+                }
+
+                if ($inner['matched']) {
+                    if ($any) {
+                        return ['matched' => true, 'reason' => null];
+                    }
+
+                    continue;
+                }
+
+                if (! $any) {
+                    return ['matched' => false, 'reason' => $inner['reason']];
+                }
+
+                $failures[] = $inner['reason'];
+
+                continue;
+            }
+
             $field = (string) ($condition['field'] ?? '');
             $operator = (string) ($condition['operator'] ?? '');
 
@@ -103,6 +126,27 @@ class ConditionEvaluator
         }
 
         return ['matched' => true, 'reason' => null];
+    }
+
+    /**
+     * A bracket: its own all/any over plain conditions. A bracket inside a
+     * bracket, or an empty one, is malformed and stops the rule — the same as a
+     * condition with no field.
+     *
+     * @return array{matched:bool, reason:?string, malformed:bool}
+     */
+    private function evaluateGroup(Lead $lead, array $group, array $context): array
+    {
+        $inner = (array) ($group['conditions'] ?? []);
+        $match = ($group['group'] ?? null) === self::MATCH_ANY ? self::MATCH_ANY : self::MATCH_ALL;
+
+        if ($inner === [] || collect($inner)->contains(fn ($c) => ! is_array($c) || isset($c['group']))) {
+            return ['matched' => false, 'reason' => 'A condition group is empty or nested too deep.', 'malformed' => true];
+        }
+
+        $verdict = $this->evaluate($lead, $inner, $context, $match);
+
+        return $verdict + ['malformed' => $verdict['reason'] === 'A condition is missing its field or operator.'];
     }
 
     /**

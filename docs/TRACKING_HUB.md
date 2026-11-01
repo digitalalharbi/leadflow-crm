@@ -143,3 +143,15 @@ submissions per version.
 Public requests have an allowance of their own per kind, per visitor and per page (views, step reports, submit): a shared counter would let a busy
 mobile network lock its customers out of the one button that matters. A honeypot, an idempotent submission id and consent are as before; every
 manager text is plain text; tenant isolation is checked on every new endpoint.
+
+## Project landing pages and lead sources
+
+A landing page is a `LandingForm` with `page` set, not a second system. Publishing gives it a global `slug` and a `default_link_id`, so `/l/<slug>` resolves to a tracking link and the visit, submission, beacons, sessions, analytics and destinations run on the path every link uses. Tokens resolve first; a page's old slugs stay reserved and keep opening it (`landing_slug_history`).
+
+- **Config:** `LandingPageConfig`, a closed list, frozen in each published version.
+- **Lead:** `leads.landing_form_id` keeps the first page that brought it.
+- **Beacons** always post the link's token, never the slug.
+- **WhatsApp:** the page writes `Ref: XXXXXX`, derived from the session. A click keeps a reference only if it is that session's own; the first inbound message carrying one makes the lead (`WhatsappAttribution`) on pages in `inbound` mode.
+- **Platform forms:** `lead_form_mappings` (project + field map), applied inside `LeadIngestionService`.
+- **Sources screen:** `ProjectLeadSources`, read from the same leads as the pipeline.
+- **Conversion names:** `tracking_destinations.event_map`, only for events the server witnessed (`DestinationKind::MAPPABLE_EVENTS`).

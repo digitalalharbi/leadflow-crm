@@ -117,7 +117,7 @@ test.describe('Lead sources and landing pages', () => {
 
     // A long form turned itself into steps: walk them, filling what each asks.
     for (let step = 0; step < 6; step++) {
-      for (const input of await form.locator('input:visible:not([type=checkbox]):not([type=radio])').all()) {
+      for (const input of await form.locator('input:visible:not([type=checkbox]):not([type=radio]):not([tabindex="-1"])').all()) {
         const type = await input.getAttribute('type')
         if (await input.inputValue()) continue
         const mode = await input.getAttribute('inputmode')
@@ -135,8 +135,8 @@ test.describe('Lead sources and landing pages', () => {
       // The same button moves on, and on the last step sends.
       await form.getByTestId('landing-submit').click()
 
-      if (await page.getByTestId('landing-thanks').isVisible().catch(() => false)) break
-      await page.waitForTimeout(250)
+      // Sending takes a moment on the last step: the thanks replaces the form, so there is nothing more to press.
+      if (await page.getByTestId('landing-thanks').waitFor({ timeout: 2000 }).then(() => true).catch(() => false)) break
     }
 
     await expect(page.getByTestId('landing-thanks')).toBeVisible()
@@ -146,6 +146,12 @@ test.describe('Lead sources and landing pages', () => {
     expect(source?.status).toBe('connected')
     expect(source?.leads).toBeGreaterThan(0)
     expect(source?.path).toBe(`/l/${slug}`)
+
+    // Inside the project, with its tag and where it came from.
+    const leads = await apiGet<{ phone: string | null; tags?: string[]; utm_source?: string | null; campaign_name?: string | null }[]>(admin, `/api/v1/leads?project_id=${projectId}&tag=riwaq&per_page=5`)
+    expect(leads.length).toBeGreaterThan(0)
+    expect(leads[0].tags).toContain('riwaq')
+    expect(leads[0].campaign_name).toBe('autumn')
 
     const analytics = await apiGet<{ page: { leads: number; funnel: { key: string; n: number }[] } }>(admin, `/api/v1/tracking/forms/${page1.id}/analytics`)
     expect(analytics.page.leads).toBeGreaterThan(0)

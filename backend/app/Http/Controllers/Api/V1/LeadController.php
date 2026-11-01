@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Access\Permissions;
 use App\Domain\Automation\FollowUpPlanner;
 use App\Domain\Calls\CallProviderRegistry;
 use App\Domain\Calls\Exceptions\CallCannotBePlaced;
@@ -761,15 +762,17 @@ class LeadController extends Controller
 
         $filename = 'leads-'.now()->format('Y-m-d-His').'.csv';
 
-        return response()->streamDownload(function () use ($query) {
+        $hidden = Permissions::hiddenData($request->user());
+
+        return response()->streamDownload(function () use ($query, $hidden) {
             $out = fopen('php://output', 'w');
             $csv = CsvWriter::open($out);
 
             $csv->writeRow(LeadExportColumns::headings());
 
-            $query->chunk(500, function ($leads) use ($csv) {
+            $query->chunk(500, function ($leads) use ($csv, $hidden) {
                 foreach ($leads as $lead) {
-                    $csv->writeRow(LeadExportColumns::row($lead));
+                    $csv->writeRow(LeadExportColumns::row($lead, $hidden));
                 }
             });
 

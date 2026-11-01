@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Privacy\PersonalData;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
+use App\Policies\LeadPolicy;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class LeadPrivacyController extends Controller
     public function export(Request $request, string $uuid): StreamedResponse
     {
         $lead = Lead::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('managePersonalData', $lead);
+        $this->mayManage($request, $lead);
 
         $payload = $this->data->export($lead);
         $this->audit->log('data.exported', $request->user(), $lead, ['kind' => 'personal_data']);
@@ -39,7 +40,7 @@ class LeadPrivacyController extends Controller
     public function erase(Request $request, string $uuid)
     {
         $lead = Lead::where('uuid', $uuid)->firstOrFail();
-        $this->authorize('managePersonalData', $lead);
+        $this->mayManage($request, $lead);
 
         $data = $request->validate([
             'confirm' => ['required', 'string', 'max:255'],
@@ -53,5 +54,15 @@ class LeadPrivacyController extends Controller
         $result = $this->data->erase($lead, $request->user(), (bool) ($data['suppress'] ?? true));
 
         return ApiResponse::success(['erased' => true] + $result);
+    }
+
+    /**
+     * Asked of the policy itself, not through the gate: the gate waves every permission-table role through
+     * (Gate::before) and leaves them to the route permissions, which say "may work leads" — not "may hand over or
+     * erase this person". Without this, any such role that could open a lead could export or erase it.
+     */
+    private function mayManage(Request $request, Lead $lead): void
+    {
+        abort_unless(app(LeadPolicy::class)->managePersonalData($request->user(), $lead), 403, 'Your role does not include this.');
     }
 }

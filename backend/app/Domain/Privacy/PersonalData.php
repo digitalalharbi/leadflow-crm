@@ -3,9 +3,11 @@
 namespace App\Domain\Privacy;
 
 use App\Models\Lead;
+use App\Models\ScheduledAction;
 use App\Models\Suppression;
 use App\Models\User;
 use App\Services\AuditLogger;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,6 +20,9 @@ use Illuminate\Support\Facades\DB;
  * gone from every table that held them; the row stays, soft-deleted and marked erased, so last month's lead count,
  * the campaign's cost per lead and the funnel do not change after the fact. By default the number and address go on
  * the do-not-contact list, because "delete my data" also means "do not message me again" — the one thing kept.
+ *
+ * Not reached: export files already made (deleted within 24 hours by leadflow:prune-exports) and backups, which
+ * age out on their own schedule.
  */
 class PersonalData
 {
@@ -31,6 +36,27 @@ class PersonalData
     ];
 
     public function __construct(private SuppressionList $suppressions, private AuditLogger $audit) {}
+
+    /**
+     * The lead and every duplicate merged into it, following chains of merges.
+     *
+     * @return Collection<int, Lead>
+     */
+    private function withMergedDuplicates(Lead $lead): Collection
+    {
+        $rows = collect([$lead]);
+        $frontier = [$lead->id];
+
+        // Bounded: a merge chain longer than this is not a person's history.
+        for ($depth = 0; $frontier !== [] && $depth < 20; $depth++) {
+            $found = Lead::withTrashed()->where('tenant_id', $lead->tenant_id)->whereIn('merged_into_id', $frontier)
+                ->whereNotIn('id', $rows->pluck('id'))->get();
+            $rows = $rows->concat($found);
+            $frontier = $found->pluck('id')->all();
+        }
+
+        return $rows->values();
+    }
 
     /** @return array<string,mixed> */
     public function export(Lead $lead): array
@@ -88,17 +114,28 @@ class PersonalData
         $tenant = $lead->tenant_id;
         $suppressed = [];
 
-        DB::transaction(function () use ($lead, $by, $suppress, $tenant, &$suppressed) {
+        /*
+         * The person is every row that was ever them: the lead, and every duplicate merged into it (and into those).
+         * A merge soft-deletes the duplicate with its name, number and payload intact, so erasing only the kept
+         * lead left the identity in the table.
+         */
+        $rows = $this->withMergedDuplicates($lead);
+
+        DB::transaction(function () use ($lead, $rows, $by, $suppress, $tenant, &$suppressed) {
             if ($suppress) {
-                foreach (['phone' => $lead->phone_normalized ?: $lead->phone, 'email' => $lead->email] as $channel => $value) {
-                    if (filled($value) && $this->suppressions->add($tenant, $channel, (string) $value, Suppression::REASONS[0], $by->id, 'erasure') !== null) {
-                        $suppressed[] = $channel;
+                foreach ($rows as $row) {
+                    foreach (['phone' => $row->phone_normalized ?: $row->phone, 'email' => $row->email] as $channel => $value) {
+                        if (filled($value) && $this->suppressions->add($tenant, $channel, (string) $value, Suppression::REASONS[0], $by->id, 'erasure') !== null && ! in_array($channel, $suppressed, true)) {
+                            $suppressed[] = $channel;
+                        }
                     }
                 }
             }
 
-            $email = $lead->email;
-            $scope = fn (string $table) => DB::table($table)->where('tenant_id', $tenant)->where('lead_id', $lead->id);
+            $ids = $rows->pluck('id')->all();
+            $uuids = $rows->pluck('uuid')->all();
+            $emails = $rows->pluck('email')->filter()->unique()->values()->all();
+            $scope = fn (string $table) => DB::table($table)->where('tenant_id', $tenant)->whereIn('lead_id', $ids);
 
             $scope('lead_messages')->update(['body' => null, 'subject' => null, 'provider_payload' => null, 'context' => null, 'send_spec' => null]);
             $scope('lead_notes')->update(['body' => '—']);
@@ -117,18 +154,33 @@ class PersonalData
             $scope('file_shares')->delete();
             $scope('visitor_sessions')->update(['lead_id' => null, 'ip_hash' => null]);
             $scope('tracking_events')->update(['lead_id' => null, 'ip_hash' => null]);
+            // What automation wrote about them: the action's description and its before/after can quote them.
+            $scope('automation_action_logs')->update(['description' => null, 'before' => null, 'after' => null]);
+            $scope('automation_runs')->update(['reason' => null, 'applied_actions' => null]);
+            // A message still waiting to go to an erased person is not sent; what it would have said is gone too.
+            $scope('scheduled_actions')->where('status', ScheduledAction::PENDING)->update(['status' => ScheduledAction::CANCELLED, 'resolved_at' => now()]);
+            $scope('scheduled_actions')->update(['action' => json_encode(['type' => 'erased'])]);
+            $scope('conversion_exports')->update(['request_summary' => null]);
 
-            if (filled($email)) {
-                DB::table('email_deliveries')->where('tenant_id', $tenant)->where('to_email', $email)
+            // The alerts in people's bells that named them.
+            if ($uuids !== []) {
+                DB::table('notifications')->where('tenant_id', $tenant)->whereIn(DB::raw("data->>'lead_id'"), $uuids)
+                    ->update(['data' => DB::raw("jsonb_build_object('kind', data->'kind', 'severity', data->'severity', 'title', '—', 'body', '—')")]);
+            }
+
+            if ($emails !== []) {
+                DB::table('email_deliveries')->where('tenant_id', $tenant)->whereIn('to_email', $emails)
                     ->update(['to_email' => 'erased@invalid', 'to_name' => null, 'html' => null, 'text' => null]);
             }
 
-            $lead->forceFill(array_fill_keys(self::LEAD_COLUMNS, null) + [
-                'full_name' => self::ERASED_NAME,
-                'tags' => [],
-                'interest_signals' => null,
-                'erased_at' => now(),
-            ])->saveQuietly();
+            foreach ($rows as $row) {
+                $row->forceFill(array_fill_keys(self::LEAD_COLUMNS, null) + [
+                    'full_name' => self::ERASED_NAME,
+                    'tags' => [],
+                    'interest_signals' => null,
+                    'erased_at' => now(),
+                ])->saveQuietly();
+            }
 
             $lead->deleteQuietly();
         });

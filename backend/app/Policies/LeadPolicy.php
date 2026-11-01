@@ -74,7 +74,8 @@ class LeadPolicy
      */
     public function managePersonalData(User $user, Lead $lead): bool
     {
-        if (! $user->belongsToTenant($lead->tenant_id)) {
+        // Settings rights are not a way round lead visibility: a role that cannot open the lead cannot export or erase it.
+        if (! $this->view($user, $lead)) {
             return false;
         }
 

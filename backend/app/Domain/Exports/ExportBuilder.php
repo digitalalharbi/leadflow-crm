@@ -2,6 +2,7 @@
 
 namespace App\Domain\Exports;
 
+use App\Domain\Access\Permissions;
 use App\Models\DataExport;
 use App\Models\User;
 use App\Services\Leads\LeadQueryBuilder;
@@ -49,22 +50,24 @@ class ExportBuilder
         $path = $dir.'/'.$export->uuid.'.'.$export->format;
         $absolute = Storage::disk('local')->path($path);
 
+        $hidden = Permissions::hiddenData($user);
+
         $rows = match ($export->kind) {
-            'leads' => $this->leads($export, $user, $absolute),
-            'company' => $this->company($export, $absolute),
+            'leads' => $this->leads($export, $user, $absolute, $hidden),
+            'company' => $this->company($export, $absolute, $hidden),
             default => throw new RuntimeException('Unknown export.'),
         };
 
         return ['path' => $path, 'filename' => $filename, 'rows' => $rows, 'bytes' => (int) filesize($absolute)];
     }
 
-    private function leads(DataExport $export, User $user, string $absolute): int
+    private function leads(DataExport $export, User $user, string $absolute, array $hidden): int
     {
         $filters = (array) ($export->filters ?? []);
         $company = isset($filters['_company']) ? (string) $filters['_company'] : null;
         unset($filters['_company']);
 
-        return $this->scope->run($user, $company, function () use ($filters, $user, $export, $absolute) {
+        return $this->scope->run($user, $company, function () use ($filters, $user, $export, $absolute, $hidden) {
             $query = $this->queries->build(Request::create('/', 'GET', $filters), $user)
                 ->with(['assignee:id,uuid,name', 'project:id,uuid,name']);
 
@@ -73,7 +76,7 @@ class ExportBuilder
             if ($export->format === 'xlsx') {
                 $sheet = new XlsxWriter($absolute, 'Leads', $rtl);
                 $sheet->writeRow(LeadExportColumns::headings());
-                $query->chunk(500, fn ($leads) => $leads->each(fn ($lead) => $sheet->writeRow(LeadExportColumns::row($lead))));
+                $query->chunk(500, fn ($leads) => $leads->each(fn ($lead) => $sheet->writeRow(LeadExportColumns::row($lead, $hidden))));
                 $sheet->close();
 
                 return $sheet->rows();
@@ -83,9 +86,9 @@ class ExportBuilder
             $csv = CsvWriter::open($handle);
             $csv->writeRow(LeadExportColumns::headings());
             $count = 0;
-            $query->chunk(500, function ($leads) use ($csv, &$count) {
+            $query->chunk(500, function ($leads) use ($csv, &$count, $hidden) {
                 foreach ($leads as $lead) {
-                    $csv->writeRow(LeadExportColumns::row($lead));
+                    $csv->writeRow(LeadExportColumns::row($lead, $hidden));
                     $count++;
                 }
             });
@@ -95,7 +98,7 @@ class ExportBuilder
         });
     }
 
-    private function company(DataExport $export, string $absolute): int
+    private function company(DataExport $export, string $absolute, array $hidden): int
     {
         $zip = new ZipArchive;
 
@@ -106,6 +109,12 @@ class ExportBuilder
         $temps = [];
         $total = 0;
         $leadUuids = DB::table('leads')->where('tenant_id', $export->tenant_id)->pluck('uuid', 'id');
+
+        // What the person's role keeps from them stays out of the archive too, column by column.
+        $blank = array_merge(
+            in_array('contacts', $hidden, true) ? ['leads.phone_normalized', 'leads.email'] : [],
+            in_array('revenue', $hidden, true) ? ['leads.deal_value_minor', 'reservations.amount_minor'] : [],
+        );
 
         foreach (self::COMPANY_TABLES as $table => $columns) {
             $tmp = tempnam(sys_get_temp_dir(), 'exp');
@@ -120,9 +129,13 @@ class ExportBuilder
                 $query->whereNull('deleted_at');
             }
 
-            $query->chunkById(1000, function ($rows) use ($csv, $columns, $leadUuids, &$total) {
+            $query->chunkById(1000, function ($rows) use ($csv, $columns, $leadUuids, $table, $blank, &$total) {
                 foreach ($rows as $row) {
-                    $csv->writeRow(array_map(fn ($c) => $c === 'lead_id' ? ($leadUuids[$row->lead_id] ?? null) : $row->{$c}, $columns));
+                    $csv->writeRow(array_map(fn ($c) => match (true) {
+                        in_array("{$table}.{$c}", $blank, true) => null,
+                        $c === 'lead_id' => $leadUuids[$row->lead_id] ?? null,
+                        default => $row->{$c},
+                    }, $columns));
                     $total++;
                 }
             });

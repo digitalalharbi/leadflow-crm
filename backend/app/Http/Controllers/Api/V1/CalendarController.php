@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Calendar\IcsCalendar;
+use App\Domain\Exports\ActingScope;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\User;
+use App\Policies\LeadPolicy;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
@@ -23,7 +25,8 @@ class CalendarController extends Controller
     public function appointment(Request $request, string $uuid)
     {
         $appointment = Appointment::with(['lead:id,uuid,full_name,assigned_to,tenant_id', 'project:id,name'])->where('uuid', $uuid)->firstOrFail();
-        $this->authorize('view', $appointment->lead);
+        // The policy itself, not the gate (which passes every permission-table role): only who may open the lead.
+        abort_unless($appointment->lead !== null && app(LeadPolicy::class)->view($request->user(), $appointment->lead), 403);
 
         return response(IcsCalendar::render([$appointment], 'Mohtam', (string) config('integrations.app_url')), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
@@ -70,7 +73,7 @@ class CalendarController extends Controller
      * The feed itself, read by a calendar app with no session: the secret in the address is the credential. The
      * person's own visits — or every visit, for someone who sees all leads — from a month back to six months ahead.
      */
-    public function publicFeed(string $token, TenantContext $context)
+    public function publicFeed(string $token, TenantContext $context, ActingScope $scope)
     {
         $user = strlen($token) === 48
             ? $context->withoutScope(fn () => User::where('calendar_token_hash', hash('sha256', $token))->where('is_active', true)->first())
@@ -78,12 +81,18 @@ class CalendarController extends Controller
 
         abort_if($user === null || $user->tenant === null || ! $user->tenant->is_active, 404);
 
-        return $context->withTenant($user->tenant, function () use ($user) {
-            $appointments = Appointment::with(['lead:id,uuid,full_name', 'project:id,name'])
+        return $context->withTenant($user->tenant, function () use ($user, $scope) {
+            /*
+             * This route has no session and so none of the company or project limits the person's screens run
+             * under; without them the scopes on visits and leads let everything through. The same middleware is
+             * replayed for them here, so the feed shows exactly the visits their own screen would.
+             */
+            $appointments = $scope->run($user, null, fn () => Appointment::with(['lead:id,uuid,full_name', 'project:id,name'])
                 ->whereNotNull('scheduled_at')
                 ->whereBetween('scheduled_at', [now()->subDays(30), now()->addDays(180)])
                 ->when(! $user->seesAllLeads(), fn ($q) => $q->where('assigned_to', $user->id))
-                ->orderBy('scheduled_at')->limit(1000)->get();
+                ->whereHas('lead')
+                ->orderBy('scheduled_at')->limit(1000)->get());
 
             $user->forceFill(['calendar_feed_fetched_at' => now()])->saveQuietly();
 

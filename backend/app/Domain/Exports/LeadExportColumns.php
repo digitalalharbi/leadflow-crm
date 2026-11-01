@@ -17,13 +17,20 @@ class LeadExportColumns
         ];
     }
 
-    /** @return array<int,mixed> */
-    public static function row(Lead $lead): array
+    /**
+     * @param  array<int,string>  $hidden  what the person's role keeps from them (Permissions::hiddenData): a role
+     *                                     without contacts gets the rows with the phone and email left empty,
+     *                                     the same as on screen.
+     * @return array<int,mixed>
+     */
+    public static function row(Lead $lead, array $hidden = []): array
     {
+        $contacts = ! in_array('contacts', $hidden, true);
+
         return [
             $lead->full_name,
-            $lead->phone_normalized ?? $lead->phone,
-            $lead->email,
+            $contacts ? ($lead->phone_normalized ?? $lead->phone) : null,
+            $contacts ? $lead->email : null,
             $lead->city,
             $lead->project?->name,
             $lead->platform,

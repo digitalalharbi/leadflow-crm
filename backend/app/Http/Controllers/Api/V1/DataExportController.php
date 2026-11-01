@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\AccessResolver;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\ResolveCompanyContext;
 use App\Jobs\RunDataExport;
@@ -92,9 +93,22 @@ class DataExportController extends Controller
         return $user->usesMatrix() ? AccessResolver::resolve($user, null)->has('leads.export') : $user->seesAllLeads();
     }
 
+    /**
+     * The whole company's data, unfiltered: only for someone who already sees the whole company — an admin, or a
+     * settings-rights role that belongs to no particular company, is not held to some projects and is not a broker.
+     * Settings rights alone are not a way past the limits a person's screens run under.
+     */
     public static function mayExportCompany(User $user): bool
     {
-        return $user->isAdmin() || ($user->usesMatrix() && AccessResolver::resolve($user, null)->has('settings.edit'));
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        return $user->usesMatrix()
+            && AccessResolver::resolve($user, null)->has('settings.edit')
+            && $user->role !== Role::BrokerViewer
+            && ! $user->isProjectScoped()
+            && ! $user->companies()->exists();
     }
 
     private function present(DataExport $e): array

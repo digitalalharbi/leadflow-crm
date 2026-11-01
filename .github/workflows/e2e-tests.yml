@@ -7,9 +7,13 @@ on:
 
 jobs:
   e2e:
-    name: Playwright
+    name: Playwright (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
 
     services:
       postgres:
@@ -144,7 +148,10 @@ jobs:
 
       - name: Run Playwright
         working-directory: frontend
-        run: npx playwright test
+        # The complete desktop, laptop and mobile Chromium gate is too large for
+        # one 30-minute free-plan runner. Each matrix job owns its PostgreSQL and
+        # Redis services, so sharding keeps fixture resets isolated.
+        run: npx playwright test --project=chromium --project=laptop --project=mobile --shard=${{ matrix.shard }}/2
         env:
           # The specs reseed fixtures by shelling into artisan.
           E2E_BACKEND_DIR: ${{ github.workspace }}/backend
@@ -160,7 +167,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             frontend/e2e/.report
             frontend/e2e/.results

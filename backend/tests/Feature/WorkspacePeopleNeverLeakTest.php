@@ -41,7 +41,7 @@ class WorkspacePeopleNeverLeakTest extends TestCase
     private function lead(array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
-            'full_name' => 'عميل خاص', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new',
+            'full_name' => 'عميل خاص', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new',
         ], $attributes)));
     }
 

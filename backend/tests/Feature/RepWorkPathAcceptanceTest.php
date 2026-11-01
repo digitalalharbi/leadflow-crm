@@ -54,7 +54,7 @@ class RepWorkPathAcceptanceTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'سعود الغامدي',
-            'phone_normalized' => '+96650010'.random_int(1000, 9999),
+            'phone_normalized' => '+96650010'.self::uniqueDigits(4),
             'status' => 'new',
             'assigned_to' => $this->rep->id,
             'platform' => 'meta',

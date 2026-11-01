@@ -60,7 +60,7 @@ class TheSlaClockStopsAfterHoursTest extends TestCase
         return $this->asTenant($this->t['tenant'], function () use ($moment) {
             $lead = Lead::create([
                 'full_name' => 'عميل',
-                'phone_normalized' => '+96650021'.random_int(1000, 9999),
+                'phone_normalized' => '+96650021'.self::uniqueDigits(4),
                 'status' => 'new',
                 'assigned_to' => $this->rep->id,
             ]);

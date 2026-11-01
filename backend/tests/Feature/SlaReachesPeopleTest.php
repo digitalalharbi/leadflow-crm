@@ -55,7 +55,7 @@ class SlaReachesPeopleTest extends TestCase
             $lead = Lead::create([
                 'full_name' => 'سلطان القحطاني',
                 'phone' => '0501234567',
-                'phone_normalized' => '+96650015'.random_int(1000, 9999),
+                'phone_normalized' => '+96650015'.self::uniqueDigits(4),
                 'status' => 'new',
                 'assigned_to' => $owner?->id ?? $this->rep->id,
             ]);
@@ -184,7 +184,7 @@ class SlaReachesPeopleTest extends TestCase
         $lead = $this->asTenant($this->t['tenant'], function () {
             $lead = Lead::create([
                 'full_name' => 'بلا مسؤول',
-                'phone_normalized' => '+96650016'.random_int(1000, 9999),
+                'phone_normalized' => '+96650016'.self::uniqueDigits(4),
                 'status' => 'new',
             ]);
             $lead->forceFill(['created_at' => now()->subMinutes(45)])->saveQuietly();

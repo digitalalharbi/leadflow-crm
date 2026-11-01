@@ -48,7 +48,7 @@ class CampaignRevenueTest extends TestCase
     private function lead(Campaign $campaign, array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], function () use ($campaign, $attributes) {
-            $lead = Lead::create($attributes + ['full_name' => 'عميل', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'contacted']);
+            $lead = Lead::create($attributes + ['full_name' => 'عميل', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'contacted']);
             DB::table('leads')->where('id', $lead->id)->update(['campaign_ref_id' => $campaign->id, 'created_at' => now()->subDay()]);
 
             return $lead;

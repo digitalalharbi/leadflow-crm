@@ -48,7 +48,7 @@ class PartnerCommissionTest extends TestCase
             $link = TrackingLink::create(['name' => 'رابط', 'channel' => 'broker', 'token' => 'tk'.random_int(100000, 999999), 'partner_id' => $row->id]);
 
             foreach (range(1, $leads) as $i) {
-                $lead = Lead::create(['full_name' => "عميل {$i}", 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => $i <= $won ? 'won' : 'contacted', 'deal_value_minor' => $i <= $won ? $valueMajor * 100 : null]);
+                $lead = Lead::create(['full_name' => "عميل {$i}", 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => $i <= $won ? 'won' : 'contacted', 'deal_value_minor' => $i <= $won ? $valueMajor * 100 : null]);
                 DB::table('leads')->where('id', $lead->id)->update(['first_touch_link_id' => $link->id, 'partner_id' => $row->id, 'won_at' => $i <= $won ? now()->subDays($i) : null]);
             }
         });

@@ -30,7 +30,7 @@ class VelocityAnalyticsTest extends TestCase
         return $this->asTenant($this->t['tenant'], function () use ($times) {
             $lead = Lead::create([
                 'full_name' => 'عميل',
-                'phone_normalized' => '+9665009'.random_int(10000, 99999),
+                'phone_normalized' => '+9665009'.self::uniqueDigits(5),
                 'status' => $times['status'] ?? 'new',
             ]);
 

@@ -29,7 +29,7 @@ class ProductionDemoSeederTest extends TestCase
         putenv('PRODUCTION_DEMO_SEED_ENABLED=true');
         putenv('PRODUCTION_DEMO_PASSWORD=Test-only-password-123!');
 
-        $this->seed(ProductionDemoSeeder::class);
+        $this->runProductionDemoSeeder();
 
         $tenant = Tenant::where('slug', ProductionDemoSeeder::SLUG)->firstOrFail();
         $users = User::where('tenant_id', $tenant->id)->get();
@@ -46,9 +46,18 @@ class ProductionDemoSeederTest extends TestCase
         putenv('PRODUCTION_DEMO_SEED_ENABLED=true');
         putenv('PRODUCTION_DEMO_PASSWORD=Test-only-password-123!');
 
-        $this->seed(ProductionDemoSeeder::class);
+        $this->runProductionDemoSeeder();
 
         $this->expectException(RuntimeException::class);
-        $this->seed(ProductionDemoSeeder::class);
+        $this->runProductionDemoSeeder();
+    }
+
+    private function runProductionDemoSeeder(): void
+    {
+        $this->artisan('db:seed', [
+            '--class' => ProductionDemoSeeder::class,
+            '--force' => true,
+            '--no-interaction' => true,
+        ])->run();
     }
 }

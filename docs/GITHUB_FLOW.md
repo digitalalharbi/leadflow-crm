@@ -35,6 +35,10 @@ are `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `STAGING_PATH` and the variable `STAG
 - set → it waits for CI on that commit (`scripts/ci/ci-is-green.sh`), deploys only a commit CI
   passed, and verifies the new build over HTTPS. **A deploy that is attempted and fails is red.**
 
+**CI takes hours, on purpose:** the end-to-end job runs the whole suite on every browser with one
+worker (limit 180 minutes), and the deploy workflows wait up to 200 minutes for its answer.
+`DeploymentSourceOfTruthTest` keeps the three limits in order.
+
 **`deploy-production.yml`** runs automatically on every push/merge to `main`; `workflow_dispatch`
 with the confirmation `deploy` remains available for an explicit re-run. It runs only when the owner
 has set the variable `PRODUCTION_ENABLED=true` after the server,

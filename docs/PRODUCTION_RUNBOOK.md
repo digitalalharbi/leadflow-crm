@@ -170,7 +170,11 @@ Never put `DEPLOY_SECRET` here — it stays in the server's `.env.production`.
 
 Production ships only a commit CI has passed. Merge `develop` into `main` (the release),
 let CI finish on that commit, and note its SHA. The workflow checks this itself
-(`scripts/ci/ci-is-green.sh <sha>`) and refuses otherwise. If GitHub Actions cannot run
+(`scripts/ci/ci-is-green.sh <sha>`) and refuses otherwise. It waits up to 200 minutes for CI,
+because the full browser suite takes over two hours; a merge to `main` therefore reaches the
+server hours later, not minutes. Only success is green: failed, cancelled, timed out and
+still-pending all refuse, and the job summary names the job, its conclusion, how long it took and
+which of those it was. If GitHub Actions cannot run
 (billing), the answer is **BLOCKED — BILLING** and production does not ship: there is no
 way around it from a laptop, by design.
 

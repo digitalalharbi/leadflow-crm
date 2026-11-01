@@ -35,8 +35,9 @@ are `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `STAGING_PATH` and the variable `STAG
 - set → it waits for CI on that commit (`scripts/ci/ci-is-green.sh`), deploys only a commit CI
   passed, and verifies the new build over HTTPS. **A deploy that is attempted and fails is red.**
 
-**`deploy-production.yml`** is manual only (`workflow_dispatch`, type `deploy`). It never runs on a
-push. It runs only when the owner has set the variable `PRODUCTION_ENABLED=true` after the server,
+**`deploy-production.yml`** runs automatically on every push/merge to `main`; `workflow_dispatch`
+with the confirmation `deploy` remains available for an explicit re-run. It runs only when the owner
+has set the variable `PRODUCTION_ENABLED=true` after the server,
 domain, HTTPS, secrets and backups exist (`docs/PRODUCTION_RUNBOOK.md`); otherwise it ends with
 **PRODUCTION NOT CONFIGURED**. It refuses a commit CI has not passed.
 
@@ -68,11 +69,11 @@ It exits non-zero only when something is RED. It is read-only.
 | CI jobs | backend / frontend (+ e2e) | backend / frontend / e2e | backend / frontend / e2e + `CI result` |
 | CI triggers | pull request | PR, push `main`, merge queue | PR, push `develop` and `main` |
 | Deploy separate from CI | yes | yes | yes |
-| Production trigger | push to `main` | push to `main`, gated by `PRODUCTION_ENABLED` | **manual only**, gated by `PRODUCTION_ENABLED` |
+| Production trigger | push to `main` | push to `main`, gated by `PRODUCTION_ENABLED` | push to `main`, gated by `PRODUCTION_ENABLED` |
 | "Not configured" | — | `awaiting` job (success + summary) | `config`/`awaiting` job (success + notice) |
 | Integration branch | `main` | `main` | `develop` (`main` = releases) |
 | Branch protection / required checks | public repo: available | public repo: available | **unavailable on this plan** (private repo) — the PR flow is a convention until the plan allows it |
 | Actions minutes | public: free | public: free | private: **billing applies** |
 
-The two deliberate differences: مهتم keeps `develop` as the integration branch and `main` for releases,
-and production is manual, never on a push.
+The deliberate branch difference is that مهتم keeps `develop` as the integration branch and
+`main` for releases. A merge to `main` is the production trigger.

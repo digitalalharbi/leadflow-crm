@@ -17,12 +17,19 @@ RUN apk add --no-cache \
         pdo_pgsql \
         pgsql \
         bcmath \
+        pcntl \
         intl \
         zip \
         opcache \
     && apk del --no-network git
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Alpine's PHP 8.4 image can bind the bare `9000` listener as IPv6-only.
+# The API proxy reaches FPM over the private IPv4 Compose network, so bind
+# explicitly to IPv4. This port is never published on the host.
+RUN printf '%s\n' '[www]' 'listen = 0.0.0.0:9000' \
+    > /usr/local/etc/php-fpm.d/zzz-listen.conf
 
 # Sensible production PHP defaults; overridden by the dev stage below.
 RUN { \
@@ -62,6 +69,7 @@ ARG APP_RELEASE=""
 RUN composer dump-autoload --optimize --classmap-authoritative \
  && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
  && printf '%s\n' "$APP_RELEASE" > .release \
+ && chmod -R u=rwX,go=rX /var/www/html \
  && chown -R www-data:www-data storage bootstrap/cache
 
 USER www-data

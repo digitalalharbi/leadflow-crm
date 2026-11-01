@@ -4,6 +4,7 @@ namespace App\Domain\Tracking\Forms;
 
 use App\Models\LandingForm;
 use App\Models\LandingFormVersion;
+use App\Models\TrackingLink;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +42,14 @@ class FormPublisher
 
         if (! FormDesign::imageOk($form->logo_url) || ! FormDesign::imageOk($form->image_url)) {
             $errors['logo_url'] = 'invalid_image';
+        }
+
+        if ($form->page !== null) {
+            $errors += LandingPageConfig::errors(LandingPageConfig::normalize($form->page));
+
+            if ($form->project_id === null) {
+                $errors['project_id'] = 'project_required';
+            }
         }
 
         return $snapshot === null && $errors === [] ? [] : $errors;
@@ -82,11 +91,38 @@ class FormPublisher
             $form->forceFill(['status' => 'published', 'published_version_id' => $version->id, 'published_at' => now()])->save();
             $form->setRelation('publishedVersion', $version);
 
+            if ($form->page !== null) {
+                $this->pageAddress($form);
+            }
+
             return $version;
         });
     }
 
     /** Is the draft different from what is live? */
+    /**
+     * A published page has an address and a link under it: the visit, the submission, the beacons and the analytics then run
+     * through what every tracking link already uses, instead of a second path beside it.
+     */
+    public function pageAddress(LandingForm $form): void
+    {
+        if ($form->slug === null) {
+            $form->forceFill(['slug' => app(LandingSlugs::class)->suggest((string) ($form->project?->name ?: $form->name), $form->id)])->save();
+        }
+
+        $link = $form->default_link_id ? TrackingLink::find($form->default_link_id) : null;
+
+        if ($link === null) {
+            $link = TrackingLink::create([
+                'name' => mb_substr('صفحة '.$form->name, 0, 160), 'channel' => 'landing_page', 'mode' => 'landing', 'kind' => 'link',
+                'project_id' => $form->project_id, 'landing_form_id' => $form->id, 'is_active' => true, 'destination_url' => null,
+            ]);
+            $form->forceFill(['default_link_id' => $link->id])->save();
+        } elseif ($link->project_id !== $form->project_id) {
+            $link->forceFill(['project_id' => $form->project_id])->save();
+        }
+    }
+
     public function hasUnpublishedChanges(LandingForm $form): bool
     {
         $live = $form->published_version_id ? $form->publishedVersion : null;

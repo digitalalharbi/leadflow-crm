@@ -110,6 +110,8 @@ class TrackingDestinationController extends Controller
             'credentials.*' => ['nullable', 'string', 'max:500'],
             'events' => ['sometimes', 'array', 'max:'.count(DestinationKind::EVENTS)],
             'events.*' => ['string', Rule::in(DestinationKind::EVENTS)],
+            'event_map' => ['sometimes', 'nullable', 'array', 'max:'.count(DestinationKind::EVENTS)],
+            'event_map.*' => ['string', Rule::in(DestinationKind::PLATFORM_EVENTS)],
             'send_value' => ['sometimes', 'boolean'],
             'hash_identifiers' => ['sometimes', 'boolean'],
             'consent_mode' => ['sometimes', Rule::in(['required', 'unless_denied'])],

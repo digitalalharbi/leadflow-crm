@@ -23,7 +23,9 @@ class LandingPages
     /** @return array{link:TrackingLink, form:LandingForm, version:LandingFormVersion, tenant:Tenant}|null */
     public function resolve(string $token): ?array
     {
-        $link = $this->context->withoutScope(fn () => TrackingLink::withoutGlobalScopes()->where('token', $token)->first());
+        // A token first: those addresses are already printed on ads and QR codes. A page's own address second.
+        $link = $this->context->withoutScope(fn () => TrackingLink::withoutGlobalScopes()->where('token', $token)->first()
+            ?? TrackingLink::withoutGlobalScopes()->whereKey(LandingForm::withoutGlobalScopes()->where('slug', $token)->value('default_link_id'))->first());
 
         if ($link === null || ! $link->isLive() || $link->mode !== 'landing' || $link->landing_form_id === null) {
             return null;

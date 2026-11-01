@@ -3,6 +3,7 @@
 namespace App\Domain\Tracking\Forms;
 
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Leads\LeadTags;
 use App\Domain\Tracking\Attribution;
 use App\Domain\Tracking\ClickIds;
 use App\Domain\Tracking\EventRecorder;
@@ -10,7 +11,10 @@ use App\Domain\Tracking\EventType;
 use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
 use App\Enums\IntegrationProvider;
+use App\Events\LeadSignal;
+use App\Jobs\MirrorLeadToSheet;
 use App\Models\LandingFormVersion;
+use App\Models\Lead;
 use App\Models\LeadSourceEvent;
 use App\Models\Project;
 use App\Models\Property;
@@ -41,6 +45,7 @@ class LandingSubmission
         private LeadIngestionService $ingestion,
         private FormSignals $signals,
         private TenantContext $context,
+        private LeadTags $tags,
     ) {}
 
     /**
@@ -98,6 +103,7 @@ class LandingSubmission
             // Which version of the form this customer saw, on the source event as well as on the trail.
             LeadSourceEvent::where('lead_id', $lead->id)->where('provider_lead_id', $in['submission_id'])->update(['form_version_id' => $version->id]);
             $this->signals->apply($lead, (array) ($def['settings']['signals'] ?? []), $result['values']);
+            $this->asPage($lead, $version, $def, $ingested->isDuplicate());
 
             $this->events->record(EventType::FormSubmit, [
                 'tracking_link_id' => $link->id,
@@ -128,6 +134,31 @@ class LandingSubmission
      *
      * @return array<string,string>
      */
+    /**
+     * What a page adds to the lead: which page brought it (the first one keeps the credit), the page's tags, the signal a rule can
+     * hang on, and the optional copy to a spreadsheet — queued, so Google being down never costs a lead.
+     */
+    private function asPage(Lead $lead, LandingFormVersion $version, array $def, bool $returning): void
+    {
+        if ($lead->landing_form_id === null) {
+            $lead->forceFill(['landing_form_id' => $version->landing_form_id])->saveQuietly();
+        }
+
+        $page = $def['page'] ?? null;
+
+        if ($page !== null) {
+            foreach ((array) ($page['tags'] ?? []) as $tag) {
+                $this->tags->add($lead, (string) $tag, null, ['by' => 'landing_page']);
+            }
+
+            if (($page['mirror']['enabled'] ?? false) === true && filled($page['mirror']['spreadsheet_id'] ?? null)) {
+                MirrorLeadToSheet::dispatch($lead->id, $lead->tenant_id, (string) $page['mirror']['spreadsheet_id'], $page['mirror']['tab'] ?? null);
+            }
+        }
+
+        LeadSignal::dispatch($lead->fresh() ?? $lead, 'lead.form_submitted', ['returning' => $returning]);
+    }
+
     private function context(TrackingLink $link, array $in): array
     {
         return array_filter([
@@ -170,7 +201,7 @@ class LandingSubmission
             'utm_campaign' => $link->utm_campaign ?? ($utm['utm_campaign'] ?? null),
             'utm_term' => $link->utm_term ?? ($utm['utm_term'] ?? null),
             'utm_content' => $link->utm_content ?? ($utm['utm_content'] ?? null),
-            'project_id' => $link->project_id,
+            'project_id' => $link->project_id ?? $version->form->project_id,
             'form_name' => $def['name'],
             'form_id' => $version->form->uuid,
             'provider_lead_id' => $in['submission_id'],

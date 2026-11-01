@@ -20,6 +20,16 @@ final class FormDefinition
         $steps = max(1, (int) collect($fields)->max('step'));
         $settings = FormDesign::normalizeSettings((array) $form->settings, $steps);
 
+        // A page keeps a short form on one screen and turns a long one into steps by itself, unless its manager laid out their own.
+        if ($form->page !== null && $settings['mode'] === 'single' && LandingPageConfig::normalize($form->page)['auto_steps']) {
+            $split = self::autoSteps($layout, $fields);
+
+            if ($split !== null) {
+                $layout = $split;
+                $settings['mode'] = 'multi';
+            }
+        }
+
         // In a multi-step form each section is a step: the fields learn which, so the old step-based screens keep working.
         $fields = self::withSteps($fields, $layout, $settings['mode']);
 
@@ -40,7 +50,8 @@ final class FormDefinition
             'layout' => $layout,
             'design' => FormDesign::normalizeDesign((array) $form->design),
             'settings' => $settings,
-        ];
+            // Only on a form that is a page: every form published before pages existed keeps its checksum.
+        ] + ($form->page === null ? [] : ['page' => LandingPageConfig::normalize($form->page)]);
     }
 
     public static function checksum(array $snapshot): string
@@ -59,6 +70,48 @@ final class FormDefinition
      * @param  array{sections:list<array<string,mixed>>}  $layout
      * @return list<array<string,mixed>>
      */
+    /** Up to this many questions fit on one screen without a page feeling like paperwork. */
+    public const AUTO_STEP_AT = 5;
+
+    /** @return array<string,mixed>|null the layout cut into steps of rows, or null when it should stay as it is */
+    private static function autoSteps(array $layout, array $fields): ?array
+    {
+        $asked = array_column(array_filter($fields, fn (array $f) => empty($f['hidden']) && ! in_array($f['type'], [...FormSchema::DISPLAY, 'hidden', 'consent'], true)), 'key');
+
+        if (count($asked) <= self::AUTO_STEP_AT || count($layout['sections']) !== 1) {
+            return null;
+        }
+
+        $sections = [];
+        $rows = [];
+        $count = 0;
+
+        foreach ($layout['sections'][0]['rows'] as $row) {
+            $here = 0;
+
+            foreach ($row['columns'] as $column) {
+                $here += count(array_intersect($column['fields'], $asked));
+            }
+
+            if ($rows !== [] && $count + $here > 2) {
+                $sections[] = $rows;
+                $rows = [];
+                $count = 0;
+            }
+
+            $rows[] = $row;
+            $count += $here;
+        }
+
+        if ($rows !== []) {
+            $sections[] = $rows;
+        }
+
+        $first = $layout['sections'][0];
+
+        return ['sections' => array_map(fn (array $rows, int $i) => ['rows' => $rows, 'id' => ($first['id'] ?? 's').'-'.($i + 1)] + array_diff_key($first, ['rows' => 1, 'id' => 1]), $sections, array_keys($sections))] + $layout;
+    }
+
     private static function withSteps(array $fields, array $layout, string $mode): array
     {
         $step = [];

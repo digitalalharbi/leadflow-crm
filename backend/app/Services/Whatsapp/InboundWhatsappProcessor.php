@@ -4,6 +4,7 @@ namespace App\Services\Whatsapp;
 
 use App\Domain\Automation\Recovery;
 use App\Domain\Privacy\SuppressionList;
+use App\Domain\Tracking\Forms\WhatsappAttribution;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -118,6 +119,9 @@ class InboundWhatsappProcessor
     {
         $from = $this->phones->normalize((string) ($message['from'] ?? ''));
         $lead = $from ? Lead::where('phone_normalized', $from)->first() : null;
+
+        // A message carrying a landing page's reference: this person tapped WhatsApp on that page. The page gets its credit.
+        $lead = app(WhatsappAttribution::class)->resolve($lead, $from, $this->extractBody($message));
 
         if (! $lead) {
             /*

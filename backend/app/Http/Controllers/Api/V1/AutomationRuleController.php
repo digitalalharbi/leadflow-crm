@@ -49,6 +49,7 @@ class AutomationRuleController extends Controller
         'lead.sheet_row', 'lead.email_opened', 'lead.email_clicked', 'lead.file_opened',
         'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
         'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed', 'lead.reservation_created',
+        'lead.form_submitted', 'lead.whatsapp_click', 'lead.call_click',
     ];
 
     private const FIELDS = [
@@ -63,6 +64,7 @@ class AutomationRuleController extends Controller
         'minutes_since_last_contact', 'was_contacted', 'has_replied',
         'is_priority', 'classification', 'language', 'provider', 'campaign_id', 'ad_name',
         'automation_state', 'attempts', 'no_reply_minutes', 'tags',
+        'landing_page', 'lead_source', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
         // How interested they are, apart from how good a fit.
         'interest_level', 'interest_score',
     ];

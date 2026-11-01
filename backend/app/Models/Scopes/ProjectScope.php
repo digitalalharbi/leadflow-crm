@@ -57,7 +57,7 @@ class ProjectScope implements Scope
             return;
         }
 
-        if (in_array($table, ['leads', 'campaigns', 'properties', 'tracking_links'], true)) {
+        if (in_array($table, ['leads', 'campaigns', 'properties', 'tracking_links', 'landing_forms'], true)) {
             $builder->whereIn("{$table}.project_id", $ids);
 
             return;

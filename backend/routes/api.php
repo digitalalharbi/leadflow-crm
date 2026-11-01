@@ -62,6 +62,7 @@ use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
+use App\Http\Controllers\Api\V1\ProjectLeadSourceController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\PublicApiController;
@@ -148,9 +149,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:landing-beacon')->where('token', '[A-Za-z0-9]{6,24}');
 
     // The landing page a tracking link opens, and its form. Public by nature; the token is the only thing the visitor holds.
-    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:landing-asset')->where('name', '[a-f0-9]{32}\.(png|jpg|webp)');
-    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:landing-view')->where('token', '[A-Za-z0-9]{6,24}');
-    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:landing-asset')->where('name', '[a-f0-9]{32}\.(png|jpg|webp|svg)');
+    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:landing-view')->where('token', '[A-Za-z0-9-]{3,64}');
+    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9-]{3,64}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
@@ -453,13 +454,24 @@ Route::prefix('v1')->group(function () {
             Route::patch('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'destroy'])->whereUuid('uuid');
             // The landing pages a link can open, and the form on each.
+            // Everything that brings a project its leads, on one list.
+            Route::get('/projects/{uuid}/lead-sources', [ProjectLeadSourceController::class, 'index'])->whereUuid('uuid');
+            Route::get('/projects/{uuid}/lead-sources/compare', [ProjectLeadSourceController::class, 'compare'])->whereUuid('uuid');
+            Route::get('/projects/{uuid}/lead-sources/mappings', [ProjectLeadSourceController::class, 'mappings'])->whereUuid('uuid');
+            Route::post('/projects/{uuid}/lead-sources/mappings', [ProjectLeadSourceController::class, 'storeMapping'])->whereUuid('uuid');
+            Route::patch('/projects/{uuid}/lead-sources/mappings/{mapping}', [ProjectLeadSourceController::class, 'updateMapping'])->whereUuid(['uuid', 'mapping']);
+            Route::delete('/projects/{uuid}/lead-sources/mappings/{mapping}', [ProjectLeadSourceController::class, 'destroyMapping'])->whereUuid(['uuid', 'mapping']);
+            Route::patch('/projects/{uuid}/lead-sources/logo', [ProjectLeadSourceController::class, 'logo'])->whereUuid('uuid');
+
             Route::get('/tracking/forms/presets', [LandingFormController::class, 'presets']);
             Route::get('/tracking/forms/templates', [LandingFormController::class, 'templates']);
+            Route::post('/tracking/forms/slug', [LandingFormController::class, 'slug']);
             Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
             Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/analytics', [LandingFormController::class, 'analytics'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
+            Route::post('/tracking/forms/{uuid}/links', [LandingFormController::class, 'addLink'])->whereUuid('uuid');
             Route::get('/tracking/forms', [LandingFormController::class, 'index']);
             Route::post('/tracking/forms', [LandingFormController::class, 'store']);
             Route::get('/tracking/forms/{uuid}', [LandingFormController::class, 'show'])->whereUuid('uuid');

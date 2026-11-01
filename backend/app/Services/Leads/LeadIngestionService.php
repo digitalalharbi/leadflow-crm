@@ -6,6 +6,7 @@ use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Leads\DuplicateMatcher;
+use App\Domain\LeadSources\LeadFormMappings;
 use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\Attribution;
 use App\Domain\Tracking\EventRecorder;
@@ -48,6 +49,8 @@ class LeadIngestionService
     public function ingest(Tenant $tenant, IncomingLead $incoming): IngestionResult
     {
         return $this->context->withTenant($tenant, function () use ($tenant, $incoming) {
+            // A platform's form tied to a project: its project and its answers, before anything else looks at the lead.
+            $incoming = app(LeadFormMappings::class)->apply($incoming);
             $settings = $tenant->settings;
             $countryCode = $settings?->default_country_code ?? '966';
 

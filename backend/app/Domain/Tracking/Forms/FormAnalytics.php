@@ -2,8 +2,11 @@
 
 namespace App\Domain\Tracking\Forms;
 
+use App\Domain\Tracking\EventType;
+use App\Models\CampaignSpend;
 use App\Models\LandingForm;
 use App\Models\LandingFormVersion;
+use App\Models\Lead;
 use App\Models\TrackingEvent;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +60,7 @@ class FormAnalytics
             'abandoned_at' => $linkIds === [] ? [] : $this->abandoned($base()),
             'matrix' => $linkIds === [] ? [] : $this->matrix($base(), $snapshot),
             'versions' => $this->versions($form, $from, $to),
+            'page' => $form->page === null ? null : $this->pagePerformance($form, $linkIds, $from, $to, $views),
         ];
     }
 
@@ -139,5 +143,72 @@ class FormAnalytics
             ->selectRaw('form_version_id, count(*) as n')->groupBy('form_version_id')->pluck('n', 'form_version_id');
 
         return $versions->map(fn ($v) => ['version' => $v->version, 'variant' => $v->variant, 'submits' => (int) ($submits[$v->id] ?? 0), 'is_live' => $v->id === $form->published_version_id])->all();
+    }
+
+    /**
+     * A page's own numbers: who came, who acted, and what became of them, read from the same leads the pipeline holds. Cost is
+     * shown only when spend is recorded for a campaign this page's leads came from, shared by that campaign's share of the leads;
+     * with no recorded spend the cost lines stay null rather than reading as free.
+     *
+     * @return array<string,mixed>
+     */
+    private function pagePerformance(LandingForm $form, array $linkIds, Carbon $from, Carbon $to, int $views): array
+    {
+        $events = TrackingEvent::query()->whereIn('tracking_link_id', $linkIds)->whereBetween('occurred_at', [$from, $to]);
+        $count = fn (EventType $type) => (clone $events)->where('event_type', $type->value)->count();
+        $leads = Lead::query()->where('landing_form_id', $form->id)->whereBetween('leads.created_at', [$from, $to]);
+        $n = (clone $leads)->count();
+        $ids = (clone $leads)->select('leads.id');
+        $qualified = (clone $leads)->whereNotNull('qualified_at')->count();
+        $appointments = DB::table('appointments')->whereIn('lead_id', $ids)->whereNull('deleted_at')->distinct()->count('lead_id');
+        $visits = DB::table('appointments')->whereIn('lead_id', $ids)->whereNull('deleted_at')->whereNotNull('completed_at')->distinct()->count('lead_id');
+        $reservations = DB::table('reservations')->whereIn('lead_id', $ids)->distinct()->count('lead_id');
+        $sales = (clone $leads)->whereNotNull('won_at')->count();
+        $revenue = (int) (clone $leads)->whereNotNull('won_at')->sum('deal_value_minor');
+        $starts = $count(EventType::FormStart);
+
+        $stages = [['key' => 'view', 'n' => $views], ['key' => 'form_start', 'n' => $starts], ['key' => 'lead', 'n' => $n], ['key' => 'qualified', 'n' => $qualified],
+            ['key' => 'appointment', 'n' => $appointments], ['key' => 'visit', 'n' => $visits], ['key' => 'reservation', 'n' => $reservations], ['key' => 'sale', 'n' => $sales]];
+
+        foreach ($stages as $i => &$stage) {
+            $before = $i === 0 ? null : $stages[$i - 1]['n'];
+            $stage['rate'] = $before ? round($stage['n'] / $before * 100, 1) : null;
+        }
+        unset($stage);
+
+        $spend = $this->spendShare($form, $from, $to);
+        $per = fn (int $count) => $spend !== null && $count > 0 ? (int) round($spend / $count) : null;
+
+        return [
+            'unique_visitors' => (clone $events)->where('event_type', EventType::Visit->value)->distinct()->count('visitor_id'),
+            'whatsapp_clicks' => $count(EventType::WhatsappClick),
+            'call_clicks' => $count(EventType::CallClick),
+            'leads' => $n, 'qualified' => $qualified, 'appointments' => $appointments, 'visits' => $visits, 'reservations' => $reservations, 'sales' => $sales, 'revenue_minor' => $revenue,
+            'funnel' => $stages,
+            'cost' => [
+                'spend_minor' => $spend, 'cpl' => $per($n), 'cpql' => $per($qualified), 'per_appointment' => $per($appointments), 'per_reservation' => $per($reservations), 'cpa' => $per($sales),
+                'roas' => $spend ? round($revenue / $spend, 2) : null,
+            ],
+        ];
+    }
+
+    private function spendShare(LandingForm $form, Carbon $from, Carbon $to): ?int
+    {
+        $share = 0;
+        $found = false;
+        $campaigns = Lead::query()->where('landing_form_id', $form->id)->whereBetween('leads.created_at', [$from, $to])->whereNotNull('campaign_name')
+            ->selectRaw('campaign_name, count(*) as n')->groupBy('campaign_name')->pluck('n', 'campaign_name');
+
+        foreach ($campaigns as $campaign => $n) {
+            $spend = (int) CampaignSpend::query()->where('campaign_name', $campaign)->whereBetween('spend_date', [$from->toDateString(), $to->toDateString()])->sum('amount_minor');
+
+            if ($spend > 0) {
+                $total = Lead::query()->where('campaign_name', $campaign)->whereBetween('leads.created_at', [$from, $to])->count();
+                $share += (int) round($spend * $n / max(1, $total));
+                $found = true;
+            }
+        }
+
+        return $found ? $share : null;
     }
 }

@@ -8,7 +8,9 @@ use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
 use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
+use App\Events\LeadSignal;
 use App\Http\Controllers\Controller;
+use App\Models\Lead;
 use App\Models\Project;
 use App\Models\Property;
 use App\Models\Tenant;
@@ -81,7 +83,7 @@ class TrackBeaconController extends Controller
                     'ip_hash' => Visitor::ipHash($request->ip()), 'consent' => $data['consent'] ?? null,
                 ] + $agent);
 
-                $this->events->record(EventType::from($data['event']), [
+                $recorded = $this->events->record(EventType::from($data['event']), [
                     'tracking_link_id' => $link->id,
                     'visitor_id' => $visitor,
                     'session_id' => $session->session_id,
@@ -104,6 +106,14 @@ class TrackBeaconController extends Controller
                     'meta' => isset($data['meta']) ? $this->small($data['meta'], $data['event']) : null,
                     'dedupe_key' => isset($data['dedupe_key']) ? $link->id.':'.$data['dedupe_key'] : null,
                 ] + $agent);
+
+                // Someone already known tapping WhatsApp or call is a moment a rule may want. A first-time visitor is only a click.
+                $signal = ['whatsapp_click' => 'lead.whatsapp_click', 'call_click' => 'lead.call_click'][$data['event']] ?? null;
+                $lead = $signal && $recorded !== null && $recorded->wasRecentlyCreated ? Lead::where('visitor_id', $visitor)->latest('id')->first() : null;
+
+                if ($lead !== null) {
+                    LeadSignal::dispatch($lead, $signal, []);
+                }
             });
         }
 

@@ -6,6 +6,7 @@ use App\Domain\Leads\LeadClassification;
 use App\Domain\Leads\LeadTags;
 use App\Models\Call;
 use App\Models\CustomFieldValue;
+use App\Models\LandingForm;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use Illuminate\Support\Carbon;
@@ -202,6 +203,14 @@ class ConditionEvaluator
             'ad_name' => $lead->ad_name,
             'automation_state' => $lead->automation_state,
             'tags' => LeadTags::of($lead),
+            // The page's address, what a manager reads in the rule; null for a lead no page brought.
+            'landing_page' => $lead->landing_form_id ? LandingForm::withoutGlobalScopes()->whereKey($lead->landing_form_id)->value('slug') : null,
+            'lead_source' => $lead->provider,
+            'utm_source' => $lead->utm_source,
+            'utm_medium' => $lead->utm_medium,
+            'utm_campaign' => $lead->utm_campaign,
+            'utm_content' => $lead->utm_content,
+            'utm_term' => $lead->utm_term,
             // How many times anybody — rep or rule — has tried to reach them.
             'attempts' => LeadMessage::where('lead_id', $lead->id)->where('direction', 'outbound')->count()
                 + Call::where('lead_id', $lead->id)->count(),

@@ -23,6 +23,8 @@ class Ga4Adapter extends AbstractAdapter
 
     public function send(TrackingDestination $destination, array $payload): array
     {
+        $eventName = ((array) $destination->event_map)[$payload['event']] ?? self::NAMES[$payload['event']];
+
         $params = array_filter([
             'event_id' => $payload['event_id'], 'project_id' => $payload['project_id'] ?? null, 'tracking_link_id' => $payload['tracking_link_id'] ?? null,
             'campaign_id' => $payload['campaign_id'] ?? null, 'platform' => $payload['platform'] ?? null, 'lead_stage' => $payload['lead_stage'] ?? null,
@@ -37,7 +39,7 @@ class Ga4Adapter extends AbstractAdapter
 
         return $this->post($url, [
             'client_id' => $payload['visitor_id'],
-            'events' => [['name' => self::NAMES[$payload['event']], 'params' => $params]],
-        ], [], ['event' => self::NAMES[$payload['event']], 'event_id' => $payload['event_id']]);
+            'events' => [['name' => $eventName, 'params' => $params]],
+        ], [], ['event' => $eventName, 'event_id' => $payload['event_id']]);
     }
 }

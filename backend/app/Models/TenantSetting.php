@@ -33,6 +33,7 @@ class TenantSetting extends Model
     }
 
     protected $fillable = [
+        'sla_rules',
         'locale', 'currency', 'timezone', 'default_country_code',
         'assignment_mode', 'round_robin_cursor',
         'assignment_strategy',
@@ -53,6 +54,7 @@ class TenantSetting extends Model
     {
         return [
             'work_days' => 'array',
+            'sla_rules' => 'array',
             'require_mfa' => 'boolean',
             'anomaly_settings' => 'array',
             'self_approval' => 'array',

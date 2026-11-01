@@ -12,6 +12,7 @@ import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel
 import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
 import { SelfApprovalPanel } from '@/components/settings/SelfApprovalPanel'
 import { PrivacyTab } from '@/components/settings/PrivacyTab'
+import { SlaRulesCard } from '@/components/settings/SlaRulesCard'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import {
@@ -143,15 +144,18 @@ export function SettingsPage() {
           )}
 
           {tab === 'scoring' && canManage && (
-            <GeneralForm
-              settings={data.settings}
-              thresholds={data.thresholds}
-              section="scoring"
-              onSaved={() => {
-                void queryClient.invalidateQueries({ queryKey: ['settings'] })
-                toast(t('settings.saved'), 'success')
-              }}
-            />
+            <div className="space-y-4">
+              <GeneralForm
+                settings={data.settings}
+                thresholds={data.thresholds}
+                section="scoring"
+                onSaved={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['settings'] })
+                  toast(t('settings.saved'), 'success')
+                }}
+              />
+              <SlaRulesCard rules={data.settings.sla_rules} base={data.settings.first_contact_target_minutes ?? 30} />
+            </div>
           )}
 
           {/* Lead settings: the two lists that shape how leads are recorded. */}

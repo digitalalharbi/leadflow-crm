@@ -2,6 +2,7 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Sla\SlaRules;
 use App\Models\Lead;
 use App\Models\Project;
 use App\Models\TenantSetting;
@@ -136,6 +137,7 @@ class Thresholds
     {
         self::$settingsCache = [];
         self::$projectCache = [];
+        SlaRules::flush();
     }
 
     /**

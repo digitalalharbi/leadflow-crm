@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Automation\Thresholds;
+use App\Domain\Sla\SlaRules;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BrandingResource;
 use App\Models\CustomField;
@@ -11,6 +12,7 @@ use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
@@ -33,6 +35,7 @@ class SettingsController extends Controller
                 'score_warm_threshold' => $tenant->settings?->score_warm_threshold,
                 'score_hot_threshold' => $tenant->settings?->score_hot_threshold,
                 'first_contact_target_minutes' => $tenant->settings?->first_contact_target_minutes,
+                'sla_rules' => SlaRules::normalise($tenant->settings?->sla_rules),
                 'whatsapp_template' => $tenant->settings?->whatsapp_template,
                 /*
                  * When the business is open. Null means always, which is where
@@ -148,7 +151,23 @@ class SettingsController extends Controller
             'sla_interested_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
             'sla_visit_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
             'sla_reservation_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
+
+            // First-contact targets by source and for priority leads; the strictest that applies wins.
+            'sla_rules' => ['sometimes', 'nullable', 'array:by_source,priority_minutes'],
+            'sla_rules.by_source' => ['sometimes', 'array', 'max:'.SlaRules::MAX_SOURCES],
+            'sla_rules.by_source.*' => ['integer', 'min:1', 'max:10080'],
+            'sla_rules.priority_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
         ]);
+
+        if (array_key_exists('sla_rules', $data)) {
+            foreach (array_keys((array) ($data['sla_rules']['by_source'] ?? [])) as $source) {
+                if (! is_string($source) || ! preg_match('/^[a-z_]{2,32}$/', $source)) {
+                    throw ValidationException::withMessages(['sla_rules.by_source' => ['Unknown source.']]);
+                }
+            }
+
+            $data['sla_rules'] = $data['sla_rules'] === null ? null : SlaRules::normalise($data['sla_rules']);
+        }
 
         $tenant->settings->update($data);
         $this->audit->log('tenant.settings_updated', $request->user(), $tenant, ['fields' => array_keys($data)]);

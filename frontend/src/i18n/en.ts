@@ -1800,6 +1800,10 @@ export default {
     eraseTitle: 'Erase {{name}} permanently', eraseBody: 'Their name, number, email, messages, answers and notes are removed everywhere. The record stays, anonymous, so the numbers do not change. This cannot be undone.',
     confirmLabel: 'Type the lead’s name to confirm', suppress: 'Add their number and email to the do-not-contact list', erased: 'The lead’s data was erased',
   },
+  slaRules: {
+    title: 'First-contact target by source and priority', hint: 'The general target is {{minutes}} minutes. Make it shorter here for some leads; the strictest applies.',
+    source: 'Source', minutes: 'Minutes', minutesShort: 'min', addSource: 'Add source', priority: 'Priority leads',
+  },
   suppressions: {
     title: 'Do-not-contact list', hint: 'Numbers and addresses whose owners asked to stop, that bounced, or that were added by hand. Nothing is sent to them from any lead.',
     channel: 'Channel', value: 'Number or email', note: 'Note (optional)', add: 'Add', remove: 'Remove', search: 'Search a number or email…',

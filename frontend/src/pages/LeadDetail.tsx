@@ -12,6 +12,7 @@ import {
 } from '@/features/leads'
 import { ApiError, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
+import { LeadTagEditor } from '@/components/leads/LeadTagEditor'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
@@ -321,6 +322,8 @@ export function LeadDetailPage() {
                 )}
                 {lead.is_overdue && <Badge tone="danger">{t('leads.overdue')}</Badge>}
               </div>
+
+              <LeadTagEditor leadId={lead.id} tags={lead.tags ?? []} editable={can.has(user, 'leads.edit')} />
 
               {/* Why the system calls this lead what it does, in a few words. */}
               {lead.classification && (

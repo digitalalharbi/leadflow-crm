@@ -62,7 +62,7 @@ class AutomationRuleController extends Controller
         're_engaged_count', 'minutes_since_created', 'minutes_since_first_contact',
         'minutes_since_last_contact', 'was_contacted', 'has_replied',
         'is_priority', 'classification', 'language', 'provider', 'campaign_id', 'ad_name',
-        'automation_state', 'attempts', 'no_reply_minutes',
+        'automation_state', 'attempts', 'no_reply_minutes', 'tags',
         // How interested they are, apart from how good a fit.
         'interest_level', 'interest_score',
     ];

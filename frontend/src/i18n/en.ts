@@ -830,6 +830,7 @@ export default {
       minutes_since_last_contact: 'Minutes since last contact',
       was_contacted: 'Has been contacted',
       has_replied: 'Has replied',
+      tags: 'Tags',
     },
     operator_: {
       equals: 'is',
@@ -1780,6 +1781,10 @@ export default {
     },
   },
 
+  tags: {
+    label: 'Tags', add: 'Add tag', placeholder: 'New tag…', remove: 'Remove tag {{tag}}',
+    full: 'At most {{count}} tags', saved: 'Tags saved', filter: 'Tag', any: 'All tags',
+  },
   leads: {
     classification: 'Classification',
     neverContacted: 'Not contacted yet',

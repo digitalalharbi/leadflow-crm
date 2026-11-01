@@ -123,6 +123,8 @@ export interface LeadListItem {
   status: LeadStatus
   /** Hot, and the one to call first. */
   is_priority?: boolean
+  /** The team's own labels — "VIP", "investor". */
+  tags?: string[]
   /** null: never reached by automation · nurturing: the journey is talking to them · handed_off: a person's turn. */
   automation_state?: 'nurturing' | 'handed_off' | null
   /** Why it became a person's turn: replied, qualified, no_reply, unreached… */

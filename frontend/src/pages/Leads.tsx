@@ -56,6 +56,7 @@ export function LeadsPage() {
       project_id: searchParams.get('project_id') ?? undefined,
       assigned_to: searchParams.get('assigned_to') ?? undefined,
       follow_up: searchParams.get('follow_up') ?? undefined,
+      tag: searchParams.get('tag') ?? undefined,
       date_from: searchParams.get('date_from') ?? undefined,
       date_to: searchParams.get('date_to') ?? undefined,
       overdue: searchParams.get('overdue') === '1' || undefined,
@@ -102,6 +103,7 @@ export function LeadsPage() {
     Boolean(filters.project_id) ||
     Boolean(filters.assigned_to) ||
     Boolean(filters.follow_up) ||
+    Boolean(filters.tag) ||
     Boolean(filters.overdue) ||
     Boolean(filters.priority) ||
     Boolean(filters.wrong_fit) ||

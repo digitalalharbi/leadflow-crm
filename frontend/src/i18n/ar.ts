@@ -929,6 +929,7 @@ export default {
       minutes_since_last_contact: 'دقائق منذ آخر تواصل',
       was_contacted: 'تم التواصل معه',
       has_replied: 'سبق أن ردّ',
+      tags: 'الوسوم',
     },
     operator_: {
       equals: 'يساوي',
@@ -1938,6 +1939,10 @@ export default {
     },
   },
 
+  tags: {
+    label: 'الوسوم', add: 'إضافة وسم', placeholder: 'وسم جديد…', remove: 'إزالة الوسم {{tag}}',
+    full: 'الحد الأقصى {{count}} وسوم', saved: 'حُفظت الوسوم', filter: 'الوسم', any: 'كل الوسوم',
+  },
   leads: {
     classification: 'التصنيف',
     neverContacted: 'لم يُتواصل بعد',

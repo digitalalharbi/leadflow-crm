@@ -14,6 +14,7 @@ use App\Domain\Leads\InterestSla;
 use App\Domain\Leads\JourneyFeed;
 use App\Domain\Leads\LeadIntelligence;
 use App\Domain\Leads\LeadMerger;
+use App\Domain\Leads\LeadTags;
 use App\Domain\Leads\LeadViews;
 use App\Domain\Leads\NextBestAction;
 use App\Domain\Leads\PipelineOverview;
@@ -556,6 +557,32 @@ class LeadController extends Controller
         ]);
 
         return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project']))]);
+    }
+
+    /** Replaces the lead's tags; the history says which came and went. */
+    public function setTags(Request $request, string $uuid, LeadTags $tags)
+    {
+        $lead = $this->findLead($uuid);
+        $this->authorize('update', $lead);
+
+        $request->validate([
+            'tags' => ['present', 'array', 'max:'.LeadTags::MAX_PER_LEAD],
+            'tags.*' => ['string', 'max:'.LeadTags::MAX_LENGTH],
+        ]);
+
+        $tags->set($lead, $request->input('tags', []), $request->user());
+
+        return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project']))]);
+    }
+
+    /** The tags in use on the leads this person can see, most used first. */
+    public function tags(Request $request)
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $visible = Lead::query()->visibleTo($request->user());
+
+        return ApiResponse::success(['tags' => LeadTags::inUse($visible)]);
     }
 
     /**

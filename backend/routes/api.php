@@ -297,6 +297,7 @@ Route::prefix('v1')->group(function () {
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
             Route::get('/leads/segments', [LeadController::class, 'segments']);
+            Route::get('/leads/tags', [LeadController::class, 'tags']);
             Route::get('/leads/saved-views', [SavedViewController::class, 'index']);
             Route::post('/leads/saved-views', [SavedViewController::class, 'store']);
             Route::delete('/leads/saved-views/{uuid}', [SavedViewController::class, 'destroy'])->whereUuid('uuid');
@@ -318,6 +319,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/assign', [LeadController::class, 'assign']);
             Route::post('/leads/{uuid}/status', [LeadController::class, 'changeStatus']);
             Route::post('/leads/{uuid}/temperature', [LeadController::class, 'changeTemperature']);
+            Route::put('/leads/{uuid}/tags', [LeadController::class, 'setTags']);
             Route::post('/leads/{uuid}/interest', [LeadController::class, 'setInterest']);
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);

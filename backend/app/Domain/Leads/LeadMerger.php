@@ -124,6 +124,7 @@ class LeadMerger
             $changes['last_contact_at'] = collect([$fresh->last_contact_at, $dup->last_contact_at])->filter()->max();
             $changes['next_follow_up_at'] = collect([$fresh->next_follow_up_at, $dup->next_follow_up_at])->filter()->min();
             $changes['re_engaged_count'] = (int) $fresh->re_engaged_count + 1 + (int) $dup->re_engaged_count;
+            $changes['tags'] = LeadTags::normalise([...LeadTags::of($fresh), ...LeadTags::of($dup)]);
 
             // The furthest stage wins: a sale on the duplicate is this person's sale.
             if ($this->rank($dup->status) > $this->rank($fresh->status)) {

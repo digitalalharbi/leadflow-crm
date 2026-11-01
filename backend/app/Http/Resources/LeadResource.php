@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Domain\Leads\LeadClassification;
+use App\Domain\Leads\LeadTags;
 use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -38,6 +39,7 @@ class LeadResource extends JsonResource
             'interest_signals' => collect($this->interest_signals ?? [])->sortByDesc(fn ($s) => abs($s['points'] ?? 0))->values()->all(),
             // Hot, and the one to call first. Not a fourth temperature.
             'is_priority' => (bool) $this->is_priority,
+            'tags' => LeadTags::of($this->resource),
             // Whether the journey is still talking to them, or it is a person's
             // turn — and why.
             'automation_state' => $this->automation_state,

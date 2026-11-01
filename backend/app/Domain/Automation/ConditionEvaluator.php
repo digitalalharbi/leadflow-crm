@@ -3,6 +3,7 @@
 namespace App\Domain\Automation;
 
 use App\Domain\Leads\LeadClassification;
+use App\Domain\Leads\LeadTags;
 use App\Models\Call;
 use App\Models\CustomFieldValue;
 use App\Models\Lead;
@@ -156,6 +157,7 @@ class ConditionEvaluator
             'campaign_id' => $lead->campaign_id,
             'ad_name' => $lead->ad_name,
             'automation_state' => $lead->automation_state,
+            'tags' => LeadTags::of($lead),
             // How many times anybody — rep or rule — has tried to reach them.
             'attempts' => LeadMessage::where('lead_id', $lead->id)->where('direction', 'outbound')->count()
                 + Call::where('lead_id', $lead->id)->count(),
@@ -198,8 +200,8 @@ class ConditionEvaluator
                 && $this->numeric($expected) !== null
                 && $this->numeric($actual) < $this->numeric($expected),
             'between' => $this->between($actual, $expected),
-            'exists' => $actual !== null && $actual !== '' && $actual !== false,
-            'not_exists' => $actual === null || $actual === '' || $actual === false,
+            'exists' => $actual !== null && $actual !== '' && $actual !== false && $actual !== [],
+            'not_exists' => $actual === null || $actual === '' || $actual === false || $actual === [],
             default => false,
         };
     }
@@ -220,6 +222,11 @@ class ConditionEvaluator
 
     private function contains(mixed $actual, mixed $expected): bool
     {
+        // A list (the tags) contains a value when one of its items is that value — "VIP" is not in ["VIP-old"].
+        if (is_array($actual)) {
+            return is_scalar($expected) && LeadTags::has(array_map('strval', array_filter($actual, 'is_scalar')), (string) $expected);
+        }
+
         if (! is_scalar($actual) || ! is_scalar($expected)) {
             return false;
         }

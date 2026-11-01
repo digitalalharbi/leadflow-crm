@@ -330,6 +330,7 @@ class Lead extends Model
             'stage_entered_at' => 'datetime',
             'facts_at' => 'datetime',
             'follow_up_plan' => 'array',
+            'tags' => 'array',
             'follow_up_planned_at' => 'datetime',
             'status' => LeadStatus::class,
             'temperature' => LeadTemperature::class,

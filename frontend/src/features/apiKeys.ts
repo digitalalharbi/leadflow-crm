@@ -12,6 +12,8 @@ export interface ApiKeyRow {
   scopes: ApiScope[]
   /** Addresses or CIDR ranges allowed to use the key; empty means any. */
   allowed_ips?: string[]
+  /** Calls a minute this key may make. */
+  rate_limit_per_minute?: number
   expires_at: string | null
   last_used_at: string | null
   revoked_at: string | null
@@ -22,7 +24,7 @@ export interface ApiKeyRow {
 
 export const fetchApiKeys = () => apiGet<ApiKeyRow[]>('/api-keys')
 
-export const createApiKey = (body: { name: string; scopes: ApiScope[]; expires_in_days?: number | null; allowed_ips?: string[] }) =>
+export const createApiKey = (body: { name: string; scopes: ApiScope[]; expires_in_days?: number | null; allowed_ips?: string[]; rate_limit_per_minute?: number }) =>
   apiPost<{ key: ApiKeyRow; plain: string }>('/api-keys', body)
 
 export const revokeApiKey = (id: string) => apiDelete<ApiKeyRow>(`/api-keys/${id}`)

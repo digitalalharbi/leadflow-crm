@@ -43,6 +43,7 @@ use App\Policies\ProjectPolicy;
 use App\Policies\TenantSettingsPolicy;
 use App\Policies\TrackingLinkPolicy;
 use App\Policies\UserPolicy;
+use App\Models\ApiKey;
 use App\Support\CompanyContext;
 use App\Support\ProjectContext;
 use App\Support\TenantContext;
@@ -53,6 +54,7 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -182,9 +184,23 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         // The public API, per key (by its hash, so the limiter's store never holds a usable key), else per address.
-        RateLimiter::for('api-key', fn (Request $request) => Limit::perMinute(120)->by(
-            ($token = $request->bearerToken()) ? 'key:'.hash('sha256', $token) : 'ip:'.$request->ip()
-        ));
+        /*
+         * Per key, at the key's own rate when the company set one (a nightly sync and a live widget do not need the
+         * same ceiling), else 120 a minute. The rate is remembered for a minute so the limiter never costs a query
+         * per call; an unknown token is limited by address, at the default.
+         */
+        RateLimiter::for('api-key', function (Request $request) {
+            $token = $request->bearerToken();
+
+            if (! $token) {
+                return Limit::perMinute(ApiKey::DEFAULT_RATE)->by('ip:'.$request->ip());
+            }
+
+            $hash = hash('sha256', $token);
+            $rate = Cache::remember('api-key-rate:'.$hash, 60, fn () => (int) (ApiKey::withoutGlobalScopes()->where('key_hash', $hash)->value('rate_limit_per_minute') ?: ApiKey::DEFAULT_RATE));
+
+            return Limit::perMinute($rate)->by('key:'.$hash);
+        });
 
         RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(
             config('integrations.webhooks.rate_limit_per_minute')

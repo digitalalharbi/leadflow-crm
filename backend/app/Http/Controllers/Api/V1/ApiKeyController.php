@@ -8,6 +8,7 @@ use App\Models\ApiKey;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -21,6 +22,7 @@ class ApiKeyController extends Controller
     private const IP_RULES = [
         'allowed_ips' => ['sometimes', 'nullable', 'array', 'max:20'],
         'allowed_ips.*' => ['string', 'max:64', 'regex:/^[0-9a-fA-F:.]+(\/\d{1,3})?$/'],
+        'rate_limit_per_minute' => ['sometimes', 'nullable', 'integer', 'min:10', 'max:1000'],
     ];
 
     /** @return array<int,string>|null */
@@ -63,21 +65,25 @@ class ApiKeyController extends Controller
 
         $expires = isset($data['expires_in_days']) ? now()->addDays((int) $data['expires_in_days']) : null;
         ['key' => $key, 'plain' => $plain] = $this->keys->issue($request->user(), $data['name'], $data['scopes'], $expires);
-        $key->forceFill(['allowed_ips' => self::ips($data['allowed_ips'] ?? null)])->save();
+        $key->forceFill(['allowed_ips' => self::ips($data['allowed_ips'] ?? null), 'rate_limit_per_minute' => $data['rate_limit_per_minute'] ?? null])->save();
 
         $this->audit->log('api_key.created', $request->user(), $key, ['name' => $key->name, 'scopes' => $key->scopes, 'prefix' => $key->prefix]);
 
         return ApiResponse::created(['key' => $this->present($key->load('creator:id,name')), 'plain' => $plain]);
     }
 
-    /** Which addresses may use the key; an empty list lifts the limit. */
+    /** Which addresses may use the key (an empty list lifts the limit), and how often. */
     public function update(Request $request, string $uuid)
     {
         $this->guard($request);
         $key = ApiKey::query()->where('uuid', $uuid)->whereNull('revoked_at')->firstOrFail();
-        $data = $request->validate(self::IP_RULES + ['allowed_ips' => ['present', 'nullable', 'array', 'max:20']]);
+        $data = $request->validate(['allowed_ips' => ['sometimes', 'nullable', 'array', 'max:20']] + self::IP_RULES);
 
-        $key->forceFill(['allowed_ips' => self::ips($data['allowed_ips'])])->save();
+        $key->forceFill([
+            'allowed_ips' => array_key_exists('allowed_ips', $data) ? self::ips($data['allowed_ips']) : $key->allowed_ips,
+            'rate_limit_per_minute' => array_key_exists('rate_limit_per_minute', $data) ? $data['rate_limit_per_minute'] : $key->rate_limit_per_minute,
+        ])->save();
+        Cache::forget('api-key-rate:'.$key->key_hash);
         $this->audit->log('api_key.ips_changed', $request->user(), $key, ['prefix' => $key->prefix, 'allowed_ips' => $key->allowed_ips]);
 
         return ApiResponse::success($this->present($key->load('creator:id,name')));
@@ -93,7 +99,7 @@ class ApiKeyController extends Controller
         $old = ApiKey::query()->where('uuid', $uuid)->whereNull('revoked_at')->firstOrFail();
 
         ['key' => $key, 'plain' => $plain] = $this->keys->issue($request->user(), $old->name, $old->scopes, $old->expires_at);
-        $key->forceFill(['allowed_ips' => $old->allowed_ips])->save();
+        $key->forceFill(['allowed_ips' => $old->allowed_ips, 'rate_limit_per_minute' => $old->rate_limit_per_minute])->save();
         $old->forceFill(['revoked_at' => now()])->save();
 
         $this->audit->log('api_key.rotated', $request->user(), $key, ['name' => $key->name, 'old_prefix' => $old->prefix, 'prefix' => $key->prefix]);
@@ -133,6 +139,7 @@ class ApiKeyController extends Controller
             'prefix' => $key->prefix,
             'scopes' => $key->scopes,
             'allowed_ips' => $key->allowed_ips ?? [],
+            'rate_limit_per_minute' => $key->rate_limit_per_minute ?? ApiKey::DEFAULT_RATE,
             'expires_at' => $key->expires_at?->toIso8601String(),
             'last_used_at' => $key->last_used_at?->toIso8601String(),
             'revoked_at' => $key->revoked_at?->toIso8601String(),

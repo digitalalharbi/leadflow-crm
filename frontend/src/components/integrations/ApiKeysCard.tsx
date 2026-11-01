@@ -26,18 +26,20 @@ export function ApiKeysCard() {
   const [scopes, setScopes] = useState<ApiScope[]>(['leads:read'])
   const [days, setDays] = useState('')
   const [ips, setIps] = useState('')
+  const [rate, setRate] = useState('')
   const [plain, setPlain] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['api-keys'], queryFn: fetchApiKeys })
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['api-keys'] })
 
   const create = useMutation({
-    mutationFn: () => createApiKey({ name: name.trim(), scopes, expires_in_days: days ? Number(days) : null, ...(parseIps(ips).length > 0 ? { allowed_ips: parseIps(ips) } : {}) }),
+    mutationFn: () => createApiKey({ name: name.trim(), scopes, expires_in_days: days ? Number(days) : null, ...(parseIps(ips).length > 0 ? { allowed_ips: parseIps(ips) } : {}), ...(rate ? { rate_limit_per_minute: Number(rate) } : {}) }),
     onSuccess: (result) => {
       setPlain(result.plain)
       setName('')
       setDays('')
       setIps('')
+      setRate('')
       refresh()
     },
     onError: (caught) => toast(translateError(caught), 'error'),
@@ -105,16 +107,18 @@ export function ApiKeysCard() {
           <Input label={t('apiKeys.expiresInDays')} type="number" min={1} max={730} dir="ltr" value={days} onChange={(e) => setDays(e.target.value)} placeholder={t('apiKeys.never')} data-testid="api-key-days" />
         </div>
 
-        <Input
-          className="mt-3"
-          label={t('apiKeys.allowedIps')}
-          hint={t('apiKeys.allowedIpsHint')}
-          dir="ltr"
-          value={ips}
-          onChange={(e) => setIps(e.target.value)}
-          placeholder="203.0.113.10, 10.0.0.0/8"
-          data-testid="api-key-ips"
-        />
+        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+          <Input
+            label={t('apiKeys.allowedIps')}
+            hint={t('apiKeys.allowedIpsHint')}
+            dir="ltr"
+            value={ips}
+            onChange={(e) => setIps(e.target.value)}
+            placeholder="203.0.113.10, 10.0.0.0/8"
+            data-testid="api-key-ips"
+          />
+          <Input label={t('apiKeys.rate')} type="number" min={10} max={1000} dir="ltr" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="120" data-testid="api-key-rate" />
+        </div>
 
         <fieldset className="mt-3">
           <legend className="t-label mb-1.5">{t('apiKeys.scopes')}</legend>
@@ -147,6 +151,7 @@ export function ApiKeysCard() {
                     {key.expires_at && ` · ${t('apiKeys.expires', { date: formatDate(key.expires_at, i18n.language) })}`}
                     {' · '}
                     {(key.allowed_ips ?? []).length > 0 ? t('apiKeys.onlyFrom', { ips: (key.allowed_ips ?? []).join('، ') }) : t('apiKeys.anyAddress')}
+                    {key.rate_limit_per_minute && ` · ${t('apiKeys.perMinute', { count: key.rate_limit_per_minute })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

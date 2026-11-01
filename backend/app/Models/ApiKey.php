@@ -20,7 +20,10 @@ class ApiKey extends Model
         'leads:read', 'leads:write', 'projects:read', 'visits:read', 'reservations:read', 'revenue:read',
     ];
 
-    protected $fillable = ['name', 'prefix', 'key_hash', 'scopes', 'expires_at', 'last_used_at', 'last_used_ip', 'revoked_at', 'created_by', 'allowed_ips'];
+    /** Calls a minute when the key does not set its own. */
+    public const DEFAULT_RATE = 120;
+
+    protected $fillable = ['name', 'prefix', 'key_hash', 'scopes', 'expires_at', 'last_used_at', 'last_used_ip', 'revoked_at', 'created_by', 'allowed_ips', 'rate_limit_per_minute'];
 
     protected $hidden = ['key_hash'];
 

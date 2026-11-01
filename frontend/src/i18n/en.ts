@@ -1442,6 +1442,7 @@ export default {
     revoked: 'Key revoked',
     rotate: 'New secret', rotated: 'A new secret was issued and the old one stopped', rotateConfirm: 'Issue a new secret for this key? The current one stops working at once.',
     allowedIps: 'Allowed addresses (optional)', allowedIpsHint: 'IP addresses or CIDR ranges, comma-separated. Leave empty to allow any address.',
+    rate: 'Calls per minute', perMinute: '{{count}}/min',
     limit: 'Addresses', ipsSaved: 'Allowed addresses saved', onlyFrom: 'only from {{ips}}', anyAddress: 'from any address',
     empty: 'No keys yet.',
     lastUsed: 'Last used {{date}}',

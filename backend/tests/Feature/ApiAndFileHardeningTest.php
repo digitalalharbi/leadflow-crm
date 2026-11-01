@@ -56,6 +56,20 @@ class ApiAndFileHardeningTest extends TestCase
         $this->fromAddress($issued['plain'], '198.51.100.7')->assertOk();
     }
 
+    public function test_a_key_can_have_its_own_rate(): void
+    {
+        $issued = $this->issue(['rate_limit_per_minute' => 10]);
+        $this->assertSame(10, $issued['key']['rate_limit_per_minute']);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->fromAddress($issued['plain'])->assertOk();
+        }
+        $this->fromAddress($issued['plain'])->assertStatus(429);
+
+        $this->actingAs($this->a['admin'])->postJson('/api/v1/api-keys', ['name' => 'x', 'scopes' => ['leads:read'], 'rate_limit_per_minute' => 5000])->assertUnprocessable();
+        $this->assertSame(120, $this->issue()['key']['rate_limit_per_minute']);
+    }
+
     public function test_bad_addresses_are_refused(): void
     {
         foreach ([['not-an-ip'], ['10.0.0.0/33'], ['999.1.1.1']] as $bad) {

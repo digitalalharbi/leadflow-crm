@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\Automation\ProjectSettings;
+use App\Domain\Automation\Thresholds;
 use App\Domain\Sla\SlaRules;
 use App\Domain\Sla\SlaSweeper;
 use App\Models\Lead;
@@ -83,7 +84,7 @@ class SlaBySourceAndPriorityTest extends TestCase
         $this->assertSame(['by_source' => ['meta' => 15], 'priority_minutes' => null], $this->actingAs($this->t['admin'])->getJson('/api/v1/settings')->json('data.settings.sla_rules'));
 
         $this->actingAs($this->t['admin'])->patchJson('/api/v1/settings', ['sla_rules' => null])->assertOk();
-        \App\Domain\Automation\Thresholds::flush();
+        Thresholds::flush();
         $this->assertSame(['by_source' => [], 'priority_minutes' => null], SlaRules::forTenant($this->t['tenant']->id));
     }
 

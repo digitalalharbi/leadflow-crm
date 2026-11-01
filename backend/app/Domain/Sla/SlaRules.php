@@ -2,8 +2,8 @@
 
 namespace App\Domain\Sla;
 
-use App\Models\Lead;
 use App\Domain\Automation\Thresholds;
+use App\Models\Lead;
 
 /**
  * The first-contact target for one lead, when the workspace has said that some leads cannot wait as long as others.

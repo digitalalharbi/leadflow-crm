@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { Badge, Button, Card, CardBody, CardHeader, Input, Skeleton } from '@/components/ui'
-import { API_SCOPES, createApiKey, fetchApiKeys, revokeApiKey, type ApiScope } from '@/features/apiKeys'
+import { API_SCOPES, createApiKey, fetchApiKeys, parseIps, revokeApiKey, rotateApiKey, setApiKeyIps, type ApiScope } from '@/features/apiKeys'
 import { formatDate } from '@/lib/format'
 
 const STATUS_TONE = { active: 'success', expired: 'neutral', revoked: 'danger' } as const
@@ -25,17 +25,19 @@ export function ApiKeysCard() {
   const [name, setName] = useState('')
   const [scopes, setScopes] = useState<ApiScope[]>(['leads:read'])
   const [days, setDays] = useState('')
+  const [ips, setIps] = useState('')
   const [plain, setPlain] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['api-keys'], queryFn: fetchApiKeys })
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['api-keys'] })
 
   const create = useMutation({
-    mutationFn: () => createApiKey({ name: name.trim(), scopes, expires_in_days: days ? Number(days) : null }),
+    mutationFn: () => createApiKey({ name: name.trim(), scopes, expires_in_days: days ? Number(days) : null, ...(parseIps(ips).length > 0 ? { allowed_ips: parseIps(ips) } : {}) }),
     onSuccess: (result) => {
       setPlain(result.plain)
       setName('')
       setDays('')
+      setIps('')
       refresh()
     },
     onError: (caught) => toast(translateError(caught), 'error'),
@@ -45,6 +47,25 @@ export function ApiKeysCard() {
     mutationFn: revokeApiKey,
     onSuccess: () => {
       toast(t('apiKeys.revoked'), 'success')
+      refresh()
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const rotate = useMutation({
+    mutationFn: rotateApiKey,
+    onSuccess: (result) => {
+      setPlain(result.plain)
+      toast(t('apiKeys.rotated'), 'success')
+      refresh()
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const limit = useMutation({
+    mutationFn: ({ id, text }: { id: string; text: string }) => setApiKeyIps(id, parseIps(text)),
+    onSuccess: () => {
+      toast(t('apiKeys.ipsSaved'), 'success')
       refresh()
     },
     onError: (caught) => toast(translateError(caught), 'error'),
@@ -84,6 +105,17 @@ export function ApiKeysCard() {
           <Input label={t('apiKeys.expiresInDays')} type="number" min={1} max={730} dir="ltr" value={days} onChange={(e) => setDays(e.target.value)} placeholder={t('apiKeys.never')} data-testid="api-key-days" />
         </div>
 
+        <Input
+          className="mt-3"
+          label={t('apiKeys.allowedIps')}
+          hint={t('apiKeys.allowedIpsHint')}
+          dir="ltr"
+          value={ips}
+          onChange={(e) => setIps(e.target.value)}
+          placeholder="203.0.113.10, 10.0.0.0/8"
+          data-testid="api-key-ips"
+        />
+
         <fieldset className="mt-3">
           <legend className="t-label mb-1.5">{t('apiKeys.scopes')}</legend>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -113,10 +145,36 @@ export function ApiKeysCard() {
                     {' · '}
                     {key.last_used_at ? t('apiKeys.lastUsed', { date: formatDate(key.last_used_at, i18n.language) }) : t('apiKeys.neverUsed')}
                     {key.expires_at && ` · ${t('apiKeys.expires', { date: formatDate(key.expires_at, i18n.language) })}`}
+                    {' · '}
+                    {(key.allowed_ips ?? []).length > 0 ? t('apiKeys.onlyFrom', { ips: (key.allowed_ips ?? []).join('، ') }) : t('apiKeys.anyAddress')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={STATUS_TONE[key.status]}>{t(`apiKeys.status.${key.status}`)}</Badge>
+                  {key.status === 'active' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const text = window.prompt(t('apiKeys.allowedIpsHint'), (key.allowed_ips ?? []).join(', '))
+                        if (text !== null) limit.mutate({ id: key.id, text })
+                      }}
+                      data-testid={`api-key-ips-${key.id}`}
+                    >
+                      {t('apiKeys.limit')}
+                    </Button>
+                  )}
+                  {key.status === 'active' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      loading={rotate.isPending && rotate.variables === key.id}
+                      onClick={() => { if (window.confirm(t('apiKeys.rotateConfirm'))) rotate.mutate(key.id) }}
+                      data-testid={`api-key-rotate-${key.id}`}
+                    >
+                      {t('apiKeys.rotate')}
+                    </Button>
+                  )}
                   {key.status === 'active' && (
                     <Button size="sm" variant="ghost" loading={revoke.isPending && revoke.variables === key.id} onClick={() => revoke.mutate(key.id)} data-testid={`api-key-revoke-${key.id}`}>
                       {t('apiKeys.revoke')}

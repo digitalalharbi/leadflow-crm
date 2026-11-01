@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
  * A key a company issued to reach its own data through `/api/v1/public`. The key itself is never stored; see ApiKeys.
@@ -19,7 +20,7 @@ class ApiKey extends Model
         'leads:read', 'leads:write', 'projects:read', 'visits:read', 'reservations:read', 'revenue:read',
     ];
 
-    protected $fillable = ['name', 'prefix', 'key_hash', 'scopes', 'expires_at', 'last_used_at', 'last_used_ip', 'revoked_at', 'created_by'];
+    protected $fillable = ['name', 'prefix', 'key_hash', 'scopes', 'expires_at', 'last_used_at', 'last_used_ip', 'revoked_at', 'created_by', 'allowed_ips'];
 
     protected $hidden = ['key_hash'];
 
@@ -27,6 +28,7 @@ class ApiKey extends Model
     {
         return [
             'scopes' => 'array',
+            'allowed_ips' => 'array',
             'expires_at' => 'datetime',
             'last_used_at' => 'datetime',
             'revoked_at' => 'datetime',
@@ -46,5 +48,13 @@ class ApiKey extends Model
     public function allows(string $scope): bool
     {
         return in_array($scope, $this->scopes ?? [], true);
+    }
+
+    /** Whether a call from this address may use the key: any address when no list was set, else one on the list. */
+    public function allowsIp(?string $ip): bool
+    {
+        $list = array_values(array_filter((array) ($this->allowed_ips ?? []), 'is_string'));
+
+        return $list === [] || ($ip !== null && IpUtils::checkIp($ip, $list));
     }
 }

@@ -42,8 +42,21 @@ class ShareFile
                  * would carry a null where the screen expects a count.
                  */
                 'opens' => 0,
+                'expires_at' => now()->addDays(FileShare::LIFETIME_DAYS),
             ],
         );
+
+        /*
+         * Sending it again is a fresh invitation: the window starts over, and a link someone revoked or let lapse
+         * gets a new token rather than coming back to life — whoever held the old one does not get it back.
+         */
+        if (! $share->wasRecentlyCreated) {
+            $share->forceFill([
+                'token' => $share->isOpenable() ? $share->token : Str::random(40),
+                'revoked_at' => null,
+                'expires_at' => now()->addDays(FileShare::LIFETIME_DAYS),
+            ])->save();
+        }
 
         /*
          * On the timeline, once.

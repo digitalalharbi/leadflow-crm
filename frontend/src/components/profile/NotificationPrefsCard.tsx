@@ -61,7 +61,7 @@ export function NotificationPrefsCard() {
 
   const setChannel = (category: AlertCategory, channel: AlertChannel, on: boolean) => {
     const current = data.channels?.[category] ?? { in_app: true, email: true }
-    setData({ ...data, channels: { ...(data.channels ?? {}), [category]: { ...current, [channel]: on } } as NotificationPrefs['channels'] })
+    setData({ ...data, channels: { ...data.channels, [category]: { ...current, [channel]: on } } as NotificationPrefs['channels'] })
     save.mutate({ channels: { [category]: { [channel]: on } } })
   }
 

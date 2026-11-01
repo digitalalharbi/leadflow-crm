@@ -9,6 +9,7 @@ use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * A company's API keys: list, issue, revoke. The full key appears once, in the answer to `store`, and never again —
@@ -16,6 +17,29 @@ use Illuminate\Validation\Rule;
  */
 class ApiKeyController extends Controller
 {
+    /** An address or a CIDR range, IPv4 or IPv6; at most twenty. */
+    private const IP_RULES = [
+        'allowed_ips' => ['sometimes', 'nullable', 'array', 'max:20'],
+        'allowed_ips.*' => ['string', 'max:64', 'regex:/^[0-9a-fA-F:.]+(\/\d{1,3})?$/'],
+    ];
+
+    /** @return array<int,string>|null */
+    private static function ips(?array $ips): ?array
+    {
+        $clean = collect($ips ?? [])->map(fn ($ip) => trim((string) $ip))->filter()->unique()->values();
+
+        foreach ($clean as $i => $ip) {
+            [$address, $bits] = array_pad(explode('/', $ip, 2), 2, null);
+            $v6 = filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+
+            if (filter_var($address, FILTER_VALIDATE_IP) === false || ($bits !== null && ((int) $bits < 0 || (int) $bits > ($v6 ? 128 : 32)))) {
+                throw ValidationException::withMessages(["allowed_ips.{$i}" => ['Not an IP address or range.']]);
+            }
+        }
+
+        return $clean->isEmpty() ? null : $clean->all();
+    }
+
     public function __construct(private ApiKeys $keys, private AuditLogger $audit) {}
 
     public function index(Request $request)
@@ -34,12 +58,45 @@ class ApiKeyController extends Controller
             'scopes' => ['required', 'array', 'min:1'],
             'scopes.*' => ['string', Rule::in(ApiKey::SCOPES)],
             'expires_in_days' => ['nullable', 'integer', 'min:1', 'max:730'],
+            ...self::IP_RULES,
         ]);
 
         $expires = isset($data['expires_in_days']) ? now()->addDays((int) $data['expires_in_days']) : null;
         ['key' => $key, 'plain' => $plain] = $this->keys->issue($request->user(), $data['name'], $data['scopes'], $expires);
+        $key->forceFill(['allowed_ips' => self::ips($data['allowed_ips'] ?? null)])->save();
 
         $this->audit->log('api_key.created', $request->user(), $key, ['name' => $key->name, 'scopes' => $key->scopes, 'prefix' => $key->prefix]);
+
+        return ApiResponse::created(['key' => $this->present($key->load('creator:id,name')), 'plain' => $plain]);
+    }
+
+    /** Which addresses may use the key; an empty list lifts the limit. */
+    public function update(Request $request, string $uuid)
+    {
+        $this->guard($request);
+        $key = ApiKey::query()->where('uuid', $uuid)->whereNull('revoked_at')->firstOrFail();
+        $data = $request->validate(self::IP_RULES + ['allowed_ips' => ['present', 'nullable', 'array', 'max:20']]);
+
+        $key->forceFill(['allowed_ips' => self::ips($data['allowed_ips'])])->save();
+        $this->audit->log('api_key.ips_changed', $request->user(), $key, ['prefix' => $key->prefix, 'allowed_ips' => $key->allowed_ips]);
+
+        return ApiResponse::success($this->present($key->load('creator:id,name')));
+    }
+
+    /**
+     * A new secret for the same key — name, scopes, expiry and addresses kept — and the old secret revoked in the
+     * same step, so a key that may have leaked is replaced without rebuilding the integration's settings.
+     */
+    public function rotate(Request $request, string $uuid)
+    {
+        $this->guard($request);
+        $old = ApiKey::query()->where('uuid', $uuid)->whereNull('revoked_at')->firstOrFail();
+
+        ['key' => $key, 'plain' => $plain] = $this->keys->issue($request->user(), $old->name, $old->scopes, $old->expires_at);
+        $key->forceFill(['allowed_ips' => $old->allowed_ips])->save();
+        $old->forceFill(['revoked_at' => now()])->save();
+
+        $this->audit->log('api_key.rotated', $request->user(), $key, ['name' => $key->name, 'old_prefix' => $old->prefix, 'prefix' => $key->prefix]);
 
         return ApiResponse::created(['key' => $this->present($key->load('creator:id,name')), 'plain' => $plain]);
     }
@@ -75,6 +132,7 @@ class ApiKeyController extends Controller
             'name' => $key->name,
             'prefix' => $key->prefix,
             'scopes' => $key->scopes,
+            'allowed_ips' => $key->allowed_ips ?? [],
             'expires_at' => $key->expires_at?->toIso8601String(),
             'last_used_at' => $key->last_used_at?->toIso8601String(),
             'revoked_at' => $key->revoked_at?->toIso8601String(),

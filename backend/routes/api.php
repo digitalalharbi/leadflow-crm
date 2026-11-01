@@ -491,6 +491,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
             Route::post('/leads/{uuid}/files/send', [ProjectFileController::class, 'send']);
             Route::get('/leads/{uuid}/shares', [ProjectFileController::class, 'sharesFor']);
+            Route::post('/leads/{uuid}/shares/{share}/revoke', [ProjectFileController::class, 'revokeShare'])->whereUuid('share');
 
             Route::get('/projects/{uuid}/activity', ProjectActivityController::class);
             Route::get('/projects/{uuid}/development', ProjectDevelopmentController::class);
@@ -677,6 +678,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('/webhook-endpoints/{uuid}', [IntegrationController::class, 'deleteWebhook']);
             Route::get('/api-keys', [ApiKeyController::class, 'index']);
             Route::post('/api-keys', [ApiKeyController::class, 'store']);
+            Route::patch('/api-keys/{uuid}', [ApiKeyController::class, 'update'])->whereUuid('uuid');
+            Route::post('/api-keys/{uuid}/rotate', [ApiKeyController::class, 'rotate'])->whereUuid('uuid');
             Route::delete('/api-keys/{uuid}', [ApiKeyController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/webhook-subscriptions', [WebhookSubscriptionController::class, 'index']);
             Route::post('/webhook-subscriptions', [WebhookSubscriptionController::class, 'store']);

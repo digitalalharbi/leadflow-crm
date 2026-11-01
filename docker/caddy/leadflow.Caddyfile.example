@@ -1,0 +1,22 @@
+# Add only after the isolated LeadFlow stack passes internal validation and
+# public activation is explicitly approved. Existing Caddy sites remain intact.
+
+mohtam.pro {
+    @reverb path /app/* /apps/*
+    handle @reverb {
+        reverse_proxy leadflow-reverb:8080
+    }
+
+    @laravel path /api/* /oauth/google/callback /approve/* /files/* /f/* /e/* /t/* /tracker/*
+    handle @laravel {
+        reverse_proxy leadflow-api:80
+    }
+
+    handle {
+        reverse_proxy leadflow-frontend:80
+    }
+}
+
+www.mohtam.pro {
+    redir https://mohtam.pro{uri} permanent
+}

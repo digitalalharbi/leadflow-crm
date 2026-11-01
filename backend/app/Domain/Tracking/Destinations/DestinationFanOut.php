@@ -105,7 +105,7 @@ class DestinationFanOut
         }
 
         // A destination that maps this event asked for it, whatever its adapter would send on its own.
-        if (! isset(((array) $destination->event_map)[$name]) && ($declined = $this->adapter($destination)?->declines($name)) !== null) {
+        if (! (isset(((array) $destination->event_map)[$name]) && in_array($name, DestinationKind::MAPPABLE_EVENTS, true)) && ($declined = $this->adapter($destination)?->declines($name)) !== null) {
             return $declined;
         }
 

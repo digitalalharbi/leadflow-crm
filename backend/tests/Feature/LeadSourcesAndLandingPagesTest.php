@@ -9,12 +9,15 @@ use App\Domain\Tracking\Forms\LandingSlugs;
 use App\Domain\Tracking\WhatsappReference;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
+use App\Events\LeadSignal;
 use App\Jobs\MirrorLeadToSheet;
 use App\Models\Integration;
 use App\Models\LandingForm;
 use App\Models\Lead;
 use App\Models\LeadFormMapping;
+use App\Models\PermissionRule;
 use App\Models\Project;
+use App\Models\SheetSource;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
 use App\Services\Leads\LeadIngestionService;
@@ -24,6 +27,7 @@ use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -533,5 +537,155 @@ class LeadSourcesAndLandingPagesTest extends TestCase
         $this->actingAs($this->a['admin'])->postJson("/api/v1/tracking/forms/{$draft['id']}/links", ['name' => 'x', 'channel' => 'qr'])->assertStatus(422);
         $this->actingAs($this->b['admin'])->postJson("/api/v1/tracking/forms/{$form['id']}/links", ['name' => 'x', 'channel' => 'qr'])->assertNotFound();
         $this->assertSame(LeadFormMapping::count(), 0);
+    }
+
+    // ------------------------------------------- what the security review found
+
+    public function test_a_project_manager_cannot_reach_every_project_through_a_destination_or_a_project_less_link(): void
+    {
+        $pm = $this->makeUser($this->a['tenant'], Role::ProjectManager);
+        $mine = $this->asTenant($this->a['tenant'], fn () => Project::create(['name' => 'لي']));
+        $pm->projects()->attach($mine->id);
+
+        $this->actingAs($pm->fresh())->postJson('/api/v1/tracking/destinations', ['name' => 'GTM', 'kind' => 'gtm_web', 'config' => ['container_id' => 'GTM-XXXX']])->assertForbidden();
+        $this->actingAs($pm->fresh())->postJson('/api/v1/tracking/links', ['name' => 'x', 'channel' => 'meta', 'destination_url' => 'https://example.com'])->assertStatus(422);
+
+        $form = $this->actingAs($pm->fresh())->postJson('/api/v1/tracking/forms', ['name' => 'صفحتي', 'project_id' => $mine->uuid, 'fields' => $this->fields(), 'page' => []])->assertCreated()->json('data.form');
+        $this->actingAs($pm->fresh())->patchJson("/api/v1/tracking/forms/{$form['id']}", ['project_id' => null])->assertStatus(422);
+    }
+
+    public function test_an_old_address_keeps_opening_its_page_and_nobody_else_can_take_it(): void
+    {
+        $form = $this->published([], ['slug' => 'old-name']);
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['slug' => 'new-name'])->assertOk();
+
+        $this->public('old-name')->assertOk();
+        $this->public('new-name')->assertOk();
+        $this->assertSame('taken', app(LandingSlugs::class)->problem('old-name'));
+
+        $other = $this->asTenant($this->b['tenant'], fn () => Project::create(['name' => 'B']));
+        $this->actingAs($this->b['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'B', 'project_id' => $other->uuid, 'fields' => $this->fields(), 'slug' => 'old-name', 'page' => []])->assertUnprocessable();
+
+        // Its own page may take it back.
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['slug' => 'old-name'])->assertOk();
+    }
+
+    public function test_a_form_that_is_not_a_page_cannot_hold_a_public_name(): void
+    {
+        $this->actingAs($this->a['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'x', 'fields' => $this->fields(), 'slug' => 'brand-name'])->assertUnprocessable()->assertJsonValidationErrors('slug');
+    }
+
+    public function test_typing_someones_number_again_and_again_does_not_fire_rules_or_mirror_rows(): void
+    {
+        $form = $this->published(['mirror' => ['enabled' => true, 'spreadsheet_id' => str_repeat('s', 30)]]);
+        Queue::fake([MirrorLeadToSheet::class]);
+        Event::fake([LeadSignal::class]);
+
+        foreach (range(1, 3) as $i) {
+            $this->submit($form['slug'])->assertOk();
+        }
+
+        Queue::assertPushed(MirrorLeadToSheet::class, 1);
+        Event::assertDispatched(LeadSignal::class, fn ($e) => $e->signal === 'lead.form_submitted');
+        $this->assertSame(1, Event::dispatched(LeadSignal::class, fn ($e) => $e->signal === 'lead.form_submitted')->count());
+    }
+
+    public function test_forged_clicks_fire_a_rule_once_and_only_within_the_links_project(): void
+    {
+        $form = $this->published();
+        $data = $this->public($form['slug'])->json('data');
+        $visitor = $data['tracking']['visitor_id'];
+        $this->submit($form['slug'], ['visitor_id' => $visitor])->assertOk();
+        Event::fake([LeadSignal::class]);
+
+        foreach (range(1, 3) as $i) {
+            $this->postJson("/api/v1/track/{$data['landing']['token']}", ['event' => 'call_click', 'visitor_id' => $visitor, 'event_id' => (string) str()->uuid()])->assertNoContent();
+        }
+
+        $this->assertSame(1, Event::dispatched(LeadSignal::class, fn ($e) => $e->signal === 'lead.call_click')->count());
+    }
+
+    public function test_a_reference_is_kept_only_when_it_is_the_sessions_own(): void
+    {
+        $form = $this->published(['cta' => ['whatsapp' => ['enabled' => true, 'number' => '+966500000000', 'mode' => 'inbound'], 'primary' => 'form']]);
+        $data = $this->public($form['slug'])->json('data');
+        $this->postJson("/api/v1/track/{$data['landing']['token']}", ['event' => 'whatsapp_click', 'session_id' => $data['tracking']['session_id'], 'visitor_id' => $data['tracking']['visitor_id'], 'meta' => ['ref' => 'FORGED']])->assertNoContent();
+
+        $meta = $this->asTenant($this->a['tenant'], fn () => TrackingEvent::where('event_type', 'whatsapp_click')->latest('id')->first()->meta);
+        $this->assertArrayNotHasKey('ref', (array) $meta);
+    }
+
+    public function test_a_tap_cannot_become_a_platform_conversion(): void
+    {
+        $this->actingAs($this->a['admin'])->postJson('/api/v1/tracking/destinations', ['name' => 'M', 'kind' => 'meta', 'config' => ['pixel_id' => '123456789012345'], 'event_map' => ['whatsapp_started' => 'Purchase']])->assertUnprocessable();
+    }
+
+    public function test_a_budget_in_words_does_not_cost_the_lead(): void
+    {
+        $this->actingAs($this->a['admin'])->postJson("/api/v1/projects/{$this->project->uuid}/lead-sources/mappings", ['provider' => 'meta', 'form_ref' => '888', 'field_mapping' => ['budget' => 'budget_max']])->assertCreated();
+
+        $words = app(LeadIngestionService::class)->ingest($this->a['tenant'], IncomingLead::fromArray(IntegrationProvider::Meta, ['full_name' => 'ن', 'phone' => '0557770001', 'form_id' => '888'], ['budget' => 'نصف مليون']));
+        $this->assertTrue($words->wasAccepted());
+
+        $number = app(LeadIngestionService::class)->ingest($this->a['tenant'], IncomingLead::fromArray(IntegrationProvider::Meta, ['full_name' => 'م', 'phone' => '0557770002', 'form_id' => '888'], ['budget' => '1,500,000']));
+        $this->assertEquals(1500000, $number->lead->budget_max);
+    }
+
+    public function test_outsiders_see_no_sources_and_a_hidden_revenue_stays_hidden(): void
+    {
+        $broker = $this->makeUser($this->a['tenant'], Role::BrokerViewer);
+        $broker->projects()->attach($this->project->id);
+        $this->actingAs($broker->fresh())->getJson("/api/v1/projects/{$this->project->uuid}/lead-sources")->assertForbidden();
+
+        $form = $this->published([], ['slug' => 'money-page']);
+        $manager = $this->makeUser($this->a['tenant'], Role::SalesManager);
+        PermissionRule::withoutEvents(fn () => null);
+        $this->asTenant($this->a['tenant'], fn () => PermissionRule::create(['layer' => 'user', 'user_id' => $manager->id, 'permission' => 'revenue.view', 'effect' => 'deny']));
+        $this->asTenant($this->a['tenant'], fn () => PermissionRule::create(['layer' => 'user', 'user_id' => $manager->id, 'permission' => 'tracking.view', 'effect' => 'allow']));
+
+        $json = $this->actingAs($manager->fresh())->getJson("/api/v1/projects/{$this->project->uuid}/lead-sources/compare")->assertOk()->json('data.pages.0');
+        $this->assertArrayNotHasKey('revenue_minor', $json);
+        $this->assertSame($form['id'], $json['id']);
+    }
+
+    public function test_the_mirror_is_not_a_source_and_is_hidden_from_who_cannot_change_it(): void
+    {
+        $id = str_repeat('m', 30);
+        $this->asTenant($this->a['tenant'], function () use ($id) {
+            $connection = Integration::create(['provider' => IntegrationProvider::GoogleSheets, 'name' => 'g', 'status' => 'connected', 'is_active' => true]);
+            SheetSource::create(['integration_id' => $connection->id, 'spreadsheet_id' => $id, 'spreadsheet_name' => 'x', 'sheet_name' => 'y', 'header_row' => 1, 'cursor_row' => 1, 'is_active' => true]);
+        });
+
+        $this->actingAs($this->a['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'x', 'project_id' => $this->project->uuid, 'fields' => $this->fields(), 'page' => ['mirror' => ['enabled' => true, 'spreadsheet_id' => $id]]])->assertUnprocessable();
+
+        $form = $this->page(['mirror' => ['enabled' => true, 'spreadsheet_id' => str_repeat('n', 30)]]);
+        $sales = $this->makeUser($this->a['tenant'], Role::Sales);
+        $this->assertArrayNotHasKey('mirror', $this->actingAs($sales)->getJson("/api/v1/tracking/forms/{$form['id']}")->json('data.form.page') ?? ['mirror' => 'route refused']);
+    }
+
+    public function test_moving_a_page_moves_all_its_ways_in(): void
+    {
+        $form = $this->published();
+        $link = $this->actingAs($this->a['admin'])->postJson("/api/v1/tracking/forms/{$form['id']}/links", ['name' => 'x', 'channel' => 'meta'])->json('data.link');
+        $other = $this->asTenant($this->a['tenant'], fn () => Project::create(['name' => 'آخر']));
+
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['project_id' => $other->uuid])->assertOk();
+        $this->assertSame($other->id, $this->asTenant($this->a['tenant'], fn () => TrackingLink::where('uuid', $link['id'])->value('project_id')));
+    }
+
+    public function test_guessing_page_names_runs_out_across_all_names(): void
+    {
+        config(['integrations.landing.views_per_ip_per_minute' => 5]);
+
+        foreach (range(1, 5) as $i) {
+            $this->getJson("/api/v1/public/landing/guess-{$i}")->assertNotFound();
+        }
+
+        $this->getJson('/api/v1/public/landing/guess-6')->assertStatus(429);
+    }
+
+    public function test_a_vector_logo_cannot_hide_a_reference_behind_another_prefix(): void
+    {
+        $this->assertFalse(SafeSvg::isSafe('<svg xmlns="http://www.w3.org/2000/svg" xmlns:foo="http://www.w3.org/1999/xlink"><use foo:href="https://evil/x.svg#a"/></svg>'));
     }
 }

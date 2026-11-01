@@ -140,6 +140,9 @@ class TrackingLinkController extends Controller
     {
         $this->authorize('create', TrackingLink::class);
 
+        // Held to some projects: a link belongs to one of them, or it would be nobody's they can see.
+        abort_if($request->user()->isProjectScoped() && blank($request->input('project_id')), 422, 'Choose a project.');
+
         $link = $this->links->create($this->validated($request), $request->user()->id);
         $this->audit->log('tracking_link.created', $request->user(), $link, ['after' => ['name' => $link->name, 'channel' => $link->channel, 'token' => $link->token]]);
 

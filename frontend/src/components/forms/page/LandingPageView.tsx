@@ -134,7 +134,7 @@ export function LandingPageView({ content, form, preview = false, onCta }: {
         )}
 
         {!preview && (
-          <footer className={cn('text-center text-[0.8125rem] text-[var(--f-muted)] @4xl:col-span-full', floating && 'pb-16 lg:pb-0')} data-testid="page-legal">
+          <footer className={cn('text-center text-[0.8125rem] text-[var(--f-muted)] @4xl:col-span-full', floating && 'pb-20 lg:pb-0')} data-testid="page-legal">
             <Link to="/privacy" className="underline-offset-2 hover:underline">{t('hub.page.privacy')}</Link>
             <span aria-hidden> · </span>
             <Link to="/terms" className="underline-offset-2 hover:underline">{t('hub.page.terms')}</Link>
@@ -143,7 +143,7 @@ export function LandingPageView({ content, form, preview = false, onCta }: {
       </main>
 
       {floating && (
-        <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:inset-x-auto lg:bottom-4 lg:end-4 lg:p-0" data-testid="page-floating">
+        <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden" data-testid="page-floating">
           {cta.floating_whatsapp && action('whatsapp', 'primary', 'floating')}
           {cta.floating_call && action('phone', cta.floating_whatsapp ? 'secondary' : 'primary', 'floating')}
         </div>

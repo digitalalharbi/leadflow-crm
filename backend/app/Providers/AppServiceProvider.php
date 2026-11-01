@@ -171,7 +171,11 @@ class AppServiceProvider extends ServiceProvider
          * `throttle:N,M` shares one counter between every route it is put on, so a page's views and a form's step reports would
          * spend the same few submits — and the customer the button was for would be told to slow down.
          */
-        RateLimiter::for('landing-view', fn (Request $request) => Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')));
+        // Per page, and per address across all pages: a page's address is a word that can be guessed, and each guess must not get a fresh allowance.
+        RateLimiter::for('landing-view', fn (Request $request) => [
+            Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')),
+            Limit::perMinute((int) config('integrations.landing.views_per_ip_per_minute', 600))->by('lv-ip:'.$request->ip()),
+        ]);
         RateLimiter::for('landing-beacon', fn (Request $request) => Limit::perMinute(240)->by('lb:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-submit', fn (Request $request) => Limit::perMinute(30)->by('ls:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-asset', fn (Request $request) => Limit::perMinute(240)->by('la:'.$request->ip()));

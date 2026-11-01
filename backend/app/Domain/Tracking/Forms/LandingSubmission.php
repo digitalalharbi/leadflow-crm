@@ -23,6 +23,7 @@ use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
 use App\Services\Leads\LeadIngestionService;
 use App\Support\TenantContext;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * What happens when somebody presses the button.
@@ -151,12 +152,17 @@ class LandingSubmission
                 $this->tags->add($lead, (string) $tag, null, ['by' => 'landing_page']);
             }
 
-            if (($page['mirror']['enabled'] ?? false) === true && filled($page['mirror']['spreadsheet_id'] ?? null)) {
+            // A row per person, not per submit: submission ids are the visitor's to choose.
+            if (! $returning && ($page['mirror']['enabled'] ?? false) === true && filled($page['mirror']['spreadsheet_id'] ?? null)) {
                 MirrorLeadToSheet::dispatch($lead->id, $lead->tenant_id, (string) $page['mirror']['spreadsheet_id'], $page['mirror']['tab'] ?? null);
             }
         }
 
-        LeadSignal::dispatch($lead->fresh() ?? $lead, 'lead.form_submitted', ['returning' => $returning]);
+        // Anyone can type someone's number into a public form, as often as they like. A rule hears it once a day, or it becomes a way
+        // to make the company message that person again and again.
+        if (Cache::add("form-submitted:{$lead->id}:{$version->landing_form_id}", 1, now()->addDay())) {
+            LeadSignal::dispatch($lead->fresh() ?? $lead, 'lead.form_submitted', ['returning' => $returning]);
+        }
     }
 
     private function context(TrackingLink $link, array $in): array

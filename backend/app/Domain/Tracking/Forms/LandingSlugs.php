@@ -5,6 +5,7 @@ namespace App\Domain\Tracking\Forms;
 use App\Models\LandingForm;
 use App\Models\TrackingLink;
 use App\Support\TenantContext;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The public address of a landing page: mohtam.pro/l/<slug>.
@@ -56,8 +57,10 @@ class LandingSlugs
 
         return $this->context->withoutScope(function () use ($slug, $exceptFormId) {
             $form = LandingForm::withoutGlobalScopes()->where('slug', $slug)->when($exceptFormId, fn ($q, $id) => $q->whereKeyNot($id))->exists();
+            // An address a page once had stays that page's: an ad or a poster may still say it.
+            $past = DB::table('landing_slug_history')->where('slug', $slug)->when($exceptFormId, fn ($q, $id) => $q->where('landing_form_id', '!=', $id))->exists();
 
-            return $form || TrackingLink::withoutGlobalScopes()->where('token', $slug)->exists() ? 'taken' : null;
+            return $form || $past || TrackingLink::withoutGlobalScopes()->where('token', $slug)->exists() ? 'taken' : null;
         });
     }
 

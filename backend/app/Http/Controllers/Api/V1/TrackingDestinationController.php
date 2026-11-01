@@ -61,6 +61,9 @@ class TrackingDestinationController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', TrackingDestination::class);
+        // A destination reaches every page it covers, so it is not a project's to set: someone held to some projects could otherwise
+        // load their own tag on every project's page, or send every project's events to their own address.
+        abort_if($request->user()->isProjectScoped(), 403, 'Your role does not include this.');
 
         $data = $this->validated($request);
         $destination = TrackingDestination::create($data + [
@@ -75,6 +78,9 @@ class TrackingDestinationController extends Controller
     {
         $destination = TrackingDestination::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $destination);
+        // A destination reaches every page it covers, so it is not a project's to set: someone held to some projects could otherwise
+        // load their own tag on every project's page, or send every project's events to their own address.
+        abort_if($request->user()->isProjectScoped(), 403, 'Your role does not include this.');
 
         $before = ['name' => $destination->name, 'enabled' => $destination->is_enabled, 'events' => $destination->events];
         $destination->update($this->validated($request, $destination, partial: true));
@@ -87,6 +93,9 @@ class TrackingDestinationController extends Controller
     {
         $destination = TrackingDestination::where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $destination);
+        // A destination reaches every page it covers, so it is not a project's to set: someone held to some projects could otherwise
+        // load their own tag on every project's page, or send every project's events to their own address.
+        abort_if($request->user()->isProjectScoped(), 403, 'Your role does not include this.');
 
         $this->audit->log('tracking_destination.deleted', $request->user(), $destination, ['before' => ['kind' => $destination->kind, 'name' => $destination->name]]);
         $destination->delete();
@@ -110,8 +119,13 @@ class TrackingDestinationController extends Controller
             'credentials.*' => ['nullable', 'string', 'max:500'],
             'events' => ['sometimes', 'array', 'max:'.count(DestinationKind::EVENTS)],
             'events.*' => ['string', Rule::in(DestinationKind::EVENTS)],
-            'event_map' => ['sometimes', 'nullable', 'array', 'max:'.count(DestinationKind::EVENTS)],
             'event_map.*' => ['string', Rule::in(DestinationKind::PLATFORM_EVENTS)],
+            // Only what the server itself witnessed can be a platform's conversion; a tap is reported by the browser.
+            'event_map' => ['sometimes', 'nullable', 'array', function ($attribute, $value, $fail) {
+                if (array_diff(array_keys((array) $value), DestinationKind::MAPPABLE_EVENTS) !== []) {
+                    $fail('That event cannot be mapped.');
+                }
+            }],
             'send_value' => ['sometimes', 'boolean'],
             'hash_identifiers' => ['sometimes', 'boolean'],
             'consent_mode' => ['sometimes', Rule::in(['required', 'unless_denied'])],

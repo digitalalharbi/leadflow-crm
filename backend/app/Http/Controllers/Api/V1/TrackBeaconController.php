@@ -8,6 +8,7 @@ use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
 use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
+use App\Domain\Tracking\WhatsappReference;
 use App\Events\LeadSignal;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
@@ -17,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\TrackingLink;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -103,15 +105,16 @@ class TrackBeaconController extends Controller
                     'utm_content' => $data['utm_content'] ?? null,
                     'click_id' => ClickIds::primary($clickIds) ?? ($data['click_id'] ?? null),
                     'ip_hash' => Visitor::ipHash($request->ip()),
-                    'meta' => isset($data['meta']) ? $this->small($data['meta'], $data['event']) : null,
+                    'meta' => isset($data['meta']) ? $this->trustedRef($this->small($data['meta'], $data['event']), $session->session_id) : null,
                     'dedupe_key' => isset($data['dedupe_key']) ? $link->id.':'.$data['dedupe_key'] : null,
                 ] + $agent);
 
                 // Someone already known tapping WhatsApp or call is a moment a rule may want. A first-time visitor is only a click.
                 $signal = ['whatsapp_click' => 'lead.whatsapp_click', 'call_click' => 'lead.call_click'][$data['event']] ?? null;
-                $lead = $signal && $recorded !== null && $recorded->wasRecentlyCreated ? Lead::where('visitor_id', $visitor)->latest('id')->first() : null;
+                $lead = $signal && $recorded !== null && $recorded->wasRecentlyCreated ? Lead::where('visitor_id', $visitor)->when($link->project_id, fn ($q, $id) => $q->where('project_id', $id))->latest('id')->first() : null;
 
-                if ($lead !== null) {
+                // Once an hour for a lead: a visitor id can leak, and a beacon is anybody's to send.
+                if ($lead !== null && Cache::add("page-signal:{$signal}:{$lead->id}", 1, now()->addHour())) {
                     LeadSignal::dispatch($lead, $signal, []);
                 }
             });
@@ -121,6 +124,16 @@ class TrackBeaconController extends Controller
     }
 
     /** @param  array<string,mixed>  $meta */
+    /** A reference is kept only if it is this session's own: it is what later lets a WhatsApp message claim this visit. */
+    private function trustedRef(array $meta, string $sessionId): array
+    {
+        if (isset($meta['ref']) && $meta['ref'] !== WhatsappReference::for($sessionId)) {
+            unset($meta['ref']);
+        }
+
+        return $meta;
+    }
+
     private function small(array $meta, string $event): array
     {
         // A form's own events say where a visitor was — a step, a field's key — and nothing else: never a word they typed.

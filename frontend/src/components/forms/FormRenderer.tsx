@@ -211,7 +211,7 @@ export function FormRenderer({ form, preview = false, initial, events, onSubmit,
     if (visibleColumns.length === 0) return null
 
     return (
-      <div key={row.id} className={cn('grid gap-[var(--f-gap)]', COLS[Math.min(4, visibleColumns.length)])} data-testid={`row-${row.id}`}>
+      <div key={row.id} className={cn('grid gap-[var(--f-gap)]', (bare ? '' : COLS[Math.min(4, visibleColumns.length)]))} data-testid={`row-${row.id}`}>
         {visibleColumns.map((c) => (
           <div key={c.id} className="min-w-0 space-y-[var(--f-gap)]">
             {c.fields.filter((k) => state.visible.includes(k)).map((k) => {

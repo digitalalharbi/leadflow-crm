@@ -55,7 +55,8 @@ final class SafeSvg
                 }
 
                 // A reference may only point inside the drawing.
-                if (in_array($name, ['href', 'xlink:href', 'src'], true) && ! str_starts_with($value, '#')) {
+                // By local name, whatever prefix the namespace was given.
+                if (in_array(strtolower($attribute->localName), ['href', 'src'], true) && ! str_starts_with($value, '#')) {
                     return false;
                 }
 

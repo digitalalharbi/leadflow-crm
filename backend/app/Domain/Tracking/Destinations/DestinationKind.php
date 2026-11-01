@@ -37,6 +37,9 @@ enum DestinationKind: string
      */
     public const PLATFORM_EVENTS = ['Lead', 'CompleteRegistration', 'SubmitForm', 'Contact', 'Schedule', 'InitiateCheckout', 'AddPaymentInfo', 'Purchase', 'generate_lead', 'qualify_lead', 'purchase'];
 
+    /** What a destination may rename: events the server witnessed. A visit or a tap is reported by the browser, by anybody. */
+    public const MAPPABLE_EVENTS = ['form_submitted', 'lead_created', 'qualified', 'interested', 'appointment_requested', 'appointment_booked', 'visit_completed', 'reservation_created', 'won', 'lost', 'revenue_recorded'];
+
     /** What is sent unless the workspace chooses otherwise. */
     public const DEFAULT_EVENTS = ['form_submitted', 'lead_created', 'qualified', 'interested', 'appointment_booked', 'reservation_created', 'won', 'revenue_recorded'];
 

@@ -115,6 +115,8 @@ function Shell({ children, design }: { children: React.ReactNode; design?: Publi
 
 function Landing({ token, page, address }: { token: string; page: PublicLanding; address: ReturnType<typeof fromAddress> }) {
   const { landing, tracking } = page
+  // The address may be the page's name; beacons, like the link under it, go by the token. Drafts are kept per address.
+  const linkToken = landing.token
   const [done, setDone] = useState<LandingSubmitResult | null>(null)
   const startedAt = useRef<number | null>(null)
   const reached = useRef<{ step: number; field: string | null }>({ step: 1, field: null })
@@ -140,14 +142,14 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
   useEffect(() => {
     if (!landing.page?.cta.form.enabled || viewed.current) return
     viewed.current = true
-    beacon(token, { event: 'form_view', ...base() })
-  }, [landing.page, token, base])
+    beacon(linkToken, { event: 'form_view', ...base() })
+  }, [landing.page, linkToken, base])
 
   // Where a visitor stopped, if they leave: a step and a field's key, never a word they typed.
   useEffect(() => {
     const leave = () => {
       if (startedAt.current === null || done) return
-      beacon(token, { event: 'form_abandon', ...base(), meta: { step: String(reached.current.step), ...(reached.current.field ? { field: reached.current.field } : {}) } })
+      beacon(linkToken, { event: 'form_abandon', ...base(), meta: { step: String(reached.current.step), ...(reached.current.field ? { field: reached.current.field } : {}) } })
       startedAt.current = null
     }
     const onHide = () => { if (document.visibilityState === 'hidden') leave() }
@@ -155,16 +157,16 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
     document.addEventListener('visibilitychange', onHide)
 
     return () => { window.removeEventListener('pagehide', leave); document.removeEventListener('visibilitychange', onHide) }
-  }, [token, base, done])
+  }, [linkToken, base, done])
 
   const hooks: FormEvents = {
     onStart: () => {
       startedAt.current = Date.now()
-      beacon(token, { event: 'form_start', ...base() })
+      beacon(linkToken, { event: 'form_start', ...base() })
       if (events) pushDataLayer({ event: 'form_start', event_id: tracking.view_event_id ?? undefined })
     },
     onStep: (step) => {
-      beacon(token, { event: 'form_step', ...base(), meta: { step: String(step) } })
+      beacon(linkToken, { event: 'form_step', ...base(), meta: { step: String(step) } })
       if (events) pushDataLayer({ event: 'form_step', step })
     },
     onProgress: (state) => { reached.current = state },
@@ -181,7 +183,7 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
       submission_id: submissionId.current, answers, consent, website: typeof website === 'string' ? website : undefined,
       ...base(), referrer: document.referrer || undefined,
     }).catch((caught: unknown) => {
-      beacon(token, { event: 'form_error', ...base(), meta: { step: String(reached.current.step) } })
+      beacon(linkToken, { event: 'form_error', ...base(), meta: { step: String(reached.current.step) } })
       throw caught
     })
 
@@ -214,8 +216,8 @@ function Landing({ token, page, address }: { token: string; page: PublicLanding;
   const onCta = (kind: PageCtaKind, place: 'hero' | 'floating') => {
     const meta = { cta: kind, place, ...(kind === 'whatsapp' && tracking.ref ? { ref: tracking.ref } : {}) }
 
-    beacon(token, { event: 'cta_click', ...base(), meta })
-    beacon(token, { event: kind === 'whatsapp' ? 'whatsapp_click' : 'call_click', ...base(), meta })
+    beacon(linkToken, { event: 'cta_click', ...base(), meta })
+    beacon(linkToken, { event: kind === 'whatsapp' ? 'whatsapp_click' : 'call_click', ...base(), meta })
     if (events) pushDataLayer({ event: kind === 'whatsapp' ? 'whatsapp_click' : 'call_click', event_id: crypto.randomUUID() })
   }
 

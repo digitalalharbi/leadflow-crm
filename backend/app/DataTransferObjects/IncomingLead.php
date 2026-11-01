@@ -86,7 +86,12 @@ class IncomingLead
         $vars['custom'] = $custom + (array) ($this->custom ?? []);
 
         foreach ($fields as $key => $value) {
-            if (isset($names[$key])) {
+            // A budget is a number or it is nothing: a platform's "half a million" must not cost the lead.
+            if (in_array($key, ['budget_min', 'budget_max'], true)) {
+                $value = is_numeric(str_replace([',', ' '], '', (string) $value)) ? (float) str_replace([',', ' '], '', (string) $value) : null;
+            }
+
+            if (isset($names[$key]) && $value !== null) {
                 $vars[$names[$key]] = $value;
             }
         }

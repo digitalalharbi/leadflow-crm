@@ -22,6 +22,8 @@ class ProjectLeadSourceController extends Controller
     /** A long-standing role is not held by the route's permission, so each door asks: reading needs tracking.view, changing tracking.edit. */
     private function may(Request $request, string $permission): void
     {
+        // Someone from outside the company (a broker, a client) has no business with its form ids and traffic, even on a project they can open.
+        abort_if($request->user()->isExternal(), 403, 'Your role does not include this.');
         abort_unless(Permissions::has($request->user(), $permission), 403, 'Your role does not include this.');
     }
 

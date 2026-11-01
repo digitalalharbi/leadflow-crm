@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Tracking\Forms\FieldPresets;
 use App\Domain\Tracking\Forms\FormAnalytics;
 use App\Domain\Tracking\Forms\FormDefinition;
@@ -16,11 +17,13 @@ use App\Domain\Tracking\Forms\PhoneCountries;
 use App\Http\Controllers\Controller;
 use App\Models\LandingForm;
 use App\Models\Project;
+use App\Models\SheetSource;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -110,7 +113,22 @@ class LandingFormController extends Controller
         $status = $data['status'] ?? null;
         unset($data['status']);
 
+        // Held to some projects: a page cannot be moved out of them into nobody's.
+        abort_if($request->user()->isProjectScoped() && array_key_exists('project_id', $data) && $data['project_id'] === null, 422, 'A page needs a project.');
+
+        $slugBefore = $form->slug;
+        $projectBefore = $form->project_id;
         $form->update($data);
+
+        if ($slugBefore !== null && $form->slug !== $slugBefore) {
+            DB::table('landing_slug_history')->insertOrIgnore(['slug' => $slugBefore, 'tenant_id' => $form->tenant_id, 'landing_form_id' => $form->id, 'created_at' => now(), 'updated_at' => now()]);
+            $this->audit->log('landing_form.slug_changed', $request->user(), $form, ['before' => $slugBefore, 'after' => $form->slug]);
+        }
+
+        // Every way in moves with the page, or its old links would keep feeding the old project.
+        if ($form->project_id !== $projectBefore) {
+            TrackingLink::where('landing_form_id', $form->id)->update(['project_id' => $form->project_id]);
+        }
 
         if ($status === 'published') {
             $this->publishOrRefuse($form, $request);
@@ -294,6 +312,11 @@ class LandingFormController extends Controller
             $data['benefits'] = array_values(array_filter(array_map(fn ($b) => trim(strip_tags((string) $b)), $data['benefits']), fn ($b) => $b !== ''));
         }
 
+        // An address is for a page. A form on a tracking link has no business holding a public name.
+        if (filled($data['slug'] ?? null) && ($data['page'] ?? $current?->page) === null) {
+            throw ValidationException::withMessages(['slug' => ['not_a_page']]);
+        }
+
         if (filled($data['slug'] ?? null)) {
             $data['slug'] = mb_strtolower(trim((string) $data['slug']));
 
@@ -304,6 +327,13 @@ class LandingFormController extends Controller
 
         if (array_key_exists('page', $data) && $data['page'] !== null) {
             $data['page'] = LandingPageConfig::normalize($data['page']);
+
+            // A sheet this workspace reads leads FROM must not also receive them: every lead would come back in again.
+            $mirror = $data['page']['mirror']['spreadsheet_id'] ?? null;
+
+            if ($data['page']['mirror']['enabled'] && $mirror !== null && SheetSource::where('spreadsheet_id', $mirror)->exists()) {
+                throw ValidationException::withMessages(['page.mirror.spreadsheet_id' => ['is_a_source']]);
+            }
         }
 
         // Someone held to some projects makes pages for those: a page with no project would be nobody's to see.
@@ -367,6 +397,19 @@ class LandingFormController extends Controller
         return $merged;
     }
 
+    /** Which spreadsheet a page copies to is for those who can change it. @return array<string,mixed> */
+    private function pageFor(LandingForm $form): array
+    {
+        $page = LandingPageConfig::normalize($form->page);
+        $user = request()->user();
+
+        if ($user !== null && ! Permissions::has($user, 'tracking.edit')) {
+            unset($page['mirror']);
+        }
+
+        return $page;
+    }
+
     /** @return array<string,mixed> */
     private function shape(LandingForm $form): array
     {
@@ -394,7 +437,7 @@ class LandingFormController extends Controller
             'design' => $snapshot['design'],
             'settings' => $snapshot['settings'],
             'slug' => $form->slug,
-            'page' => $form->page === null ? null : LandingPageConfig::normalize($form->page),
+            'page' => $form->page === null ? null : $this->pageFor($form),
             'public_path' => $form->slug ? '/l/'.$form->slug : null,
             'steps' => FormDefinition::steps($snapshot),
             'published_version' => $live ? ['id' => $live->uuid, 'version' => $live->version, 'published_at' => $live->published_at->toIso8601String()] : null,

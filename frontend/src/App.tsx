@@ -37,6 +37,9 @@ const DataDeletionPage = lazy(() => import('@/pages/public/pages').then((m) => (
 const SecurityPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.SecurityPage })))
 const ContactPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.ContactPage })))
 const AboutPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.AboutPage })))
+const FeaturesPage = lazy(() => import('@/pages/public/Marketing').then((m) => ({ default: m.FeaturesPage })))
+const JourneyPage = lazy(() => import('@/pages/public/Marketing').then((m) => ({ default: m.JourneyPage })))
+const VisionPage = lazy(() => import('@/pages/public/Marketing').then((m) => ({ default: m.VisionPage })))
 const MobileWork = lazy(() => import('@/components/mobile/MobileWork').then((m) => ({ default: m.MobileWork })))
 const MobileLeadScreen = lazy(() => import('@/components/mobile/MobileLeadScreen').then((m) => ({ default: m.MobileLeadScreen })))
 const DataQualityPage = lazy(() => import('@/pages/DataQuality').then((m) => ({ default: m.DataQualityPage })))
@@ -202,6 +205,10 @@ export function App() {
         {/* The marketing page is the front door, for everybody; a signed-in person is not moved off it. */}
         <Route path="/" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
         <Route path="/welcome" element={<Navigate to="/" replace />} />
+        {/* What a business gets, told on its own pages; the front door stays one screen. */}
+        <Route path="/features" element={<Suspense fallback={<PageFallback />}><FeaturesPage /></Suspense>} />
+        <Route path="/journey" element={<Suspense fallback={<PageFallback />}><JourneyPage /></Suspense>} />
+        <Route path="/vision" element={<Suspense fallback={<PageFallback />}><VisionPage /></Suspense>} />
         <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPage /></Suspense>} />
         <Route path="/terms" element={<Suspense fallback={<PageFallback />}><TermsPage /></Suspense>} />
         <Route path="/data-deletion" element={<Suspense fallback={<PageFallback />}><DataDeletionPage /></Suspense>} />

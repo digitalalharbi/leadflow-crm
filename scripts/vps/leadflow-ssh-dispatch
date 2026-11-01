@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Forced command from leadflow-deploy's authorized_keys entry.
+set -Eeuo pipefail
+set -f
+
+original="${SSH_ORIGINAL_COMMAND:-}"
+case "$original" in
+  *$'\n'*|*$'\r'*) printf 'multi-line SSH commands are refused\n' >&2; exit 64 ;;
+esac
+
+if [ "$original" = true ]; then
+  printf 'leadflow-deploy authentication succeeded\n'
+  exit 0
+fi
+
+# Word splitting is intentional and safe here: no eval or shell expansion is
+# performed, globbing is disabled, and every token/count is validated below.
+read -r -a words <<< "$original"
+[ "${words[0]:-}" = leadflow-deploy ] || { printf 'command refused\n' >&2; exit 64; }
+
+case "${words[1]:-}" in
+  audit)
+    [ "${#words[@]}" -eq 2 ] || { printf 'command refused\n' >&2; exit 64; }
+    exec sudo -n /usr/local/sbin/leadflow-deploy audit
+    ;;
+  verify|deploy|release)
+    [ "${#words[@]}" -eq 3 ] || { printf 'command refused\n' >&2; exit 64; }
+    [[ "${words[2]}" =~ ^[0-9a-f]{40}$ ]] || { printf 'invalid commit\n' >&2; exit 64; }
+    exec sudo -n /usr/local/sbin/leadflow-deploy "${words[1]}" "${words[2]}"
+    ;;
+  *)
+    printf 'command refused\n' >&2
+    exit 64
+    ;;
+esac

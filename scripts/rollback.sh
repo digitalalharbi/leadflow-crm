@@ -10,7 +10,7 @@ TARGET="${2:-}"
 
 case "$ENVIRONMENT" in
   staging)    DEPLOY_PATH="${STAGING_PATH:-/var/www/leads-crm/staging}" ;;
-  production) DEPLOY_PATH="${PRODUCTION_PATH:-/var/www/leads-crm/production}" ;;
+  production) DEPLOY_PATH="${PRODUCTION_PATH:-/opt/leadflow-crm}" ;;
   *) echo "Usage: $0 <staging|production> [commit-or-tag]" >&2; exit 1 ;;
 esac
 

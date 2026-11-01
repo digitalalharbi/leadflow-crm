@@ -1,0 +1,2 @@
+# Validate with visudo -cf before installing as /etc/sudoers.d/leadflow-deploy.
+leadflow-deploy ALL=(root) NOPASSWD: /usr/local/sbin/leadflow-deploy

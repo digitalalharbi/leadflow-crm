@@ -47,7 +47,11 @@ printf '%s' "$hdr" | grep -q 'strict-transport-security' && pass "HSTS" "present
 # The commit answering is the commit shipped. DEPLOY_SECRET stays on the
 # server; the request is made from there.
 if [ -n "${EXPECTED_COMMIT:-}" ] && [ -n "${DEPLOY_HOST:-}" ] && [ -f "${DEPLOY_SSH_KEY:-/nonexistent}" ]; then
-  served="$(ssh_server "cd '${PRODUCTION_PATH}' && S=\$(sed -n 's/^DEPLOY_SECRET=//p' .env.production | tail -1 | tr -d \"'\\\"\"); curl -fsS -H \"X-Deploy-Secret: \$S\" http://127.0.0.1:9081/api/health" 2>/dev/null | sed -n 's/.*"release":"\([0-9a-f]\{40\}\)".*/\1/p')"
+  if [ "${DEPLOY_RESTRICTED_COMMAND:-false}" = true ]; then
+    served="$(ssh_server "leadflow-deploy release ${EXPECTED_COMMIT}" 2>/dev/null | sed -n 's/^release=//p')"
+  else
+    served="$(ssh_server "cd '${PRODUCTION_PATH}' && S=\$(sed -n 's/^DEPLOY_SECRET=//p' .env.production | tail -1 | tr -d \"'\\\"\"); curl -fsS -H \"X-Deploy-Secret: \$S\" http://127.0.0.1:9081/api/health" 2>/dev/null | sed -n 's/.*"release":"\([0-9a-f]\{40\}\)".*/\1/p')"
+  fi
   [ "$served" = "$EXPECTED_COMMIT" ] && pass "release" "serving ${EXPECTED_COMMIT:0:8}" || fail "release" "expected ${EXPECTED_COMMIT:0:8}, serving ${served:-<none>}"
 fi
 

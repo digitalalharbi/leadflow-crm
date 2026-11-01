@@ -100,7 +100,9 @@ class LeadFabricator
             'full_name' => $first.' '.$last,
             'phone' => $phone,
             'phone_normalized' => $phone,
-            'email' => random_int(0, 1) ? Str::lower(Str::random(7)).'@example.com' : null,
+            // Reserved `.test`: demo actions can never address a real mailbox,
+            // even if somebody later enables a live mail provider.
+            'email' => random_int(0, 1) ? Str::lower(Str::random(7)).'@customer.example.test' : null,
             'city' => DemoContent::CITIES[array_rand(DemoContent::CITIES)],
             'platform' => $campaign[1],
             'source' => $campaign[4],

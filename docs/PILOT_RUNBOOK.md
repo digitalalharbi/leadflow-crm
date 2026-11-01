@@ -54,7 +54,7 @@ cp .deploy.env.example .deploy.env     # fill DEPLOY_HOST, DEPLOY_USER, DEPLOY_S
 ./scripts/deploy-direct.sh staging
 ```
 
-Production is deployed only by the **Deploy production** workflow, run from `main`
+Production is deployed only by the **Deploy production** workflow, triggered by a push to `main`
 (docs/PRODUCTION_RUNBOOK.md); `deploy-direct.sh production` refuses.
 
 A deploy is complete only when the **public HTTPS domain** answers with the new

@@ -4,17 +4,19 @@ name: Deploy production
 # maintainer's machine, no file upload, no copy of source onto the server: the server
 # fetches one exact commit from GitHub.
 #
-#   PR -> CI -> merge to develop -> release (merge to main) -> this workflow, run from main
+#   PR -> CI -> merge to develop -> release (merge to main) -> this workflow automatically
 #     -> CI must have passed for that exact SHA -> the server's working tree must be clean
 #     -> SSH: git fetch the SHA from GitHub -> backup -> build -> migrate -> restart
 #     -> health -> smoke -> the serving SHA is asserted.
 #
-# It is manual and approved: it never runs on a push. Someone starts it from `main`,
-# types the word "deploy", and it runs only when the owner has switched production on
+# A push/merge to `main` starts it automatically. It can also be re-run manually by
+# typing "deploy". It runs only when the owner has switched production on
 # (repository variable PRODUCTION_ENABLED=true) after the server, the domain, HTTPS,
 # the secrets and the backups exist (docs/PRODUCTION_RUNBOOK.md). Until then it says
-# PRODUCTION NOT CONFIGURED and ends — which is a state, not a failure.
+# PRODUCTION NOT CONFIGURED and fails clearly without contacting the VPS.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirm:
@@ -62,9 +64,9 @@ jobs:
           # The commit being shipped is one GitHub has on main.
           git merge-base --is-ancestor "$SHA" origin/main || { echo "::error title=Production deploy refused::$SHA is not on main."; exit 1; }
 
-  # Production has not been switched on: say so, and record no deployment.
+  # A deploy trigger must never go green when production is disabled.
   awaiting:
-    name: Production not configured
+    name: Production deployment blocked
     needs: [branch]
     if: vars.PRODUCTION_ENABLED != 'true'
     runs-on: ubuntu-latest
@@ -77,14 +79,26 @@ jobs:
             echo "Set up the server, domain, HTTPS, secrets and backups (docs/PRODUCTION_RUNBOOK.md),"
             echo "then set the repository variable PRODUCTION_ENABLED=true."
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "::notice title=Production not configured::Nothing deployed."
+          echo "::error title=Production not configured::Nothing deployed."
+          exit 1
+
+  confirmation:
+    name: Deployment confirmation required
+    needs: [branch]
+    if: vars.PRODUCTION_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && github.event.inputs.confirm != 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          echo "::error title=Production deploy refused::The confirmation input must be exactly 'deploy'."
+          exit 1
 
   # The app must boot and the schema must apply cleanly against an empty database
   # before the VPS is touched.
   verify:
     name: Pre-flight verification
     needs: [branch]
-    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -153,7 +167,7 @@ jobs:
   deploy:
     name: Deploy to production VPS
     needs: [branch, verify]
-    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && github.event.inputs.confirm == 'deploy'
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:
@@ -179,15 +193,19 @@ jobs:
       - name: Require the deployment secrets
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
           DEPLOY_PATH_SECRET: ${{ secrets.PRODUCTION_PATH }}
+          PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          PRODUCTION_API_DOMAIN: ${{ vars.PRODUCTION_API_DOMAIN }}
         run: |
           # A deploy that cannot run must fail, not pass quietly. Skipping here
           # produced a green "Deploy production" on a run that shipped nothing, and
           # a release was tagged against it before anyone noticed.
           MISSING=""
-          for name in VPS_HOST VPS_USER VPS_SSH_KEY DEPLOY_PATH_SECRET; do
+          for name in VPS_HOST VPS_PORT VPS_USER VPS_SSH_KEY VPS_SSH_KNOWN_HOSTS DEPLOY_PATH_SECRET PRODUCTION_DOMAIN PRODUCTION_API_DOMAIN; do
             [ -n "${!name}" ] || MISSING="$MISSING $name"
           done
 
@@ -209,62 +227,77 @@ jobs:
             exit 1
           fi
 
+          if [ "$VPS_USER" = "root" ]; then
+            echo "::error title=Unsafe deployment identity::VPS_USER must be a dedicated non-root deployment identity."
+            exit 1
+          fi
+
+          if [ "$VPS_USER" != "leadflow-deploy" ]; then
+            echo "::error title=Unexpected deployment identity::VPS_USER must be the dedicated leadflow-deploy identity."
+            exit 1
+          fi
+
+          if [ "$DEPLOY_PATH_SECRET" != "/opt/leadflow-crm" ]; then
+            echo "::error title=Unexpected deployment path::PRODUCTION_PATH must be exactly /opt/leadflow-crm."
+            exit 1
+          fi
+
+          if ! printf '%s' "$VPS_HOST" | grep -Eq '^([A-Za-z0-9][A-Za-z0-9.-]*|[0-9A-Fa-f:]+)$'; then
+            echo "::error title=Invalid SSH host::VPS_HOST contains unsupported characters."
+            exit 1
+          fi
+
+          case "$VPS_PORT" in
+            ''|*[!0-9]*) echo "::error title=Invalid SSH port::VPS_PORT must be numeric."; exit 1 ;;
+          esac
+          if [ "$VPS_PORT" -lt 1 ] || [ "$VPS_PORT" -gt 65535 ]; then
+            echo "::error title=Invalid SSH port::VPS_PORT must be between 1 and 65535."
+            exit 1
+          fi
+
           echo "### Deploying to production" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up the SSH key
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -l -f ~/.ssh/known_hosts >/dev/null
+          if [ "$VPS_PORT" = "22" ]; then lookup_host="$VPS_HOST"; else lookup_host="[$VPS_HOST]:$VPS_PORT"; fi
+          ssh-keygen -F "$lookup_host" -f ~/.ssh/known_hosts >/dev/null || {
+            echo "::error title=Host key does not cover target::VPS_SSH_KNOWN_HOSTS has no entry for the configured host and port."
+            exit 1
+          }
 
-      # The server's checkout is a mirror of GitHub. Uncommitted or untracked source there
-      # would ride into the image (or be erased by the reset) — so the deploy stops before it
-      # fetches, builds or migrates anything. Checked here, over SSH, rather than only inside
-      # deploy-production.sh: that script on the server is the one the PREVIOUS deploy left,
-      # and a guard that only exists after the first release is not a guard.
+      # The SSH key is forced through a root-owned dispatcher. It cannot open a
+      # shell or invoke Docker directly; only fixed LeadFlow actions are accepted.
       - name: Refuse a server whose working tree is not clean
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
-          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
           DEPLOY_COMMIT: ${{ github.sha }}
         run: |
           ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
             "$VPS_USER@$VPS_HOST" \
-            "PRODUCTION_PATH='${PRODUCTION_PATH:-/var/www/leads-crm/production}' DEPLOY_COMMIT='${DEPLOY_COMMIT}' bash -s" <<'REMOTE'
-          set -e
-          cd "$PRODUCTION_PATH"
-
-          DIRTY="$(git status --porcelain --untracked-files=all -- . ':(exclude).last-good-commit' ':(exclude).last-good-commit.tmp')"
-          if [ -n "$DIRTY" ]; then
-            echo "ABORT DEPLOY — the working tree on the server is not clean. Nothing was changed." >&2
-            printf '%s\n' "$DIRTY" | head -40 | sed 's/^/    /' >&2
-            exit 1
-          fi
-
-          # The exact commit, from GitHub, and it is on main.
-          git fetch --prune origin main
-          git cat-file -e "${DEPLOY_COMMIT}^{commit}" || { echo "ABORT DEPLOY — ${DEPLOY_COMMIT} was not fetched from GitHub." >&2; exit 1; }
-          git merge-base --is-ancestor "$DEPLOY_COMMIT" origin/main || { echo "ABORT DEPLOY — ${DEPLOY_COMMIT} is not on origin/main." >&2; exit 1; }
-          echo "Server tree is clean; ${DEPLOY_COMMIT:0:8} is on origin/main."
-          REMOTE
+            "leadflow-deploy verify $DEPLOY_COMMIT"
 
       - name: Deploy
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
-          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
         run: |
           ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
             "$VPS_USER@$VPS_HOST" \
-            "set -e; \
-             export PRODUCTION_PATH='${PRODUCTION_PATH:-/var/www/leads-crm/production}'; \
-             export DEPLOY_BRANCH=main; \
-             export DEPLOY_COMMIT='${{ github.sha }}'; \
-             cd \"\$PRODUCTION_PATH\" && ./scripts/deploy-production.sh"
+            "leadflow-deploy deploy ${{ github.sha }}"
 
       - name: Verify production is healthy
         env:
@@ -315,7 +348,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.VPS_HOST }}
           DEPLOY_USER: ${{ secrets.VPS_USER }}
           DEPLOY_PORT: ${{ secrets.VPS_PORT || 22 }}
-          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+          DEPLOY_RESTRICTED_COMMAND: 'true'
         run: |
           if [ -z "$PRODUCTION_API_DOMAIN" ]; then
             {

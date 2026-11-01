@@ -20,11 +20,17 @@ cd "$(dirname "$0")/.."
 # first request. DEPLOY_SECRET is what lets the deploy prove which build serves.
 REQUIRED_ENV=(APP_KEY PRODUCTION_DOMAIN PRODUCTION_API_DOMAIN DB_USERNAME DB_PASSWORD DEPLOY_SECRET SUPER_ADMIN_EMAIL SUPER_ADMIN_PASSWORD)
 # Repository secrets GitHub Actions needs; names only.
-REQUIRED_GH_SECRETS=(VPS_HOST VPS_USER VPS_SSH_KEY PRODUCTION_PATH)
+REQUIRED_GH_SECRETS=(VPS_HOST VPS_PORT VPS_USER VPS_SSH_KEY VPS_SSH_KNOWN_HOSTS PRODUCTION_PATH)
 
 head1 "1. Server"
 if [ -n "${DEPLOY_HOST:-}" ]; then pass "VPS_HOST" "(DEPLOY_HOST) is set"; HOST_OK=1; else fail "VPS_HOST" "DEPLOY_HOST is missing in ${CONFIG}"; HOST_OK=0; fi
-[ -n "${DEPLOY_USER:-}" ] && pass "VPS_USER" "(DEPLOY_USER) is set" || fail "VPS_USER" "DEPLOY_USER is missing"
+if [ -z "${DEPLOY_USER:-}" ]; then
+  fail "VPS_USER" "DEPLOY_USER is missing"
+elif [ "$DEPLOY_USER" = root ]; then
+  fail "VPS_USER" "root is not an acceptable production deployment identity"
+else
+  pass "VPS_USER" "(DEPLOY_USER) is set to a non-root identity"
+fi
 [ -n "${PRODUCTION_PATH:-}" ] && pass "PRODUCTION_PATH" "$PRODUCTION_PATH" || fail "PRODUCTION_PATH" "missing"
 if [ -n "${DEPLOY_SSH_KEY:-}" ] && [ -f "$DEPLOY_SSH_KEY" ]; then pass "SSH key file" "present (contents never read)"; KEY_OK=1; else fail "SSH key file" "DEPLOY_SSH_KEY is unset or not a file"; KEY_OK=0; fi
 

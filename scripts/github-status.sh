@@ -114,7 +114,7 @@ last_deploy() { # workflow file -> "state|detail"
 }
 
 missing=""
-for n in VPS_HOST VPS_USER VPS_SSH_KEY STAGING_PATH; do has "$n" || missing="$missing $n"; done
+for n in VPS_HOST VPS_PORT VPS_USER VPS_SSH_KEY VPS_SSH_KNOWN_HOSTS STAGING_PATH; do has "$n" || missing="$missing $n"; done
 hasvar STAGING_DOMAIN || missing="$missing STAGING_DOMAIN"
 if [ -n "$missing" ]; then
   row "Staging" AMBER "NOT CONFIGURED — missing:$missing"
@@ -123,7 +123,7 @@ else
 fi
 
 missing=""
-for n in VPS_HOST VPS_USER VPS_SSH_KEY PRODUCTION_PATH; do has "$n" || missing="$missing $n"; done
+for n in VPS_HOST VPS_PORT VPS_USER VPS_SSH_KEY VPS_SSH_KNOWN_HOSTS PRODUCTION_PATH; do has "$n" || missing="$missing $n"; done
 hasvar PRODUCTION_DOMAIN || missing="$missing PRODUCTION_DOMAIN"
 printf '%s\n' "$VARS" | grep -q '^PRODUCTION_ENABLED=true' || missing="$missing PRODUCTION_ENABLED"
 if [ -n "$missing" ]; then

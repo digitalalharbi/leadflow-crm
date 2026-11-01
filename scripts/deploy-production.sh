@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-DEPLOY_PATH="${PRODUCTION_PATH:-/var/www/leads-crm/production}"
+DEPLOY_PATH="${PRODUCTION_PATH:-/opt/leadflow-crm}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 COMMIT="${DEPLOY_COMMIT:-}"
 COMPOSE_FILE="docker-compose.production.yml"
@@ -47,6 +47,30 @@ BACKUP_PATH=""
 [ "$BRANCH" = "main" ] || { echo "ABORT DEPLOY — production deploys only from main (asked for '${BRANCH}')." >&2; exit 1; }
 
 require_clean_worktree || exit 1
+
+FILE_MIN_FREE_GB="$(sed -n 's/^MIN_DEPLOY_FREE_GB=//p' "$ENV_FILE" 2>/dev/null | tail -1 | tr -d "'\"" || true)"
+MIN_DEPLOY_FREE_GB="${MIN_DEPLOY_FREE_GB:-${FILE_MIN_FREE_GB:-18}}"
+case "$MIN_DEPLOY_FREE_GB" in
+  ''|*[!0-9]*) echo "ABORT DEPLOY — MIN_DEPLOY_FREE_GB must be a whole number." >&2; exit 1 ;;
+esac
+FREE_KB="$(df -Pk "$DEPLOY_PATH" | awk 'NR==2 {print $4}')"
+REQUIRED_KB="$((MIN_DEPLOY_FREE_GB * 1024 * 1024))"
+[ "$FREE_KB" -ge "$REQUIRED_KB" ] || {
+  echo "ABORT DEPLOY — less than ${MIN_DEPLOY_FREE_GB} GiB is free on the deployment filesystem." >&2
+  exit 1
+}
+
+FILE_MIN_SWAP_MB="$(sed -n 's/^MIN_DEPLOY_SWAP_MB=//p' "$ENV_FILE" 2>/dev/null | tail -1 | tr -d "'\"" || true)"
+MIN_DEPLOY_SWAP_MB="${MIN_DEPLOY_SWAP_MB:-${FILE_MIN_SWAP_MB:-1900}}"
+case "$MIN_DEPLOY_SWAP_MB" in
+  ''|*[!0-9]*) echo "ABORT DEPLOY — MIN_DEPLOY_SWAP_MB must be a whole number." >&2; exit 1 ;;
+esac
+SWAP_MB="$(awk '/^SwapTotal:/ {print int($2 / 1024)}' /proc/meminfo)"
+[ "$SWAP_MB" -ge "$MIN_DEPLOY_SWAP_MB" ] || {
+  echo "ABORT DEPLOY — ${SWAP_MB} MiB swap is available; at least ${MIN_DEPLOY_SWAP_MB} MiB is required on this shared VPS." >&2
+  exit 1
+}
+export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
 
 say "Fetching ${BRANCH} from GitHub"
 git fetch --prune origin "$BRANCH"

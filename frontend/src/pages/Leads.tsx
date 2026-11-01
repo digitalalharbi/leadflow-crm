@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Download, MessageCircle, Phone, Plug, Plus, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { InterestBadge, RingProgress } from '@/components/visual'
-import { apiDownload } from '@/lib/api'
+import { ExportsModal } from '@/components/exports/ExportsModal'
 import { fetchAssignableUsers, fetchLeads, fetchProjects, type LeadFilters } from '@/features/leads'
 import { can, useAuth, useEntitled } from '@/stores/auth'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -33,6 +33,7 @@ export function LeadsPage() {
 
   // `?new=1` is how the command palette's "create a lead" lands here: the form is already open.
   const [createOpen, setCreateOpen] = useState(() => searchParams.get('new') === '1')
+  const [exportOpen, setExportOpen] = useState(false)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
 
@@ -56,6 +57,7 @@ export function LeadsPage() {
       project_id: searchParams.get('project_id') ?? undefined,
       assigned_to: searchParams.get('assigned_to') ?? undefined,
       follow_up: searchParams.get('follow_up') ?? undefined,
+      tag: searchParams.get('tag') ?? undefined,
       date_from: searchParams.get('date_from') ?? undefined,
       date_to: searchParams.get('date_to') ?? undefined,
       overdue: searchParams.get('overdue') === '1' || undefined,
@@ -102,6 +104,7 @@ export function LeadsPage() {
     Boolean(filters.project_id) ||
     Boolean(filters.assigned_to) ||
     Boolean(filters.follow_up) ||
+    Boolean(filters.tag) ||
     Boolean(filters.overdue) ||
     Boolean(filters.priority) ||
     Boolean(filters.wrong_fit) ||
@@ -127,9 +130,8 @@ export function LeadsPage() {
               <Button
                 variant="outline"
                 icon={<Download className="size-4" />}
-                onClick={() =>
-                  void apiDownload('/leads/export', query as Record<string, unknown>, 'leads.csv')
-                }
+                onClick={() => setExportOpen(true)}
+                data-testid="leads-export"
               >
                 {t('common.export')}
               </Button>
@@ -376,6 +378,7 @@ export function LeadsPage() {
       </Card>
 
       <LeadFormDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ExportsModal open={exportOpen} onClose={() => setExportOpen(false)} filters={query as Record<string, unknown>} />
     </>
   )
 }

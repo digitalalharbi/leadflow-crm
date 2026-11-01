@@ -22,8 +22,12 @@ export interface WhatsappPrefs {
   live: boolean
 }
 
+export type AlertChannel = 'in_app' | 'email'
+
 export interface NotificationPrefs {
   alerts: Record<AlertCategory, AlertMode>
+  /** Whether each kind may use the bell and email at all; the mode decides when the email goes. */
+  channels?: Record<AlertCategory, Record<AlertChannel, boolean>>
   digests: Record<DigestKind, boolean>
   categories: AlertCategory[]
   modes: AlertMode[]
@@ -59,7 +63,7 @@ export function fetchNotificationPrefs() {
   return apiGet<NotificationPrefs>('/auth/notification-preferences')
 }
 
-export function saveNotificationPrefs(changes: { alerts?: Partial<Record<AlertCategory, AlertMode>>; digests?: Partial<Record<DigestKind, boolean>>; whatsapp?: WhatsappChanges }) {
+export function saveNotificationPrefs(changes: { alerts?: Partial<Record<AlertCategory, AlertMode>>; digests?: Partial<Record<DigestKind, boolean>>; channels?: Partial<Record<AlertCategory, Partial<Record<AlertChannel, boolean>>>>; whatsapp?: WhatsappChanges }) {
   return apiPatch<NotificationPrefs>('/auth/notification-preferences', changes)
 }
 

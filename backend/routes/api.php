@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\AutomationCentreController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\BrandingController;
+use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\CallSettingsController;
 use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CampaignSpendController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Api\V1\CommandCenterController;
 use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CreativeController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DataExportController;
 use App\Http\Controllers\Api\V1\DataQualityController;
 use App\Http\Controllers\Api\V1\DemoController;
 use App\Http\Controllers\Api\V1\EmailDeliveryController;
@@ -47,6 +49,7 @@ use App\Http\Controllers\Api\V1\LeadAnswerController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\LeadEmailController;
 use App\Http\Controllers\Api\V1\LeadMessageController;
+use App\Http\Controllers\Api\V1\LeadPrivacyController;
 use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
@@ -152,6 +155,9 @@ Route::prefix('v1')->group(function () {
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
 
+    // A person's calendar feed, read by their calendar app. The secret in the address is the credential.
+    Route::get('/public/calendar/{token}.ics', [CalendarController::class, 'publicFeed'])->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{48}');
+
     // The public API: a company's own data through one of its API keys (Authorization: Bearer mht_…). No session.
     Route::prefix('public')->middleware('throttle:api-key')->group(function () {
         Route::get('/leads', [PublicApiController::class, 'leads'])->middleware(AuthenticateApiKey::class.':leads:read');
@@ -239,6 +245,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/impersonation/stop', [ImpersonationController::class, 'stop']);
         // Outside `tenant.active`: a suspended company's admin can still read why, and what to do.
         Route::get('/billing', [BillingController::class, 'show']);
+        Route::get('/auth/calendar-feed', [CalendarController::class, 'feed']);
+        Route::post('/auth/calendar-feed/rotate', [CalendarController::class, 'rotate']);
+        Route::delete('/auth/calendar-feed', [CalendarController::class, 'disable']);
         Route::get('/auth/notification-preferences', [NotificationPreferenceController::class, 'show']);
         Route::patch('/auth/notification-preferences', [NotificationPreferenceController::class, 'update']);
         Route::get('/auth/notification-preferences/whatsapp-log', [NotificationPreferenceController::class, 'whatsappLog']);
@@ -296,7 +305,11 @@ Route::prefix('v1')->group(function () {
 
             // Leads
             Route::get('/leads/export', [LeadController::class, 'export']);
+            Route::get('/exports', [DataExportController::class, 'index']);
+            Route::post('/exports', [DataExportController::class, 'store'])->middleware('throttle:10,1');
+            Route::post('/exports/{uuid}/link', [DataExportController::class, 'link']);
             Route::get('/leads/segments', [LeadController::class, 'segments']);
+            Route::get('/leads/tags', [LeadController::class, 'tags']);
             Route::get('/leads/saved-views', [SavedViewController::class, 'index']);
             Route::post('/leads/saved-views', [SavedViewController::class, 'store']);
             Route::delete('/leads/saved-views/{uuid}', [SavedViewController::class, 'destroy'])->whereUuid('uuid');
@@ -318,6 +331,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/assign', [LeadController::class, 'assign']);
             Route::post('/leads/{uuid}/status', [LeadController::class, 'changeStatus']);
             Route::post('/leads/{uuid}/temperature', [LeadController::class, 'changeTemperature']);
+            Route::put('/leads/{uuid}/tags', [LeadController::class, 'setTags']);
+            Route::get('/leads/{uuid}/personal-data', [LeadPrivacyController::class, 'export']);
+            Route::post('/leads/{uuid}/erase', [LeadPrivacyController::class, 'erase']);
             Route::post('/leads/{uuid}/interest', [LeadController::class, 'setInterest']);
             Route::post('/leads/{uuid}/notes', [LeadController::class, 'addNote']);
             Route::post('/leads/{uuid}/contact', [LeadController::class, 'logContact']);
@@ -402,6 +418,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/appointments', [AppointmentController::class, 'index']);
             Route::post('/appointments', [AppointmentController::class, 'store']);
             Route::patch('/appointments/{uuid}', [AppointmentController::class, 'update']);
+            Route::get('/appointments/{uuid}/ics', [CalendarController::class, 'appointment']);
             Route::post('/appointments/{uuid}/transition', [AppointmentController::class, 'transition']);
             Route::post('/appointments/{uuid}/outcome', [AppointmentController::class, 'outcome']);
             Route::get('/reservations', [ReservationController::class, 'index']);
@@ -474,6 +491,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/leads/{uuid}/files/share', [ProjectFileController::class, 'share']);
             Route::post('/leads/{uuid}/files/send', [ProjectFileController::class, 'send']);
             Route::get('/leads/{uuid}/shares', [ProjectFileController::class, 'sharesFor']);
+            Route::post('/leads/{uuid}/shares/{share}/revoke', [ProjectFileController::class, 'revokeShare'])->whereUuid('share');
 
             Route::get('/projects/{uuid}/activity', ProjectActivityController::class);
             Route::get('/projects/{uuid}/development', ProjectDevelopmentController::class);
@@ -660,6 +678,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('/webhook-endpoints/{uuid}', [IntegrationController::class, 'deleteWebhook']);
             Route::get('/api-keys', [ApiKeyController::class, 'index']);
             Route::post('/api-keys', [ApiKeyController::class, 'store']);
+            Route::patch('/api-keys/{uuid}', [ApiKeyController::class, 'update'])->whereUuid('uuid');
+            Route::post('/api-keys/{uuid}/rotate', [ApiKeyController::class, 'rotate'])->whereUuid('uuid');
             Route::delete('/api-keys/{uuid}', [ApiKeyController::class, 'destroy'])->whereUuid('uuid');
             Route::get('/webhook-subscriptions', [WebhookSubscriptionController::class, 'index']);
             Route::post('/webhook-subscriptions', [WebhookSubscriptionController::class, 'store']);

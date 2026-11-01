@@ -6,7 +6,7 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatRelative } from '@/lib/format'
 import { Badge, Button, Card, CardBody, CardHeader, Select, Skeleton } from '@/components/ui'
-import { fetchFilesForLead, fetchLeadShares, sendFileToLead, shareFileWithLead } from '@/features/files'
+import { fetchFilesForLead, fetchLeadShares, revokeLeadShare, sendFileToLead, shareFileWithLead } from '@/features/files'
 import type { Lead } from '@/types/api'
 
 /**
@@ -81,6 +81,15 @@ export function LeadFiles({ lead }: { lead: Lead }) {
       void queryClient.invalidateQueries({ queryKey: ['lead-shares', lead.id] })
       void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] })
       void queryClient.invalidateQueries({ queryKey: ['lead-messages', lead.id] })
+    },
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const revoke = useMutation({
+    mutationFn: (shareId: string) => revokeLeadShare(lead.id, shareId),
+    onSuccess: () => {
+      toast(t('files.linkRevoked'), 'success')
+      void queryClient.invalidateQueries({ queryKey: ['lead-shares', lead.id] })
     },
     onError: (caught) => toast(translateError(caught), 'error'),
   })
@@ -200,6 +209,18 @@ export function LeadFiles({ lead }: { lead: Lead }) {
                     </Badge>
                   ) : (
                     <Badge tone="neutral" testId={`share-${entry.id}-opens`}>{t('files.notOpened')}</Badge>
+                  )}
+                  {entry.openable === false && <Badge tone="neutral" testId={`share-${entry.id}-closed`}>{t('files.linkClosed')}</Badge>}
+                  {entry.openable !== false && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      loading={revoke.isPending && revoke.variables === entry.id}
+                      onClick={() => revoke.mutate(entry.id)}
+                      data-testid={`share-${entry.id}-revoke`}
+                    >
+                      {t('files.revokeLink')}
+                    </Button>
                   )}
                   {copied === entry.id && (
                     <span className="t-caption inline-flex items-center gap-1 text-[var(--color-success)]">

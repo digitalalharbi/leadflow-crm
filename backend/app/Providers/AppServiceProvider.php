@@ -19,6 +19,7 @@ use App\Listeners\DispatchOutboundWebhooks;
 use App\Listeners\RecordConversionOutcome;
 use App\Listeners\RecordMarketingEvents;
 use App\Listeners\RunAutomationRules;
+use App\Models\ApiKey;
 use App\Models\AutomationRule;
 use App\Models\Company;
 use App\Models\FollowUp;
@@ -50,6 +51,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
@@ -182,9 +184,35 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         // The public API, per key (by its hash, so the limiter's store never holds a usable key), else per address.
-        RateLimiter::for('api-key', fn (Request $request) => Limit::perMinute(120)->by(
-            ($token = $request->bearerToken()) ? 'key:'.hash('sha256', $token) : 'ip:'.$request->ip()
-        ));
+        /*
+         * Per key, at the key's own rate when the company set one (a nightly sync and a live widget do not need the
+         * same ceiling), else 120 a minute. The rate is remembered for a minute so the limiter never costs a query
+         * per call; an unknown token is limited by address, at the default.
+         */
+        RateLimiter::for('api-key', function (Request $request) {
+            $token = $request->bearerToken();
+            $hash = $token ? hash('sha256', $token) : null;
+
+            /*
+             * A token that is not a key gets no bucket of its own — otherwise a stream of random tokens would each
+             * start fresh and never meet a limit — and is not cached, so it cannot fill the cache either. It is held
+             * to the address's bucket at the default rate, which also bounds the lookups it costs.
+             */
+            $rate = $hash === null ? null : Cache::get('api-key-rate:'.$hash);
+
+            if ($hash !== null && $rate === null) {
+                $found = ApiKey::withoutGlobalScopes()->where('key_hash', $hash)->first(['rate_limit_per_minute']);
+
+                if ($found !== null) {
+                    $rate = (int) ($found->rate_limit_per_minute ?: ApiKey::DEFAULT_RATE);
+                    Cache::put('api-key-rate:'.$hash, $rate, 60);
+                }
+            }
+
+            return $rate === null
+                ? Limit::perMinute(ApiKey::DEFAULT_RATE)->by('ip:'.$request->ip())
+                : Limit::perMinute((int) $rate)->by('key:'.$hash);
+        });
 
         RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(
             config('integrations.webhooks.rate_limit_per_minute')

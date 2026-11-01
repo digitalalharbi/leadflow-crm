@@ -19,6 +19,7 @@ done in code is done. Each item says what to do and how to check it.
 | 12 | **SMS / telephony provider** (optional): only if you want click-to-call or SMS OTP | Provider | Integrations → Calls → Test connection |
 | 13 | **Off-server backup storage** (S3-compatible bucket) for `BACKUP_*` | Storage provider | `scripts/restore-check.sh` passes against a downloaded backup |
 | 14 | **Plan prices** — the plans start without prices on purpose | Platform console → Plans | Revenue no longer reads "not configured" |
+| 16 | **Google Calendar two-way sync** (optional): add the `https://www.googleapis.com/auth/calendar.events` scope to the Google OAuth consent screen and get it verified. Until then each person subscribes to their private calendar address (Profile → My visits in my calendar), which works with Google, Apple and Outlook today | console.cloud.google.com → OAuth consent screen | Readiness → Calendar shows “Google Calendar sync” checked |
 | 15 | **Named list of data processors** for the privacy page (hosting, mail, WhatsApp, AI) — the page says "available on request" until you publish one | Tell Claude the names | `/privacy#processors` lists them |
 
 Not needed from you: code, tests, migrations, UI, documentation, deployment scripts.

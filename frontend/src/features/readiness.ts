@@ -29,7 +29,7 @@ export interface Evidence {
 export type DeploymentKind = 'local' | 'staging' | 'production'
 
 export interface ReadinessItem {
-  key: 'vps' | 'domain' | 'google' | 'whatsapp' | 'twilio' | 'ads' | 'email' | 'claude'
+  key: 'vps' | 'domain' | 'google' | 'whatsapp' | 'twilio' | 'ads' | 'email' | 'claude' | 'calendar'
   status: ReadinessStatus
   /** The rung of the six-state ladder, computed from `evidence`. */
   state: IntegrationState

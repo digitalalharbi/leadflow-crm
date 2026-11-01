@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\SharedFileController;
 use App\Http\Controllers\ApprovalLinkController;
 use App\Http\Controllers\EmailTrackingController;
+use App\Http\Controllers\SignedExportController;
 use App\Http\Controllers\SignedFileController;
 use App\Http\Controllers\TrackerScriptController;
 use App\Http\Controllers\TrackingRedirectController;
@@ -36,6 +37,12 @@ Route::get('/files/{file}', SignedFileController::class)
     ->middleware(['signed', 'throttle:60,1'])
     ->whereUuid('file')
     ->name('files.signed');
+
+// A finished export, for the person who made it: the same five-minute signed link as a company file.
+Route::get('/files/exports/{export}', SignedExportController::class)
+    ->middleware(['signed', 'throttle:30,1'])
+    ->whereUuid('export')
+    ->name('files.export');
 
 Route::get('/f/{token}', SharedFileController::class)
     ->middleware('throttle:60,1')

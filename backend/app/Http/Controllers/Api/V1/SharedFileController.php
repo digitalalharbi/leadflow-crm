@@ -39,7 +39,8 @@ class SharedFileController extends Controller
             fn () => FileShare::where('token', $token)->first()
         );
 
-        abort_if($share === null, 404);
+        // Revoked or past its window: the same answer as a link that never existed.
+        abort_if($share === null || ! $share->isOpenable(), 404);
 
         $file = $this->context->withoutScope(
             fn () => ProjectFile::where('id', $share->project_file_id)->first()
@@ -55,6 +56,9 @@ class SharedFileController extends Controller
             // Inline rather than an attachment: a brochure opened in the phone's
             // own viewer is read, and one that lands in Downloads is not.
             'Content-Disposition' => 'inline; filename="'.addslashes($file->name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+            'X-Robots-Tag' => 'noindex',
         ]);
     }
 

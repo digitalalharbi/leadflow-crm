@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarCheck, CalendarClock, Check, MapPin, Phone, UserX, X } from 'lucide-react'
+import { CalendarCheck, CalendarClock, Check, MapPin, Phone, UserX, X, CalendarPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { apiDownload } from '@/lib/api'
 import { Badge, Button, Input, Modal } from '@/components/ui'
 import { moveVisit, recordVisitOutcome, VISIT_OUTCOMES, type Visit, type VisitOutcome, type VisitStatus } from '@/features/visits'
 import { useApiError } from '@/hooks/useApiError'
@@ -86,6 +87,17 @@ export function VisitCard({ visit }: { visit: Visit }) {
         )}
         {can('cancelled') && (
           <Button size="sm" variant="ghost" icon={<X className="size-3.5" aria-hidden />} loading={move.isPending} onClick={() => move.mutate({ to: 'cancelled' })} data-testid="visit-cancel">{t('visits.cancel')}</Button>
+        )}
+        {visit.scheduled_at && (
+          <button
+            type="button"
+            className="t-small inline-flex items-center gap-1 px-2 py-1 hover:underline"
+            data-testid="visit-ics"
+            onClick={() => void apiDownload(`/appointments/${visit.id}/ics`, {}, `visit-${visit.id}.ics`)}
+          >
+            <CalendarPlus className="size-3.5" aria-hidden />
+            {t('calendar.addToCalendar')}
+          </button>
         )}
         {visit.lead?.phone && (
           <a href={telLink(visit.lead.phone) ?? '#'} className="t-small inline-flex items-center gap-1 px-2 py-1 hover:underline" dir="ltr"><Phone className="size-3.5" aria-hidden />{visit.lead.phone}</a>

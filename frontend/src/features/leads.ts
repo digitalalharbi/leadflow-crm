@@ -1,5 +1,5 @@
 import type { FollowUpPlan } from './followUpPlan'
-import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/lib/api'
+import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost, apiPut } from '@/lib/api'
 import type {
   FollowUp, Lead, LeadActivity, LeadAppointment, LeadCall, LeadListItem, LeadNote, LeadStatus, NextAction,
   LeadTemperature, PaginationMeta, Project, ProjectMetrics, Ref,
@@ -27,6 +27,8 @@ export interface LeadFilters {
   /** A built-in list: needs_human, no_reply, high_value, new_today, qualified or stalled. */
   view?: string
   campaign_name?: string
+  /** Any of these tags, without case. */
+  tag?: string
   follow_up?: string
   sort?: string
   direction?: 'asc' | 'desc'
@@ -183,6 +185,14 @@ export function changeLeadStatus(
   extra?: { lost_reason_id?: string; lost_note?: string; deal_value?: number },
 ) {
   return apiPost<{ lead: Lead }>(`/leads/${id}/status`, { status, ...extra })
+}
+
+export function setLeadTags(id: string, tags: string[]) {
+  return apiPut<{ lead: Lead }>(`/leads/${id}/tags`, { tags })
+}
+
+export function fetchLeadTags() {
+  return apiGet<{ tags: Array<{ tag: string; count: number }> }>('/leads/tags')
 }
 
 export function changeLeadTemperature(id: string, temperature: LeadTemperature) {

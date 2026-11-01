@@ -213,9 +213,25 @@ class ProjectFileController extends Controller
                 'opens' => $share->opens,
                 'first_opened_at' => $share->first_opened_at?->toIso8601String(),
                 'last_opened_at' => $share->last_opened_at?->toIso8601String(),
+                'expires_at' => $share->expires_at?->toIso8601String(),
+                'revoked_at' => $share->revoked_at?->toIso8601String(),
+                'openable' => $share->isOpenable(),
                 'file' => $share->file ? $this->present($share->file) : null,
             ])->values()->all(),
         ]);
+    }
+
+    /** Stops a link a lead received from opening, at once. Sending the file again makes a new link. */
+    public function revokeShare(Request $request, string $leadUuid, string $share)
+    {
+        $lead = Lead::where('uuid', $leadUuid)->firstOrFail();
+        $this->authorize('update', $lead);
+
+        $row = FileShare::where('lead_id', $lead->id)->where('uuid', $share)->firstOrFail();
+        $row->forceFill(['revoked_at' => now()])->save();
+        app(AuditLogger::class)->log('file_share.revoked', $request->user(), $row, ['lead' => $lead->uuid]);
+
+        return ApiResponse::success(['revoked' => true]);
     }
 
     /**

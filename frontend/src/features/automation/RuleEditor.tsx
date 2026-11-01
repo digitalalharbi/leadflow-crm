@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, Filter, Plus, Workflow, X, Zap } from 'lucide-react'
+import { Bell, Brackets, Filter, Plus, Workflow, X, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Select } from '@/components/ui'
 import { fetchAssignableUsers, fetchLostReasons } from '@/features/leads'
 import { fetchMessageTemplates } from '@/features/conversations'
-import type { AutomationRule, AutomationSchema, RuleAction, RuleCondition } from '@/features/automation'
+import { isGroup, type AutomationRule, type AutomationSchema, type RuleAction, type RuleCondition, type RuleConditionItem } from '@/features/automation'
 
 /**
  * The builder.
@@ -144,19 +144,41 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
   const [name, setName] = useState(rule?.name ?? '')
   const [trigger, setTrigger] = useState(rule?.trigger ?? schema.triggers[0])
   const [priority, setPriority] = useState(String(rule?.priority ?? 100))
-  const [conditions, setConditions] = useState<RuleCondition[]>(rule?.conditions ?? [])
+  const [conditions, setConditions] = useState<RuleConditionItem[]>(rule?.conditions ?? [])
   const [conditionMatch, setConditionMatch] = useState(rule?.condition_match ?? 'all')
   const [actions, setActions] = useState<RuleAction[]>(
     rule?.actions ?? [withDefaults(schema.actions[0])],
   )
   const [mode, setMode] = useState<string>(rule?.mode ?? 'auto')
+  const [elseActions, setElseActions] = useState<RuleAction[]>(rule?.else_actions ?? [])
 
-  function patchCondition(index: number, patch: Partial<RuleCondition>) {
-    setConditions((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)))
+  const blankCondition = (): RuleCondition => ({
+    field: schema.fields[0],
+    operator: schema.operators[0],
+    // A select has no empty option, so an unseeded condition would display its first value and save none.
+    value: knownValues(schema.fields[0])?.[0] ?? '',
+  })
+
+  function patchCondition(index: number, patch: Partial<RuleCondition>, inner?: number) {
+    setConditions((prev) => prev.map((c, i) => {
+      if (i !== index) return c
+      if (isGroup(c)) return { ...c, conditions: c.conditions.map((g, j) => (j === inner ? { ...g, ...patch } : g)) }
+      return { ...c, ...patch }
+    }))
   }
 
-  function patchAction(index: number, patch: Partial<RuleAction>) {
-    setActions((prev) =>
+  function removeCondition(index: number, inner?: number) {
+    setConditions((prev) => prev.flatMap((c, i) => {
+      if (i !== index) return [c]
+      if (!isGroup(c) || inner === undefined) return []
+      const left = c.conditions.filter((_, j) => j !== inner)
+      // A bracket with one condition left is just that condition.
+      return left.length === 0 ? [] : left.length === 1 ? [left[0]] : [{ ...c, conditions: left }]
+    }))
+  }
+
+  function patchActionIn(setList: typeof setActions, index: number, patch: Partial<RuleAction>) {
+    setList((prev) =>
       prev.map((action, i) => {
         if (i !== index) return action
 
@@ -169,6 +191,12 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
     )
   }
 
+  const cleanCondition = (condition: RuleCondition) => ({
+    field: condition.field,
+    operator: condition.operator,
+    value: VALUELESS.has(condition.operator) ? null : (condition.value ?? null),
+  })
+
   function submit() {
     onSave({
       name,
@@ -177,14 +205,80 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
       // Sent even when empty: a rule with a trigger and no conditions fires on
       // every event of that kind, which is a thing people legitimately want.
       condition_match: conditionMatch,
-      conditions: conditions.map((condition) => ({
-        field: condition.field,
-        operator: condition.operator,
-        value: VALUELESS.has(condition.operator) ? null : (condition.value ?? null),
-      })),
+      conditions: conditions.map((item) => (isGroup(item)
+        ? { group: item.group, conditions: item.conditions.map(cleanCondition) }
+        : cleanCondition(item))),
       actions,
+      else_actions: elseActions,
       mode,
     })
+  }
+
+  function renderActions(list: RuleAction[], setList: typeof setActions, prefix: string, optional = false) {
+    return list.map((action, index) => (
+            <div key={index} className="flex flex-wrap items-end gap-2">
+              <Select
+                className="min-w-48 flex-1"
+                label={index === 0 ? t('automation.action') : undefined}
+                value={action.type}
+                onChange={(e) => patchActionIn(setList, index, { type: e.target.value })}
+              >
+                {schema.actions.map((option) => (
+                  <option key={option} value={option}>
+                    {t(`automation.action_.${option}`, { defaultValue: option })}
+                  </option>
+                ))}
+              </Select>
+
+              <ActionDetail
+                action={action}
+                schema={schema}
+                labelled={index === 0}
+                lostReasons={lostReasons}
+                assignees={assignees}
+                templates={templates?.templates ?? []}
+                emailTemplates={emailTemplates?.templates ?? []}
+                onChange={(patch) => patchActionIn(setList, index, patch)}
+              />
+
+              {/*
+                When, not just what.
+                
+                Every action happened the instant the rule ran, which left the
+                most ordinary sequence in the business unwritable: "if nobody
+                has replied in two days, send a WhatsApp". Blank means now, so
+                every rule already written keeps meaning what it meant.
+              */}
+              <Select
+                className="min-w-32"
+                label={index === 0 ? t('automation.when') : undefined}
+                value={String(action.delay_minutes ?? '')}
+                data-testid={`${prefix}-delay-${index}`}
+                onChange={(e) =>
+                  patchActionIn(setList, index, {
+                    delay_minutes: e.target.value === '' ? undefined : Number(e.target.value),
+                  })
+                }
+              >
+                <option value="">{t('automation.delayNone')}</option>
+                {DELAYS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {t('automation.delayAfter', { duration: t(`automation.delay_.${minutes}`) })}
+                  </option>
+                ))}
+              </Select>
+
+              {(list.length > 1 || optional) && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t('automation.removeAction')}
+                  icon={<X className="size-4" aria-hidden />}
+                  onClick={() => setList((prev) => prev.filter((_, i) => i !== index))}
+                />
+              )}
+            </div>
+          ))
   }
 
   const valid = name.trim().length > 0 && actions.length > 0
@@ -262,26 +356,26 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
                 </select>
               )}
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={<Plus className="size-4" aria-hidden />}
-              data-testid="add-condition"
-              onClick={() =>
-                setConditions((prev) => [
-                  ...prev,
-                  {
-                    field: schema.fields[0],
-                    operator: schema.operators[0],
-                    // A select has no empty option, so an unseeded condition
-                    // would display its first value and save none.
-                    value: knownValues(schema.fields[0])?.[0] ?? '',
-                  },
-                ])
-              }
-            >
-              {t('automation.addCondition')}
-            </Button>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Plus className="size-4" aria-hidden />}
+                data-testid="add-condition"
+                onClick={() => setConditions((prev) => [...prev, blankCondition()])}
+              >
+                {t('automation.addCondition')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Brackets className="size-4" aria-hidden />}
+                data-testid="add-condition-group"
+                onClick={() => setConditions((prev) => [...prev, { group: 'any', conditions: [blankCondition(), blankCondition()] }])}
+              >
+                {t('automation.addGroup')}
+              </Button>
+            </div>
           </div>
 
           {conditions.length === 0 ? (
@@ -289,86 +383,44 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
             // it actually means "every time this happens".
             <p className="t-caption">{t('automation.noConditions')}</p>
           ) : (
-            conditions.map((condition, index) => (
-              <div key={index} className="flex flex-wrap items-end gap-2">
-                <Select
-                  className="min-w-40 flex-1"
-                  label={index === 0 ? t('automation.field') : undefined}
-                  value={condition.field}
-                  onChange={(e) =>
-                    patchCondition(index, {
-                      field: e.target.value,
-                      // The old value belongs to the old field. Carrying it over
-                      // leaves a select showing a value the rule does not hold.
-                      value: knownValues(e.target.value)?.[0] ?? '',
-                    })
-                  }
-                >
-                  {schema.fields.map((field) => (
-                    <option key={field} value={field}>
-                      {t(`automation.field_.${field}`, { defaultValue: field })}
-                    </option>
-                  ))}
-                </Select>
-
-                <Select
-                  className="min-w-36"
-                  label={index === 0 ? t('automation.operator') : undefined}
-                  value={condition.operator}
-                  onChange={(e) => patchCondition(index, { operator: e.target.value })}
-                >
-                  {schema.operators.map((operator) => (
-                    <option key={operator} value={operator}>
-                      {t(`automation.operator_.${operator}`, { defaultValue: operator })}
-                    </option>
-                  ))}
-                </Select>
-
-                {/*
-                  A picker where the server knows the answers.
-
-                  `last_outcome` is the case that forced this: its values are
-                  internal strings, and a manager writing "لم يرد" or "no answer"
-                  instead of `no_answer` gets a rule that saves, runs, matches
-                  nothing and reports no error — the hardest kind of rule to
-                  debug, because every screen says it is fine.
-
-                  Still a text box for `in` and `between`, which take several
-                  values; a multi-select for those is worth doing, and is not
-                  worth guessing at here.
-                */}
-                {!VALUELESS.has(condition.operator) &&
-                  (knownValues(condition.field) && !LIST_VALUED.has(condition.operator) ? (
-                    <Select
-                      className="min-w-32 flex-1"
-                      label={index === 0 ? t('automation.value') : undefined}
-                      value={String(condition.value ?? '')}
-                      onChange={(e) => patchCondition(index, { value: e.target.value })}
-                    >
-                      {knownValues(condition.field)!.map((option) => (
-                        <option key={option} value={option}>
-                          {t(`work.outcome.${option}`, { defaultValue: option })}
-                        </option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Input
-                      className="min-w-32 flex-1"
-                      label={index === 0 ? t('automation.value') : undefined}
-                      hint={LIST_VALUED.has(condition.operator) ? t('automation.listHint') : undefined}
-                      value={String(condition.value ?? '')}
-                      onChange={(e) => patchCondition(index, { value: e.target.value })}
-                    />
-                  ))}
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('automation.removeCondition')}
-                  icon={<X className="size-4" aria-hidden />}
-                  onClick={() => setConditions((prev) => prev.filter((_, i) => i !== index))}
-                />
+            conditions.map((item, index) => isGroup(item) ? (
+              <div key={index} className="space-y-2 rounded-xl border border-dashed border-[var(--color-line)] p-3" data-testid="condition-group">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={item.group}
+                    onChange={(event) => setConditions((prev) => prev.map((c, i) => (i === index && isGroup(c) ? { ...c, group: event.target.value as 'all' | 'any' } : c)))}
+                    aria-label={t('automation.matchLabel')}
+                    data-testid="condition-group-match"
+                    className="rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[0.9375rem]"
+                  >
+                    <option value="all">{t('automation.matchAll')}</option>
+                    <option value="any">{t('automation.matchAny')}</option>
+                  </select>
+                  <span className="t-caption flex-1">{t('automation.groupHint')}</span>
+                  <Button size="sm" variant="ghost" icon={<Plus className="size-4" aria-hidden />} onClick={() => setConditions((prev) => prev.map((c, i) => (i === index && isGroup(c) && c.conditions.length < 10 ? { ...c, conditions: [...c.conditions, blankCondition()] } : c)))}>
+                    {t('automation.addCondition')}
+                  </Button>
+                </div>
+                {item.conditions.map((condition, inner) => (
+                  <ConditionRow
+                    key={inner}
+                    condition={condition}
+                    schema={schema}
+                    labelled={false}
+                    onChange={(patch) => patchCondition(index, patch, inner)}
+                    onRemove={() => removeCondition(index, inner)}
+                  />
+                ))}
               </div>
+            ) : (
+              <ConditionRow
+                key={index}
+                condition={item}
+                schema={schema}
+                labelled={index === 0}
+                onChange={(patch) => patchCondition(index, patch)}
+                onRemove={() => removeCondition(index)}
+              />
             ))
           )}
         </section>
@@ -388,70 +440,29 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
             </Button>
           </div>
 
-          {actions.map((action, index) => (
-            <div key={index} className="flex flex-wrap items-end gap-2">
-              <Select
-                className="min-w-48 flex-1"
-                label={index === 0 ? t('automation.action') : undefined}
-                value={action.type}
-                onChange={(e) => patchAction(index, { type: e.target.value })}
-              >
-                {schema.actions.map((option) => (
-                  <option key={option} value={option}>
-                    {t(`automation.action_.${option}`, { defaultValue: option })}
-                  </option>
-                ))}
-              </Select>
+          {renderActions(actions, setActions, 'action')}
+        </section>
 
-              <ActionDetail
-                action={action}
-                schema={schema}
-                labelled={index === 0}
-                lostReasons={lostReasons}
-                assignees={assignees}
-                templates={templates?.templates ?? []}
-                emailTemplates={emailTemplates?.templates ?? []}
-                onChange={(patch) => patchAction(index, patch)}
-              />
-
-              {/*
-                When, not just what.
-                
-                Every action happened the instant the rule ran, which left the
-                most ordinary sequence in the business unwritable: "if nobody
-                has replied in two days, send a WhatsApp". Blank means now, so
-                every rule already written keeps meaning what it meant.
-              */}
-              <Select
-                className="min-w-32"
-                label={index === 0 ? t('automation.when') : undefined}
-                value={String(action.delay_minutes ?? '')}
-                data-testid={`action-delay-${index}`}
-                onChange={(e) =>
-                  patchAction(index, {
-                    delay_minutes: e.target.value === '' ? undefined : Number(e.target.value),
-                  })
-                }
-              >
-                <option value="">{t('automation.delayNone')}</option>
-                {DELAYS.map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {t('automation.delayAfter', { duration: t(`automation.delay_.${minutes}`) })}
-                  </option>
-                ))}
-              </Select>
-
-              {actions.length > 1 && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('automation.removeAction')}
-                  icon={<X className="size-4" aria-hidden />}
-                  onClick={() => setActions((prev) => prev.filter((_, i) => i !== index))}
-                />
-              )}
-            </div>
-          ))}
+        {/*
+          The otherwise branch. A rule that only ever acts when it matches leaves "if they replied, hand off — else
+          send the reminder" as two rules kept in step by hand.
+        */}
+        <section className="space-y-2" data-testid="else-branch">
+          <div className="flex items-center justify-between">
+            <h3 className="t-body font-medium">{t('automation.elseLabel')}</h3>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Plus className="size-4" aria-hidden />}
+              data-testid="add-else-action"
+              onClick={() => setElseActions((prev) => [...prev, withDefaults(schema.actions[0])])}
+            >
+              {t('automation.addAction')}
+            </Button>
+          </div>
+          {elseActions.length === 0
+            ? <p className="t-caption">{t('automation.noElse')}</p>
+            : renderActions(elseActions, setElseActions, 'else-action', true)}
         </section>
 
         {/*
@@ -484,6 +495,106 @@ export function RuleEditor({ rule, schema, saving, onCancel, onSave }: Props) {
         </section>
       </div>
     </Modal>
+  )
+}
+
+/** One condition: a field, how it is compared, and the value — as a row, at the top level or inside a bracket. */
+function ConditionRow({
+  condition,
+  schema,
+  labelled,
+  onChange,
+  onRemove,
+}: {
+  condition: RuleCondition
+  schema: AutomationSchema
+  labelled: boolean
+  onChange: (patch: Partial<RuleCondition>) => void
+  onRemove: () => void
+}) {
+  const { t } = useTranslation()
+  const knownValues = (field: string) => schema.field_values?.[field]
+
+  return (
+    <div className="flex flex-wrap items-end gap-2" data-testid="condition-row">
+                <Select
+                  className="min-w-40 flex-1"
+                  label={labelled ? t('automation.field') : undefined}
+                  value={condition.field}
+                  onChange={(e) =>
+                    onChange({
+                      field: e.target.value,
+                      // The old value belongs to the old field. Carrying it over
+                      // leaves a select showing a value the rule does not hold.
+                      value: knownValues(e.target.value)?.[0] ?? '',
+                    })
+                  }
+                >
+                  {schema.fields.map((field) => (
+                    <option key={field} value={field}>
+                      {t(`automation.field_.${field}`, { defaultValue: field })}
+                    </option>
+                  ))}
+                </Select>
+
+                <Select
+                  className="min-w-36"
+                  label={labelled ? t('automation.operator') : undefined}
+                  value={condition.operator}
+                  onChange={(e) => onChange({ operator: e.target.value })}
+                >
+                  {schema.operators.map((operator) => (
+                    <option key={operator} value={operator}>
+                      {t(`automation.operator_.${operator}`, { defaultValue: operator })}
+                    </option>
+                  ))}
+                </Select>
+
+                {/*
+                  A picker where the server knows the answers.
+
+                  `last_outcome` is the case that forced this: its values are
+                  internal strings, and a manager writing "لم يرد" or "no answer"
+                  instead of `no_answer` gets a rule that saves, runs, matches
+                  nothing and reports no error — the hardest kind of rule to
+                  debug, because every screen says it is fine.
+
+                  Still a text box for `in` and `between`, which take several
+                  values; a multi-select for those is worth doing, and is not
+                  worth guessing at here.
+                */}
+                {!VALUELESS.has(condition.operator) &&
+                  (knownValues(condition.field) && !LIST_VALUED.has(condition.operator) ? (
+                    <Select
+                      className="min-w-32 flex-1"
+                      label={labelled ? t('automation.value') : undefined}
+                      value={String(condition.value ?? '')}
+                      onChange={(e) => onChange({ value: e.target.value })}
+                    >
+                      {knownValues(condition.field)!.map((option) => (
+                        <option key={option} value={option}>
+                          {t(`work.outcome.${option}`, { defaultValue: option })}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      className="min-w-32 flex-1"
+                      label={labelled ? t('automation.value') : undefined}
+                      hint={LIST_VALUED.has(condition.operator) ? t('automation.listHint') : undefined}
+                      value={String(condition.value ?? '')}
+                      onChange={(e) => onChange({ value: e.target.value })}
+                    />
+                  ))}
+
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t('automation.removeCondition')}
+                  icon={<X className="size-4" aria-hidden />}
+                  onClick={onRemove}
+                />
+              </div>
   )
 }
 

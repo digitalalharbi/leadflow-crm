@@ -33,6 +33,20 @@ export interface RuleCondition {
   value?: unknown
 }
 
+/** A bracket of conditions with its own all/any — "(Riyadh or Jeddah) and budget over a million". One level deep. */
+export interface RuleConditionGroup {
+  group: 'all' | 'any'
+  conditions: RuleCondition[]
+}
+
+export type RuleConditionItem = RuleCondition | RuleConditionGroup
+
+export const isGroup = (item: RuleConditionItem): item is RuleConditionGroup => 'group' in item
+
+/** Every plain condition, groups opened — for summaries that only need to know what a rule looks at. */
+export const flatConditions = (items: RuleConditionItem[]): RuleCondition[] =>
+  items.flatMap((item) => (isGroup(item) ? item.conditions : [item]))
+
 export interface RuleAction {
   type: string
   [key: string]: unknown
@@ -52,10 +66,12 @@ export interface AutomationRule {
   project?: string | null
   priority: number
   stops_processing: boolean
-  conditions: RuleCondition[]
+  conditions: RuleConditionItem[]
   /** 'all' (every condition) or 'any' (one is enough). */
   condition_match?: string
   actions: RuleAction[]
+  /** The otherwise branch: what to do when the conditions do not hold. Empty means skip. */
+  else_actions?: RuleAction[]
   times_matched: number
   last_matched_at: string | null
   runs_count: number | null

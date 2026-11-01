@@ -14,6 +14,9 @@ use App\Models\User;
  */
 class NotificationPrefs
 {
+    /** The channels a person switches per kind of alert. WhatsApp has its own opt-in, quiet hours and caps. */
+    public const CHANNELS = ['in_app', 'email'];
+
     private const REP_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach'];
 
     private const MANAGER_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'tracking_failure'];
@@ -49,12 +52,27 @@ class NotificationPrefs
         return [
             'alerts' => collect($defaults['alerts'])->map(fn (string $mode, string $category) => in_array($own['alerts'][$category] ?? null, AlertKinds::MODES, true) ? $own['alerts'][$category] : $mode)->all(),
             'digests' => collect($defaults['digests'])->map(fn (bool $on, string $digest) => isset($own['digests'][$digest]) ? (bool) $own['digests'][$digest] : $on)->all(),
+            /*
+             * Where an alert may reach the person, per kind and per channel. Both on unless they said otherwise:
+             * the mode above still decides whether the email goes at once, in a summary, or never; this decides
+             * whether that channel is used at all — "tell me about hot leads by email but not in the bell".
+             */
+            'channels' => collect(AlertKinds::CATEGORIES)->mapWithKeys(fn (string $c) => [$c => [
+                'in_app' => (bool) ($own['channels'][$c]['in_app'] ?? true),
+                'email' => (bool) ($own['channels'][$c]['email'] ?? true),
+            ]])->all(),
         ];
     }
 
     public static function modeFor(User $user, string $category): string
     {
         return self::for($user)['alerts'][$category] ?? 'off';
+    }
+
+    /** Whether this kind of alert may use this channel for this person. */
+    public static function allows(User $user, string $category, string $channel): bool
+    {
+        return self::for($user)['channels'][$category][$channel] ?? true;
     }
 
     public static function wantsDigest(User $user, string $digest): bool
@@ -73,6 +91,12 @@ class NotificationPrefs
 
         foreach ($changes['digests'] ?? [] as $digest => $on) {
             $own['digests'][$digest] = (bool) $on;
+        }
+
+        foreach ($changes['channels'] ?? [] as $category => $channels) {
+            foreach (array_intersect_key((array) $channels, array_flip(self::CHANNELS)) as $channel => $on) {
+                $own['channels'][$category][$channel] = (bool) $on;
+            }
         }
 
         $user->forceFill(['notification_prefs' => $own])->save();

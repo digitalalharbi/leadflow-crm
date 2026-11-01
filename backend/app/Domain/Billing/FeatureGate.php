@@ -25,6 +25,12 @@ class FeatureGate
             return 'exports';
         }
 
+        // A background export of the leads list is the same feature as the instant one. The company archive is not
+        // gated: a company can always take its own data away.
+        if ($path === 'exports' && $method === 'POST' && $request->input('kind') === 'leads') {
+            return 'exports';
+        }
+
         return match (true) {
             str_starts_with($path, 'tracking/forms') => 'advanced_forms',
             str_starts_with($path, 'tracking/attribution') => 'attribution',

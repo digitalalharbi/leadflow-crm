@@ -32,6 +32,11 @@ class AuthenticateApiKey
             return ApiResponse::error('Invalid or expired API key.', null, 401);
         }
 
+        // A key limited to its integration's addresses refuses every other one — a leaked key is then of no use.
+        if (! $key->allowsIp($request->ip())) {
+            return ApiResponse::error('This key may not be used from this address.', null, 403);
+        }
+
         $tenant = $this->context->withoutScope(fn () => Tenant::query()->find($key->tenant_id));
 
         if (! $tenant || ! $tenant->is_active) {

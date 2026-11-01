@@ -98,10 +98,24 @@ class AutomationEngine
             $rule->condition_match ?? ConditionEvaluator::MATCH_ALL,
         );
 
-        if (! $verdict['matched']) {
-            $this->record($rule, $event, 'skipped', $verdict['reason'], [], $correlation, $startedAt);
+        /*
+         * The otherwise branch. A rule whose conditions do not hold runs its
+         * else-actions if it has any — "replied: hand off; otherwise: send the
+         * reminder" — and is skipped if it has none, as it always was. The
+         * branch never stops later rules: the rule did not match.
+         */
+        $branch = 'then';
+        $actions = (array) ($rule->actions ?? []);
 
-            return false;
+        if (! $verdict['matched']) {
+            if (empty($rule->else_actions)) {
+                $this->record($rule, $event, 'skipped', $verdict['reason'], [], $correlation, $startedAt);
+
+                return false;
+            }
+
+            $branch = 'else';
+            $actions = (array) $rule->else_actions;
         }
 
         $applied = [];
@@ -115,7 +129,7 @@ class AutomationEngine
          * the customer.
          */
         if ($mode !== AutomationRule::MODE_AUTO) {
-            foreach ($rule->actions ?? [] as $action) {
+            foreach ($actions as $action) {
                 $this->logs->record($lead, $rule, $event->name(), $action, $mode === AutomationRule::MODE_MONITOR ? 'skipped' : 'needs_human', [
                     'description' => ($mode === AutomationRule::MODE_MONITOR ? 'مراقبة — كان سيُنفّذ: ' : 'توصية — ينتظر قرارك: ').ActionWords::for($action),
                 ], $mode);
@@ -125,17 +139,17 @@ class AutomationEngine
             if ($mode === AutomationRule::MODE_RECOMMEND) {
                 $this->actions->execute($lead, [
                     'type' => 'notify', 'audience' => 'owner', 'rule_name' => $rule->name,
-                    'message' => "توصية من «{$rule->name}»: ".collect($rule->actions ?? [])->map(fn ($a) => ActionWords::for($a))->implode('، '),
+                    'message' => "توصية من «{$rule->name}»: ".collect($actions)->map(fn ($a) => ActionWords::for($a))->implode('، '),
                 ]);
             }
 
             $this->record($rule, $event, 'applied', $mode === AutomationRule::MODE_MONITOR ? 'وضع المراقبة' : 'وضع التوصية', $applied, $correlation, $startedAt);
             $rule->forceFill(['times_matched' => $rule->times_matched + 1, 'last_matched_at' => now()])->saveQuietly();
 
-            return (bool) $rule->stops_processing;
+            return $branch === 'then' && (bool) $rule->stops_processing;
         }
 
-        foreach ($rule->actions ?? [] as $action) {
+        foreach ($actions as $action) {
             /*
              * The rule's name, put on the action here rather than stored on it.
              *
@@ -185,7 +199,7 @@ class AutomationEngine
             $rule,
             $event,
             $failed ? 'failed' : 'applied',
-            $failed ? 'لم يكتمل تنفيذ إجراء واحد أو أكثر.' : null,
+            $failed ? 'لم يكتمل تنفيذ إجراء واحد أو أكثر.' : ($branch === 'else' ? 'الشروط لم تتحقق — نُفّذ مسار «وإلا».' : null),
             $applied,
             $correlation,
             $startedAt,
@@ -196,7 +210,7 @@ class AutomationEngine
             'last_matched_at' => now(),
         ])->saveQuietly();
 
-        return (bool) $rule->stops_processing;
+        return $branch === 'then' && (bool) $rule->stops_processing;
     }
 
     /**

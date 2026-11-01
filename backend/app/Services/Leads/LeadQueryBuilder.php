@@ -3,6 +3,7 @@
 namespace App\Services\Leads;
 
 use App\Domain\Leads\LeadClassification;
+use App\Domain\Leads\LeadTags;
 use App\Domain\Leads\LeadViews;
 use App\Enums\LeadStatus;
 use App\Models\ConversionExport;
@@ -107,6 +108,25 @@ class LeadQueryBuilder
         $query->whereRaw('('.LeadClassification::sql('leads').') in ('.implode(', ', array_fill(0, count($keys), '?')).')', $keys);
     }
 
+    /** Any of the tags asked for, without case: the chip says "VIP", the row may say "vip". */
+    private function applyTags(Builder $query, array $wanted): void
+    {
+        $tags = array_slice(LeadTags::normalise($wanted), 0, 5);
+
+        if ($tags === []) {
+            return;
+        }
+
+        $query->where(function (Builder $q) use ($tags) {
+            foreach ($tags as $tag) {
+                $q->orWhereRaw(
+                    'exists (select 1 from jsonb_array_elements_text(leads.tags) t where lower(t) = ?)',
+                    [mb_strtolower($tag)],
+                );
+            }
+        });
+    }
+
     private function applyFilters(Builder $query, Request $request): void
     {
         $query
@@ -116,6 +136,7 @@ class LeadQueryBuilder
             ->when($request->filled('temperature'), fn ($q) => $q->whereIn('temperature', (array) $request->input('temperature')))
             ->when($request->filled('platform'), fn ($q) => $q->whereIn('platform', (array) $request->input('platform')))
             ->when($request->filled('source'), fn ($q) => $q->where('source', $request->input('source')))
+            ->when($request->filled('tag'), fn ($q) => $this->applyTags($q, (array) $request->input('tag')))
             ->when($request->filled('campaign_name'), fn ($q) => $q->where('campaign_name', $request->input('campaign_name')))
             ->when($request->filled('project_id'), fn ($q) => $q->whereHas('project', fn ($p) => $p->whereIn('uuid', Uuid::onlyValid($request->input('project_id')))))
             ->when($request->filled('assigned_to'), function ($q) use ($request) {

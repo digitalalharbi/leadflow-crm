@@ -31,7 +31,7 @@ class AutomationRule extends Model
 
     protected $fillable = [
         'name', 'trigger', 'template_key', 'is_enabled', 'mode', 'priority',
-        'stops_processing', 'conditions', 'condition_match', 'actions', 'created_by',
+        'stops_processing', 'conditions', 'condition_match', 'actions', 'else_actions', 'created_by',
     ];
 
     protected function casts(): array
@@ -41,6 +41,7 @@ class AutomationRule extends Model
             'stops_processing' => 'boolean',
             'conditions' => 'array',
             'actions' => 'array',
+            'else_actions' => 'array',
             'last_matched_at' => 'datetime',
         ];
     }

@@ -83,7 +83,7 @@ class SlaBySourceAndPriorityTest extends TestCase
         $this->assertSame(['by_source' => ['meta' => 15], 'priority_minutes' => null], $this->actingAs($this->t['admin'])->getJson('/api/v1/settings')->json('data.settings.sla_rules'));
 
         $this->actingAs($this->t['admin'])->patchJson('/api/v1/settings', ['sla_rules' => null])->assertOk();
-        SlaRules::flush();
+        \App\Domain\Automation\Thresholds::flush();
         $this->assertSame(['by_source' => [], 'priority_minutes' => null], SlaRules::forTenant($this->t['tenant']->id));
     }
 

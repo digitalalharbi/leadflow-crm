@@ -3,7 +3,7 @@
 namespace App\Domain\Sla;
 
 use App\Models\Lead;
-use App\Models\TenantSetting;
+use App\Domain\Automation\Thresholds;
 
 /**
  * The first-contact target for one lead, when the workspace has said that some leads cannot wait as long as others.
@@ -16,15 +16,15 @@ class SlaRules
 {
     public const MAX_SOURCES = 20;
 
-    /** @var array<int, array{by_source: array<string,int>, priority_minutes: ?int}> */
-    private static array $cache = [];
-
-    /** @return array{by_source: array<string,int>, priority_minutes: ?int} */
+    /**
+     * From the settings row the thresholds already read and remember — never a query of its own, so a lead screen
+     * costs the same however its target is worked out.
+     *
+     * @return array{by_source: array<string,int>, priority_minutes: ?int}
+     */
     public static function forTenant(int $tenantId): array
     {
-        return self::$cache[$tenantId] ??= self::normalise(
-            TenantSetting::withoutGlobalScopes()->where('tenant_id', $tenantId)->value('sla_rules'),
-        );
+        return self::normalise(Thresholds::settingsFor($tenantId)?->sla_rules);
     }
 
     /** @return array{by_source: array<string,int>, priority_minutes: ?int} */
@@ -60,10 +60,5 @@ class SlaRules
         }
 
         return max(1, min($candidates));
-    }
-
-    public static function flush(): void
-    {
-        self::$cache = [];
     }
 }

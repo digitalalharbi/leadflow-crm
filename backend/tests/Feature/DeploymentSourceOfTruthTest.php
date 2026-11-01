@@ -51,9 +51,12 @@ class DeploymentSourceOfTruthTest extends TestCase
     public function test_the_workflow_deploys_main_only_and_smoke_tests_after_the_health_check(): void
     {
         $workflow = File::get($this->root.'/.github/workflows/deploy-production.yml');
+        $gate = File::get($this->root.'/scripts/vps/leadflow-deploy');
 
         $this->assertStringContainsString("github.ref == 'refs/heads/main'", $workflow);
-        $this->assertStringContainsString('DEPLOY_BRANCH=main', $workflow);
+        $this->assertStringContainsString('branches: [main]', $workflow);
+        $this->assertStringContainsString('DEPLOY_BRANCH=main', $gate);
+        $this->assertStringContainsString('leadflow-deploy deploy', $workflow);
         $this->assertStringContainsString('DEPLOY_COMMIT', $workflow);
         $this->assertStringContainsString('ci-is-green.sh', $workflow);
         $this->assertGreaterThan(strpos($workflow, 'Verify production is healthy'), strpos($workflow, 'smoke-production.sh'));

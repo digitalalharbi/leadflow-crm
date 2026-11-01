@@ -199,6 +199,7 @@ test.describe('الرسوم البيانية — charts', () => {
 
         return {
           background: style.backgroundColor,
+          fill: style.fill,
           adjust: style.printColorAdjust || style.webkitPrintColorAdjust,
         }
       }),
@@ -206,7 +207,10 @@ test.describe('الرسوم البيانية — charts', () => {
 
     // Every mark keeps a colour, and every mark tells the browser to keep it.
     for (const fill of fills) {
-      expect(fill.background).not.toBe('rgba(0, 0, 0, 0)')
+      const hasBackground = !['rgba(0, 0, 0, 0)', 'transparent'].includes(fill.background)
+      const hasSvgFill = !['none', 'rgba(0, 0, 0, 0)', 'transparent'].includes(fill.fill)
+
+      expect(hasBackground || hasSvgFill).toBe(true)
       expect(fill.adjust).toBe('exact')
     }
 

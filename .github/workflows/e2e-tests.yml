@@ -7,13 +7,13 @@ on:
 
 jobs:
   e2e:
-    name: Playwright (${{ matrix.shard }}/3)
+    name: Playwright (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
 
     services:
       postgres:
@@ -88,12 +88,14 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force
+          php artisan leadflow:seed-e2e
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_DATABASE: leadflow_e2e
           DB_USERNAME: leadflow
           DB_PASSWORD: secret
+          BCRYPT_ROUNDS: '4'
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -151,7 +153,7 @@ jobs:
         # The complete desktop, laptop and mobile Chromium gate is too large for
         # one 30-minute free-plan runner. Each matrix job owns its PostgreSQL and
         # Redis services, so sharding keeps fixture resets isolated.
-        run: npx playwright test --project=chromium --project=laptop --project=mobile --shard=${{ matrix.shard }}/3
+        run: npx playwright test --project=chromium --project=laptop --project=mobile --shard=${{ matrix.shard }}/4
         env:
           # The specs reseed fixtures by shelling into artisan.
           E2E_BACKEND_DIR: ${{ github.workspace }}/backend
@@ -172,6 +174,7 @@ jobs:
             frontend/e2e/.report
             frontend/e2e/.results
           retention-days: 7
+          include-hidden-files: true
 
       - name: Server logs on failure
         if: failure()

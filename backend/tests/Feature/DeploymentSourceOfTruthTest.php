@@ -99,6 +99,7 @@ class DeploymentSourceOfTruthTest extends TestCase
         $config = File::get($this->root.'/frontend/playwright.config.ts');
 
         $this->assertStringContainsString('playwright install --with-deps chromium firefox webkit', $install);
+        $this->assertStringContainsString('include-hidden-files: true', $install, 'The report folders start with a dot: a failed run must leave its evidence.');
 
         foreach (['chromium', 'laptop', 'firefox', 'webkit', 'mobile-safari', 'mobile-chrome', 'mobile'] as $project) {
             $this->assertStringContainsString("name: '{$project}'", $config);

@@ -165,6 +165,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          # Both folders start with a dot, and upload-artifact skips hidden files unless told.
+          # Without this a failed run left no screenshot and no trace to read.
+          include-hidden-files: true
           path: |
             frontend/e2e/.report
             frontend/e2e/.results

@@ -47,6 +47,10 @@ export interface FileShare {
   opens: number
   first_opened_at: string | null
   last_opened_at: string | null
+  expires_at?: string | null
+  revoked_at?: string | null
+  /** False once revoked or past its window: the lead's link no longer opens. */
+  openable?: boolean
   file: ProjectFile | null
 }
 
@@ -130,6 +134,11 @@ export function shareFileWithLead(leadId: string, fileId: string, channel: 'what
     `/leads/${leadId}/files/share`,
     { file: fileId, channel },
   )
+}
+
+/** Stops a link the lead received from opening. Sending the file again makes a new one. */
+export function revokeLeadShare(leadId: string, shareId: string) {
+  return apiPost<{ revoked: boolean }>(`/leads/${leadId}/shares/${shareId}/revoke`)
 }
 
 /** What this lead has been sent, and what they opened. */

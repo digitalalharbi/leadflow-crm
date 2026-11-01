@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Privacy\SuppressionList;
 use App\Enums\ActivityType;
 use App\Enums\MessageStatus;
 use App\Events\LeadSignal;
@@ -77,6 +78,10 @@ class EmailTrackingController extends Controller
                 $this->context->withTenant($tenant, function () use ($lead) {
                     $lead->forceFill(['email_opt_out_at' => now()])->saveQuietly();
                     $this->activities->log($lead, ActivityType::EmailOptedOut, null, 'ألغى الاشتراك من رسائل البريد');
+
+                    if ($lead->email) {
+                        app(SuppressionList::class)->add($lead->tenant_id, 'email', $lead->email, 'opt_out', null, 'unsubscribe_link');
+                    }
                 });
             }
         }

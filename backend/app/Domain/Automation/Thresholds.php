@@ -146,7 +146,7 @@ class Thresholds
      */
     public static function forLead(Lead $lead, string $key): int
     {
-        $settings = self::$settingsCache[$lead->tenant_id] ??= TenantSetting::withoutGlobalScopes()->where('tenant_id', $lead->tenant_id)->first();
+        $settings = self::settingsFor((int) $lead->tenant_id);
         $project = null;
 
         if ($lead->project_id) {
@@ -156,6 +156,12 @@ class Thresholds
         }
 
         return self::describe($settings, $project)[$key]['value'];
+    }
+
+    /** A workspace's settings row, read once and remembered with the rest of the lines. */
+    public static function settingsFor(int $tenantId): ?TenantSetting
+    {
+        return self::$settingsCache[$tenantId] ??= TenantSetting::withoutGlobalScopes()->where('tenant_id', $tenantId)->first();
     }
 
     /** The workspace's own value for one threshold, for code that has no lead to hand. */

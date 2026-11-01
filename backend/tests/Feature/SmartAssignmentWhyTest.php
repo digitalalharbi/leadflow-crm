@@ -35,10 +35,15 @@ class SmartAssignmentWhyTest extends TestCase
         return tap($this->makeUser($this->t['tenant']), fn (User $u) => $u->forceFill($attributes)->save())->fresh();
     }
 
+    private int $phones = 0;
+
     private function lead(array $attributes = []): Lead
     {
+        // A sequence, not a random draw: a test that makes dozens of leads from 9,000 numbers collided now and then.
+        $phone = '+96650020'.(1000 + ++$this->phones);
+
         return $this->asTenant($this->t['tenant'], fn () => Lead::create($attributes + [
-            'full_name' => 'عميل', 'phone_normalized' => '+96650020'.random_int(1000, 9999), 'status' => 'new',
+            'full_name' => 'عميل', 'phone_normalized' => $phone, 'status' => 'new',
         ]));
     }
 

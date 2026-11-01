@@ -19,7 +19,7 @@ class FileShare extends Model
     use BelongsToTenant, HasUuid;
 
     protected $fillable = [
-        'project_file_id', 'lead_id', 'sent_by', 'channel', 'token',
+        'project_file_id', 'lead_id', 'sent_by', 'channel', 'token', 'expires_at', 'revoked_at',
         'opens', 'first_opened_at', 'last_opened_at',
     ];
 
@@ -29,6 +29,8 @@ class FileShare extends Model
     protected function casts(): array
     {
         return [
+            'expires_at' => 'datetime',
+            'revoked_at' => 'datetime',
             'opens' => 'integer',
             'first_opened_at' => 'datetime',
             'last_opened_at' => 'datetime',
@@ -53,5 +55,13 @@ class FileShare extends Model
     public function url(): string
     {
         return rtrim((string) config('app.url'), '/').'/f/'.$this->token;
+    }
+
+    /** How long a link a lead received keeps opening. */
+    public const LIFETIME_DAYS = 90;
+
+    public function isOpenable(): bool
+    {
+        return $this->revoked_at === null && ($this->expires_at === null || $this->expires_at->isFuture());
     }
 }

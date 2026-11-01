@@ -10,4 +10,4 @@ export const HOME = '/dashboard'
 export const PUBLIC_ORIGIN = (import.meta.env.VITE_PUBLIC_ORIGIN as string | undefined) ?? 'https://mohtam.pro'
 
 /** The pages a search engine may index: the marketing page and the legal/contact pages. Everything else is the app. */
-export const INDEXABLE_PATHS = ['/', '/about', '/contact', '/privacy', '/terms', '/security', '/data-deletion'] as const
+export const INDEXABLE_PATHS = ['/', '/features', '/journey', '/vision', '/about', '/contact', '/privacy', '/terms', '/security', '/data-deletion'] as const

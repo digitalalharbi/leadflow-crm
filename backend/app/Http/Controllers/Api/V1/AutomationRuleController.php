@@ -48,7 +48,7 @@ class AutomationRuleController extends Controller
         // What the customer did, and what did not happen.
         'lead.sheet_row', 'lead.email_opened', 'lead.email_clicked', 'lead.file_opened',
         'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
-        'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed',
+        'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed', 'lead.reservation_created',
     ];
 
     private const FIELDS = [
@@ -62,7 +62,7 @@ class AutomationRuleController extends Controller
         're_engaged_count', 'minutes_since_created', 'minutes_since_first_contact',
         'minutes_since_last_contact', 'was_contacted', 'has_replied',
         'is_priority', 'classification', 'language', 'provider', 'campaign_id', 'ad_name',
-        'automation_state', 'attempts', 'no_reply_minutes',
+        'automation_state', 'attempts', 'no_reply_minutes', 'tags',
         // How interested they are, apart from how good a fit.
         'interest_level', 'interest_score',
     ];
@@ -190,6 +190,7 @@ class AutomationRuleController extends Controller
             'conditions' => $original->conditions,
             'condition_match' => $original->condition_match,
             'actions' => $original->actions,
+            'else_actions' => $original->else_actions,
             'priority' => $original->priority,
             'stops_processing' => $original->stops_processing,
             'is_enabled' => false,
@@ -396,17 +397,14 @@ class AutomationRuleController extends Controller
              */
             'condition_match' => ['sometimes', Rule::in(ConditionEvaluator::matches())],
             // A known field, or `custom.<key>` — any answer the form or sheet carried.
-            'conditions.*.field' => ['required', 'string', 'max:80', function ($attribute, $value, $fail) {
-                if (! in_array($value, self::FIELDS, true) && ! preg_match('/^custom\.[a-z0-9_]{1,60}$/', (string) $value)) {
-                    $fail('حقل غير معروف.');
-                }
-            }],
-            'conditions.*.operator' => ['required', Rule::in(self::OPERATORS)],
-            'conditions.*.value' => ['nullable'],
+            // Each item a condition or one bracket of them; checked, and rebuilt, by conditions() below.
+            'conditions.*' => ['array'],
 
             // At least one action: a rule that matches and does nothing is a
             // rule somebody will believe is working.
             'actions' => [$required, 'array', 'min:1', 'max:10'],
+            // The otherwise branch: what to do when the conditions do not hold. Same vocabulary as `actions`.
+            'else_actions' => ['sometimes', 'array', 'max:10'],
             'actions.*.type' => ['required', Rule::in(self::ACTIONS)],
 
             /*
@@ -500,18 +498,97 @@ class AutomationRuleController extends Controller
              * reads as a mistake, which is what it would be.
              */
             'actions.*.delay_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:43200'],
+            // The otherwise branch takes exactly the parameters an action does.
+            'else_actions.*.type' => ['required', Rule::in(self::ACTIONS)],
+            'else_actions.*.status' => ['required_if:else_actions.*.type,change_stage', Rule::in(LeadStatus::values())],
+            'else_actions.*.lost_reason_id' => ['required_if:else_actions.*.status,lost', 'uuid'],
+            'else_actions.*.by' => ['required_if:else_actions.*.type,adjust_score', 'integer', 'not_in:0'],
+            'else_actions.*.tag' => ['required_if:else_actions.*.type,add_tag', 'string', 'max:60'],
+            'else_actions.*.body' => ['required_if:else_actions.*.type,add_note', 'string', 'max:2000'],
+            'else_actions.*.audience' => ['required_if:else_actions.*.type,notify', Rule::in(['owner', 'managers'])],
+            'else_actions.*.in_hours' => ['required_if:else_actions.*.type,schedule_follow_up', 'integer', 'min:1', 'max:8760'],
+            'else_actions.*.template_uuid' => ['nullable', 'uuid'],
+            'else_actions.*.purpose' => ['nullable', Rule::in(MessageTemplate::PURPOSES)],
+            'else_actions.*.unless' => ['sometimes', 'nullable', Rule::in(['replied'])],
+            'else_actions.*.reason' => ['sometimes', 'nullable', Rule::in(['replied', 'qualified', 'no_reply', 'unreached', 'asked_for_human', 'needs_human'])],
+            'else_actions.*.when' => ['sometimes', 'nullable', Rule::in(['hot', 'unreached'])],
+            'else_actions.*.temperature' => ['required_if:else_actions.*.type,set_temperature', Rule::in(LeadTemperature::values())],
+            'else_actions.*.kind' => ['sometimes', 'nullable', Rule::in(ProjectFile::KINDS)],
+            'else_actions.*.send' => ['sometimes', 'boolean'],
+            'else_actions.*.channel' => ['sometimes', 'nullable', Rule::in(['whatsapp', 'email'])],
+            'else_actions.*.strategy' => ['required_if:else_actions.*.type,assign', Rule::in(['round_robin', 'specific'])],
+            'else_actions.*.user_id' => ['required_if:else_actions.*.strategy,specific', 'uuid'],
+            'else_actions.*.message' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'else_actions.*.note' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'else_actions.*.in_minutes' => ['sometimes', 'integer', 'min:1', 'max:525600'],
+            'else_actions.*.delay_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:43200'],
         ]);
 
         // A send names its message or what the message is for; with neither it
         // would report a failure on every run.
-        foreach ($data['actions'] ?? [] as $index => $action) {
-            if (in_array($action['type'] ?? null, ['send_whatsapp', 'send_email'], true)
-                && blank($action['template_uuid'] ?? null) && blank($action['purpose'] ?? null)) {
-                throw ValidationException::withMessages(["actions.{$index}.template_uuid" => ['اختر الرسالة أو الغرض منها.']]);
+        foreach (['actions', 'else_actions'] as $list) {
+            foreach ($data[$list] ?? [] as $index => $action) {
+                if (in_array($action['type'] ?? null, ['send_whatsapp', 'send_email'], true)
+                    && blank($action['template_uuid'] ?? null) && blank($action['purpose'] ?? null)) {
+                    throw ValidationException::withMessages(["{$list}.{$index}.template_uuid" => ['اختر الرسالة أو الغرض منها.']]);
+                }
             }
         }
 
+        if (array_key_exists('conditions', $data)) {
+            $data['conditions'] = $this->conditions((array) $data['conditions']);
+        }
+
         return $data;
+    }
+
+    /**
+     * Conditions, checked and rebuilt with only the keys the evaluator reads: a plain
+     * `{field, operator, value}`, or `{group: all|any, conditions: [plain, …]}` — one level, up to ten inside.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function conditions(array $items): array
+    {
+        $plain = function (mixed $c, string $at): array {
+            $field = is_array($c) ? (string) ($c['field'] ?? '') : '';
+            $operator = is_array($c) ? (string) ($c['operator'] ?? '') : '';
+
+            if (! in_array($field, self::FIELDS, true) && ! preg_match('/^custom\.[a-z0-9_]{1,60}$/', $field)) {
+                throw ValidationException::withMessages(["{$at}.field" => ['حقل غير معروف.']]);
+            }
+
+            if (! in_array($operator, self::OPERATORS, true)) {
+                throw ValidationException::withMessages(["{$at}.operator" => ['عامل مقارنة غير معروف.']]);
+            }
+
+            $value = $c['value'] ?? null;
+            if (is_array($value) && (count($value) > 50 || collect($value)->contains(fn ($v) => ! is_scalar($v) && $v !== null))) {
+                throw ValidationException::withMessages(["{$at}.value" => ['قيمة غير صالحة.']]);
+            }
+
+            return ['field' => $field, 'operator' => $operator, 'value' => $value];
+        };
+
+        return collect($items)->values()->map(function ($item, $i) use ($plain) {
+            if (is_array($item) && array_key_exists('group', $item)) {
+                $inner = $item['conditions'] ?? null;
+
+                if (! in_array($item['group'], ConditionEvaluator::matches(), true) || ! is_array($inner) || $inner === [] || count($inner) > 10) {
+                    throw ValidationException::withMessages(["conditions.{$i}" => ['مجموعة شروط غير صالحة.']]);
+                }
+
+                return ['group' => $item['group'], 'conditions' => collect($inner)->values()->map(function ($c, $j) use ($plain, $i) {
+                    if (is_array($c) && array_key_exists('group', $c)) {
+                        throw ValidationException::withMessages(["conditions.{$i}.conditions.{$j}" => ['لا يمكن وضع مجموعة داخل مجموعة.']]);
+                    }
+
+                    return $plain($c, "conditions.{$i}.conditions.{$j}");
+                })->all()];
+            }
+
+            return $plain($item, "conditions.{$i}");
+        })->all();
     }
 
     private function present(AutomationRule $rule): array
@@ -527,6 +604,7 @@ class AutomationRuleController extends Controller
             'stops_processing' => $rule->stops_processing,
             'conditions' => $rule->conditions,
             'condition_match' => $rule->condition_match,
+            'else_actions' => $rule->else_actions ?? [],
             'actions' => $rule->actions,
             'times_matched' => $rule->times_matched,
             'last_matched_at' => $rule->last_matched_at?->toIso8601String(),

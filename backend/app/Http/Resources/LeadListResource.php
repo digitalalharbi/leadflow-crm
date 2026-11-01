@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Domain\Leads\LeadClassification;
+use App\Domain\Leads\LeadTags;
 use App\Domain\Leads\NextBestAction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -33,6 +34,7 @@ class LeadListResource extends JsonResource
             'interest_score' => (int) $this->interest_score,
             // Hot, and the one to call first. Not a fourth temperature.
             'is_priority' => (bool) $this->is_priority,
+            'tags' => LeadTags::of($this->resource),
             'last_contact_at' => $this->last_contact_at?->toIso8601String(),
             // Whether the journey is still talking to them, or it is a person's
             // turn — and why.

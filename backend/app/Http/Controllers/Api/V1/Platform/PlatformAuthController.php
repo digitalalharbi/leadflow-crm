@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Platform;
 
+use App\Domain\Auth\SecondFactor;
 use App\Domain\Platform\PlatformAudit;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -152,24 +153,9 @@ class PlatformAuthController extends Controller
         return ApiResponse::success(null, 'Signed out.');
     }
 
+    /** Same rules as a company account: per-account lockout, each code accepted once, a recovery code works once. */
     private function passesSecondFactor(User $user, string $code): bool
     {
-        if ($user->mfa_secret !== null && Totp::verify($user->mfa_secret, $code)) {
-            return true;
-        }
-
-        // A recovery code works once.
-        $codes = $user->mfa_recovery_codes ?? [];
-
-        foreach ($codes as $index => $hash) {
-            if (Hash::check(strtoupper(trim($code)), $hash)) {
-                unset($codes[$index]);
-                $user->forceFill(['mfa_recovery_codes' => array_values($codes)])->save();
-
-                return true;
-            }
-        }
-
-        return false;
+        return app(SecondFactor::class)->passes($user, $code);
     }
 }

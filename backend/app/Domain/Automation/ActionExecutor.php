@@ -6,6 +6,7 @@ use App\Domain\Conversation\QualificationCompleter;
 use App\Domain\Files\FileDelivery;
 use App\Domain\Files\FileForTheLead;
 use App\Domain\Files\ShareFile;
+use App\Domain\Leads\LeadTags;
 use App\Enums\ActivityType;
 use App\Enums\LeadStatus;
 use App\Enums\LeadTemperature;
@@ -51,6 +52,7 @@ class ActionExecutor
         private LeadAssignmentService $assignment,
         private LeadScoringService $scoring,
         private ActivityLogger $activities,
+        private LeadTags $tags,
         private WhatsappSender $whatsapp,
         private EmailSender $email,
         private FileForTheLead $chooser,
@@ -288,16 +290,25 @@ class ActionExecutor
 
     private function addTag(Lead $lead, array $action): array
     {
-        $tag = trim((string) ($action['tag'] ?? ''));
+        $tag = LeadTags::clean($action['tag'] ?? '');
 
-        if ($tag === '') {
+        if ($tag === null) {
             return ['ok' => false, 'description' => 'لم يُحدَّد وسم.'];
         }
 
-        $this->activities->log($lead, ActivityType::NoteAdded, null,
-            "وسم آلي: {$tag}", ['tag' => $tag] + $this->signature($action));
+        /*
+         * On the lead, where the filter, the chip and the next rule can see it. This used to write a note that said
+         * "tagged" and change nothing a person or a rule could act on.
+         */
+        $result = $this->tags->add($lead, $tag, null, $this->signature($action));
 
-        return ['ok' => true, 'description' => "أُضيف الوسم '{$tag}'."];
+        if ($result['full']) {
+            return ['ok' => false, 'description' => 'لدى العميل الحد الأقصى من الوسوم ('.LeadTags::MAX_PER_LEAD.').'];
+        }
+
+        return ['ok' => true, 'description' => $result['added'] === []
+            ? "الوسم '{$tag}' موجود مسبقًا."
+            : "أُضيف الوسم '{$tag}'."];
     }
 
     private function scheduleFollowUp(Lead $lead, array $action): array

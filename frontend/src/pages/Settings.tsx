@@ -11,6 +11,8 @@ import { SetupCheck } from '@/components/onboarding/SetupCheck'
 import { AnomalySettingsPanel } from '@/components/settings/AnomalySettingsPanel'
 import { EmailDeliveryPanel } from '@/components/settings/EmailDeliveryPanel'
 import { SelfApprovalPanel } from '@/components/settings/SelfApprovalPanel'
+import { PrivacyTab } from '@/components/settings/PrivacyTab'
+import { SlaRulesCard } from '@/components/settings/SlaRulesCard'
 import { useApiError } from '@/hooks/useApiError'
 import { TIMEZONES } from '@/lib/locales'
 import {
@@ -29,7 +31,7 @@ interface SettingsResponse {
   custom_fields: CustomField[]
 }
 
-type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'approvals' | 'delivery' | 'subscription'
+type Tab = 'general' | 'branding' | 'leads' | 'scoring' | 'alerts' | 'approvals' | 'delivery' | 'privacy' | 'subscription'
 
 
 /**
@@ -65,7 +67,7 @@ export function SettingsPage() {
 
   const canManage = can.manageTenant(user)
   const tabs: Tab[] = canManage
-    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'approvals', 'delivery', 'subscription']
+    ? ['general', 'branding', 'leads', 'scoring', 'alerts', 'approvals', 'delivery', 'privacy', 'subscription']
     : ['subscription']
 
   if (isError) {
@@ -142,15 +144,18 @@ export function SettingsPage() {
           )}
 
           {tab === 'scoring' && canManage && (
-            <GeneralForm
-              settings={data.settings}
-              thresholds={data.thresholds}
-              section="scoring"
-              onSaved={() => {
-                void queryClient.invalidateQueries({ queryKey: ['settings'] })
-                toast(t('settings.saved'), 'success')
-              }}
-            />
+            <div className="space-y-4">
+              <GeneralForm
+                settings={data.settings}
+                thresholds={data.thresholds}
+                section="scoring"
+                onSaved={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['settings'] })
+                  toast(t('settings.saved'), 'success')
+                }}
+              />
+              <SlaRulesCard rules={data.settings.sla_rules} base={data.settings.first_contact_target_minutes ?? 30} />
+            </div>
           )}
 
           {/* Lead settings: the two lists that shape how leads are recorded. */}
@@ -166,6 +171,8 @@ export function SettingsPage() {
           {tab === 'approvals' && canManage && <SelfApprovalPanel />}
 
           {tab === 'delivery' && canManage && <EmailDeliveryPanel />}
+
+          {tab === 'privacy' && canManage && <PrivacyTab />}
 
           {tab === 'subscription' && <BillingPanel />}
         </>

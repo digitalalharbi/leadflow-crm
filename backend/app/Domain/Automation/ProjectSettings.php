@@ -2,6 +2,7 @@
 
 namespace App\Domain\Automation;
 
+use App\Domain\Sla\SlaRules;
 use App\Models\Lead;
 use App\Models\Project;
 
@@ -49,11 +50,14 @@ class ProjectSettings
         return self::CADENCE[self::forLead($lead)['cadence'] ?? 'standard'] ?? 1.0;
     }
 
-    /** The project's first-contact target, else the one handed in (the workspace's). */
+    /**
+     * The project's first-contact target, else the one handed in (the workspace's) — tightened by the workspace's
+     * rules for the lead's source and for priority leads, whichever is strictest.
+     */
     public static function firstContactTarget(Lead $lead, int $fallback): int
     {
         $own = (int) (self::forLead($lead)['sla_minutes'] ?? 0);
 
-        return $own > 0 ? $own : $fallback;
+        return SlaRules::targetFor($lead, $own > 0 ? $own : $fallback);
     }
 }

@@ -31,21 +31,27 @@ class Totp
 
     public static function verify(string $secret, string $code, ?int $timestamp = null): bool
     {
+        return self::matchingStep($secret, $code, $timestamp) !== null;
+    }
+
+    /** The 30-second step the code belongs to, so a caller can refuse the same code twice; null when it matches none. */
+    public static function matchingStep(string $secret, string $code, ?int $timestamp = null): ?int
+    {
         $code = preg_replace('/\s+/', '', $code);
 
         if (! preg_match('/^\d{6}$/', (string) $code)) {
-            return false;
+            return null;
         }
 
         $now = $timestamp ?? time();
 
         foreach ([-30, 0, 30] as $drift) {
             if (hash_equals(self::code($secret, $now + $drift), $code)) {
-                return true;
+                return intdiv($now + $drift, 30);
             }
         }
 
-        return false;
+        return null;
     }
 
     public static function uri(string $secret, string $account, string $issuer): string

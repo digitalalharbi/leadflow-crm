@@ -3,6 +3,7 @@
 namespace App\Services\Whatsapp;
 
 use App\Domain\Automation\Recovery;
+use App\Domain\Privacy\SuppressionList;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -173,6 +174,13 @@ class InboundWhatsappProcessor
         $lead->saveQuietly();
 
         $this->activities->log($lead, ActivityType::WhatsappReceived, null, Str::limit($body ?? '', 140));
+
+        // "إيقاف" / "STOP" on its own: no more automated messages to this number, from any lead that carries it.
+        if ($lead->whatsapp_opt_out_at === null && app(SuppressionList::class)->isStopMessage($body)) {
+            $lead->forceFill(['whatsapp_opt_out_at' => now()])->saveQuietly();
+            app(SuppressionList::class)->add($lead->tenant_id, 'phone', (string) ($lead->phone_normalized ?? $lead->phone), 'opt_out', null, 'whatsapp');
+            $this->activities->log($lead, ActivityType::WhatsappOptedOut, null, 'طلب إيقاف الرسائل عبر واتساب');
+        }
 
         if ($isReply) {
             $lead->stopWaitingForReply();

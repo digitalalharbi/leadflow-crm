@@ -15,12 +15,15 @@ use Illuminate\Http\Request;
 class RoutePermission
 {
     /** Paths every signed-in person may use, whatever their role. */
-    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles', 'billing'];
+    private const OPEN = ['auth', 'notifications', 'branding', 'whatsapp/capability', 'email/capability', 'roles', 'billing',
+        // Background exports check who may export what themselves: the leads list needs the export right, the
+        // company archive an admin — and each person sees only their own files.
+        'exports'];
 
     /** First path segment → area. */
     private const AREAS = [
         'dashboard' => 'dashboard', 'audit' => 'audit', 'insights' => 'analytics', 'anomalies' => 'analytics', 'anomaly-settings' => 'automation',
-        'leads' => 'leads', 'work' => 'leads', 'pipeline' => 'leads', 'follow-ups' => 'leads', 'qualification' => 'leads',
+        'leads' => 'leads', 'tasks' => 'leads', 'work' => 'leads', 'pipeline' => 'leads', 'follow-ups' => 'leads', 'qualification' => 'leads',
         'imports' => 'leads', 'search' => 'leads', 'data-quality' => 'leads', 'message-templates' => 'leads', 'saved-views' => 'leads',
         'appointments' => 'visits', 'reservations' => 'reservations', 'properties' => 'properties',
         'projects' => 'projects', 'companies' => 'companies',
@@ -29,7 +32,7 @@ class RoutePermission
         'client-rules' => 'campaigns', 'conversions' => 'campaigns',
         'tracking' => 'tracking', 'partners' => 'partners', 'reports' => 'analytics', 'report-shares' => 'reports_share', 'report-schedules' => 'reports_share', 'email-deliveries' => 'reports_share',
         'automation' => 'automation', 'scheduled-actions' => 'automation',
-        'integrations' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
+        'integrations' => 'integrations', 'api-keys' => 'integrations', 'webhook-subscriptions' => 'integrations', 'webhook-deliveries' => 'integrations', 'webhook-endpoints' => 'integrations', 'webhook-logs' => 'integrations',
         'users' => 'users', 'invitations' => 'users', 'access' => 'users', 'settings' => 'settings', 'readiness' => 'settings', 'onboarding' => 'settings', 'demo' => 'settings',
     ];
 

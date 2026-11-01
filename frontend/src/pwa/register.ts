@@ -49,7 +49,7 @@ async function registerWorker(): Promise<void> {
   })
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
 
     const offer = (worker: ServiceWorker | null) => {
       if (worker && navigator.serviceWorker.controller) usePwa.getState().setWaiting(worker)

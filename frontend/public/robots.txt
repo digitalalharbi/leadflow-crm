@@ -1,6 +1,9 @@
 # The front door and the public pages are for search engines; the app and the logins are not.
 User-agent: *
 Allow: /$
+Allow: /features
+Allow: /journey
+Allow: /vision
 Allow: /about
 Allow: /contact
 Allow: /privacy

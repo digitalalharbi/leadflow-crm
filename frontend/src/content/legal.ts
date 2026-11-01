@@ -1,11 +1,9 @@
 /**
  * The public pages' text, in both languages.
  *
- * Written to say only what is true of the product today, and to leave a visible marker (a token such as
- * `{company}`) wherever a fact is not confirmed yet: the legal name, the contact mailbox, the postal
- * address. The tokens are rendered by the page as a plain "to be added before launch" marker until the
- * deployment supplies the value (see `publicInfo.ts`). Nothing here is a certification claim, a legal
- * opinion, or a promise the product does not keep.
+ * Written to say only what is true of the product today. The service's facts are tokens (`{company}`, `{email}`,
+ * `{phone}`, `{address}`, `{website}`, `{processors}`) filled from `publicInfo.ts` in the reader's language. Nothing here
+ * is a certification claim, a legal opinion, or a promise the product does not keep.
  */
 export interface Section {
   id: string
@@ -39,7 +37,7 @@ const privacy: Bilingual = {
       { id: 'security', heading: 'الأمان', paragraphs: ['نطبّق ضوابط أمان موصوفة في صفحة الأمان، منها عزل مساحات العمل والصلاحيات وسجل التدقيق وتشفير بيانات الاعتماد.'] },
       { id: 'processors', heading: 'الأطراف الخارجية التي تعالج بيانات لحسابنا', paragraphs: ['نستعين بخدمات خارجية لتشغيل المنصة، قد تشمل الاستضافة وإرسال البريد وقنوات المراسلة والمنصات الإعلانية التي تربطها مساحة العمل، ومزوّد الذكاء الاصطناعي إن فعّلته مساحة العمل بمفتاحها. القائمة النهائية بأسماء المزوّدين: {processors}.'] },
       { id: 'rights', heading: 'حقوقك', paragraphs: ['يمكنك طلب الاطلاع على بياناتك أو تصحيحها أو حذفها، والاعتراض على معالجتها، بحسب ما تسمح به الأنظمة المعمول بها. نراجع كل طلب ونردّ عليه.'] },
-      { id: 'contact', heading: 'التواصل', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'العنوان: {address}.'] },
+      { id: 'contact', heading: 'التواصل', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'الهاتف: {phone}.', 'العنوان: {address}.', 'الموقع: {website}.'] },
       { id: 'changes', heading: 'تحديث هذه السياسة', paragraphs: ['قد نحدّث هذه السياسة عند تغيّر الخدمة أو الأنظمة. نعرض تاريخ آخر مراجعة في أعلى الصفحة.'] },
     ],
   },
@@ -59,7 +57,7 @@ const privacy: Bilingual = {
       { id: 'security', heading: 'Security', paragraphs: ['We apply the controls described on the security page, including workspace isolation, permissions, an audit log and encrypted credentials.'] },
       { id: 'processors', heading: 'Third parties that process data for us', paragraphs: ['We use outside services to run the platform, which may include hosting, email delivery, messaging channels, the ad platforms a workspace connects, and an AI provider if a workspace enables one with its own key. The final list of providers: {processors}.'] },
       { id: 'rights', heading: 'Your rights', paragraphs: ['You can ask to see, correct or delete your data, and to object to its processing, as the applicable rules allow. We review and answer each request.'] },
-      { id: 'contact', heading: 'Contact', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Address: {address}.'] },
+      { id: 'contact', heading: 'Contact', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Phone: {phone}.', 'Address: {address}.', 'Website: {website}.'] },
       { id: 'changes', heading: 'Changes to this policy', paragraphs: ['We may update this policy when the service or the rules change. The date of the last review is shown at the top of the page.'] },
     ],
   },
@@ -81,7 +79,7 @@ const terms: Bilingual = {
       { id: 'limitation', heading: 'حدود المسؤولية', paragraphs: ['تُقدَّم الخدمة كما هي ضمن حدود ما تسمح به الأنظمة. لا نتحمل الخسائر غير المباشرة أو فوات الربح الناتجة عن استخدام الخدمة أو عدم القدرة على استخدامها، ولا نتحمل ما ينتج عن قرارات المنصات الخارجية أو قيودها.'] },
       { id: 'termination', heading: 'الإنهاء', paragraphs: ['يمكنك التوقف عن استخدام الخدمة في أي وقت وطلب إغلاق مساحة العمل. وعند الإنهاء نتعامل مع البيانات وفق سياسة الخصوصية وصفحة حذف البيانات.'] },
       { id: 'updates', heading: 'تحديث الشروط', paragraphs: ['قد نعدّل هذه الشروط. نعرض تاريخ آخر مراجعة في أعلى الصفحة، واستمرارك في الاستخدام بعد التعديل يعني قبوله.'] },
-      { id: 'contact', heading: 'التواصل', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'العنوان: {address}.'] },
+      { id: 'contact', heading: 'التواصل', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'الهاتف: {phone}.', 'العنوان: {address}.', 'الموقع: {website}.'] },
     ],
   },
   en: {
@@ -99,7 +97,7 @@ const terms: Bilingual = {
       { id: 'limitation', heading: 'Limitation of liability', paragraphs: ['The service is provided as it is, within what the applicable rules allow. We are not liable for indirect loss or lost profit arising from using or being unable to use the service, nor for the decisions or limits of outside platforms.'] },
       { id: 'termination', heading: 'Termination', paragraphs: ['You may stop using the service at any time and ask for the workspace to be closed. On termination we handle data as the privacy policy and the data deletion page describe.'] },
       { id: 'updates', heading: 'Updates to these terms', paragraphs: ['We may amend these terms. The date of the last review is shown at the top of the page; continuing to use the service after a change means accepting it.'] },
-      { id: 'contact', heading: 'Contact', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Address: {address}.'] },
+      { id: 'contact', heading: 'Contact', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Phone: {phone}.', 'Address: {address}.', 'Website: {website}.'] },
     ],
   },
 }
@@ -201,7 +199,7 @@ const contact: Bilingual = {
       { id: 'password', heading: 'نسيت كلمة المرور', paragraphs: ['اختر «نسيت كلمة المرور» في شاشة الدخول واكتب بريدك؛ يصلك رابط صالح لساعة واحدة لتختار كلمة مرور جديدة بنفسك. لا تُرسل كلمات المرور بالبريد أبدًا. إن لم يصلك الرابط فراسلنا من البريد المرتبط بالحساب على {email}.'] },
       { id: 'privacy', heading: 'الخصوصية وحذف البيانات', paragraphs: ['لطلبات الاطلاع على البيانات أو حذفها، اتبع الخطوات في صفحة حذف البيانات.'] },
       { id: 'security', heading: 'الأمان', paragraphs: ['للإبلاغ عن ثغرة، راجع صفحة الأمان.'] },
-      { id: 'company', heading: 'بيانات الجهة', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'العنوان: {address}.'] },
+      { id: 'company', heading: 'بيانات الجهة', paragraphs: ['الجهة: {company}.', 'البريد: {email}.', 'الهاتف: {phone}.', 'العنوان: {address}.', 'الموقع: {website}.'] },
     ],
   },
   en: {
@@ -213,7 +211,7 @@ const contact: Bilingual = {
       { id: 'password', heading: 'Forgotten password', paragraphs: ['Choose “Forgot password” on the sign-in screen and enter your email: you get a link, valid for one hour, to choose a new password yourself. Passwords are never sent by email. If the link does not arrive, write from the email linked to the account to {email}.'] },
       { id: 'privacy', heading: 'Privacy and data deletion', paragraphs: ['To ask to see or delete data, follow the steps on the data deletion page.'] },
       { id: 'security', heading: 'Security', paragraphs: ['To report a vulnerability, see the security page.'] },
-      { id: 'company', heading: 'Provider details', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Address: {address}.'] },
+      { id: 'company', heading: 'Provider details', paragraphs: ['Provider: {company}.', 'Email: {email}.', 'Phone: {phone}.', 'Address: {address}.', 'Website: {website}.'] },
     ],
   },
 }

@@ -8,7 +8,7 @@ use App\Models\TrackingDestination;
 /**
  * The workspace's own endpoint: a webhook, or a Google Tag Manager server container. It receives the neutral payload
  * as JSON, signed with the secret the workspace set so the receiver can tell it is ours — the signature is over exactly
- * the bytes sent. The address is checked again, against what its name resolves to, before it is called.
+ * the bytes sent. The address is checked again, against what its name resolves to, before it is called, and the call is pinned to it.
  */
 class SignedPostAdapter extends AbstractAdapter
 {
@@ -16,7 +16,9 @@ class SignedPostAdapter extends AbstractAdapter
     {
         $url = $this->config($destination, 'endpoint_url');
 
-        if (! SafeUrl::isAcceptable($url) || ! SafeUrl::resolvesPublicly($url)) {
+        $pinned = SafeUrl::isAcceptable($url) ? SafeUrl::pinned($url) : null;
+
+        if ($pinned === null) {
             return ['ok' => false, 'summary' => [], 'error' => 'The address is not a public one.'];
         }
 
@@ -25,6 +27,6 @@ class SignedPostAdapter extends AbstractAdapter
         $secret = $this->credential($destination, 'secret');
         $headers = $secret !== '' ? ['X-Webhook-Signature' => 'sha256='.hash_hmac('sha256', $body, $secret)] : [];
 
-        return $this->post($url, $body, $headers, ['event' => $payload['event'], 'event_id' => $payload['event_id']]);
+        return $this->post($url, $body, $headers, ['event' => $payload['event'], 'event_id' => $payload['event_id']], $pinned);
     }
 }

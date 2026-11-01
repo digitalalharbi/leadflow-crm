@@ -4,7 +4,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { RuleAction, RuleCondition } from '@/features/automation'
+import { flatConditions, type RuleAction, type RuleCondition, type RuleConditionItem } from '@/features/automation'
 import { cn } from '@/lib/cn'
 
 type Kind = 'trigger' | 'condition' | 'action' | 'wait' | 'outcome'
@@ -52,13 +52,13 @@ const KIND: Record<Kind, string> = {
  */
 export function RuleFlow({
   trigger,
-  conditions,
+  conditions: items,
   actions,
   matched,
   testId,
 }: {
   trigger: string
-  conditions: RuleCondition[]
+  conditions: RuleConditionItem[]
   actions: RuleAction[]
   /** How many times it has fired; the last step says so. Omitted for a template. */
   matched?: number
@@ -66,6 +66,7 @@ export function RuleFlow({
 }) {
   const { t } = useTranslation()
 
+  const conditions = flatConditions(items)
   const nodes: Node[] = [{ key: 'trigger', kind: 'trigger', Icon: Zap, label: t(`automation.trigger.${trigger}`) }]
 
   if (conditions.length > 0) {

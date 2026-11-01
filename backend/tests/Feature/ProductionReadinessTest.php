@@ -70,11 +70,16 @@ class ProductionReadinessTest extends TestCase
         );
 
         $this->assertSame(
-            ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude'],
+            ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
             $items->pluck('key')->all(),
         );
 
-        foreach ($items as $item) {
+        // The calendar feed needs nothing from outside: ready from the start, waiting only for a calendar to read it.
+        $calendar = $items->firstWhere('key', 'calendar');
+        $this->assertSame(ProductionReadiness::READY, $calendar['status']);
+        $this->assertSame('awaiting_first_event', $calendar['blocker']);
+
+        foreach ($items->where('key', '!=', 'calendar') as $item) {
             $this->assertSame(ProductionReadiness::EXTERNAL, $item['status'], "{$item['key']} claimed more than it had");
             $this->assertNotNull($item['blocker'], "{$item['key']} is waiting and does not say for what");
         }

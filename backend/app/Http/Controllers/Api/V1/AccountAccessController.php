@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Auth\SecondFactor;
 use App\Domain\Billing\PlanLimits;
 use App\Domain\Mail\AccountEmail;
 use App\Http\Controllers\Controller;
@@ -167,6 +168,11 @@ class AccountAccessController extends Controller
         });
 
         $user = $accounts->sortByDesc(fn (User $u) => $u->last_login_at?->timestamp ?? 0)->first();
+
+        // A reset link proves the inbox, not the authenticator app: an account with a second factor signs in with it.
+        if (app(SecondFactor::class)->enabled($user->fresh())) {
+            return ApiResponse::success(['password_changed' => true, 'mfa_required' => true]);
+        }
 
         return ApiResponse::success(app(AuthController::class)->issueSession($user->fresh(), $request));
     }

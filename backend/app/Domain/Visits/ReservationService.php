@@ -8,6 +8,7 @@ use App\Domain\Leads\OutcomeRecorder;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
 use App\Enums\ActivityType;
+use App\Events\LeadSignal;
 use App\Models\Lead;
 use App\Models\Property;
 use App\Models\Reservation;
@@ -73,6 +74,8 @@ class ReservationService
             app(EventRecorder::class)->outcome($lead, EventType::Reservation, ['reservation' => $reservation->uuid], $reservation->uuid);
             // The signal a campaign can be optimised on, long before the sale.
             app(ConversionRecorder::class)->record($lead, ConversionEvent::Reservation);
+            // A trigger for automations and outbound webhooks, after the hold is committed.
+            DB::afterCommit(fn () => LeadSignal::dispatch($lead, 'lead.reservation_created', ['reservation' => $reservation->uuid], $actor));
 
             return $reservation;
         });

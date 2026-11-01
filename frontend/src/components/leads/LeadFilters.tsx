@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Filter, Search, X } from 'lucide-react'
 import { Button, Input, Select } from '@/components/ui'
 import { cn } from '@/lib/cn'
-import type { LeadFilters as Filters } from '@/features/leads'
+import { fetchLeadTags, type LeadFilters as Filters } from '@/features/leads'
 import type { Project, Ref } from '@/types/api'
 
 const STATUSES = ['new', 'contacted', 'qualified', 'appointment', 'won', 'lost'] as const
@@ -45,6 +46,7 @@ export function LeadFiltersBar({
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const tagsInUse = useQuery({ queryKey: ['lead-tags'], queryFn: fetchLeadTags, enabled: open, staleTime: 60_000 })
 
   // Each active filter, with the way to remove just that one.
   const chips: Array<{ key: string; label: string; clear: () => void }> = []
@@ -94,6 +96,14 @@ export function LeadFiltersBar({
       key: 'follow_up',
       label: t(`followUps.${filters.follow_up}`),
       clear: () => onChange({ follow_up: undefined }),
+    })
+  }
+
+  if (filters.tag) {
+    chips.push({
+      key: 'tag',
+      label: `${t('tags.filter')}: ${filters.tag}`,
+      clear: () => onChange({ tag: undefined }),
     })
   }
 
@@ -272,6 +282,18 @@ export function LeadFiltersBar({
               ))}
             </Select>
           )}
+
+          <Select
+            value={filters.tag ?? ''}
+            onChange={(e) => onChange({ tag: e.target.value || undefined })}
+            aria-label={t('tags.filter')}
+            data-testid="filter-tag"
+          >
+            <option value="">{t('tags.any')}</option>
+            {(tagsInUse.data?.tags ?? []).map(({ tag, count }) => (
+              <option key={tag} value={tag}>{`${tag} (${count})`}</option>
+            ))}
+          </Select>
 
           <Select
             value={filters.follow_up ?? ''}

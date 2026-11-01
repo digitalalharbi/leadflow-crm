@@ -9,7 +9,7 @@ import {
   Table, TableWrap, Td, TemperatureBadge, Th, Tr,
 } from '@/components/ui'
 import { fetchLeads } from '@/features/leads'
-import { fetchRules } from '@/features/automation'
+import { fetchRules, flatConditions } from '@/features/automation'
 import { useCampaigns } from '@/features/campaigns'
 import { CampaignCard } from '@/components/campaigns/CampaignCard'
 import { AutomationPackCard } from '@/components/projects/AutomationPackCard'
@@ -248,7 +248,7 @@ export function ProjectAutomations({ projectId }: { projectId: string }) {
    * that named twelve workspace-wide rules would bury the one written for it.
    */
   const scoped = rules.filter((rule) =>
-    rule.conditions.some(
+    flatConditions(rule.conditions).some(
       (condition) =>
         condition.field === 'project_id' &&
         [condition.value].flat().map(String).includes(projectId),

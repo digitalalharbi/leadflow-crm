@@ -64,7 +64,7 @@ test.describe('Public pages', () => {
 
     await expect(page.getByText(/لا يوجد نموذج إلكتروني/)).toBeVisible()
     await expect(page.locator('main li').filter({ hasText: /^[1-4]\. / })).toHaveCount(4)
-    await expect(page.getByTestId('doc-draft')).toBeVisible()
+    await expect(page.getByTestId('page-deletion')).toContainText('info@mohtam.pro')
   })
 
   test('security: names only what exists, and says plainly which certifications are not held', async ({ page }) => {
@@ -78,11 +78,15 @@ test.describe('Public pages', () => {
     expect(body.replace(claims, '')).not.toMatch(/SOC ?2|ISO ?27001|PCI|GDPR/)
   })
 
-  test('where the deployment has not supplied the legal name or mailbox, the page says so in plain sight', async ({ page }) => {
-    await ready(page, '/privacy')
+  test('the official facts stand where placeholders used to: name, mailbox, phone, city, site', async ({ page }) => {
+    for (const path of ['/privacy', '/contact']) {
+      await ready(page, path)
+      const body = await page.locator('main').innerText()
 
-    expect(await page.getByTestId('to-add').count()).toBeGreaterThan(0)
-    await expect(page.getByTestId('doc-draft')).toBeVisible()
+      for (const fact of ['info@mohtam.pro', '+966 53 211 5582', 'الرياض، المملكة العربية السعودية', 'mohtam.pro']) expect(body, path).toContain(fact)
+      expect(body, path).not.toMatch(/يُضاف قبل الإطلاق|example\.com/)
+      await expect(page.getByTestId('doc-draft')).toHaveCount(0)
+    }
   })
 
   test('the footer reaches the six pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
@@ -101,7 +105,7 @@ test.describe('Public pages', () => {
     await expect(skip).toBeFocused()
     await expect(skip).toBeInViewport()
 
-    const hrefs = await page.getByTestId('public-footer').getByRole('link').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
+    const hrefs = await page.getByTestId('public-footer').getByRole('navigation').getByRole('link').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
     expect(hrefs).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
   })
 
@@ -117,20 +121,21 @@ test.describe('Public pages', () => {
 })
 
 test.describe('Marketing page', () => {
-  test('the first screen at 1366×768 has the header, the headline, the calls to action and the picture; the rest follows below', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'the first-screen rule is the laptop’s; a phone stacks the same blocks')
-    await page.setViewportSize({ width: 1366, height: 768 })
-    await ready(page, '/')
+  for (const [width, height] of [[1366, 768], [1440, 900]] as const) {
+    test(`the whole front door fits the first screen at ${width}×${height}: header, hero, picture and promises, nothing long below`, async ({ page, isMobile }) => {
+      test.skip(isMobile, 'the first-screen rule is the laptop’s; a phone stacks the same blocks')
+      await page.setViewportSize({ width, height })
+      await ready(page, '/')
 
-    for (const id of ['public-header', 'landing-headline', 'landing-trial', 'landing-login', 'product-preview']) {
-      await expect(page.getByTestId(id), id).toBeInViewport({ ratio: 0.95 })
-    }
-    // What the product does, the whole path and the official funnel are on the page, below the fold.
-    await expect(page.getByTestId('feature-card')).toHaveCount(14)
-    await expect(page.getByTestId('funnel-stage')).toHaveCount(6)
-    await expect(page.getByTestId('landing-chain')).toBeAttached()
-    await expect(page.getByTestId('public-footer')).toBeAttached()
-  })
+      for (const id of ['public-header', 'landing-headline', 'landing-trial', 'landing-login', 'product-preview', 'landing-values']) {
+        await expect(page.getByTestId(id), id).toBeInViewport({ ratio: 0.95 })
+      }
+      await expect(page.getByTestId('feature-card')).toHaveCount(0)
+      await expect(page.getByTestId('funnel-stage')).toHaveCount(0)
+      // At most the slim footer is below the fold.
+      expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(60)
+    })
+  }
 
   test('it says the official things, with the deal in copper, and labels the preview as sample data', async ({ page }) => {
     await ready(page, '/')
@@ -157,17 +162,45 @@ test.describe('Marketing page', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('the header links reach the part of the page they name', async ({ page, isMobile }) => {
+  test('the header links open their own pages, each with one heading and the way in', async ({ page, isMobile }) => {
     test.skip(isMobile, 'the header links are the laptop’s; a phone has the menu')
     await page.setViewportSize({ width: 1366, height: 768 })
     await ready(page, '/')
 
-    for (const [link, target] of [['landing-nav-features', '#features'], ['landing-nav-how', '#how'], ['landing-nav-reports', '#reports']] as const) {
+    for (const [link, path, heading] of [['landing-nav-features', '/features', 'قيمة تراها من اليوم الأول'], ['landing-nav-journey', '/journey', 'رحلة العميل، من الاهتمام إلى النتيجة'], ['landing-nav-vision', '/vision', 'لماذا مهتم']] as const) {
       await page.getByTestId(link).click()
-      await expect(page).toHaveURL(new RegExp(`${target}$`))
-      await expect(page.locator(target)).toBeInViewport()
+      await expect(page).toHaveURL(new RegExp(`${path}$`))
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading)
+      await expect(page.getByTestId(link)).toHaveAttribute('aria-current', 'page')
+      await expect(page.getByTestId('marketing-cta-start')).toHaveAttribute('href', '/login')
     }
   })
+
+  test('the journey is interactive: choosing a stage shows its value and moves the progress', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await ready(page, '/journey')
+
+    const stages = page.getByTestId('journey-stage')
+    await expect(stages).toHaveCount(6)
+    await stages.nth(4).click()
+    await expect(stages.nth(4)).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('journey-panel')).toContainText('قرار شراء')
+  })
+
+  for (const path of ['/', '/features', '/journey', '/vision']) {
+    for (const [width, height] of [[390, 844], [768, 1024], [1366, 768], [1440, 900]] as const) {
+      test(`${path} at ${width}px: nothing runs off the side, in Arabic and in English`, async ({ page }) => {
+        await page.setViewportSize({ width, height })
+        for (const [locale, dir] of [['ar', 'rtl'], ['en', 'ltr']] as const) {
+          await page.addInitScript(([key, value]) => localStorage.setItem(key, value), ['leadflow.locale', locale] as const)
+          await ready(page, path)
+          await expect(page.locator('html')).toHaveAttribute('dir', dir)
+          await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+          expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${path} ${dir}`).toBeLessThanOrEqual(1)
+        }
+      })
+    }
+  }
 
   test('the sample report opens as a dialog, says it is not real data, and closes with Escape', async ({ page }) => {
     await ready(page, '/')

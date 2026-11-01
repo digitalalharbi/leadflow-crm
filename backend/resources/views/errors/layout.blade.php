@@ -17,6 +17,7 @@
   h1 { font-size:1.375rem; margin:.5rem 0; }
   p { color:var(--muted); line-height:1.7; margin:.25rem 0 0; }
   a.home { display:inline-block; margin-top:1.25rem; background:var(--brand); color:#fff; text-decoration:none; padding:.7rem 1.4rem; border-radius:999px; font-weight:600; }
+  .contact { margin-top:1rem; font-size:.875rem; color:#6b7280; } .contact a { color:var(--brand); }
   .brand { font-weight:700; font-size:1.25rem; margin-bottom:1rem; display:flex; gap:.5rem; justify-content:center; align-items:center; }
   .brand small { font-weight:500; color:var(--muted); font-size:.875rem; }
 </style>
@@ -30,6 +31,7 @@
     <p>@yield('message')</p>
     <a class="home" href="https://{{ \App\Support\Brand::DOMAIN }}/">العودة إلى مهتم</a>
   </div>
+  <p class="contact">للمساعدة: <a href="mailto:{{ \App\Support\Brand::EMAIL }}" dir="ltr">{{ \App\Support\Brand::EMAIL }}</a></p>
 </main>
 </body>
 </html>

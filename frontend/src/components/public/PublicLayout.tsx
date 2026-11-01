@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Logo } from '@/components/brand'
+import { PUBLIC_INFO } from '@/content/publicInfo'
 import { LANDING } from '@/content/landing'
 import { applyLocale } from '@/i18n'
 import { cn } from '@/lib/cn'
@@ -102,8 +103,15 @@ export function PublicFooter({ compact = false }: { compact?: boolean }) {
     <footer className={cn('border-t border-[var(--color-line)] bg-[var(--color-surface)]', compact ? 'py-1' : 'py-5')} data-testid="public-footer">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 pb-[env(safe-area-inset-bottom)] sm:px-6">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <p className="text-[1rem] font-semibold">مهتم</p>
+          <p className="text-[1rem] font-semibold">{PUBLIC_INFO.companyName[language(i18n.language)]}</p>
           {!compact && <p className="text-[0.9375rem] text-[var(--color-ink-muted)]">{copy.tagline}</p>}
+          {!compact && (
+            <address className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.9375rem] not-italic text-[var(--color-ink-muted)]" data-testid="footer-contact">
+              <a href={`mailto:${PUBLIC_INFO.email}`} className="hover:underline" dir="ltr">{PUBLIC_INFO.email}</a>
+              <a href={`tel:${PUBLIC_INFO.phone}`} className="hover:underline" dir="ltr">{PUBLIC_INFO.phoneDisplay}</a>
+              <span>{PUBLIC_INFO.address[language(i18n.language)]}</span>
+            </address>
+          )}
         </div>
         <nav aria-label={language(i18n.language) === 'ar' ? 'روابط التذييل' : 'Footer links'} className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
           {links.map(([to, label]) => (

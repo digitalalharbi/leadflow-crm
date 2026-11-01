@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellRing, MailWarning } from 'lucide-react'
+import { Bell, BellRing, Mail, MailWarning, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody, CardHeader, Skeleton } from '@/components/ui'
-import { fetchNotificationPrefs, saveNotificationPrefs, type AlertCategory, type AlertMode, type DigestKind, type NotificationPrefs, type WhatsappChanges } from '@/features/notificationPrefs'
+import { fetchNotificationPrefs, saveNotificationPrefs, type AlertCategory, type AlertChannel, type AlertMode, type DigestKind, type NotificationPrefs, type WhatsappChanges } from '@/features/notificationPrefs'
 import { WhatsappAlertsSection } from '@/components/profile/WhatsappAlertsSection'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
+
+const CHANNELS: Array<{ key: AlertChannel; Icon: LucideIcon }> = [{ key: 'in_app', Icon: Bell }, { key: 'email', Icon: Mail }]
 
 /**
  * How this person wants to be told: each kind of alert at once, in the daily or weekly summary,
@@ -57,6 +59,12 @@ export function NotificationPrefsCard() {
     save.mutate({ alerts: { [category]: mode } })
   }
 
+  const setChannel = (category: AlertCategory, channel: AlertChannel, on: boolean) => {
+    const current = data.channels?.[category] ?? { in_app: true, email: true }
+    setData({ ...data, channels: { ...data.channels, [category]: { ...current, [channel]: on } } as NotificationPrefs['channels'] })
+    save.mutate({ channels: { [category]: { [channel]: on } } })
+  }
+
   const setDigest = (digest: DigestKind, on: boolean) => {
     setData({ ...data, digests: { ...data.digests, [digest]: on } })
     save.mutate({ digests: { [digest]: on } })
@@ -91,6 +99,28 @@ export function NotificationPrefsCard() {
           {data.categories.map((category) => (
             <li key={category} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid={`alert-${category}`}>
               <span className="flex items-center gap-2 text-[0.9375rem] font-medium"><BellRing className="size-4 text-[var(--color-ink-muted)]" aria-hidden />{t(`alerts.category.${category}`)}</span>
+              <span className="ms-auto inline-flex gap-1" role="group" aria-label={t('alerts.channels')}>
+                {CHANNELS.map(({ key, Icon }) => {
+                  const on = data.channels?.[category]?.[key] ?? true
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={on}
+                      title={t(`alerts.channel.${key}`)}
+                      aria-label={`${t(`alerts.channel.${key}`)} — ${t(`alerts.category.${category}`)}`}
+                      data-testid={`alert-${category}-channel-${key}`}
+                      onClick={() => setChannel(category, key, !on)}
+                      className={cn(
+                        'pressable grid size-7 place-items-center rounded-full',
+                        on ? 'bg-[var(--brand-soft)] text-[var(--brand)]' : 'text-[var(--color-ink-muted)] line-through opacity-60',
+                      )}
+                    >
+                      <Icon className="size-3.5" aria-hidden />
+                    </button>
+                  )
+                })}
+              </span>
               <div role="group" aria-label={t(`alerts.category.${category}`)} className="inline-flex gap-0.5 rounded-full bg-[var(--color-chrome-fill)] p-0.5">
                 {data.modes.map((mode) => (
                   <button

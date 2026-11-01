@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,6 +42,23 @@ class AuthenticationTest extends TestCase
 
         // Account enumeration guard.
         $this->assertSame($unknown->json('errors'), $wrong->json('errors'));
+    }
+
+    public function test_a_wrong_password_is_recorded_in_that_companys_trail_and_never_in_anothers(): void
+    {
+        $a = $this->provisionTenant('Alpha');
+        $b = $this->provisionTenant('Beta');
+
+        $this->postJson('/api/v1/auth/login', ['email' => $a['admin']->email, 'password' => 'wrong-password'])->assertStatus(422);
+        $this->postJson('/api/v1/auth/login', ['email' => 'nobody@nowhere.test', 'password' => 'wrong-password'])->assertStatus(422);
+
+        $rows = AuditLog::withoutGlobalScopes()->where('action', 'auth.login_failed')->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame($a['tenant']->id, $rows[0]->tenant_id);
+        $this->assertSame($a['admin']->id, $rows[0]->user_id);
+        $this->assertStringNotContainsString('wrong-password', json_encode($rows[0]->changes));
+        $this->assertSame(0, AuditLog::withoutGlobalScopes()->where('tenant_id', $b['tenant']->id)->where('action', 'auth.login_failed')->count());
     }
 
     public function test_a_deactivated_user_cannot_sign_in(): void

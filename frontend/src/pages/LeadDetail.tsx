@@ -12,6 +12,8 @@ import {
 } from '@/features/leads'
 import { ApiError, apiPost } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
+import { LeadTagEditor } from '@/components/leads/LeadTagEditor'
+import { PersonalDataMenu } from '@/components/leads/PersonalDataMenu'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { formatDateTime, formatRelative, whatsappLink } from '@/lib/format'
@@ -28,6 +30,7 @@ import { HandoffBriefCard } from '@/components/lead/HandoffBriefCard'
 import { IntelligenceStrip } from '@/components/lead/IntelligenceStrip'
 import { JourneyTimeline } from '@/components/lead/JourneyTimeline'
 import { LeadFiles } from '@/components/leads/LeadFiles'
+import { LeadTasks } from '@/components/leads/LeadTasks'
 import { AutomationTrace } from '@/components/leads/AutomationTrace'
 import { ScoreRing } from '@/components/leads/ScoreRing'
 import { ChartCard, LeadJourney, buildJourney, humaniseDuration, platformColor } from '@/components/charts'
@@ -321,6 +324,8 @@ export function LeadDetailPage() {
                 {lead.is_overdue && <Badge tone="danger">{t('leads.overdue')}</Badge>}
               </div>
 
+              <LeadTagEditor leadId={lead.id} tags={lead.tags ?? []} editable={can.has(user, 'leads.edit')} />
+
               {/* Why the system calls this lead what it does, in a few words. */}
               {lead.classification && (
                 <p className="mt-1 flex items-center gap-1.5 text-[0.875rem] text-[var(--color-ink-muted)]" data-testid="lead-classification">
@@ -612,6 +617,8 @@ export function LeadDetailPage() {
             </Dropdown>
           )}
 
+          {can.manageTenant(user) && <PersonalDataMenu leadId={lead.id} name={lead.full_name} />}
+
           {can.manageTenant(user) && (
             <Button variant="ghost" size="icon" aria-label={t('common.delete')} title={t('common.delete')} onClick={() => setDeleteOpen(true)} icon={<Trash2 className="size-4" />} />
           )}
@@ -664,6 +671,8 @@ export function LeadDetailPage() {
           <div id="lead-files">
             <LeadFiles lead={lead} />
           </div>
+
+          <LeadTasks leadId={lead.id} />
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>

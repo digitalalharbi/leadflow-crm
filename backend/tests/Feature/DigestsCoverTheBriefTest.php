@@ -190,6 +190,9 @@ class DigestsCoverTheBriefTest extends TestCase
 
     public function test_the_monthly_digest_adds_the_rates_the_team_the_attribution_and_what_was_noticed(): void
     {
+        // Mid-month, so "the month that has just ended" is the same month in UTC (the test's dates) and in the workspace's
+        // timezone (the digest's window); in the first hours of a month in Riyadh they disagree.
+        $this->travelTo(now()->setDay(15)->setTime(12, 0));
         $this->aCampaignThatPaidOff();
         // The campaign above is dated yesterday; the monthly page reads the month that has just ended.
         $this->asTenant($this->t['tenant'], fn () => DB::table('leads')->whereNotNull('campaign_ref_id')->update(['created_at' => now()->subMonth()->startOfMonth()->addDays(6), 'won_at' => now()->subMonth()->startOfMonth()->addDays(7)]));

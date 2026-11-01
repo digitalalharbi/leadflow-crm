@@ -100,7 +100,15 @@ export function SetPasswordPage() {
     setErrors({})
 
     try {
-      const result = await apiPost<{ token: string }>('/auth/password/reset', { token, password, password_confirmation: confirm })
+      const result = await apiPost<{ token: string } | { password_changed: true; mfa_required: true }>('/auth/password/reset', { token, password, password_confirmation: confirm })
+
+      // The account has a second factor: the new password works, and signing in asks for the code.
+      if ('mfa_required' in result) {
+        navigate('/login', { replace: true, state: { notice: 'mfaAfterReset' } })
+
+        return
+      }
+
       tokenStorage.set(result.token)
       await restore()
       navigate(HOME, { replace: true })

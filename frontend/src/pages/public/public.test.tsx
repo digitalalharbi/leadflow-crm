@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { LandingPage } from './Landing'
+import { FeaturesPage, JourneyPage, VisionPage } from './Marketing'
 import { DocumentPage } from './DocumentPage'
 import { LoginPage } from '@/pages/Login'
 import { LEGAL, type LegalKey } from '@/content/legal'
@@ -26,11 +27,14 @@ describe('public information pages', () => {
     expect(container.querySelector('form, input, textarea, select')).toBeNull()
   })
 
-  it('shows a visible marker, not an invented value, where the deployment has not supplied a fact', () => {
-    renderWithProviders(<DocumentPage page="privacy" />)
+  it('carries the official facts and no placeholder marker', () => {
+    const { container } = renderWithProviders(<DocumentPage page="privacy" />)
 
-    expect(screen.getAllByTestId('to-add').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('doc-draft')).toBeInTheDocument()
+    expect(container.textContent).toContain('info@mohtam.pro')
+    expect(container.textContent).toContain('+966 53 211 5582')
+    expect(container.textContent).toContain('الرياض، المملكة العربية السعودية')
+    expect(container.textContent).not.toMatch(/يُضاف قبل الإطلاق|to be added before launch|example\.com/)
+    expect(screen.queryByTestId('doc-draft')).toBeNull()
   })
 
   it('every section has an id and a table-of-contents entry that leads to it', () => {
@@ -110,34 +114,86 @@ describe('landing page', () => {
     expect(within(preview).getByTestId('preview-funnel').querySelectorAll('li')).toHaveLength(6)
   })
 
-  it('presents the product: the promises, the whole path, the fourteen things it does and the official funnel', () => {
+  it('is one screen: the hero, the picture and the short promises — the long feature list and the funnel live on their own pages', () => {
     const { container } = renderWithProviders(<LandingPage />)
 
     expect(screen.getAllByTestId('value-card')).toHaveLength(3)
     expect(screen.getByTestId('reports-card')).toHaveTextContent('صورة واضحة في أي لحظة')
-    expect(screen.getByTestId('landing-closing')).toHaveTextContent('كل اهتمام يستحق أن يصبح فرصة')
-
-    const chain = within(screen.getByTestId('landing-chain-steps')).getAllByRole('listitem').map((li) => li.textContent?.replace(/[←→]/g, '').trim())
-    expect(chain).toEqual(['الحملات التسويقية', 'الاهتمام', 'العملاء المحتملون', 'فريق المبيعات', 'المتابعة', 'حجز المعاينة', 'قرار الشراء', 'الإحالة', 'الإيرادات'])
-
-    const features = screen.getAllByTestId('feature-card').map((c) => c.querySelector('h3')?.textContent)
-    for (const needed of ['إدارة العملاء المحتملين', 'الحملات ومصادر العملاء', 'التتبع والإسناد', 'اعمل الآن', 'الزيارات والحجوزات', 'التقارير الحية', 'رابط واحد لمتابعة المشروع', 'عزل كامل لكل شركة ومشروع', 'الأتمتة', 'الروابط المختصرة', 'المسار العقاري']) {
-      expect(features).toContain(needed)
+    for (const gone of ['landing-features', 'feature-card', 'landing-funnel', 'funnel-stage', 'landing-chain', 'landing-closing-block']) {
+      expect(screen.queryAllByTestId(gone), gone).toHaveLength(0)
     }
-    expect(features).toHaveLength(14)
-
-    const stages = screen.getAllByTestId('funnel-stage').map((li) => li.querySelector('h3')?.textContent)
-    expect(stages).toEqual(['وعي', 'اهتمام', 'تفاعل', 'حجز معاينة', 'قرار شراء', 'إحالة'])
+    expect(container.textContent).not.toContain('كل ما تحتاجه لتحويل الاهتمام إلى فرصة')
+    expect(container.textContent).not.toContain('المسار العقاري في مهتم')
     // The product's name is مهتم alone.
     expect(container.textContent).not.toMatch(/Mohtam(?!\.pro)|LeadFlow/i)
+  })
+
+  it('the header names the three marketing pages by their own addresses, not by anchors on this one', () => {
+    renderWithProviders(<LandingPage />)
+
+    const nav = screen.getByTestId('public-nav')
+    expect(within(nav).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['المزايا', '/features'], ['الرحلة', '/journey'], ['الرؤية', '/vision']])
   })
 
   it('footer links lead to the six public pages', () => {
     renderWithProviders(<LandingPage />)
 
-    const links = within(screen.getByTestId('public-footer')).getAllByRole('link').map((a) => a.getAttribute('href'))
+    const footer = screen.getByTestId('public-footer')
+    const links = within(within(footer).getByRole('navigation')).getAllByRole('link').map((a) => a.getAttribute('href'))
 
     expect(links).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
+    // The front door's footer is one short line; the contact details are on every other public page.
+    expect(screen.queryByTestId('footer-contact')).toBeNull()
+  })
+
+  it('the other public pages keep the full footer with the official contact', () => {
+    renderWithProviders(<DocumentPage page="about" />)
+
+    expect(within(screen.getByTestId('footer-contact')).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['mailto:info@mohtam.pro', 'tel:+966532115582'])
+  })
+})
+
+// Words that would explain how the product works rather than what it gives — none belong on a marketing page.
+const MECHANISM = /أتمتة|الأتمتة|إسناد|توزيع|تقييم العميل|قواعد|خوارزم|تكامل|automation|attribution|routing|scoring|integration|workflow|webhook|API/i
+
+describe('marketing pages', () => {
+  it('/features sells eight outcomes with facts that count up, and explains no mechanism', () => {
+    const { container } = renderWithProviders(<FeaturesPage />)
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(screen.getByTestId('marketing-title')).toHaveTextContent('قيمة تراها من اليوم الأول')
+    expect(screen.getAllByTestId('feature-value').map((li) => li.querySelector('h2')?.textContent)).toEqual(['رؤية أوضح', 'متابعة أسرع', 'قرارات أفضل', 'فرص فقد أقل', 'تقارير احترافية', 'فرق أكثر تنظيمًا', 'وصول أسرع للمعلومة', 'تجربة أرقى لعملائك'])
+    expect(within(screen.getByTestId('features-facts')).getAllByRole('definition')).toHaveLength(4)
+    expect(container.textContent).not.toMatch(MECHANISM)
+    expect(screen.getByTestId('marketing-cta-start')).toHaveAttribute('href', '/login')
+  })
+
+  it('/journey walks the six stages; choosing one shows its value and moves the progress', () => {
+    const { container } = renderWithProviders(<JourneyPage />)
+
+    const stages = screen.getAllByRole('tab')
+    expect(stages.map((tab) => tab.textContent?.replace(/^\d/, ''))).toEqual(['وعي', 'اهتمام', 'تفاعل', 'حجز معاينة', 'قرار شراء', 'إحالة'])
+    expect(stages[0]).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(stages[3]!)
+    expect(stages[3]).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('يصبح الاهتمام موعدًا')
+    expect(screen.getByTestId('journey-progress')).toHaveStyle({ width: '60%' })
+    expect(stages.filter((tab) => tab.dataset.reached === 'true')).toHaveLength(4)
+
+    fireEvent.keyDown(stages[3]!, { key: 'End' })
+    expect(stages[5]).toHaveAttribute('aria-selected', 'true')
+    expect(container.textContent).not.toMatch(MECHANISM)
+  })
+
+  it('/vision is short: one statement, three pillars, four reasons', () => {
+    const { container } = renderWithProviders(<VisionPage />)
+
+    expect(screen.getByTestId('marketing-title')).toHaveTextContent('لماذا مهتم')
+    expect(screen.getByTestId('vision-statement')).toHaveTextContent('كل اهتمام يستحق أن يصبح فرصة')
+    expect(within(screen.getByTestId('vision-pillars')).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(screen.getByTestId('vision-why')).getAllByRole('listitem')).toHaveLength(4)
+    expect(container.textContent).not.toMatch(MECHANISM)
   })
 })
 

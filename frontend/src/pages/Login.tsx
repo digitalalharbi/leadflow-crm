@@ -34,6 +34,9 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [tenant, setTenant] = useState(searchParams.get('tenant') ?? '')
+  const [code, setCode] = useState('')
+  const [needsCode, setNeedsCode] = useState(false)
+  const notice = (location.state as { notice?: string } | null)?.notice === 'mfaAfterReset' ? t('auth.mfaAfterReset') : null
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -75,7 +78,15 @@ export function LoginPage() {
     setFieldErrors({})
 
     try {
-      await login({ email, password, tenant: tenant || undefined })
+      const result = await login({ email, password, tenant: tenant || undefined, code: needsCode ? code.trim() : undefined })
+
+      // The password was right and the account has a second factor: ask for the code, keep what was typed.
+      if (result === 'mfa') {
+        setNeedsCode(true)
+
+        return
+      }
+
       navigate(landing, { replace: true })
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 422 && caught.errors) {
@@ -84,7 +95,7 @@ export function LoginPage() {
           if (messages[0]) next[field] = messages[0]
         }
         setFieldErrors(next)
-        if (!next.email && !next.password) setError(translateError(caught))
+        if (!next.email && !next.password && !next.code) setError(translateError(caught))
       } else {
         setError(translateError(caught))
       }
@@ -196,6 +207,8 @@ export function LoginPage() {
             <h1 className="text-[1.75rem] leading-tight font-bold">{t('auth.welcome')}</h1>
             <p className="mt-1.5 text-[1rem] text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
 
+            {notice && <p role="status" className="notice notice-info mt-4" data-testid="login-notice">{notice}</p>}
+
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
               <Input
                 type="email"
@@ -230,6 +243,24 @@ export function LoginPage() {
                   {t('auth.forgot')}
                 </Link>
               </div>
+
+              {needsCode && (
+                <Input
+                  name="one-time-code"
+                  autoComplete="one-time-code"
+                  inputMode="text"
+                  autoFocus
+                  dir="ltr"
+                  label={t('auth.mfaCode')}
+                  hint={t('auth.mfaCodeHint')}
+                  value={code}
+                  error={fieldErrors.code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  className="h-12 text-[1rem] tracking-widest"
+                  data-testid="login-mfa-code"
+                />
+              )}
 
               <div>
                 <button

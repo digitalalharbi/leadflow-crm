@@ -192,3 +192,37 @@ a source event.
 | Authenticated API | 120 / minute / user |
 | Login | 5 / minute / email+IP, 20 / minute / IP |
 | Webhook | `WEBHOOK_RATE_LIMIT_PER_MINUTE` (default 120) per endpoint + IP |
+
+## Public API (`/api/v1/public`) — workspace API keys
+
+A company admin creates a key under **Integrations → API keys**, choosing its scopes and an optional expiry. The full key
+(`mht_<prefix>_<secret>`) is shown once; only its SHA-256 is stored. Send it as `Authorization: Bearer mht_…`.
+
+| Method | Path | Scope | Notes |
+| --- | --- | --- | --- |
+| GET | `/public/leads?status=&project=<uuid>&updated_since=&per_page=` | `leads:read` | paginated, newest first |
+| GET | `/public/leads/{uuid}` | `leads:read` | another company's lead is a 404 |
+| POST | `/public/leads` | `leads:write` | `full_name`, `phone` or `email`, `project` (uuid), `source`, `campaign`, `external_id`, `utm_*`; deduplicated (200 + `duplicate: true`) |
+| GET | `/public/projects` | `projects:read` | |
+| GET | `/public/visits` | `visits:read` | |
+| GET | `/public/reservations` | `reservations:read` | `amount_minor` in halalas |
+| GET | `/public/revenue?from=&to=` | `revenue:read` | `revenue_minor` is `null` when no won deal has a recorded value |
+
+Rules: responses carry UUIDs only; 120 requests/minute per key; reads need the plan's `api` feature (402 otherwise);
+sending a lead in never does, so no enquiry is lost over a plan. Revoked or expired keys get 401. Key creation and
+revocation are in the audit trail (prefix only).
+
+## Outbound webhooks
+
+A company admin adds a receiving address under **Integrations → Webhooks** (HTTPS, public host) and picks events:
+`lead.created`, `lead.updated` (stage change), `lead.qualified`, `lead.interested` (interest crossed into interested or
+above), `lead.assigned`, `visit.created`, `reservation.created`, `sale.created`, `lead.lost`.
+
+Each POST carries `{id, event, occurred_at, data}` with UUIDs only, and these headers:
+- `X-Mohtam-Event`
+- `X-Mohtam-Event-Id` — the idempotency key; a replay reuses it.
+- `X-Mohtam-Signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<raw body>">`, keyed with the subscription secret (shown once; rotatable).
+
+Verify the HMAC and reject a `t` older than five minutes. Failed deliveries are retried after 1 min, 5 min, 30 min, 2 h
+and 6 h. After 15 failed deliveries in a row the subscription pauses itself (audited as `webhook.paused`); resuming it
+closes the breaker. Every delivery is logged and a failed one can be resent. No redirects are followed.

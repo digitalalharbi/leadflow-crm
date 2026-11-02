@@ -60,7 +60,7 @@ class WhatsappAttribution
             'phone' => $from,
             'project_id' => $form->project_id,
             'platform' => 'whatsapp',
-            'source' => $link->utm_source ?? 'landing_page',
+            'source' => $click->utm_source ?? $link->utm_source ?? 'landing_page',
             'campaign_name' => $click->utm_campaign ?? $link->utm_campaign,
             'utm_source' => $click->utm_source ?? $link->utm_source,
             'utm_medium' => $click->utm_medium ?? $link->utm_medium,

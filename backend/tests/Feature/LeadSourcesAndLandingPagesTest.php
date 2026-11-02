@@ -234,6 +234,9 @@ class LeadSourcesAndLandingPagesTest extends TestCase
         $this->assertSame(['riwaq', 'snapchat'], $lead->tags);
         $this->assertSame('snapchat', $lead->utm_source);
         $this->assertSame('october', $lead->utm_campaign);
+        // Reports read these two: a campaign named only by the ad's address still counts as that campaign.
+        $this->assertSame('october', $lead->campaign_name);
+        $this->assertSame('snapchat', $lead->source);
         $this->assertSame('v_'.str_repeat('a', 20), $lead->visitor_id);
 
         $types = $this->asTenant($this->a['tenant'], fn () => TrackingEvent::pluck('event_type')->all());
@@ -326,6 +329,8 @@ class LeadSourcesAndLandingPagesTest extends TestCase
         $this->assertSame($this->project->id, $lead->project_id);
         $this->assertNotNull($lead->landing_form_id);
         $this->assertSame('tiktok', $lead->utm_source);
+        $this->assertSame('tiktok', $lead->source);
+        $this->assertSame('autumn', $lead->campaign_name);
     }
 
     public function test_a_stranger_without_a_real_reference_stays_a_stranger_and_track_mode_makes_no_lead(): void

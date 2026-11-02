@@ -200,8 +200,9 @@ class LandingSubmission
         $data = array_diff_key($lead, array_flip(['tracking', 'raw'])) + [
             // The platform is the ad's (Meta, TikTok…), not "a landing page": that is how the page was reached, not who sent the customer.
             'platform' => Attribution::platformOf($link->channel) ?? 'landing_page',
-            'source' => $tracking['source'] ?? $link->utm_source,
-            'campaign_name' => $tracking['campaign'] ?? $link->utm_campaign,
+            // A page's own address carries no campaign, so the ad's link is the only place that names one.
+            'source' => $tracking['source'] ?? $link->utm_source ?? ($utm['utm_source'] ?? null),
+            'campaign_name' => $tracking['campaign'] ?? $link->utm_campaign ?? ($utm['utm_campaign'] ?? null),
             'utm_source' => $link->utm_source ?? ($utm['utm_source'] ?? null),
             'utm_medium' => $link->utm_medium ?? ($utm['utm_medium'] ?? null),
             'utm_campaign' => $link->utm_campaign ?? ($utm['utm_campaign'] ?? null),

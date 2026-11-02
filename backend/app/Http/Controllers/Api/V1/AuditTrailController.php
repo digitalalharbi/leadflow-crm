@@ -14,6 +14,9 @@ class AuditTrailController extends Controller
 {
     public function __invoke(Request $request, AuditTrail $trail)
     {
+        // The trail is the whole company's: someone limited to some projects does not read it.
+        abort_if($request->user()->isProjectScoped(), 403, 'Your role does not include this.');
+
         abort_unless($request->user()->isAdmin() || $request->user()->isManager() || $request->user()->usesMatrix(), 403);
 
         $f = $request->validate([

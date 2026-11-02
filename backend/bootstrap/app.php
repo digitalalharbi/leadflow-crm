@@ -74,7 +74,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // The approval page posts with its own single-use token, from a phone with
         // no session; that token is the credential, so there is no CSRF to check.
-        $middleware->validateCsrfTokens(except: ['approve/*']);
+        // A mail client's one-click unsubscribe is the same: no session, and the signed token decides.
+        $middleware->validateCsrfTokens(except: ['approve/*', 'e/u/*']);
 
         // The tracking visitor id is an opaque random token a landing page may read back; encrypting
         // it would make it unreadable to the page and add nothing — it carries no information.

@@ -31,7 +31,10 @@ class ActionProposalController extends Controller
     {
         $this->authorize('export', Lead::class);
 
-        $proposals = ActionProposal::query()
+        // Campaigns carry the project scope, so someone limited to some projects sees proposals about those alone.
+        $limited = fn ($q) => $q->when($request->user()->isProjectScoped(), fn ($q) => $q->whereHas('campaign'));
+
+        $proposals = ActionProposal::query()->tap($limited)
             ->with(['campaign:id,uuid,name,platform', 'adSet:id,uuid,name', 'ad:id,uuid,name', 'proposer:id,name', 'decider:id,name', 'log'])
             ->when($request->input('status'), fn ($q, $s) => $q->whereIn('status', (array) $s))
             ->when($request->input('campaign_id'), fn ($q, $uuid) => $q->whereHas('campaign', fn ($c) => $c->where('uuid', $uuid)))
@@ -41,7 +44,7 @@ class ActionProposalController extends Controller
 
         return ApiResponse::success([
             'proposals' => $proposals->map(fn (ActionProposal $p) => $this->present($p))->all(),
-            'counts' => ActionProposal::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+            'counts' => ActionProposal::query()->tap($limited)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
         ]);
     }
 

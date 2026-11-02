@@ -146,7 +146,7 @@ manager text is plain text; tenant isolation is checked on every new endpoint.
 
 ## Project landing pages and lead sources
 
-A landing page is a `LandingForm` with `page` set, not a second system. Publishing gives it a global `slug` and a `default_link_id`, so `/l/<slug>` resolves to a tracking link and the visit, submission, beacons, sessions, analytics and destinations run on the path every link uses. Tokens resolve first; a page's old slugs stay reserved and keep opening it (`landing_slug_claims`).
+A landing page is a `LandingForm` with `page` set, not a second system. It holds a global `slug` from the moment it is created, draft or not (`landing_slug_claims` has every address a page ever held, and its unique index is what decides a race). Publishing gives it a `default_link_id`, so `/l/<slug>` resolves to a tracking link and the visit, submission, beacons, sessions, analytics and destinations run on the path every link uses. Tokens resolve first; a page's old slugs stay reserved and keep opening it. A page opened from outside runs from `src/landing/main.tsx`: its own entry, stylesheet and dictionary (`src/i18n/publicPage.*.ts`), and no app router, query client, API client or dashboard code. New words a public page shows go in those dictionary files.
 
 - **Config:** `LandingPageConfig`, a closed list, frozen in each published version.
 - **Lead:** `leads.landing_form_id` keeps the first page that brought it.

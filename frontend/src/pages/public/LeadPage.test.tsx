@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Route, Routes } from 'react-router-dom'
 import { renderWithProviders } from '@/test/utils'
 import { DEFAULT_DESIGN, DEFAULT_SETTINGS, type FormField, type PublicLanding } from '@/features/hub'
 import { LeadPage } from './LeadPage'
@@ -9,8 +8,7 @@ import { LeadPage } from './LeadPage'
 const submit = vi.fn()
 const landing = vi.fn()
 
-vi.mock('@/features/hub', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/hub')>()),
+vi.mock('@/features/publicLanding', () => ({
   fetchLanding: (...a: unknown[]) => landing(...a),
   submitLanding: (...a: unknown[]) => submit(...a),
 }))
@@ -44,7 +42,7 @@ const page = (over: Partial<PublicLanding['landing']> = {}): PublicLanding => ({
 })
 
 const done = { ok: true, duplicate: false, event_id: 'ev', thank_you: { title: null, message: null, actions: [], redirect_url: null, redirect_delay: 5 }, datalayer: { event_id: 'ev', source: 'meta' } }
-const open = () => renderWithProviders(<Routes><Route path="/l/:token" element={<LeadPage />} /></Routes>, { route: '/l/abc123?utm_source=facebook&fbclid=FB1' })
+const open = () => renderWithProviders(<LeadPage token="abc123" search="?utm_source=facebook&fbclid=FB1" />)
 
 beforeEach(() => {
   localStorage.clear()

@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Skeleton } from '@/components/ui'
 import { FormRenderer, type FormEvents, type RenderForm } from '@/components/forms/FormRenderer'
 import { LandingPageView } from '@/components/forms/page/LandingPageView'
 import { ThankYou } from '@/components/forms/ThankYou'
-import { fetchLanding, submitLanding, type LandingSubmitResult, type PageCtaKind, type PublicLanding } from '@/features/hub'
+import type { LandingSubmitResult, PageCtaKind, PublicLanding } from '@/features/hub'
+import { fetchLanding, submitLanding } from '@/features/publicLanding'
 import { designVars } from '@/lib/formDesign'
 import { loadTags, pushDataLayer, trackSubmit } from '@/lib/landingTags'
 import type { Answers } from '@/lib/formValidation'
@@ -49,19 +47,25 @@ function restore(token: string, version: number): { answers: Answers; step: numb
  * before this page was sent. The page's own tags (analytics, pixels) wait for the visitor's yes; the server's copies of the events follow the
  * consent rules on their own. The conversion is announced only once the server has kept the lead.
  */
-export function LeadPage() {
-  const { token = '' } = useParams()
+export function LeadPage({ token, search }: { token: string; search: string }) {
   const { t } = useTranslation()
-  const { search } = useLocation()
   const address = useMemo(() => fromAddress(search), [search])
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['landing', token],
-    queryFn: () => fetchLanding(token, { ...address.click_ids, ...address.utm, ...(address.mt_vid ? { mt_vid: address.mt_vid } : {}), ...(address.mt_sid ? { mt_sid: address.mt_sid } : {}) }),
-    retry: false,
-    staleTime: Infinity,
-  })
+  const [data, setData] = useState<PublicLanding | null>(null)
+  const [isError, setError] = useState(false)
+  const asked = useRef(false)
+  const isLoading = data === null && !isError
 
-  if (isLoading) return <Shell><Skeleton className="h-72" /></Shell>
+  // Asking for the page is what records the view, so it is asked for once, not again when an effect runs twice.
+  useEffect(() => {
+    if (asked.current) return
+    asked.current = true
+
+    fetchLanding(token, { ...address.click_ids, ...address.utm, ...(address.mt_vid ? { mt_vid: address.mt_vid } : {}), ...(address.mt_sid ? { mt_sid: address.mt_sid } : {}) })
+      .then(setData)
+      .catch(() => setError(true))
+  }, [token, address])
+
+  if (isLoading) return <Shell><div className="h-72 animate-pulse rounded-[var(--radius-control)] bg-[var(--color-border)]" aria-hidden /></Shell>
   if (isError || !data) return <Shell><p className="py-16 text-center text-[1.0625rem] text-[var(--color-ink-muted)]" data-testid="landing-unavailable">{t('hub.public.unavailable')}</p></Shell>
 
   // A campaign page lays itself out; a form on a tracking link keeps its one column.

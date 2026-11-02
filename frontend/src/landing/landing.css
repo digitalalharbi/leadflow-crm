@@ -1,0 +1,7 @@
+/* Only what a landing page draws: the shared foundation, and the classes found in the files below. */
+@import 'tailwindcss' source(none);
+@import '../styles/foundation.css';
+
+@source '../pages/public/LeadPage.tsx';
+@source '../components/forms/*.tsx';
+@source '../components/forms/page/*.tsx';

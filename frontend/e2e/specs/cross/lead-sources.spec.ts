@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { apiGet, apiLogin, apiPost, type ApiSession } from '../../fixtures/api'
-import { ALPHA } from '../../fixtures/data'
+import { ALPHA, BETA } from '../../fixtures/data'
 import { resetFixtures } from '../../fixtures/seed'
 import { signInAs } from '../../fixtures/pages'
 import { collectPageErrors, expectNoSidewaysScroll } from './helpers'
@@ -156,6 +156,40 @@ test.describe('Lead sources and landing pages', () => {
     const analytics = await apiGet<{ page: { leads: number; funnel: { key: string; n: number }[] } }>(admin, `/api/v1/tracking/forms/${page1.id}/analytics`)
     expect(analytics.page.leads).toBeGreaterThan(0)
     expect(analytics.page.funnel.find((s) => s.key === 'view')?.n).toBeGreaterThan(0)
+  })
+
+  test('a landing page downloads nothing of the product behind it, and still does its work', async ({ page }) => {
+    const asked: string[] = []
+    page.on('request', (r) => asked.push(new URL(r.url()).pathname))
+
+    await page.goto(`/l/${slug}`)
+    await expect(page.getByTestId('landing-headline')).toBeVisible()
+    await expect(page.getByTestId('page-form')).toBeVisible()
+
+    expect(asked.filter((p) => /appMain|\/lib\/api\.ts|\/api-[\w-]+\.js|react-router|tanstack|recharts|Dashboard|FormBuilder|Reports|Integrations|\/i18n\/(ar|en)\.ts/.test(p))).toEqual([])
+    expect(asked.some((p) => p.includes('/api/v1/public/landing/'))).toBe(true)
+  })
+
+  test('two companies asking for one address at the same moment: one has it, the other is told so, and nobody sees a server error', async ({}, testInfo) => {
+    const beta = await apiLogin(BETA.admin.email)
+    const created = await apiPost(beta, '/api/v1/projects', { name: `بيتا ${testInfo.project.name}` })
+    expect(created.ok(), await created.text()).toBeTruthy()
+    const betaProject = (await created.json()).data.id as string
+    const wanted = `race-${testInfo.project.name}-${Date.now().toString(36)}`
+    const body = { name: 'صفحة', slug: wanted, template: 'real_estate_interest', page: { template: 'minimal_lead' } }
+
+    const answers = await Promise.all([
+      apiPost(admin, '/api/v1/tracking/forms', { ...body, project_id: projectId }),
+      apiPost(beta, '/api/v1/tracking/forms', { ...body, project_id: betaProject }),
+    ])
+    const statuses = answers.map((a) => a.status()).sort()
+    expect(statuses).toEqual([201, 422])
+
+    const loser = answers.find((a) => a.status() === 422)!
+    const refusal = await loser.json()
+    expect(refusal.errors.slug[0]).toBe('taken')
+    expect(refusal.errors.slug_suggestion[0]).toBe(`${wanted}-2`)
+    await beta.dispose()
   })
 
   test('from the project: the sources list, and the path to a new page that a manager can publish', async ({ page }) => {

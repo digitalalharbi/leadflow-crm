@@ -125,7 +125,7 @@ export interface FormPresets {
 
 export const fetchForms = () => apiGet<{ forms: LandingForm[] }>('/tracking/forms').then((r) => r.forms)
 export const fetchFormPresets = () => apiGet<FormPresets>('/tracking/forms/presets')
-export const checkPageSlug = (slug: string, form?: string) => apiPost<{ slug: string; available: boolean; problem: string | null }>('/tracking/forms/slug', { slug, form })
+export const checkPageSlug = (slug: string, form?: string) => apiPost<{ slug: string; available: boolean; problem: string | null; suggestion: string | null }>('/tracking/forms/slug', { slug, form })
 export const addPageLink = (formId: string, body: { name: string; channel: string; kind?: 'link' | 'qr'; placement?: string; utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string }) =>
   apiPost<{ link: { id: string; token: string; name: string; channel: string; kind: string; path: string } }>(`/tracking/forms/${formId}/links`, body)
 export const createForm = (input: FormInput) => apiPost<{ form: LandingForm }>('/tracking/forms', input)
@@ -190,13 +190,6 @@ export interface PublicLanding {
   tracking: { visitor_id: string; session_id: string; view_event_id: string | null; ref?: string; datalayer: Record<string, string> }
 }
 
-export async function fetchLanding(token: string, query: Record<string, string>): Promise<PublicLanding> {
-  const { http } = await import('@/lib/api')
-  const response = await http.get<{ data: PublicLanding }>(`/public/landing/${token}`, { params: query })
-
-  return response.data.data
-}
-
 export interface LandingSubmitInput {
   submission_id: string
   answers: Record<string, unknown>
@@ -221,13 +214,6 @@ export interface LandingSubmitResult {
   thank_you: { title: string | null; message: string | null; actions: ThankAction[]; redirect_url: string | null; redirect_delay: number }
   /** Ids and campaign names only: never a customer's name, number or address. */
   datalayer: Record<string, string | number>
-}
-
-export async function submitLanding(token: string, input: LandingSubmitInput): Promise<LandingSubmitResult> {
-  const { http } = await import('@/lib/api')
-  const response = await http.post<{ data: LandingSubmitResult }>(`/public/landing/${token}/submit`, input)
-
-  return response.data.data
 }
 
 /* ------------------------------------------------------------------ link analytics */

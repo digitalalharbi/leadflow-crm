@@ -1,5 +1,6 @@
 import { formatDistanceToNowStrict, format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ar, enUS } from 'date-fns/locale'
+import { formatNumber } from './formatNumber'
 
 const locales = { ar, en: enUS }
 
@@ -103,11 +104,7 @@ export function formatCurrency(
   }).format(value)
 }
 
-export function formatNumber(value: number | null | undefined, lang = 'ar'): string {
-  if (value === null || value === undefined) return '—'
-
-  return new Intl.NumberFormat(lang.startsWith('ar') ? 'ar-SA-u-nu-latn' : 'en-US').format(value)
-}
+export { formatNumber }
 
 /** A budget range collapses to a single figure when both ends match. */
 export function formatBudgetRange(

@@ -1,5 +1,4 @@
 import { type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { MapPin, MessageCircle, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { FormDesign, LandingPageConfig, PageCtaKind } from '@/features/hub'
@@ -135,9 +134,9 @@ export function LandingPageView({ content, form, preview = false, onCta }: {
 
         {!preview && (
           <footer className={cn('text-center text-[0.8125rem] text-[var(--f-muted)] @4xl:col-span-full', floating && 'pb-20 lg:pb-0')} data-testid="page-legal">
-            <Link to="/privacy" className="underline-offset-2 hover:underline">{t('hub.page.privacy')}</Link>
+            <a href="/privacy" className="underline-offset-2 hover:underline">{t('hub.page.privacy')}</a>
             <span aria-hidden> · </span>
-            <Link to="/terms" className="underline-offset-2 hover:underline">{t('hub.page.terms')}</Link>
+            <a href="/terms" className="underline-offset-2 hover:underline">{t('hub.page.terms')}</a>
           </footer>
         )}
       </main>

@@ -26,11 +26,12 @@ export function PagePanel({ page, slug, formId, published, onPage, onSlug, onQr 
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
   const [problem, setProblem] = useState<string | null>(null)
+  const [suggestion, setSuggestion] = useState<string | null>(null)
   const [campaign, setCampaign] = useState({ platform: 'meta', campaign: '', group: '', ad: '', medium: 'paid_social' })
 
   useEffect(() => {
-    if (!slug) { setProblem(null); return }
-    const timer = window.setTimeout(() => { void checkPageSlug(slug, formId).then((r) => setProblem(r.problem)).catch(() => setProblem(null)) }, 400)
+    if (!slug) { setProblem(null); setSuggestion(null); return }
+    const timer = window.setTimeout(() => { void checkPageSlug(slug, formId).then((r) => { setProblem(r.problem); setSuggestion(r.suggestion) }).catch(() => { setProblem(null); setSuggestion(null) }) }, 400)
 
     return () => window.clearTimeout(timer)
   }, [slug, formId])
@@ -74,6 +75,7 @@ export function PagePanel({ page, slug, formId, published, onPage, onSlug, onQr 
         <h3 className="font-semibold">{t('hub.page.builder.address')}</h3>
         <Input label={t('hub.page.builder.slug')} dir="ltr" value={slug} maxLength={64} onChange={(e) => onSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} hint={problem ? t(`hub.page.builder.slugProblem.${problem}`) : address} data-testid="page-slug" />
         {problem && <p role="alert" className="t-caption text-[var(--color-danger)]" data-testid="page-slug-problem">{t(`hub.page.builder.slugProblem.${problem}`)}</p>}
+        {problem && suggestion && <button type="button" dir="ltr" className="t-caption text-[var(--brand)] underline" data-testid="page-slug-suggestion" onClick={() => onSlug(suggestion)}>{suggestion}</button>}
       </section>
 
       <section className="space-y-2">

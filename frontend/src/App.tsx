@@ -79,6 +79,9 @@ const ReadinessPage = lazy(() => import('@/pages/Readiness').then((m) => ({ defa
 const InvitationPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.InvitationPage })))
 const SetPasswordPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.SetPasswordPage })))
 const ForgotPasswordPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.ForgotPasswordPage })))
+const VerifyEmailPage = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.VerifyEmailPage })))
+const ResetPasswordRedirect = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.ResetPasswordRedirect })))
+const AcceptInviteRedirect = lazy(() => import('@/pages/AccountAccess').then((m) => ({ default: m.AcceptInviteRedirect })))
 const PlatformLoginPage = lazy(() => import('@/pages/PlatformLogin').then((m) => ({ default: m.PlatformLoginPage })))
 const PlatformPage = lazy(() => import('@/pages/Platform').then((m) => ({ default: m.PlatformPage })))
 
@@ -207,6 +210,9 @@ export function App() {
         <Route path="/i/:token" element={<Suspense fallback={<PageFallback />}><InvitationPage /></Suspense>} />
         <Route path="/set-password/:token" element={<Suspense fallback={<PageFallback />}><SetPasswordPage /></Suspense>} />
         <Route path="/forgot-password" element={<Suspense fallback={<PageFallback />}><ForgotPasswordPage /></Suspense>} />
+        <Route path="/verify-email" element={<Suspense fallback={<PageFallback />}><VerifyEmailPage /></Suspense>} />
+        <Route path="/reset-password" element={<Suspense fallback={<PageFallback />}><ResetPasswordRedirect /></Suspense>} />
+        <Route path="/accept-invite" element={<Suspense fallback={<PageFallback />}><AcceptInviteRedirect /></Suspense>} />
         {/* The platform owner's own door; a company's login never signs the owner in. */}
         <Route path="/platform/login" element={<Suspense fallback={<PageFallback />}><PlatformLoginPage /></Suspense>} />
         {/* Public, no session: what مهتم is, and the pages a visitor, a customer's lead or a platform reviewer expects to find. */}

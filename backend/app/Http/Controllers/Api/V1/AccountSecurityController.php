@@ -110,6 +110,21 @@ class AccountSecurityController extends Controller
         return ApiResponse::success(null, 'Signed out of that device.');
     }
 
+    /** Every other device, keeping this one. */
+    public function endOtherSessions(Request $request)
+    {
+        $user = $request->user();
+        $current = $user->currentAccessToken();
+
+        $ended = $user->tokens()->where('name', 'like', 'spa-%')
+            ->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))
+            ->delete();
+
+        $this->audit->log('auth.other_sessions_ended', $user, $user, ['ip' => $request->ip(), 'count' => $ended]);
+
+        return ApiResponse::success(['ended' => $ended], 'Signed out of your other devices.');
+    }
+
     /** The workspace rule: every member signs in with an authenticator app. Administrators only. */
     public function policy(Request $request)
     {

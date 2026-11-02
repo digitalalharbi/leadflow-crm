@@ -1416,7 +1416,7 @@ export default {
     disabled: 'Two-step verification turned off',
     requiredNotice: 'Your workspace requires two-step verification. Turn it on to continue.',
     requireForAll: 'Require two-step verification for every member of this workspace',
-    sessions: 'Signed-in devices', thisDevice: 'This device', endSession: 'Sign out of it', unknownDevice: 'Unknown device',
+    endOthers: 'Sign out of my other devices', sessions: 'Signed-in devices', thisDevice: 'This device', endSession: 'Sign out of it', unknownDevice: 'Unknown device',
   },
   webhooks: {
     title: 'Webhooks',
@@ -3686,6 +3686,7 @@ export default {
     recoveryCodes: 'Recovery codes — save them now; they will not be shown again. Each works once.',
   },
   account: {
+    verifyTitle: 'Confirm your email', verifyDone: 'Your email is confirmed. You can sign in.', verifyInvalid: 'This link has expired or is not valid. Sign in and ask for a new one from your profile.', inviteTitleGeneric: 'Your invitation', inviteNeedsLink: 'Open the link in your invitation email to accept it.', emailUnverified: 'This email is not confirmed yet.', sendVerification: 'Send a confirmation link', verificationSent: 'A confirmation link is on its way.',
     invited: 'Invitation sent.',
     inviteNote: 'They get an invitation link by email and choose their own password. Passwords are never sent by email.',
     allProjects: 'Sees every project',
@@ -3725,7 +3726,7 @@ export default {
   },
   titles: {
     dashboard: 'Dashboard', platform: 'Platform Administration', login: 'Sign In', platformLogin: 'Platform Sign In',
-    invitation: 'Invitation', setPassword: 'Set Password', forgotPassword: 'Forgot Password', report: 'Report', form: 'Form',
+    verifyEmail: 'Confirm your email', invitation: 'Invitation', setPassword: 'Set Password', forgotPassword: 'Forgot Password', report: 'Report', form: 'Form',
     poweredBy: 'Powered by Mohtam', notFound: 'Page not found',
   },
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { HOME } from '@/lib/routes'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +7,7 @@ import { apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
+import { Button } from '@/components/ui'
 
 interface Workspace {
   id: string
@@ -32,9 +34,20 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
     staleTime: 60_000,
   })
 
+  // The account in the other company may have its own second factor; being signed in here does not prove it.
+  const [needsCode, setNeedsCode] = useState<string | null>(null)
+  const [code, setCode] = useState('')
+
   const switchTo = useMutation({
-    mutationFn: (id: string) => apiPost<{ token: string }>(`/auth/workspaces/${id}/switch`),
-    onSuccess: async (result) => {
+    mutationFn: ({ id, code: entered }: { id: string; code?: string }) => apiPost<{ token?: string; mfa_required?: boolean }>(`/auth/workspaces/${id}/switch`, entered ? { code: entered } : undefined),
+    onSuccess: async (result, { id }) => {
+      if (!result.token) {
+        setNeedsCode(id)
+        setCode('')
+
+        return
+      }
+
       tokenStorage.set(result.token)
       onDone()
       await restore()
@@ -56,7 +69,7 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
             <button
               type="button"
               disabled={workspace.current || switchTo.isPending}
-              onClick={() => switchTo.mutate(workspace.id)}
+              onClick={() => { setNeedsCode(null); switchTo.mutate({ id: workspace.id }) }}
               data-testid={`workspace-${workspace.id}`}
               data-current={workspace.current}
               className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-control)] px-2 py-1.5 text-start text-[0.9375rem] hover:bg-[var(--color-surface-muted)] disabled:cursor-default"
@@ -70,6 +83,29 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
           </li>
         ))}
       </ul>
+      {needsCode && (
+        <form
+          className="mt-2 flex items-center gap-2"
+          data-testid="workspace-code-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            switchTo.mutate({ id: needsCode, code })
+          }}
+        >
+          <input
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            aria-label={t('auth.mfaCode')}
+            placeholder={t('auth.mfaCode')}
+            data-testid="workspace-code"
+            dir="ltr"
+            className="min-h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2 text-[0.9375rem]"
+          />
+          <Button type="submit" size="sm" loading={switchTo.isPending} disabled={code.trim() === ''}>{t('common.confirm')}</Button>
+        </form>
+      )}
     </div>
   )
 }

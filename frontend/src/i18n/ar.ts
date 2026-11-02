@@ -1574,7 +1574,7 @@ export default {
     disabled: 'أُوقف التحقق بخطوتين',
     requiredNotice: 'تشترط مساحة العمل التحقق بخطوتين. فعّله لتكمل استخدام النظام.',
     requireForAll: 'اشتراط التحقق بخطوتين على جميع أعضاء مساحة العمل',
-    sessions: 'الأجهزة المسجّلة', thisDevice: 'هذا الجهاز', endSession: 'تسجيل الخروج منه', unknownDevice: 'جهاز غير معروف',
+    endOthers: 'تسجيل الخروج من أجهزتي الأخرى', sessions: 'الأجهزة المسجّلة', thisDevice: 'هذا الجهاز', endSession: 'تسجيل الخروج منه', unknownDevice: 'جهاز غير معروف',
   },
   webhooks: {
     title: 'إشعارات الأنظمة الأخرى (Webhooks)',
@@ -4075,6 +4075,7 @@ export default {
     recoveryCodes: 'رموز الاسترداد — احفظها الآن، فلن تظهر مرة أخرى. كل رمز يعمل مرة واحدة.',
   },
   account: {
+    verifyTitle: 'تأكيد بريدك الإلكتروني', verifyDone: 'تم تأكيد بريدك. يمكنك تسجيل الدخول.', verifyInvalid: 'انتهت صلاحية هذا الرابط أو أنه غير صالح. سجّل الدخول واطلب رابطاً جديداً من ملفك الشخصي.', inviteTitleGeneric: 'دعوتك', inviteNeedsLink: 'افتح الرابط الموجود في رسالة الدعوة لقبولها.', emailUnverified: 'هذا البريد غير مؤكد بعد.', sendVerification: 'إرسال رابط التأكيد', verificationSent: 'رابط التأكيد في طريقه إليك.',
     invited: 'أُرسلت الدعوة.',
     inviteNote: 'سيصله رابط دعوة على بريده ليختار كلمة مروره بنفسه. لا تُرسل كلمات مرور بالبريد.',
     allProjects: 'يرى كل المشاريع',
@@ -4113,6 +4114,7 @@ export default {
     setupLinkSent: 'أُرسل رابط تعيين كلمة المرور.',
   },
   titles: {
+    verifyEmail: 'تأكيد البريد',
     dashboard: 'لوحة التحكم', platform: 'إدارة المنصة', login: 'تسجيل الدخول', platformLogin: 'دخول إدارة المنصة',
     invitation: 'دعوة للانضمام', setPassword: 'تعيين كلمة المرور', forgotPassword: 'استعادة كلمة المرور', report: 'تقرير', form: 'نموذج',
     poweredBy: 'مدعوم بواسطة مهتم', notFound: 'الصفحة غير موجودة',

@@ -4,6 +4,7 @@ use App\Support\RoutineClock;
 use Illuminate\Support\Facades\Schedule;
 
 // Keeps the "due today / overdue" counters and notifications accurate.
+Schedule::command('sanctum:prune-expired --hours=24')->daily()->withoutOverlapping();
 Schedule::command('leadflow:follow-up-reminders')->hourly()->withoutOverlapping()
     ->after(fn () => RoutineClock::stamp('follow_up_reminders'));
 

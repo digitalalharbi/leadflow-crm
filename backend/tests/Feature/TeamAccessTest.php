@@ -151,13 +151,14 @@ class TeamAccessTest extends TestCase
         $list = $this->withHeaders($this->bearer($tokenB))->getJson('/api/v1/auth/workspaces')->assertOk()->json('data.workspaces');
         $this->assertCount(2, $list);
 
-        $switched = $this->withHeaders($this->bearer($tokenB))->postJson("/api/v1/auth/workspaces/{$this->a['tenant']->uuid}/switch")->assertOk();
-        $this->assertSame('admin', $switched->json('data.user.role'));
-
         // A company this person does not belong to cannot be switched into, by any id.
         $c = $this->provisionTenant('Gamma Realty');
         $this->app['auth']->forgetGuards();
         $this->withHeaders($this->bearer($tokenB))->postJson("/api/v1/auth/workspaces/{$c['tenant']->uuid}/switch")->assertNotFound();
+
+        $this->app['auth']->forgetGuards();
+        $switched = $this->withHeaders($this->bearer($tokenB))->postJson("/api/v1/auth/workspaces/{$this->a['tenant']->uuid}/switch")->assertOk();
+        $this->assertSame('admin', $switched->json('data.user.role'));
 
         // And each company's data stays its own after the switch.
         $this->asTenant($this->b['tenant'], fn () => Lead::create(['full_name' => 'Beta Only', 'phone' => '0522222222', 'phone_normalized' => '+966522222222']));

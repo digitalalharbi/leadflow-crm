@@ -5,7 +5,7 @@ const ROUTE_TITLES: Record<string, string> = {
   companies: 'nav.companies', projects: 'nav.projects', automation: 'nav.automation', reports: 'nav.reports', 'report-library': 'nav.reportLibrary',
   'client-reports': 'nav.clientReports', audit: 'nav.audit', integrations: 'nav.integrations', users: 'nav.users', access: 'nav.access',
   settings: 'nav.settings', 'data-quality': 'nav.dataQuality', readiness: 'nav.readiness', platform: 'titles.platform',
-  login: 'titles.login', invite: 'titles.invitation', i: 'titles.invitation', 'set-password': 'titles.setPassword', 'forgot-password': 'titles.forgotPassword',
+  login: 'titles.login', invite: 'titles.invitation', i: 'titles.invitation', 'set-password': 'titles.setPassword', 'forgot-password': 'titles.forgotPassword', 'reset-password': 'titles.setPassword', 'verify-email': 'titles.verifyEmail', 'accept-invite': 'titles.invitation',
   r: 'titles.report', l: 'titles.form',
 }
 

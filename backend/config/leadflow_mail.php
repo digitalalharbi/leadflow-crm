@@ -9,7 +9,8 @@
  * for credentials; none is connected until somebody supplies them and switches the provider.
  */
 return [
-    'provider' => env('LEADFLOW_MAIL_PROVIDER', 'log'),   // log · smtp · ses · resend
+    // log · smtp · ses · resend. MAIL_MAILER counts when it names a provider, so the runbook's one setting switches both.
+    'provider' => env('LEADFLOW_MAIL_PROVIDER', in_array(env('MAIL_MAILER'), ['resend', 'ses'], true) ? env('MAIL_MAILER') : 'log'),
 
     'from' => [
         'address' => env('LEADFLOW_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'reports@example.test')),

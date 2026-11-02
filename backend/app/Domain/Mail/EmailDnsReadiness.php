@@ -23,7 +23,7 @@ class EmailDnsReadiness
     /** @return array{domain: string, spf: array, dkim: array, dmarc: array, mx: array, ready: bool} */
     public function check(?string $domain = null, ?string $selector = null): array
     {
-        $domain = strtolower(trim($domain ?? $this->domainOf((string) config('mail.from.address'))));
+        $domain = strtolower(trim($domain ?? $this->domainOf((string) config('leadflow_mail.from.address'))));
         $selector = $selector ?? (config('mail.dkim_selector') ?: null);
 
         $spf = $this->txt($domain, 'v=spf1');

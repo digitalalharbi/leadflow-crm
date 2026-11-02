@@ -185,6 +185,8 @@ class AppServiceProvider extends ServiceProvider
                 ->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
             Limit::perMinute(config('integrations.login.per_ip_per_minute'))
                 ->by($request->ip()),
+            ...(filled($request->input('email')) ? [Limit::perMinutes(15, config('integrations.login.per_account_per_quarter_hour'))
+                ->by('account:'.strtolower((string) $request->input('email')))] : []),
         ]);
 
         // The public API, per key (by its hash, so the limiter's store never holds a usable key), else per address.

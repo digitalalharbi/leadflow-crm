@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class UserController extends Controller
 {
@@ -152,7 +153,6 @@ class UserController extends Controller
             'role' => ['sometimes', Rule::in(Role::tenantRoles())],
             'access_role_id' => ['sometimes', 'nullable', 'uuid'],
             'is_active' => ['sometimes', 'boolean'],
-            'password' => ['sometimes', 'string', 'min:8'],
             // The projects a project-scoped role (project manager, client, broker) is limited to.
             'project_ids' => ['sometimes', 'array', 'max:200'],
             'all_projects' => ['sometimes', 'boolean'],
@@ -234,6 +234,12 @@ class UserController extends Controller
             $data['email'] = strtolower($data['email']);
         }
 
+        /*
+         * Companies are linked by a proven email, so a new address proves nothing until its inbox answers: otherwise anyone
+         * could type a stranger's address here and be offered that stranger's other companies.
+         */
+        $emailChanged = isset($data['email']) && $data['email'] !== $user->email;
+
         $projectIds = $data['project_ids'] ?? null;
         unset($data['project_ids']);
 
@@ -263,6 +269,13 @@ class UserController extends Controller
 
         $user->update($data);
 
+        if ($emailChanged) {
+            $current = $request->user()->currentAccessToken();
+            $user->forceFill(['email_verified_at' => null])->save();
+            $user->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))->delete();
+            $this->audit->log('user.email_changed', $request->user(), $user, ['ip' => $request->ip()]);
+        }
+
         if ($projectIds !== null) {
             $this->giveProjects($request, $user, $projectIds);
         }
@@ -287,7 +300,7 @@ class UserController extends Controller
         $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->where('is_active', true)->firstOrFail();
 
         [, $token] = PasswordLink::issue($user->email, $user->last_login_at === null ? 'setup' : 'reset', $request->ip());
-        app(AccountEmail::class)->passwordLink($user->email, $user->name, $user->last_login_at === null ? 'setup' : 'reset', $token, app(TenantContext::class)->get());
+        app(AccountEmail::class)->passwordLink($user->email, $user->name, $user->last_login_at === null ? 'setup' : 'reset', $token, app(TenantContext::class)->get(), $user->locale);
         $this->audit->log('user.password_link_sent', $request->user(), $user);
 
         return ApiResponse::success(null, 'Link sent.');

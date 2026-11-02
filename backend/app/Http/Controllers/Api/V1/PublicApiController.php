@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Tracking\ClickIds;
 use App\DataTransferObjects\IncomingLead;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -120,6 +121,7 @@ class PublicApiController extends Controller
             'utm_source' => $data['utm_source'] ?? null,
             'utm_medium' => $data['utm_medium'] ?? null,
             'utm_campaign' => $data['utm_campaign'] ?? null,
+            ...ClickIds::from($request->all()),
         ]);
 
         $result = $this->ingestion->ingest($this->context->get(), $incoming);

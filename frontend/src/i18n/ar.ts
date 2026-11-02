@@ -300,6 +300,7 @@ export default {
     reservationDone: { confirm: 'تم تأكيد الحجز', cancel: 'أُلغي الحجز وعادت الوحدة', convert: 'تم البيع وأُغلق العميل رابحًا' },
     empty: { requested: 'لا طلبات زيارة', upcoming: 'لا زيارات قادمة', needs_result: 'كل الزيارات لها نتيجة', no_show: 'لا أحد تغيّب', reservations: 'لا حجوزات مفتوحة' },
     confirm: 'تأكيد موعد', reschedule: 'تغيير الموعد', done: 'تمت الزيارة', recordResult: 'سجّل النتيجة', noShow: 'لم يحضر', cancel: 'إلغاء',
+    dealValue: 'قيمة الصفقة',
     reservationConfirm: 'تأكيد الحجز', reservationConvert: 'إتمام البيع',
     resultTitle: 'ماذا كانت نتيجة الزيارة؟',
     moved: 'تم التحديث.', resultSaved: 'سُجّلت النتيجة.',
@@ -1560,6 +1561,7 @@ export default {
   },
 
   tasks: {
+    dueNow: 'مهام مستحقة الآن',
     title: 'المهام', new: 'مهمة جديدة', due: 'الموعد', priority: 'الأولوية', add: 'إضافة', done: 'تمّت',
     overdue: 'متأخرة', unassigned: 'بلا مسؤول', empty: 'لا توجد مهام مفتوحة.',
     priorities: { urgent: 'عاجلة', high: 'مرتفعة', normal: 'عادية', low: 'منخفضة' },
@@ -3013,7 +3015,8 @@ export default {
     sources: {
       title: 'مصادر الاهتمام', hint: 'كل طريق يصل منه عميل إلى هذا المشروع، وكلها تنتهي في مسار واحد.', add: 'إضافة مصدر اهتمام', addHint: 'من أين يأتي الاهتمام؟',
       logo: 'شعار المشروع', logoSaved: 'حُفظ الشعار', emptyTitle: 'لا مصادر بعد', emptyBody: 'أضف صفحة هبوط أو اربط منصة إعلانية.',
-      types: { landing_page: 'صفحة هبوط', platform_form: 'منصة إعلانية', google_sheet: 'جدول Google', whatsapp: 'واتساب', call: 'الاتصال', api: 'واجهة API / Webhook', import: 'استيراد CSV / Excel' },
+      pause: 'إيقاف مؤقت', resume: 'استئناف', remove: 'إزالة', removeConfirm: 'إزالة هذا النموذج من المشروع؟ العملاء الذين وصلوا يبقون.',
+      types: { landing_page: 'صفحة هبوط', platform_form: 'منصة إعلانية', google_sheet: 'جدول Google', whatsapp: 'واتساب', call: 'الاتصال', api: 'واجهة API / Webhook', import: 'استيراد CSV' },
       providers: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google_ads: 'Google Ads', linkedin: 'LinkedIn' },
       status: { connected: 'متصل', awaiting_setup: 'بانتظار الإعداد', error: 'خطأ' },
       metrics: { leads: 'عملاء', qualified: 'مؤهلون', appointments: 'مواعيد', sales: 'مبيعات' },
@@ -3415,6 +3418,7 @@ export default {
     simulated: 'وصل عميل جديد من {{campaign}}',
   },
   imports: {
+    project: 'المشروع الذي يتبعه هؤلاء العملاء', noProject: 'بدون مشروع',
     title: 'استيراد عملاء',
     upload: 'رفع ملف',
     uploadHint: 'ملف CSV بحجم أقصى ١٠ ميجابايت',

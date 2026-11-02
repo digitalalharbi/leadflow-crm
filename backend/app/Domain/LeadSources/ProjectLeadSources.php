@@ -94,7 +94,7 @@ class ProjectLeadSources
         foreach (LeadFormMapping::query()->where('project_id', $project->id)->latest('id')->get() as $m) {
             $connected = Integration::where('provider', $m->provider)->where('is_active', true)->exists();
             $names[] = $this->line($m->uuid, 'platform_form', $m->form_name ?: $m->form_ref, ! $m->is_active ? self::AWAITING : ($connected ? self::CONNECTED : self::AWAITING),
-                $stats->where('provider', $m->provider)->where('form_id', $m->form_ref), ['provider' => $m->provider, 'tracking_health' => 'not_applicable']);
+                $stats->where('provider', $m->provider)->where('form_id', $m->form_ref), ['provider' => $m->provider, 'tracking_health' => 'not_applicable', 'is_active' => (bool) $m->is_active]);
         }
 
         return $names;
@@ -131,7 +131,7 @@ class ProjectLeadSources
 
         return [
             $this->line('api', 'api', 'API / Webhooks', $api->isNotEmpty() ? self::CONNECTED : self::AWAITING, $api),
-            $this->line('import', 'import', 'Import CSV / Excel', $imports->isNotEmpty() ? self::CONNECTED : self::AWAITING, $imports),
+            $this->line('import', 'import', 'Import CSV', $imports->isNotEmpty() ? self::CONNECTED : self::AWAITING, $imports),
         ];
     }
 

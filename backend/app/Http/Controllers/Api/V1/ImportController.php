@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessLeadImport;
 use App\Models\Import;
+use App\Models\Project;
 use App\Support\ApiResponse;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
@@ -103,6 +104,8 @@ class ImportController extends Controller
             'mapping' => ['required', 'array', 'min:1', 'max:200'],
             'mapping.*' => ['required', 'string', Rule::in($this->targetFields())],
             'defaults' => ['nullable', 'array', 'max:50'],
+            // Every row of the file belongs to this project.
+            'project_id' => ['nullable', 'uuid'],
         ]);
 
         $unknownDefaults = array_diff(array_keys($data['defaults'] ?? []), $this->targetFields());
@@ -111,6 +114,11 @@ class ImportController extends Controller
             throw ValidationException::withMessages([
                 'defaults' => ['Unknown default field: '.implode(', ', $unknownDefaults).'.'],
             ]);
+        }
+
+        if (! empty($data['project_id'])) {
+            // Under the tenant and project scopes: someone else's project simply is not found.
+            $data['defaults'] = ['project_id' => Project::where('uuid', $data['project_id'])->firstOrFail()->id] + ($data['defaults'] ?? []);
         }
 
         $import->update([

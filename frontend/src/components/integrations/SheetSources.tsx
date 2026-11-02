@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { fetchProjects } from '@/features/leads'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Columns3, Copy, RefreshCw, Sheet, Trash2, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -279,6 +281,10 @@ function ConnectSheet({
   const [spreadsheet, setSpreadsheet] = useState<{ id: string; name: string } | null>(null)
   const [tab, setTab] = useState('')
   const [mapping, setMapping] = useState<Record<string, string>>({})
+  // Opened from a project's sources, the sheet starts as that project's. A project column in the sheet still wins, row by row.
+  const [params] = useSearchParams()
+  const [project, setProject] = useState(params.get('project') ?? '')
+  const { data: projects } = useQuery({ queryKey: ['projects-list'], queryFn: fetchProjects })
 
   const choose = useMutation({
     mutationFn: async () => {
@@ -329,6 +335,7 @@ function ConnectSheet({
         sheet_name: tab,
         // Only what the person chose; the server works out the rest.
         mapping: Object.fromEntries(Object.entries(mapping).filter(([, value]) => value)),
+        ...(project ? { defaults: { project_id: project } } : {}),
       }),
     onSuccess: () => {
       toast(t('sheets.connected'), 'success')
@@ -382,6 +389,10 @@ function ConnectSheet({
             {tabs?.tabs.map((name) => <option key={name} value={name}>{name}</option>)}
           </Select>
         )}
+        <Select label={t('imports.project')} value={project} data-testid="sheet-project" onChange={(e) => setProject(e.target.value)}>
+          <option value="">{t('imports.noProject')}</option>
+          {projects?.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+        </Select>
 
         {preview && (
           <>

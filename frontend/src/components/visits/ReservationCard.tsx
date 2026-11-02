@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { BadgeCheck, Check, Handshake, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button, Input } from '@/components/ui'
 import { actOnReservation, type Reservation, type ReservationStatus } from '@/features/visits'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
@@ -19,9 +20,14 @@ export function ReservationCard({ reservation }: { reservation: Reservation }) {
   const toast = useUi((s) => s.toast)
   const translateError = useApiError()
 
+  // A sale counts by its figure: the unit's price to start from, the person's to confirm.
+  const [converting, setConverting] = useState(false)
+  const [value, setValue] = useState(reservation.property?.price != null ? String(reservation.property.price) : '')
+
   const act = useMutation({
-    mutationFn: (action: 'confirm' | 'cancel' | 'convert') => actOnReservation(reservation.id, action),
+    mutationFn: (action: 'confirm' | 'cancel' | 'convert') => actOnReservation(reservation.id, action, action === 'convert' ? { deal_value: Number(value) } : {}),
     onSuccess: (_, action) => {
+      setConverting(false)
       toast(t(`visits.reservationDone.${action}`), 'success')
       void queryClient.invalidateQueries({ queryKey: ['reservations'] })
       void queryClient.invalidateQueries({ queryKey: ['work-next'] })
@@ -50,10 +56,27 @@ export function ReservationCard({ reservation }: { reservation: Reservation }) {
 
       <div className="mt-2 flex flex-wrap gap-1.5">
         {has('confirm') && <Button size="sm" icon={<BadgeCheck className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate('confirm')} data-testid="reservation-confirm">{t('visits.reservationConfirm')}</Button>}
-        {has('convert') && <Button size="sm" variant="secondary" icon={<Handshake className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate('convert')} data-testid="reservation-convert">{t('visits.reservationConvert')}</Button>}
+        {has('convert') && <Button size="sm" variant="secondary" icon={<Handshake className="size-3.5" aria-hidden />} onClick={() => setConverting(true)} data-testid="reservation-convert">{t('visits.reservationConvert')}</Button>}
         {has('cancel') && <Button size="sm" variant="ghost" icon={<X className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate('cancel')} data-testid="reservation-cancel">{t('visits.cancel')}</Button>}
         {reservation.status === 'converted' && <span className="t-caption inline-flex items-center gap-1"><Check className="size-3.5" aria-hidden />{t('visits.reservationStatus.converted')}</span>}
       </div>
+
+      {converting && (
+        <form
+          className="mt-2 flex flex-wrap items-end gap-2"
+          data-testid="reservation-convert-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            act.mutate('convert')
+          }}
+        >
+          <div className="min-w-40 flex-1">
+            <Input label={t('visits.dealValue')} type="number" min={1} inputMode="decimal" dir="ltr" value={value} onChange={(event) => setValue(event.target.value)} data-testid="reservation-deal-value" />
+          </div>
+          <Button type="submit" size="sm" loading={act.isPending} disabled={!(Number(value) > 0)} data-testid="reservation-convert-confirm">{t('visits.reservationConvert')}</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setConverting(false)}>{t('common.cancel')}</Button>
+        </form>
+      )}
     </li>
   )
 }

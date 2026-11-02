@@ -36,6 +36,11 @@ export function Topbar() {
     refetchInterval: 60_000,
   })
 
+  const markRead = useMutation({
+    mutationFn: (id: string) => apiPost(`/notifications/${id}/read`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+
   const markAllRead = useMutation({
     mutationFn: () => apiPost('/notifications/read-all'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
@@ -150,6 +155,7 @@ export function Topbar() {
                       type="button"
                       onClick={() => {
                         setNotificationsOpen(false)
+                        if (!notification.read_at) markRead.mutate(notification.id)
                         if (notification.data.lead_id) navigate(`/leads/${notification.data.lead_id}`)
                         else if (notification.data.link) navigate(notification.data.link)
                       }}

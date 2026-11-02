@@ -243,6 +243,7 @@ export default {
     reservationDone: { confirm: 'Reservation confirmed', cancel: 'Reservation cancelled, unit released', convert: 'Sold — the lead is won' },
     empty: { requested: 'No visit requests', upcoming: 'No upcoming visits', needs_result: 'Every visit has a result', no_show: 'Nobody missed a visit', reservations: 'No open reservations' },
     confirm: 'Confirm a time', reschedule: 'Reschedule', done: 'Visit done', recordResult: 'Record the result', noShow: 'No show', cancel: 'Cancel',
+    dealValue: 'Sale value',
     reservationConfirm: 'Confirm reservation', reservationConvert: 'Complete sale',
     resultTitle: 'How did the visit go?',
     moved: 'Updated.', resultSaved: 'Result recorded.',
@@ -1402,6 +1403,7 @@ export default {
   },
 
   tasks: {
+    dueNow: 'Tasks due now',
     title: 'Tasks', new: 'New task', due: 'Due', priority: 'Priority', add: 'Add', done: 'Done',
     overdue: 'Overdue', unassigned: 'Unassigned', empty: 'No open tasks.',
     priorities: { urgent: 'Urgent', high: 'High', normal: 'Normal', low: 'Low' },
@@ -2751,7 +2753,8 @@ export default {
     sources: {
       title: 'Lead Sources', hint: 'Every way a lead reaches this project. They all end in one pipeline.', add: 'Add lead source', addHint: 'Where does the interest come from?',
       logo: 'Project logo', logoSaved: 'Logo saved', emptyTitle: 'No sources yet', emptyBody: 'Add a landing page or connect an advertising platform.',
-      types: { landing_page: 'Landing page', platform_form: 'Advertising platform', google_sheet: 'Google Sheet', whatsapp: 'WhatsApp', call: 'Call', api: 'API / Webhook', import: 'Import CSV / Excel' },
+      pause: 'Pause', resume: 'Resume', remove: 'Remove', removeConfirm: 'Remove this form from the project? Leads already received stay.',
+      types: { landing_page: 'Landing page', platform_form: 'Advertising platform', google_sheet: 'Google Sheet', whatsapp: 'WhatsApp', call: 'Call', api: 'API / Webhook', import: 'Import CSV' },
       providers: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google_ads: 'Google Ads', linkedin: 'LinkedIn' },
       status: { connected: 'Connected', awaiting_setup: 'Awaiting setup', error: 'Error' },
       metrics: { leads: 'Leads', qualified: 'Qualified', appointments: 'Appointments', sales: 'Sales' },
@@ -3105,6 +3108,7 @@ export default {
     simulated: 'A lead just arrived from {{campaign}}',
   },
   imports: {
+    project: 'The project these leads belong to', noProject: 'No project',
     title: 'Import leads', upload: 'Upload file', uploadHint: 'CSV file, up to 10 MB',
     preview: 'Preview', mapping: 'Map columns',
     mappingHint: 'Choose what each column maps to. Unmapped columns are ignored.',

@@ -1,3 +1,5 @@
+import { publicPageAr } from './publicPage.ar'
+
 export default {
   common: {
     others: 'أخرى',
@@ -875,6 +877,9 @@ export default {
       'lead.score_changed': 'عند تغيّر التقييم',
       'lead.appointment_created': 'عند حجز موعد',
       'lead.reservation_created': 'عند حجز وحدة',
+      'lead.form_submitted': 'عند إرسال نموذج',
+      'lead.whatsapp_click': 'عند ضغط واتساب',
+      'lead.call_click': 'عند ضغط الاتصال',
       'lead.call_completed': 'بعد انتهاء مكالمة',
       'lead.re_engaged': 'عند عودة عميل معروف',
       'lead.sla_breached': 'عند تجاوز مهلة أول تواصل',
@@ -935,6 +940,8 @@ export default {
       was_contacted: 'تم التواصل معه',
       has_replied: 'سبق أن ردّ',
       tags: 'الوسوم',
+      landing_page: 'صفحة الهبوط',
+      lead_source: 'مصدر الاهتمام',
     },
     operator_: {
       equals: 'يساوي',
@@ -2948,7 +2955,7 @@ export default {
       liveVersion: 'منشور · الإصدار {{n}}', version: 'الإصدار {{n}}', live: 'منشور', moveUp: 'تحريك للأعلى', moveDown: 'تحريك للأسفل', duplicate: 'تكرار', duplicateForm: 'نسخ',
       settings: 'الإعدادات', settingsOf: 'إعدادات: {{name}}', rowSettings: 'الصف', sectionSettings: 'القسم', sectionTitle: 'عنوان القسم', stepTitle: 'عنوان الخطوة',
       panes: { build: 'البناء', preview: 'المعاينة', analytics: 'النتائج' },
-      tabs: { basics: 'الأساسيات', design: 'التصميم', thanks: 'بعد الإرسال', tracking: 'التتبّع', intent: 'الاهتمام' },
+      tabs: { page: 'الصفحة', basics: 'الأساسيات', design: 'التصميم', thanks: 'بعد الإرسال', tracking: 'التتبّع', intent: 'الاهتمام' },
       library: { title: 'الحقول', basic: 'أساسية', choice: 'اختيارات', display: 'نصوص وتنسيق', advanced: 'متقدمة', realEstate: 'عقارية' },
       canvas: {
         title: 'النموذج', step: 'الخطوة {{n}}', section: 'القسم {{n}}', untitled: 'بلا عنوان', row: 'الصف {{n}}', columns: '{{n}} أعمدة', dropHere: 'أفلت حقلًا هنا', dropRow: 'أفلت لصف جديد',
@@ -3003,22 +3010,41 @@ export default {
         unknownField: 'قبل أي حقل', versions: 'الإصدارات', seconds: '{{n}} ث', minutes: '{{n}} د',
       },
     },
-    public: {
-      unavailable: 'هذه الصفحة غير متاحة.',
-      thanksTitle: 'شكرًا لك', thanksBody: 'وصلتنا بياناتك وسنتواصل معك قريبًا.',
-      step: 'الخطوة {{current}} من {{total}}',
-      consent: 'أوافق على التواصل معي بخصوص هذا المشروع وعلى معالجة بياناتي.',
-      privacy: 'سياسة الخصوصية', consentRequired: 'يرجى الموافقة للمتابعة.',
-      failed: 'تعذّر إرسال بياناتك. تأكد منها وحاول مرة أخرى.',
-      back: 'رجوع', next: 'التالي', submit: 'إرسال', choose: 'اختر',
-      country: 'الدولة', removeRow: 'حذف', addRow: 'إضافة صف', priceFrom: 'ابتداءً من {{price}} ريال', redirecting: 'سننقلك بعد {{n}} ثانية.',
-      problem: {
-        required: 'هذا الحقل مطلوب.', phone: 'أدخل رقم جوال صحيحًا.', email: 'أدخل بريدًا إلكترونيًا صحيحًا.', number: 'أدخل رقمًا.', invalid: 'تحقق من هذا الحقل.',
-        invalid_phone: 'أدخل رقم جوال صحيحًا.', invalid_email: 'أدخل بريدًا إلكترونيًا صحيحًا.', invalid_number: 'أدخل رقمًا.', out_of_range: 'هذا الرقم خارج المدى المسموح.',
-        too_long: 'هذا النص أطول من المسموح.', too_short: 'هذا النص أقصر من المطلوب.', invalid_pattern: 'الصيغة غير مطابقة للمطلوب.', invalid_time: 'أدخل وقتًا صحيحًا.', invalid_date: 'أدخل تاريخًا صحيحًا.',
-        invalid_option: 'اختر أحد الخيارات.', matrix_incomplete: 'يرجى الإجابة عن كل صف.', invalid_matrix: 'تحقق من إجاباتك.', too_few_rows: 'أضف صفوفًا أكثر.', too_many_rows: 'عدد الصفوف كبير جدًا.', invalid_repeater: 'تحقق من هذه الصفوف.',
-      },
+    sources: {
+      title: 'مصادر الاهتمام', hint: 'كل طريق يصل منه عميل إلى هذا المشروع، وكلها تنتهي في مسار واحد.', add: 'إضافة مصدر اهتمام', addHint: 'من أين يأتي الاهتمام؟',
+      logo: 'شعار المشروع', logoSaved: 'حُفظ الشعار', emptyTitle: 'لا مصادر بعد', emptyBody: 'أضف صفحة هبوط أو اربط منصة إعلانية.',
+      types: { landing_page: 'صفحة هبوط', platform_form: 'منصة إعلانية', google_sheet: 'جدول Google', whatsapp: 'واتساب', call: 'الاتصال', api: 'واجهة API / Webhook', import: 'استيراد CSV / Excel' },
+      providers: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google_ads: 'Google Ads', linkedin: 'LinkedIn' },
+      status: { connected: 'متصل', awaiting_setup: 'بانتظار الإعداد', error: 'خطأ' },
+      metrics: { leads: 'عملاء', qualified: 'مؤهلون', appointments: 'مواعيد', sales: 'مبيعات' },
+      conversion: 'تحويل {{rate}}%', last: 'آخر عميل {{when}}', noneYet: 'لم يصل عميل بعد', clicks: '{{n}} نقرة',
+      health: { receiving: 'التتبع يعمل', quiet: 'لا زيارات هذا الأسبوع' },
+      compare: 'مقارنة الصفحات', compareHint: 'آخر {{days}} يومًا',
+      columns: { page: 'الصفحة', views: 'الزيارات', leads: 'العملاء', rate: 'التحويل', qualified: 'مؤهلون', appointments: 'مواعيد', sales: 'مبيعات' },
+      newPage: 'صفحة هبوط جديدة', createPage: 'إنشاء الصفحة', platform: 'المنصة', formId: 'معرّف النموذج في المنصة', mapFields: 'ربط الحقول', platformField: 'اسم الحقل في المنصة', mohtamField: 'الحقل في مهتم', addField: 'إضافة حقل', activate: 'تفعيل', platformSaved: 'رُبط النموذج بالمشروع', platformHint: 'من هذه اللحظة يدخل عملاء هذا النموذج إلى المشروع مباشرة.',
+      targets: { full_name: 'الاسم', phone: 'الجوال', email: 'البريد', city: 'المدينة', budget_max: 'الميزانية', purchase_purpose: 'الغرض من الشراء', payment_method: 'طريقة الدفع', preferred_property_type: 'نوع الوحدة', preferred_location: 'الموقع المفضل', purchase_timeline: 'موعد الشراء' },
     },
+    page: {
+      templates: { real_estate_lead: 'عقاري مختصر', project_showcase: 'عرض المشروع', minimal_lead: 'بسيط' },
+      templateHint: { real_estate_lead: 'صورة وحقائق المشروع والنموذج في الشاشة الأولى.', project_showcase: 'مثل المختصر مع نقاط بيع أكثر أسفل الشاشة الأولى.', minimal_lead: 'الشعار والعنوان والنموذج فقط.' },
+      builder: {
+        address: 'عنوان الصفحة', slug: 'الرابط', slugProblem: { invalid: 'أحرف إنجليزية صغيرة وأرقام وشرطات فقط.', reserved: 'هذا الاسم محجوز.', taken: 'هذا الرابط مستخدم.' },
+        template: 'القالب', developer: 'اسم المطور (اختياري)', developerLogo: 'شعار المطور (اختياري)', facts: 'حقائق المشروع', show: 'إظهار', ctas: 'طرق التواصل', number: 'الرقم', message: 'نص الرسالة', messageHint: 'يُضاف إليها رمز مرجعي تلقائيًا لربط المحادثة بالمصدر.',
+        whatsappMode: 'عند ضغط واتساب', modes: { inbound: 'سجّل النقرة وأنشئ عميلًا عند أول رسالة', track: 'سجّل النقرة فقط' }, floating: 'زر عائم', primary: 'الإجراء الأساسي',
+        behaviour: 'السلوك', autoSteps: 'حوّل النموذج الطويل إلى خطوات تلقائيًا', tags: 'وسوم تُضاف للعميل', tagsHint: 'حتى خمسة، مفصولة بفاصلة.',
+        seo: 'محركات البحث والمشاركة', seoTitle: 'العنوان', seoDescription: 'الوصف', index: 'السماح بفهرسة الصفحة',
+        mirror: 'نسخة في Google Sheets', mirrorHint: 'مهتم يبقى مصدر الحقيقة. تعطل Google لا يمنع إنشاء العميل.', mirrorOn: 'انسخ كل عميل جديد إلى جدول', spreadsheet: 'معرّف الجدول',
+        campaignLink: 'إنشاء رابط حملة', platform: 'المنصة', campaign: 'الحملة', adGroup: 'المجموعة الإعلانية (اختياري)', ad: 'الإعلان (اختياري)', medium: 'الوسيط', copy: 'نسخ', copied: 'نُسخ', qr: 'إنشاء QR', qrName: 'رمز QR',
+        pause: 'إيقاف مؤقت', resume: 'استئناف', archive: 'أرشفة', archiveConfirm: 'أرشفة الصفحة؟ سيتوقف رابطها وتبقى بياناتها.', duplicate: 'نسخ',
+      },
+      analytics: {
+        unique_visitors: 'زوار فريدون', whatsapp_clicks: 'نقرات واتساب', call_clicks: 'نقرات الاتصال', leads: 'عملاء', sales: 'مبيعات', revenue_minor: 'الإيراد',
+        funnel: { view: 'زيارة', form_start: 'بدء النموذج', lead: 'عميل', qualified: 'مؤهل', appointment: 'موعد', visit: 'زيارة موقع', reservation: 'حجز', sale: 'بيع' },
+        cost: { cpl: 'تكلفة العميل', cpql: 'تكلفة المؤهل', per_appointment: 'تكلفة الموعد', per_reservation: 'تكلفة الحجز', cpa: 'تكلفة البيع', roas: 'العائد' },
+      },
+      ...publicPageAr.page,
+    },
+    public: publicPageAr.public,
     wizard: {
       title: 'رابط تتبّع جديد', madeTitle: 'رابطك جاهز', madeBody: 'تم إنشاؤه وهو يعمل الآن. استخدمه في أي مكان.',
       done: 'تم', back: 'رجوع', next: 'التالي', create: 'إنشاء الرابط', copy: 'نسخ الرابط', qr: 'رمز QR', preview: 'معاينة الصفحة', test: 'جرّب الرابط', analytics: 'فتح التحليلات',
@@ -3087,6 +3113,9 @@ export default {
     },
     readiness: { ready: 'جاهزة', browser_only: 'في الصفحة فقط', awaiting_credentials: 'بانتظار بيانات الاعتماد', not_configured: 'غير مضبوطة', disabled: 'متوقفة' },
     destinations: {
+      eventMap: 'ما يقابل كل حدث في المنصة', eventMapHint: 'الافتراضي: الإرسال عميل، والبيع شراء. غيّره فقط إن كانت حملتك تحتاج ذلك.', eventMapDefault: 'الافتراضي',
+      eventMapWarning: 'اعتبار إرسال النموذج «شراء» يجعل المنصة تتعلم من إشارة تختلف عن البيع الحقيقي.',
+      eventNames: { form_submitted: 'إرسال نموذج', qualified: 'عميل مؤهل', appointment_booked: 'موعد', reservation_created: 'حجز', won: 'بيع' },
       intro: 'منصات التحليل والإعلان التي تسمع ما تجلبه روابطك. لا يُرسل شيء حتى تشغّل إحداها.', new: 'وجهة جديدة', edit: 'الوجهة',
       emptyTitle: 'لا توجد وجهات بعد', emptyBody: 'اربط منصة تحليل أو إعلان ليعود التحويل إلى حيث اشتريت الإعلان.',
       browser: 'في الصفحة', server: 'من الخادم', kind: 'المنصة', name: 'الاسم',

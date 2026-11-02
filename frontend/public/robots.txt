@@ -19,6 +19,6 @@ Disallow: /s/
 Disallow: /f/
 Disallow: /t/
 Disallow: /i/
-Disallow: /l/
+# /l/ pages say for themselves whether a search engine may index them (noindex unless their manager opens them).
 
 Sitemap: https://mohtam.pro/sitemap.xml

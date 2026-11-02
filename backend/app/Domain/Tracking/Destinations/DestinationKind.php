@@ -29,7 +29,16 @@ enum DestinationKind: string
     case Webhook = 'webhook';
 
     /** The events a destination may be told about, in the names a marketer uses everywhere. */
-    public const EVENTS = ['form_submitted', 'lead_created', 'qualified', 'interested', 'appointment_requested', 'appointment_booked', 'visit_completed', 'reservation_created', 'won', 'lost', 'revenue_recorded'];
+    public const EVENTS = ['landing_viewed', 'whatsapp_started', 'call_started', 'form_submitted', 'lead_created', 'qualified', 'interested', 'appointment_requested', 'appointment_booked', 'visit_completed', 'reservation_created', 'won', 'lost', 'revenue_recorded'];
+
+    /**
+     * Mohtam's event → the platform's, when a destination says so. A form submit is a Lead by default; a sale is the Purchase.
+     * Anything else is the workspace's choice, and the screen warns when it would teach a platform that a form is a sale.
+     */
+    public const PLATFORM_EVENTS = ['Lead', 'CompleteRegistration', 'SubmitForm', 'Contact', 'Schedule', 'InitiateCheckout', 'AddPaymentInfo', 'Purchase', 'generate_lead', 'qualify_lead', 'purchase'];
+
+    /** What a destination may rename: events the server witnessed. A visit or a tap is reported by the browser, by anybody. */
+    public const MAPPABLE_EVENTS = ['form_submitted', 'lead_created', 'qualified', 'interested', 'appointment_requested', 'appointment_booked', 'visit_completed', 'reservation_created', 'won', 'lost', 'revenue_recorded'];
 
     /** What is sent unless the workspace chooses otherwise. */
     public const DEFAULT_EVENTS = ['form_submitted', 'lead_created', 'qualified', 'interested', 'appointment_booked', 'reservation_created', 'won', 'revenue_recorded'];

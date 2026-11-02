@@ -7,6 +7,7 @@ use App\Models\LandingFormVersion;
 use App\Models\Tenant;
 use App\Models\TrackingLink;
 use App\Support\TenantContext;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Which landing page a public token opens — or nothing at all.
@@ -23,7 +24,10 @@ class LandingPages
     /** @return array{link:TrackingLink, form:LandingForm, version:LandingFormVersion, tenant:Tenant}|null */
     public function resolve(string $token): ?array
     {
-        $link = $this->context->withoutScope(fn () => TrackingLink::withoutGlobalScopes()->where('token', $token)->first());
+        // A token first: those addresses are already printed on ads and QR codes. A page's own address second.
+        $link = $this->context->withoutScope(fn () => TrackingLink::withoutGlobalScopes()->where('token', $token)->first()
+            ?? TrackingLink::withoutGlobalScopes()->whereKey(LandingForm::withoutGlobalScopes()->where('slug', $token)->value('default_link_id')
+                ?? LandingForm::withoutGlobalScopes()->whereKey(DB::table('landing_slug_claims')->where('slug', $token)->value('landing_form_id'))->value('default_link_id'))->first());
 
         if ($link === null || ! $link->isLive() || $link->mode !== 'landing' || $link->landing_form_id === null) {
             return null;

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 // Read as text, not through the CSS pipeline: the contract is about what is
 // written in the file. The runner starts in the package root.
-const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf-8')
+const css = ['src/styles/foundation.css', 'src/index.css'].map((f) => readFileSync(resolve(process.cwd(), f), 'utf-8')).join('\n')
 const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf-8')
 
 /**
@@ -24,7 +24,7 @@ describe('typography system', () => {
   })
 
   it('ships the face it names, self-hosted, in the five weights the interface uses', () => {
-    const main = readFileSync(resolve(process.cwd(), 'src/main.tsx'), 'utf-8')
+    const main = readFileSync(resolve(process.cwd(), 'src/fonts.ts'), 'utf-8')
 
     for (const weight of [300, 400, 500, 600, 700]) {
       expect(main).toMatch(new RegExp(`@fontsource/ibm-plex-sans-arabic/${weight}\\.css`))

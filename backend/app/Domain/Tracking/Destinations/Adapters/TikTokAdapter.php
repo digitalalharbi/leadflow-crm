@@ -18,6 +18,8 @@ class TikTokAdapter extends AbstractAdapter
 
     public function send(TrackingDestination $destination, array $payload): array
     {
+        $eventName = ((array) $destination->event_map)[$payload['event']] ?? 'SubmitForm';
+
         $ids = (array) ($payload['click_ids'] ?? []);
         $identifiers = (array) ($payload['identifiers'] ?? []);
         $pixel = $this->config($destination, 'pixel_id');
@@ -26,7 +28,7 @@ class TikTokAdapter extends AbstractAdapter
             'event_source' => 'web',
             'event_source_id' => $pixel,
             'data' => [array_filter([
-                'event' => 'SubmitForm',
+                'event' => $eventName,
                 'event_time' => strtotime($payload['occurred_at']),
                 'event_id' => $payload['event_id'],
                 'user' => array_filter(['email' => $identifiers['em'] ?? null, 'phone' => $identifiers['ph'] ?? null, 'ttclid' => $ids['ttclid'] ?? null]) ?: null,
@@ -35,6 +37,6 @@ class TikTokAdapter extends AbstractAdapter
             ])],
         ];
 
-        return $this->post('https://business-api.tiktok.com/open_api/v1.3/event/track/', $body, ['Access-Token' => $this->credential($destination, 'access_token')], ['event' => 'SubmitForm', 'event_id' => $payload['event_id']]);
+        return $this->post('https://business-api.tiktok.com/open_api/v1.3/event/track/', $body, ['Access-Token' => $this->credential($destination, 'access_token')], ['event' => $eventName, 'event_id' => $payload['event_id']]);
     }
 }

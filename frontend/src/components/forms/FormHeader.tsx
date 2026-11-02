@@ -2,7 +2,7 @@ import { CheckCircle2, MapPin, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { FormDesign } from '@/features/hub'
 import { cn } from '@/lib/cn'
-import { formatNumber } from '@/lib/format'
+import { formatNumber } from '@/lib/formatNumber'
 
 export interface HeaderContent {
   headline: string | null

@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { HOME, INDEXABLE_PATHS } from '@/lib/routes'
 import { useTitleStore, useTitleWriter } from '@/lib/brand'
 import { routeTitleKey } from '@/lib/routeTitle'
@@ -55,6 +55,14 @@ const AgentsPage = lazy(() => import('@/pages/Agents').then((m) => ({ default: m
 const CreativesPage = lazy(() => import('@/pages/Creatives').then((m) => ({ default: m.CreativesPage })))
 const CampaignsPage = lazy(() => import('@/pages/Campaigns').then((m) => ({ default: m.CampaignsPage })))
 const LeadPage = lazy(() => import('@/pages/public/LeadPage').then((m) => ({ default: m.LeadPage })))
+
+/** A landing page reached from inside the app; opened from outside, `landing/main.tsx` renders it without the app. */
+function PublicLeadPage() {
+  const { token = '' } = useParams()
+  const { search } = useLocation()
+
+  return <LeadPage key={token} token={token} search={search} />
+}
 const SharedReportPage = lazy(() => import('@/pages/SharedReport').then((m) => ({ default: m.SharedReportPage })))
 const AuditPage = lazy(() => import('@/pages/Audit').then((m) => ({ default: m.AuditPage })))
 const PartnersPage = lazy(() => import('@/pages/Partners').then((m) => ({ default: m.PartnersPage })))
@@ -216,7 +224,7 @@ export function App() {
         <Route path="/contact" element={<Suspense fallback={<PageFallback />}><ContactPage /></Suspense>} />
         <Route path="/about" element={<Suspense fallback={<PageFallback />}><AboutPage /></Suspense>} />
         {/* The page a tracking link opens: the project, and the form that turns interest into a lead. No session, no chrome. */}
-        <Route path="/l/:token" element={<Suspense fallback={<PageFallback />}><LeadPage /></Suspense>} />
+        <Route path="/l/:token" element={<Suspense fallback={<PageFallback />}><PublicLeadPage /></Suspense>} />
         {/* A live report behind a link: no session, no app chrome. */}
         <Route path="/reports/share/:token" element={<Suspense fallback={<PageFallback />}><SharedReportPage /></Suspense>} />
         {/* The canonical short forms a client receives: /r for a report, /i for an invitation. The long ones keep working. */}

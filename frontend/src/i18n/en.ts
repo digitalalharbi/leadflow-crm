@@ -1,3 +1,5 @@
+import { publicPageEn } from './publicPage.en'
+
 export default {
   common: {
     others: 'Others',
@@ -776,6 +778,9 @@ export default {
       'lead.score_changed': 'Score changed',
       'lead.appointment_created': 'Appointment booked',
       'lead.reservation_created': 'Unit reserved',
+      'lead.form_submitted': 'When a form is submitted',
+      'lead.whatsapp_click': 'When WhatsApp is tapped',
+      'lead.call_click': 'When call is tapped',
       'lead.call_completed': 'Call completed',
       'lead.re_engaged': 'Known lead came back',
       'lead.sla_breached': 'First-contact SLA breached',
@@ -836,6 +841,8 @@ export default {
       was_contacted: 'Has been contacted',
       has_replied: 'Has replied',
       tags: 'Tags',
+      landing_page: 'Landing page',
+      lead_source: 'Lead source',
     },
     operator_: {
       equals: 'is',
@@ -2686,7 +2693,7 @@ export default {
       liveVersion: 'Live · version {{n}}', version: 'Version {{n}}', live: 'live', moveUp: 'Move up', moveDown: 'Move down', duplicate: 'Duplicate', duplicateForm: 'Copy',
       settings: 'Settings', settingsOf: 'Settings: {{name}}', rowSettings: 'Row', sectionSettings: 'Section', sectionTitle: 'Section title', stepTitle: 'Step title',
       panes: { build: 'Build', preview: 'Preview', analytics: 'Results' },
-      tabs: { basics: 'Basics', design: 'Design', thanks: 'After sending', tracking: 'Tracking', intent: 'Intent' },
+      tabs: { page: 'Page', basics: 'Basics', design: 'Design', thanks: 'After sending', tracking: 'Tracking', intent: 'Intent' },
       library: { title: 'Fields', basic: 'Basic', choice: 'Choices', display: 'Text and layout', advanced: 'Advanced', realEstate: 'Real estate' },
       canvas: {
         title: 'The form', step: 'Step {{n}}', section: 'Section {{n}}', untitled: 'Untitled', row: 'Row {{n}}', columns: '{{n}} columns', dropHere: 'Drop a field here', dropRow: 'Drop for a new row',
@@ -2741,22 +2748,41 @@ export default {
         unknownField: 'Before any field', versions: 'Versions', seconds: '{{n}} s', minutes: '{{n}} min',
       },
     },
-    public: {
-      unavailable: 'This page is not available.',
-      thanksTitle: 'Thank you', thanksBody: 'We received your details and will be in touch shortly.',
-      step: 'Step {{current}} of {{total}}',
-      consent: 'I agree to be contacted about this project and to the processing of my details.',
-      privacy: 'Privacy policy', consentRequired: 'Please agree to continue.',
-      failed: 'We could not send your details. Please check them and try again.',
-      back: 'Back', next: 'Next', submit: 'Send', choose: 'Choose',
-      country: 'Country', removeRow: 'Remove', addRow: 'Add a row', priceFrom: 'From SAR {{price}}', redirecting: 'Taking you on in {{n}} seconds.',
-      problem: {
-        required: 'This field is required.', phone: 'Enter a valid mobile number.', email: 'Enter a valid email address.', number: 'Enter a number.', invalid: 'Please check this field.',
-        invalid_phone: 'Enter a valid mobile number.', invalid_email: 'Enter a valid email address.', invalid_number: 'Enter a number.', out_of_range: 'This number is outside the allowed range.',
-        too_long: 'This is too long.', too_short: 'This is too short.', invalid_pattern: 'This is not in the expected form.', invalid_time: 'Enter a valid time.', invalid_date: 'Enter a valid date.',
-        invalid_option: 'Choose one of the options.', matrix_incomplete: 'Please answer every row.', invalid_matrix: 'Please check your answers.', too_few_rows: 'Add more rows.', too_many_rows: 'Too many rows.', invalid_repeater: 'Please check these rows.',
-      },
+    sources: {
+      title: 'Lead Sources', hint: 'Every way a lead reaches this project. They all end in one pipeline.', add: 'Add lead source', addHint: 'Where does the interest come from?',
+      logo: 'Project logo', logoSaved: 'Logo saved', emptyTitle: 'No sources yet', emptyBody: 'Add a landing page or connect an advertising platform.',
+      types: { landing_page: 'Landing page', platform_form: 'Advertising platform', google_sheet: 'Google Sheet', whatsapp: 'WhatsApp', call: 'Call', api: 'API / Webhook', import: 'Import CSV / Excel' },
+      providers: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google_ads: 'Google Ads', linkedin: 'LinkedIn' },
+      status: { connected: 'Connected', awaiting_setup: 'Awaiting setup', error: 'Error' },
+      metrics: { leads: 'Leads', qualified: 'Qualified', appointments: 'Appointments', sales: 'Sales' },
+      conversion: '{{rate}}% conversion', last: 'Last lead {{when}}', noneYet: 'No lead yet', clicks: '{{n}} clicks',
+      health: { receiving: 'Tracking is receiving', quiet: 'No visits this week' },
+      compare: 'Compare pages', compareHint: 'Last {{days}} days',
+      columns: { page: 'Page', views: 'Views', leads: 'Leads', rate: 'Conversion', qualified: 'Qualified', appointments: 'Appointments', sales: 'Sales' },
+      newPage: 'New landing page', createPage: 'Create page', platform: 'Platform', formId: 'Form ID on the platform', mapFields: 'Map fields', platformField: 'Field name on the platform', mohtamField: 'Field in Mohtam', addField: 'Add field', activate: 'Activate', platformSaved: 'Form tied to the project', platformHint: 'From now on this form\'s leads arrive straight in the project.',
+      targets: { full_name: 'Name', phone: 'Phone', email: 'Email', city: 'City', budget_max: 'Budget', purchase_purpose: 'Purchase purpose', payment_method: 'Payment method', preferred_property_type: 'Unit type', preferred_location: 'Preferred location', purchase_timeline: 'Purchase timeline' },
     },
+    page: {
+      templates: { real_estate_lead: 'Real estate lead', project_showcase: 'Project showcase', minimal_lead: 'Minimal' },
+      templateHint: { real_estate_lead: 'Picture, project facts and the form on the first screen.', project_showcase: 'Like the short one, with more selling points below the first screen.', minimal_lead: 'Logo, headline and form only.' },
+      builder: {
+        address: 'Page address', slug: 'Link', slugProblem: { invalid: 'Lowercase letters, numbers and hyphens only.', reserved: 'This name is reserved.', taken: 'This link is taken.' },
+        template: 'Template', developer: 'Developer name (optional)', developerLogo: 'Developer logo (optional)', facts: 'Project facts', show: 'Show', ctas: 'Ways to act', number: 'Number', message: 'Message text', messageHint: 'A reference is added automatically to tie the conversation to its source.',
+        whatsappMode: 'On a WhatsApp tap', modes: { inbound: 'Record the click and create a lead on the first message', track: 'Record the click only' }, floating: 'Floating button', primary: 'Primary action',
+        behaviour: 'Behaviour', autoSteps: 'Turn a long form into steps automatically', tags: 'Tags added to the lead', tagsHint: 'Up to five, comma separated.',
+        seo: 'Search and sharing', seoTitle: 'Title', seoDescription: 'Description', index: 'Allow this page to be indexed',
+        mirror: 'Copy in Google Sheets', mirrorHint: 'Mohtam stays the source of truth. Google failing never stops a lead.', mirrorOn: 'Copy every new lead to a sheet', spreadsheet: 'Spreadsheet ID',
+        campaignLink: 'Create campaign link', platform: 'Platform', campaign: 'Campaign', adGroup: 'Ad set (optional)', ad: 'Ad (optional)', medium: 'Medium', copy: 'Copy', copied: 'Copied', qr: 'Create QR', qrName: 'QR',
+        pause: 'Pause', resume: 'Resume', archive: 'Archive', archiveConfirm: 'Archive this page? Its link stops and its data stays.', duplicate: 'Duplicate',
+      },
+      analytics: {
+        unique_visitors: 'Unique visitors', whatsapp_clicks: 'WhatsApp clicks', call_clicks: 'Call clicks', leads: 'Leads', sales: 'Sales', revenue_minor: 'Revenue',
+        funnel: { view: 'View', form_start: 'Form start', lead: 'Lead', qualified: 'Qualified', appointment: 'Appointment', visit: 'Site visit', reservation: 'Reservation', sale: 'Sale' },
+        cost: { cpl: 'CPL', cpql: 'CPQL', per_appointment: 'Per appointment', per_reservation: 'Per reservation', cpa: 'CPA', roas: 'ROAS' },
+      },
+      ...publicPageEn.page,
+    },
+    public: publicPageEn.public,
     wizard: {
       title: 'New tracking link', madeTitle: 'Your link is ready', madeBody: 'Created and live. Use it anywhere.',
       done: 'Done', back: 'Back', next: 'Next', create: 'Create the link', copy: 'Copy the link', qr: 'QR code', preview: 'Preview the page', test: 'Try the link', analytics: 'Open analytics',
@@ -2825,6 +2851,9 @@ export default {
     },
     readiness: { ready: 'Ready', browser_only: 'Page only', awaiting_credentials: 'Awaiting credentials', not_configured: 'Not set up', disabled: 'Off' },
     destinations: {
+      eventMap: 'What each event becomes on the platform', eventMapHint: 'By default a submission is a Lead and a sale is a Purchase. Change it only if your campaign needs it.', eventMapDefault: 'Default',
+      eventMapWarning: 'Treating a form submission as a Purchase teaches the platform from a signal that differs from a real sale.',
+      eventNames: { form_submitted: 'Form submitted', qualified: 'Qualified lead', appointment_booked: 'Appointment', reservation_created: 'Reservation', won: 'Sale' },
       intro: 'The analytics and ad platforms that hear what your links bring. Nothing is sent until you switch one on.', new: 'New destination', edit: 'Destination',
       emptyTitle: 'No destinations yet', emptyBody: 'Connect analytics or an ad platform so conversions flow back to where the ad was bought.',
       browser: 'In the page', server: 'From the server', kind: 'Platform', name: 'Name',

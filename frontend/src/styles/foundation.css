@@ -1,0 +1,678 @@
+@import './mohtam-colors.css';
+
+/*
+|------------------------------------------------------------------------------
+| Design system
+|------------------------------------------------------------------------------
+|
+| The product is sold to people who look at it for eight hours a day, so the
+| surface has to be quiet. Three rules hold the whole thing together:
+|
+|  1. Contrast is spent on content, never on chrome. Borders are hairlines,
+|     shadows are barely there, and the page background sits a half-step below
+|     the cards rather than a full one.
+|  2. One accent colour, supplied by the tenant. Everything else is neutral or
+|     semantic, so a customer's brand is the only colour that shouts.
+|  3. Nothing moves without a reason, and when it moves it uses one curve.
+|
+| Every component reads from these tokens; no component carries a raw hex.
+*/
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * The typography system.
+ *
+ * One family for body and headings: IBM Plex Sans Arabic, the identity's typeface. Mono is a
+ * system stack, for values a person copies or reads character by character — ids, keys, webhook
+ * URLs, log lines, commands. Never for decoration.
+ */
+/*
+ * The identity's own colours, verbatim from the brand kit (brand/Mohtam-Brand-Kit/05-الألوان-Colors).
+ * Everything below maps the product's semantic tokens onto these; nothing else in the product
+ * writes a brand colour, so a change to the identity is a change to this one file.
+ */
+:root {
+  --font-body: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-heading: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  /* Values a person copies character by character. A system face, not a loaded one: the identity has one family. */
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+@theme {
+  /*
+   * IBM Plex Sans Arabic is the identity's only typeface. It carries Arabic and Latin with one
+   * rhythm and holds every digit 0–9, so a screen that mixes a customer's name, a campaign id and
+   * an Arabic sentence is set in one family. The system stack behind it is the instant before the
+   * files arrive, never a design choice.
+   */
+  --font-sans: var(--font-body);
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /*
+   * Neutrals, built from the identity's own limestone, stone, line, slate and ink — never from a
+   * grey. The steps between are mixes of those, so the scale stays warm end to end.
+   */
+  --color-neutral-0: var(--mh-white);
+  --color-neutral-25: color-mix(in srgb, var(--mh-limestone) 45%, var(--mh-white));
+  --color-neutral-50: var(--mh-limestone);
+  --color-neutral-100: color-mix(in srgb, var(--mh-limestone) 55%, var(--mh-stone));
+  --color-neutral-200: var(--mh-stone);
+  --color-neutral-300: var(--mh-line);
+  --color-neutral-400: color-mix(in srgb, var(--mh-slate) 40%, var(--mh-line));
+  --color-neutral-500: color-mix(in srgb, var(--mh-slate) 88%, var(--mh-line));
+  --color-neutral-600: var(--mh-slate);
+  --color-neutral-700: color-mix(in srgb, var(--mh-ink) 55%, var(--mh-slate));
+  --color-neutral-800: color-mix(in srgb, var(--mh-ink) 85%, var(--mh-slate));
+  --color-neutral-900: var(--mh-ink);
+  --color-neutral-950: var(--mh-pine-900);
+
+  /*
+   * Semantic surfaces. Limestone is the page, white is the card, stone is a section, and the line
+   * between them is the kit's own border colour — the relationship that makes a screen read as
+   * objects on a surface rather than a page with lines drawn on it.
+   */
+  --color-outer: var(--mh-stone);
+  --color-canvas: var(--mh-limestone);
+  --color-surface: var(--mh-white);
+  --color-surface-raised: var(--mh-white);
+  --color-surface-muted: var(--mh-limestone);
+  --color-surface-sunken: var(--mh-stone);
+  --color-border: var(--mh-line);
+  --color-border-strong: color-mix(in srgb, var(--mh-line) 65%, var(--mh-slate));
+  /* The fill of the round buttons in the header and the nav track. */
+  --color-chrome-fill: var(--mh-limestone);
+  --color-line: var(--mh-line);
+
+  --color-ink: var(--mh-ink);
+  --color-ink-muted: var(--mh-slate);
+  /* Slate, a step lighter: still 4.5:1 on the limestone page and on a white card, which is the floor for text. */
+  --color-ink-subtle: color-mix(in srgb, var(--mh-slate) 94%, var(--mh-white));
+  --color-ink-inverted: var(--mh-white);
+  --color-ink-strong: var(--mh-pine-900);
+
+  /*
+   * Pipeline stages, in the identity's own colours: the journey وصل ← تواصل ← تأهّل ← موعد ← صفقة
+   * runs info blue → soft green → emerald → warning → copper (the deal), with the two exits grey
+   * on purpose: they are not progress, and colouring them like a stage would say they were.
+   */
+  --color-status-new: var(--mh-info);
+  --color-status-contacted: var(--mh-green-500);
+  --color-status-replied: var(--mh-green-300);
+  --color-status-negotiation: var(--mh-brass-500);
+  --color-status-invalid: var(--mh-slate);
+  --color-status-no_response: color-mix(in srgb, var(--mh-slate) 60%, var(--mh-line));
+  --color-status-qualified: var(--mh-green-700);
+  --color-status-appointment: var(--mh-warning);
+  --color-status-won: var(--mh-success);
+  --color-status-lost: var(--mh-danger);
+
+  --color-temp-hot: var(--mh-danger);
+  --color-temp-warm: var(--mh-warning);
+  --color-temp-cold: var(--mh-info);
+
+  /* A warning or backlog chip: the kit's pale copper with its dark copper ink. */
+  --status-warn-bg: var(--mh-brass-100);
+  --status-warn-ink: var(--mh-brass-700);
+
+  /* Semantic feedback, distinct from the pipeline stages they often share a hue with. */
+  --color-success: var(--mh-success);
+  --color-warning: var(--mh-warning);
+  --color-danger: var(--mh-danger);
+  --color-info: var(--mh-info);
+
+  /*
+   * Emerald, the brand. A tenant's own colour still replaces `--brand` at runtime; the tints are
+   * derived from it, never from a literal, so a white-label workspace gets a coherent set rather
+   * than green leftovers.
+   */
+  --color-brand-50: var(--mh-green-50);
+  --color-brand-100: var(--mh-green-100);
+  --color-brand-500: var(--mh-green-500);
+  --color-brand-600: var(--mh-green-700);
+  --color-brand-700: var(--mh-pine-800);
+
+  /*
+   * The data palette, in the kit's order and never reordered: emerald, copper, info blue, soft
+   * green, light copper. Components read these variables and never carry a colour of their own.
+   * `charts/palette.ts` mirrors them for the unit tests; `scripts/check-chart-palette.mjs` fails the
+   * build if the two ever disagree. Everything past the fifth folds into --chart-other.
+   */
+  --chart-1: var(--mh-green-700);
+  --chart-2: var(--mh-brass-500);
+  --chart-3: var(--mh-info);
+  --chart-4: var(--mh-green-300);
+  --chart-5: var(--mh-brass-200);
+  --chart-other: color-mix(in srgb, var(--mh-slate) 55%, var(--mh-line));
+  /* A trend or a run of bars: old, middle, latest — neutral stone, then soft green, then emerald: green is the highlight, not the field. */
+  --chart-seq-old: var(--mh-stone);
+  --chart-seq-mid: var(--mh-green-300);
+  --chart-seq-latest: var(--mh-green-700);
+
+  /*
+   * Copper: the accent, at most five per cent of a screen. The logo's dot, a revenue or deal
+   * figure, a percentage change, the deal stage. Small text on a light surface wears the dark
+   * copper (4.5:1); the bright one is for a fill, a rule or a number set large.
+   */
+  --accent: var(--mh-brass-500);
+  --accent-text: var(--mh-brass-700);
+  --accent-soft: var(--mh-brass-100);
+  --accent-on-dark: var(--mh-brass-400);
+
+  /*
+   * Pine: the identity's dark surfaces — the sidebar, the attention card, the login panel. Under
+   * a tenant's own colours (see useBrandingTheme) these follow that tenant's secondary colour
+   * instead, so a white-label workspace carries none of ours.
+   */
+  --chrome-1: var(--mh-pine-900);
+  --chrome-2: var(--mh-pine-800);
+  --chrome-ink: var(--mh-limestone);
+  --chrome-muted: var(--mh-green-300);
+  --chrome-line: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
+  --chrome-active: var(--mh-green-700);
+  --chrome-active-ink: var(--mh-white);
+
+  /* The tenant's colour, written at runtime by useBrandingTheme. These are the platform's own. */
+  --brand: var(--mh-primary);
+  --brand-hover: var(--mh-primary-hover);
+  --brand-secondary: var(--mh-pine-800);
+  --brand-soft: var(--mh-green-100);
+  --brand-softer: var(--mh-green-50);
+  --brand-ring: color-mix(in srgb, var(--mh-green-700) 28%, transparent);
+  --brand-contrast: var(--mh-white);
+  /* The pale fill of chart bars, the small bright pill, and the deep highlight. */
+  --brand-tint: var(--mh-green-300);
+  --brand-bright: var(--mh-green-500);
+  --brand-deep: var(--mh-pine-800);
+  /* Brand colour as TEXT or a thin line: the brand itself on light, lifted where the surface is pine. */
+  --brand-text: var(--brand);
+
+  /*
+   * Elevation as light falling on a surface, not a drop shadow: a tight
+   * contact shadow plus a wide, very faint ambient one. One hard shadow reads
+   * as a sticker; two soft ones read as a card.
+   */
+  /* Very subtle: the reference separates cards by tone, not by shadow. */
+  --shadow-card: 0 1px 2px color-mix(in srgb, var(--color-neutral-900) 4%, transparent);
+  --shadow-raised:
+    0 0 0 0.5px color-mix(in srgb, var(--color-neutral-900) 6%, transparent),
+    0 2px 4px -2px color-mix(in srgb, var(--color-neutral-900) 10%, transparent),
+    0 8px 20px -6px color-mix(in srgb, var(--color-neutral-900) 10%, transparent);
+  --shadow-pop:
+    0 0 0 0.5px color-mix(in srgb, var(--color-neutral-900) 6%, transparent),
+    0 8px 16px -8px color-mix(in srgb, var(--color-neutral-900) 14%, transparent),
+    0 24px 48px -16px color-mix(in srgb, var(--color-neutral-900) 18%, transparent);
+
+  /*
+   * Radii step with the size of the thing, so nothing looks over-rounded.
+   *
+   * Rounder than the last pass. A 10px corner on a 300px card reads as a
+   * dialog box from 2009; the softness is most of what separates a dashboard
+   * somebody wants to look at from an admin panel they have to.
+   */
+  --radius-control: 0.875rem;
+  --radius-card: 1.25rem;
+  --radius-panel: 1.5rem;
+  /* The app frame that floats on the outer canvas. */
+  --radius-frame: 2rem;
+  /* For nav items, filter chips and anything that should read as a token. */
+  --radius-pill: 999px;
+
+  /*
+   * The spacing scale.
+   *
+   * Named so components stop inventing their own. Four steps is enough for a
+   * dashboard: anything between two of them is a decision nobody will
+   * reproduce on the next screen, and the drift between those decisions is
+   * what makes an interface feel assembled rather than designed.
+   */
+  --space-1: 0.375rem;
+  --space-2: 0.625rem;
+  --space-3: 0.875rem;
+  --space-4: 1.25rem;
+
+  /*
+   * One curve for everything. It starts fast and settles, which is what makes
+   * an interface feel answered rather than animated.
+   */
+  --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+}
+
+/*
+ * Dark is a neutral warm charcoal, built from the kit's ink and limestone — not from pine. A page, a
+ * card and a table in pine would make every screen green, which the identity is not: the identity is
+ * neutral surfaces, emerald as the accent and copper as the highlight. Pine appears only where it is
+ * chosen: the sidebar and rail, the attention card and the login panel (see --chrome-1).
+ * Cards lift by getting lighter than the page; borders are limestone at low opacity; nothing is pure
+ * black. `data-theme="dark"` (set beside the class) also switches the kit's own `--mh-*` tokens.
+ */
+.dark {
+  --color-outer: color-mix(in srgb, var(--mh-ink) 55%, black);
+  --color-canvas: var(--mh-ink);
+  --color-surface: color-mix(in srgb, var(--mh-ink) 90%, var(--mh-limestone));
+  --color-surface-raised: color-mix(in srgb, var(--mh-ink) 84%, var(--mh-limestone));
+  --color-surface-muted: color-mix(in srgb, var(--mh-ink) 96%, var(--mh-limestone));
+  --color-surface-sunken: color-mix(in srgb, var(--mh-ink) 72%, black);
+  --color-border: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
+  --color-border-strong: color-mix(in srgb, var(--mh-limestone) 22%, transparent);
+  --color-chrome-fill: color-mix(in srgb, var(--mh-ink) 82%, var(--mh-limestone));
+  --color-line: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
+
+  --color-ink: var(--mh-limestone);
+  --color-ink-muted: color-mix(in srgb, var(--mh-limestone) 74%, var(--mh-ink));
+  --color-ink-subtle: color-mix(in srgb, var(--mh-limestone) 66%, var(--mh-ink));
+  --color-ink-inverted: var(--mh-ink);
+  --color-ink-strong: var(--mh-limestone);
+
+  /*
+   * Status hues lifted toward limestone, from the same identity colours: a colour that reads as
+   * confident on white glows on a dark field, and a glowing badge makes a dark theme look like a toy.
+   */
+  --color-status-new: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
+  --color-status-contacted: color-mix(in srgb, var(--mh-green-500) 70%, var(--mh-limestone));
+  --color-status-replied: var(--mh-green-300);
+  --color-status-negotiation: var(--mh-brass-400);
+  --color-status-invalid: color-mix(in srgb, var(--mh-slate) 60%, var(--mh-limestone));
+  --color-status-no_response: color-mix(in srgb, var(--mh-slate) 50%, var(--mh-limestone));
+  --color-status-qualified: color-mix(in srgb, var(--mh-green-700) 55%, var(--mh-green-300));
+  --color-status-appointment: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
+  --color-status-won: color-mix(in srgb, var(--mh-success) 65%, var(--mh-limestone));
+  --color-status-lost: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
+
+  --color-temp-hot: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
+  --color-temp-warm: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
+  --color-temp-cold: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
+
+  --status-warn-bg: color-mix(in srgb, var(--mh-brass-400) 16%, var(--color-surface));
+  --status-warn-ink: var(--mh-brass-400);
+
+  --color-success: color-mix(in srgb, var(--mh-success) 65%, var(--mh-limestone));
+  --color-warning: color-mix(in srgb, var(--mh-warning) 75%, var(--mh-limestone));
+  --color-danger: color-mix(in srgb, var(--mh-danger) 50%, var(--mh-limestone));
+  --color-info: color-mix(in srgb, var(--mh-info) 62%, var(--mh-limestone));
+
+  --color-brand-50: color-mix(in srgb, var(--mh-green-500) 14%, var(--color-surface));
+  --color-brand-100: color-mix(in srgb, var(--mh-green-500) 24%, var(--color-surface));
+
+  /* The series on pine: stepped against the dark card (see palette.test.ts), never flipped from light. */
+  --chart-1: var(--mh-green-300);
+  --chart-2: var(--mh-brass-400);
+  --chart-3: color-mix(in srgb, var(--mh-info) 75%, var(--mh-limestone));
+  --chart-4: var(--mh-green-500);
+  --chart-5: var(--mh-brass-200);
+  --chart-other: color-mix(in srgb, var(--mh-slate) 55%, var(--mh-limestone));
+  --chart-seq-old: color-mix(in srgb, var(--mh-limestone) 18%, var(--mh-ink));
+  --chart-seq-mid: var(--mh-green-500);
+  --chart-seq-latest: var(--mh-green-300);
+
+  --accent: var(--mh-brass-400);
+  --accent-text: var(--mh-brass-400);
+  --accent-soft: color-mix(in srgb, var(--mh-brass-400) 16%, var(--color-surface));
+
+  --chrome-1: color-mix(in srgb, var(--mh-pine-900) 82%, black);
+  --chrome-2: var(--mh-pine-800);
+
+  --brand: var(--mh-green-500);
+  --brand-hover: color-mix(in srgb, var(--mh-green-500) 78%, var(--mh-limestone));
+  --brand-soft: color-mix(in srgb, var(--mh-green-500) 24%, var(--color-surface));
+  --brand-softer: color-mix(in srgb, var(--mh-green-500) 12%, var(--color-surface));
+  --brand-ring: color-mix(in srgb, var(--mh-green-300) 40%, transparent);
+  --brand-tint: var(--mh-green-500);
+  --brand-bright: var(--mh-green-300);
+  --brand-deep: var(--mh-green-300);
+  --brand-text: color-mix(in srgb, var(--brand) 38%, var(--mh-limestone));
+
+  --shadow-card:
+    0 0 0 0.5px color-mix(in srgb, var(--mh-limestone) 8%, transparent),
+    0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-raised:
+    0 0 0 0.5px color-mix(in srgb, var(--mh-limestone) 9%, transparent),
+    0 4px 12px -4px rgb(0 0 0 / 0.5);
+  --shadow-pop:
+    0 0 0 0.5px color-mix(in srgb, var(--mh-limestone) 10%, transparent),
+    0 16px 40px -12px rgb(0 0 0 / 0.65);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-outer);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Kerning and contextual alternates: Arabic needs both to join correctly
+       at small sizes, and they tighten Latin numerals at the same time. */
+    font-feature-settings: 'kern', 'calt';
+  }
+
+  /* Arabic sits lower in its em box and needs the extra leading to breathe. */
+  [dir='rtl'] body {
+    line-height: 1.75;
+  }
+
+  /*
+   * Headings tighten as they grow. Loose tracking on a 28px heading is the
+   * single clearest tell of an interface nobody typeset.
+   */
+  h1, h2, h3, h4 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+  }
+
+  /* The page title is the only heading that is allowed to be heavy. */
+  h1 { font-weight: 700; letter-spacing: -0.02em; }
+
+  /*
+   * Arabic has no case and no tracking convention; tightening it pulls apart
+   * the cursive joins. It also needs more leading than Latin at the same size,
+   * because its marks sit above and below the line.
+   */
+  [dir='rtl'] h1,
+  [dir='rtl'] h2,
+  [dir='rtl'] h3,
+  [dir='rtl'] h4 {
+    letter-spacing: 0;
+    line-height: 1.45;
+  }
+
+  /*
+   * Figures line up. A column of money, scores, dates or percentages that
+   * changes width digit by digit jitters as it updates and cannot be scanned
+   * down; tabular numerals fix every digit's width.
+   */
+  table,
+  time,
+  output,
+  .tabular,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum', 'kern';
+  }
+
+  /* Technical values, in the mono face and nowhere else. */
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    font-variant-ligatures: none;
+    letter-spacing: 0;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  .dark :focus-visible {
+    outline-color: var(--brand-text);
+  }
+
+  /* Pointer users get the ring only where it carries information. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--color-ink);
+  }
+
+  /* Numerals stay Latin and monospaced in both locales, so a column of money
+     or phone numbers lines up and a changing value does not jitter. */
+  .tabular {
+    letter-spacing: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* An installed app and a phone in landscape run under the notch and the home indicator. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* A sheet that rises from the bottom edge keeps its last button above the home indicator. */
+.drawer-panel,
+[role='dialog'] {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.app-sidebar {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/*
+ * iOS Safari zooms the whole page into any field whose text is under 16px and does not zoom back.
+ * Fields are 14px on a desktop, where that is right; on a touch screen they are 16px.
+ */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/*
+ * WebKit draws date, time and date-time fields with a height and an inner layout of its own, which
+ * is why they look different beside every other field. Normalised: the same height, text at the
+ * start edge, the picker icon at the other.
+ */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'],
+input[type='month'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 2.5rem;
+  text-align: start;
+}
+
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value,
+input[type='datetime-local']::-webkit-date-and-time-value {
+  text-align: start;
+  min-height: 1.25em;
+  margin: 0;
+}
+
+/* The native file button, in WebKit and in Blink: the same size as the buttons around it. */
+input[type='file']::file-selector-button,
+input[type='file']::-webkit-file-upload-button {
+  font: inherit;
+  margin-inline-end: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-chrome-fill);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+
+/* ───────────── The phone: made to feel like an app ─────────────
+   Unlayered, like the block above, so none of it loses to a utility on the same element. */
+
+/* The tab bar. A fixed height plus the home indicator's room; each tab is a thumb-sized target. */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+.bottom-tab {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  height: 3.75rem;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  transition: color var(--duration-fast), transform var(--duration-fast);
+}
+
+.bottom-tab-active {
+  color: var(--brand-text);
+  font-weight: 600;
+}
+
+/* A short bar of brand colour above the active tab: the one cue that does not rest on hue alone. */
+.bottom-tab-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 1.75rem;
+  height: 0.1875rem;
+  border-radius: 0 0 0.25rem 0.25rem;
+  background: var(--brand-text);
+}
+
+.bottom-tab:active {
+  transform: scale(0.94);
+}
+
+/* Phone type scale: the numbers and the title shrink with the screen, the 0.75rem floor of the system does not. */
+@media (max-width: 639.98px) {
+  .t-page-title { font-size: 1.625rem; }
+  .t-display { font-size: 1.875rem; }
+  .t-metric { font-size: 1.875rem; }
+}
+
+/* The app bar's own room at a notch, when the page is opened from a home-screen icon. */
+@media (max-width: 639.98px) {
+  .app-bar {
+    padding-top: env(safe-area-inset-top);
+    height: calc(3.5rem + env(safe-area-inset-top));
+  }
+}
+
+@media (pointer: coarse) {
+  /* Chrome you press is not text you select: no grey selection boxes and no callout on a long press. */
+  .bottom-nav,
+  .app-bar,
+  .app-sidebar,
+  button,
+  [role='tab'],
+  [role='button'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Pressing anything says so at once. */
+  button:not(:disabled):active,
+  [role='button']:active,
+  a.pressable:active {
+    transition: transform var(--duration-fast);
+  }
+
+  /* No double-tap-to-zoom delay on controls. */
+  button,
+  a,
+  [role='tab'],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+/* Opened from a home-screen icon there is no browser bar to pull down, so the page must not rubber-band like a document. */
+html[data-standalone] body {
+  overscroll-behavior-y: none;
+}
+
+/* In dark, "brand as text" (104 places write it as a utility) is the lifted green; fills keep the brand itself. */
+.dark [class~='text-[var(--brand)]'] {
+  color: var(--brand-text);
+}
+
+/* The platform console never resolves to the same picture as a workspace: its chrome is near-black, not pine. */
+[data-console='platform'] {
+  --chrome-1: color-mix(in srgb, var(--mh-ink) 88%, black);
+  --chrome-2: color-mix(in srgb, var(--mh-ink) 76%, var(--mh-limestone));
+  --chrome-muted: color-mix(in srgb, var(--mh-limestone) 70%, var(--mh-ink));
+}
+
+/* A sheet rises from the bottom edge: its last button clears the home indicator too. */
+[role='dialog'] > div:last-child {
+  scroll-padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ───────────── Public pages ───────────── */
+
+/* A link to a section glides there — unless the visitor has asked their device for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

@@ -34,11 +34,14 @@ enum EventType: string
     case AppointmentBooked = 'appointment_booked';
     case Lost = 'lost';
     case Revenue = 'revenue';
+    case CtaClick = 'cta_click';
+    case FormView = 'form_view';
+    case FormError = 'form_error';
 
     /** What a landing page or a link may report about a visitor. */
     public static function browserSafe(): array
     {
-        return [self::Visit, self::Click, self::FormStart, self::FormStep, self::FormAbandon, self::FormSubmit, self::WhatsappClick, self::CallClick, self::BrochureOpen, self::ProjectView, self::PropertyView];
+        return [self::Visit, self::Click, self::CtaClick, self::FormView, self::FormError, self::FormStart, self::FormStep, self::FormAbandon, self::FormSubmit, self::WhatsappClick, self::CallClick, self::BrochureOpen, self::ProjectView, self::PropertyView];
     }
 
     /** @return array<int,string> */

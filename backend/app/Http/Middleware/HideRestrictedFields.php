@@ -25,8 +25,8 @@ class HideRestrictedFields
     /** @var array<string,list<string>> */
     private const KEYS = [
         'contacts' => ['phone', 'phone_normalized', 'whatsapp', 'lead_phone', 'email', 'lead_email'],
-        'spend' => ['spend', 'spend_source', 'cpl', 'cpql', 'cpa', 'cac', 'roas', 'daily_budget', 'cost', 'cost_per_appointment', 'cost_per_interested', 'cost_per_visit', 'cost_per_reservation', 'costPer', 'budget_spent'],
-        'revenue' => ['revenue', 'revenue_today', 'commission', 'revenue_per_lead', 'deal_value', 'deal_value_minor', 'amount', 'won_value', 'ledger', 'commission_fixed', 'commission_fixed_minor', 'commission_payments'],
+        'spend' => ['spend_minor', 'per_appointment', 'per_reservation', 'spend', 'spend_source', 'cpl', 'cpql', 'cpa', 'cac', 'roas', 'daily_budget', 'cost', 'cost_per_appointment', 'cost_per_interested', 'cost_per_visit', 'cost_per_reservation', 'costPer', 'budget_spent'],
+        'revenue' => ['revenue_minor', 'revenue', 'revenue_today', 'commission', 'revenue_per_lead', 'deal_value', 'deal_value_minor', 'amount', 'won_value', 'ledger', 'commission_fixed', 'commission_fixed_minor', 'commission_payments'],
     ];
 
     public function handle(Request $request, Closure $next): Response

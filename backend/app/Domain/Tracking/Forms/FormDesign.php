@@ -39,7 +39,7 @@ final class FormDesign
     public const ACTIONS = ['whatsapp', 'call', 'appointment', 'project', 'brochure'];
 
     /** What a form's own page may link to for its logo: this product's upload route, or an https address. */
-    public const ASSET_PATH = '#^/api/v1/public/form-assets/[a-f0-9]{32}\.(png|jpg|webp)$#';
+    public const ASSET_PATH = '#^/api/v1/public/form-assets/[a-f0-9]{32}\.(png|jpg|webp|svg)$#';
 
     public const MAX_SIGNALS = 12;
 

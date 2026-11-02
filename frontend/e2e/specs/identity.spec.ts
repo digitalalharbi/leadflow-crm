@@ -18,10 +18,10 @@ test.describe('Product identity', () => {
   test('the platform identity is what an unbranded session gets', async ({ page }) => {
     await page.goto('/login')
 
+    // The login names itself: `تسجيل الدخول — مهتم`; the platform's title stays the official one.
+    await expect(page).toHaveTitle('تسجيل الدخول — مهتم')
     const before = await identity(page)
 
-    // The login names itself: `تسجيل الدخول — مهتم`; the platform's title stays the official one.
-    expect(before.title).toBe('تسجيل الدخول — مهتم')
     expect(PLATFORM_TITLE).toBe('مهتم — حوّل الاهتمام إلى فرصة')
     // The platform's whole icon set (the kit's .ico, .svg and PNGs), from the brand folder, versioned so an old icon is not kept.
     expect(before.icons).toEqual(expect.arrayContaining(['/brand/favicon.ico?v=2', '/brand/favicon.svg?v=2']))

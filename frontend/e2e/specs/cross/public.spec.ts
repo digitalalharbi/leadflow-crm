@@ -115,7 +115,7 @@ test.describe('Public pages', () => {
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior)).toBe('auto')
 
     await page.emulateMedia({ reducedMotion: 'no-preference' })
-    await page.reload()
+    await ready(page, '/')
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior)).toBe('smooth')
   })
 })

@@ -97,7 +97,13 @@ class LandingFormController extends Controller
         $base = $template === null ? [] : (FormTemplates::get((string) $template) ?? throw ValidationException::withMessages(['template' => ['unknown']]));
 
         // A column default never reaches a model that was created without naming the column.
-        $form = LandingForm::create($this->validated($request, base: $base) + ['status' => 'draft', 'consent_required' => $base['consent_required'] ?? true, 'created_by' => $request->user()->id]);
+        $data = $this->validated($request, base: $base);
+        $form = DB::transaction(function () use ($data, $base, $request) {
+            $form = LandingForm::create(array_diff_key($data, ['slug' => true]) + ['status' => 'draft', 'consent_required' => $base['consent_required'] ?? true, 'created_by' => $request->user()->id]);
+            $this->holdAddress($form, $data['slug'] ?? null);
+
+            return $form;
+        });
         $this->audit->log('landing_form.created', $request->user(), $form, ['after' => ['name' => $form->name, 'status' => $form->status, 'fields' => count($form->fields), 'template' => $template]]);
 
         return ApiResponse::created(['form' => $this->shape($form->load(['project:id,uuid,name', 'publishedVersion'])->loadCount('links'))]);
@@ -118,10 +124,13 @@ class LandingFormController extends Controller
 
         $slugBefore = $form->slug;
         $projectBefore = $form->project_id;
-        $form->update($data);
+
+        DB::transaction(function () use ($form, $data) {
+            $form->update(array_diff_key($data, ['slug' => true]));
+            $this->holdAddress($form, $data['slug'] ?? null);
+        });
 
         if ($slugBefore !== null && $form->slug !== $slugBefore) {
-            DB::table('landing_slug_history')->insertOrIgnore(['slug' => $slugBefore, 'tenant_id' => $form->tenant_id, 'landing_form_id' => $form->id, 'created_at' => now(), 'updated_at' => now()]);
             $this->audit->log('landing_form.slug_changed', $request->user(), $form, ['before' => $slugBefore, 'after' => $form->slug]);
         }
 
@@ -178,15 +187,35 @@ class LandingFormController extends Controller
         return ApiResponse::success(['form' => ['id' => $form->uuid, 'name' => $form->name], 'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'days' => $days]] + $analytics->for($form, $from, $to));
     }
 
+    /** A page holds its address from the moment it exists. It cannot give one up: a page always has somewhere it can be reached. */
+    private function holdAddress(LandingForm $form, ?string $slug): void
+    {
+        $slugs = app(LandingSlugs::class);
+
+        if (filled($slug) && $slug !== $form->slug) {
+            // Free a moment ago, when it was checked: somebody may have got there since.
+            if (! $slugs->claim($form, $slug)) {
+                throw $slugs->refuse($slug, 'taken', $form->id);
+            }
+
+            $form->forceFill(['slug' => $slug])->save();
+        } elseif ($form->page !== null && $form->slug === null) {
+            $slugs->assign($form);
+        }
+    }
+
     public function duplicate(Request $request, string $uuid)
     {
         $form = LandingForm::where('uuid', $uuid)->firstOrFail();
         $this->authorize('create', LandingForm::class);
         $this->authorize('view', $form);
 
-        // A copy has no address of its own until it is published: a page's slug and link stay the page's.
+        // A page's slug and link stay the page's: a copy that is a page takes the next free address, as any new page does.
         $copy = $form->replicate(['uuid', 'status', 'published_version_id', 'published_at', 'created_by', 'slug', 'default_link_id']);
-        $copy->fill(['name' => mb_substr($form->name, 0, 140).' (نسخة)', 'status' => 'draft', 'created_by' => $request->user()->id])->save();
+        DB::transaction(function () use ($copy, $form, $request) {
+            $copy->fill(['name' => mb_substr($form->name, 0, 140).' (نسخة)', 'status' => 'draft', 'created_by' => $request->user()->id])->save();
+            $this->holdAddress($copy, null);
+        });
 
         $this->audit->log('landing_form.duplicated', $request->user(), $copy, ['after' => ['from' => $form->uuid, 'name' => $copy->name]]);
 
@@ -204,10 +233,10 @@ class LandingFormController extends Controller
             $slug = mb_strtolower(trim($data['slug']));
             $problem = $slugs->problem($slug, $except);
 
-            return ApiResponse::success(['slug' => $slug, 'available' => $problem === null, 'problem' => $problem]);
+            return ApiResponse::success(['slug' => $slug, 'available' => $problem === null, 'problem' => $problem, 'suggestion' => $problem === null || $problem === 'invalid' ? null : $slugs->suggest($slug, $except)]);
         }
 
-        return ApiResponse::success(['slug' => $slugs->suggest($data['name'], $except), 'available' => true, 'problem' => null]);
+        return ApiResponse::success(['slug' => $slugs->suggest($data['name'], $except), 'available' => true, 'problem' => null, 'suggestion' => null]);
     }
 
     /**
@@ -321,7 +350,7 @@ class LandingFormController extends Controller
             $data['slug'] = mb_strtolower(trim((string) $data['slug']));
 
             if (($problem = app(LandingSlugs::class)->problem($data['slug'], $current?->id)) !== null) {
-                throw ValidationException::withMessages(['slug' => [$problem]]);
+                throw app(LandingSlugs::class)->refuse($data['slug'], $problem, $current?->id);
             }
         }
 

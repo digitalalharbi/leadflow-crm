@@ -107,7 +107,7 @@ class FormPublisher
     public function pageAddress(LandingForm $form): void
     {
         if ($form->slug === null) {
-            $form->forceFill(['slug' => app(LandingSlugs::class)->suggest((string) ($form->project?->name ?: $form->name), $form->id)])->save();
+            app(LandingSlugs::class)->assign($form);
         }
 
         $link = $form->default_link_id ? TrackingLink::find($form->default_link_id) : null;

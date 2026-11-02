@@ -6,13 +6,16 @@ use App\Models\LandingForm;
 use App\Models\TrackingLink;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The public address of a landing page: mohtam.pro/l/<slug>.
  *
- * One address space across every workspace, so uniqueness is checked without tenant scope (a deleted page keeps its slug: an
- * ad may still point there, and it must not start opening somebody else's page). It carries no tenant or project id. A slug
- * also may not equal a tracking link's token, because /l/<token> addresses are already printed on ads and QR codes.
+ * One address space across every workspace, held from the moment a page is created, draft or not. `landing_slug_claims` is what
+ * makes that true: its unique index decides who got an address, so `problem()` only says why not, early and politely. A claim is
+ * never given up (a deleted, archived or renamed page keeps it: an ad may still point there, and it must not start opening
+ * somebody else's page). An address carries no tenant or project id, and nothing inside the product finds a page by it. A slug also
+ * may not equal a tracking link's token, because /l/<token> addresses are already printed on ads and QR codes.
  */
 class LandingSlugs
 {
@@ -58,22 +61,54 @@ class LandingSlugs
         return $this->context->withoutScope(function () use ($slug, $exceptFormId) {
             $form = LandingForm::withoutGlobalScopes()->where('slug', $slug)->when($exceptFormId, fn ($q, $id) => $q->whereKeyNot($id))->exists();
             // An address a page once had stays that page's: an ad or a poster may still say it.
-            $past = DB::table('landing_slug_history')->where('slug', $slug)->when($exceptFormId, fn ($q, $id) => $q->where('landing_form_id', '!=', $id))->exists();
+            $past = DB::table('landing_slug_claims')->where('slug', $slug)->when($exceptFormId, fn ($q, $id) => $q->where('landing_form_id', '!=', $id))->exists();
 
             return $form || $past || TrackingLink::withoutGlobalScopes()->where('token', $slug)->exists() ? 'taken' : null;
         });
     }
 
-    /** The first free address starting from a name. */
+    /** The first free address starting from a name: the name, then name-2, name-3… The same state always gives the same answer. */
     public function suggest(string $name, ?int $exceptFormId = null): string
     {
         $base = self::fromName($name) ?? 'project';
         $slug = $base;
 
         for ($i = 2; $this->problem($slug, $exceptFormId) !== null; $i++) {
-            $slug = $base.'-'.($i <= 50 ? $i : bin2hex(random_bytes(3)));
+            $slug = $base.'-'.$i;
         }
 
         return $slug;
+    }
+
+    /**
+     * Take an address for this page. False means somebody else holds it, even if they got it a moment after `problem()` said it
+     * was free: a second request waits here for the first to finish and then finds it gone, without failing its transaction.
+     */
+    public function claim(LandingForm $form, string $slug): bool
+    {
+        $row = ['slug' => $slug, 'tenant_id' => $form->tenant_id, 'landing_form_id' => $form->id, 'created_at' => now(), 'updated_at' => now()];
+
+        return DB::table('landing_slug_claims')->insertOrIgnore($row) === 1
+            || DB::table('landing_slug_claims')->where('slug', $slug)->where('landing_form_id', $form->id)->exists();
+    }
+
+    /** Give a page without an address the first free one from its project's name, or its own. */
+    public function assign(LandingForm $form): string
+    {
+        $name = (string) ($form->project?->name ?: $form->name);
+
+        do {
+            $slug = $this->suggest($name, $form->id);
+        } while (! $this->claim($form, $slug));
+
+        $form->forceFill(['slug' => $slug])->save();
+
+        return $slug;
+    }
+
+    /** Refuse an address, with the nearest one that would work. */
+    public function refuse(string $slug, string $problem, ?int $exceptFormId = null): ValidationException
+    {
+        return ValidationException::withMessages(['slug' => [$problem]] + ($problem === 'invalid' ? [] : ['slug_suggestion' => [$this->suggest($slug, $exceptFormId)]]));
     }
 }

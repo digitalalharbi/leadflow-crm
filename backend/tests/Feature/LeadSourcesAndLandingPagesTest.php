@@ -24,6 +24,7 @@ use App\Services\Leads\LeadIngestionService;
 use App\Services\Whatsapp\InboundWhatsappProcessor;
 use App\Support\SafeSvg;
 use App\Support\TenantContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -180,13 +181,115 @@ class LeadSourcesAndLandingPagesTest extends TestCase
         $this->public($live['slug'])->assertOk();
     }
 
-    public function test_a_duplicate_has_no_address_of_its_own(): void
+    public function test_a_duplicate_holds_an_address_of_its_own_and_never_the_originals(): void
     {
         $form = $this->published();
         $copy = $this->actingAs($this->a['admin'])->postJson("/api/v1/tracking/forms/{$form['id']}/duplicate")->assertCreated()->json('data.form');
 
-        $this->assertNull($copy['slug']);
+        $this->assertSame($form['slug'].'-2', $copy['slug']);
         $this->assertSame('draft', $copy['status']);
+        $this->public($copy['slug'])->assertNotFound();
+        $this->public($form['slug'])->assertOk();
+    }
+
+    public function test_a_draft_holds_its_address_from_the_moment_it_exists(): void
+    {
+        $other = $this->asTenant($this->b['tenant'], fn () => Project::create(['name' => 'B']));
+        $asB = fn (array $extra) => $this->actingAs($this->b['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'B', 'project_id' => $other->uuid, 'fields' => $this->fields(), 'page' => []] + $extra);
+
+        // Draft against draft: the first one has it though nobody ever published.
+        $draft = $this->page([], ['slug' => 'held-draft']);
+        $this->assertSame('held-draft', $draft['slug']);
+        $asB(['slug' => 'held-draft'])->assertUnprocessable()->assertJsonValidationErrors('slug')->assertJsonPath('errors.slug_suggestion.0', 'held-draft-2');
+
+        // With no address asked for, a page still gets one straight away, the next free from its project's name.
+        $auto = $this->page([], ['name' => 'بدون عنوان']);
+        $this->assertNotNull($auto['slug']);
+        $this->assertSame('invalid', app(LandingSlugs::class)->problem('NOT VALID'));
+
+        // A published page and a draft: same refusal, both ways round.
+        $live = $this->published([], ['name' => 'حية', 'slug' => 'held-live']);
+        $asB(['slug' => 'held-live'])->assertUnprocessable()->assertJsonValidationErrors('slug');
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$draft['id']}", ['slug' => 'held-live'])->assertUnprocessable()->assertJsonValidationErrors('slug');
+
+        // Archived: nobody gets it, and it never comes back as someone else's page.
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$live['id']}", ['status' => 'archived'])->assertOk()->assertJsonPath('data.form.status', 'archived');
+        $asB(['slug' => 'held-live'])->assertUnprocessable()->assertJsonValidationErrors('slug');
+
+        // Reserved words offer the nearest address that works.
+        $asB(['slug' => 'admin'])->assertUnprocessable()->assertJsonPath('errors.slug.0', 'reserved')->assertJsonPath('errors.slug_suggestion.0', 'admin-2');
+
+        // A form that is no page has no address.
+        $plain = $this->actingAs($this->a['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'نموذج', 'fields' => $this->fields()])->assertCreated()->json('data.form');
+        $this->assertNull($plain['slug']);
+    }
+
+    public function test_the_suggested_address_is_always_the_same_and_counts_up(): void
+    {
+        $slugs = app(LandingSlugs::class);
+        $this->page([], ['name' => 'أ', 'slug' => 'count-up']);
+        $this->assertSame('count-up-2', $slugs->suggest('count-up'));
+        $this->assertSame('count-up-2', $slugs->suggest('count-up'));
+        $this->page([], ['name' => 'ب', 'slug' => 'count-up-2']);
+        $this->assertSame('count-up-3', $slugs->suggest('count-up'));
+
+        $this->actingAs($this->a['admin'])->postJson('/api/v1/tracking/forms/slug', ['slug' => 'count-up'])->assertOk()
+            ->assertJsonPath('data.available', false)->assertJsonPath('data.problem', 'taken')->assertJsonPath('data.suggestion', 'count-up-3');
+    }
+
+    public function test_the_database_itself_refuses_a_second_holder_and_a_late_request_loses_politely(): void
+    {
+        $first = $this->page([], ['slug' => 'the-race']);
+        $firstRow = $this->asTenant($this->a['tenant'], fn () => LandingForm::where('uuid', $first['id'])->firstOrFail());
+
+        $other = $this->asTenant($this->b['tenant'], fn () => Project::create(['name' => 'B']));
+        $second = $this->asTenant($this->b['tenant'], fn () => LandingForm::create(['name' => 'B', 'project_id' => $other->id, 'fields' => $this->fields(), 'status' => 'draft', 'consent_required' => false]));
+
+        $this->assertFalse(app(LandingSlugs::class)->claim($second, 'the-race'));
+        $this->assertTrue(app(LandingSlugs::class)->claim($firstRow, 'the-race'), 'its own address is still its own');
+
+        // Both lookups said free, as they do for two requests arriving together; the claim decides, and the loser hears why, not a 500.
+        $this->app->bind(LandingSlugs::class, fn ($app) => new class($app->make(TenantContext::class)) extends LandingSlugs
+        {
+            public function problem(string $slug, ?int $exceptFormId = null): ?string
+            {
+                return null;
+            }
+
+            public function suggest(string $name, ?int $exceptFormId = null): string
+            {
+                return 'the-race-2';
+            }
+        });
+        $this->actingAs($this->b['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'B', 'project_id' => $other->uuid, 'fields' => $this->fields(), 'slug' => 'the-race', 'page' => []])
+            ->assertUnprocessable()->assertJsonPath('errors.slug.0', 'taken');
+        // Nothing half-made was left behind by the refusal.
+        $this->assertSame(1, $this->asTenant($this->b['tenant'], fn () => LandingForm::count()));
+
+        $this->expectException(QueryException::class);
+        DB::table('landing_slug_claims')->insert(['slug' => 'the-race', 'tenant_id' => $this->b['tenant']->id, 'landing_form_id' => $second->id]);
+    }
+
+    public function test_a_rename_keeps_the_old_address_working_for_that_page_and_nobody_else(): void
+    {
+        $form = $this->published([], ['slug' => 'old-name']);
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['slug' => 'new-name'])->assertOk();
+
+        $this->public('new-name')->assertOk();
+        $this->public('old-name')->assertOk();
+        $this->assertSame('taken', app(LandingSlugs::class)->problem('old-name'));
+
+        $other = $this->asTenant($this->b['tenant'], fn () => Project::create(['name' => 'B']));
+        $this->actingAs($this->b['admin'])->postJson('/api/v1/tracking/forms', ['name' => 'B', 'project_id' => $other->uuid, 'fields' => $this->fields(), 'slug' => 'old-name', 'page' => []])->assertUnprocessable();
+
+        // It may go back to a name it had; clearing the address leaves it as it is.
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['slug' => 'old-name'])->assertOk()->assertJsonPath('data.form.slug', 'old-name');
+        $this->actingAs($this->a['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['slug' => null])->assertOk()->assertJsonPath('data.form.slug', 'old-name');
+        $this->public('new-name')->assertOk();
+
+        // Another company reaches it only through the address, never to manage it.
+        $this->actingAs($this->b['admin'])->getJson("/api/v1/tracking/forms/{$form['id']}")->assertNotFound();
+        $this->actingAs($this->b['admin'])->patchJson("/api/v1/tracking/forms/{$form['id']}", ['slug' => 'stolen'])->assertNotFound();
     }
 
     public function test_a_page_cannot_be_published_without_a_project_or_a_way_to_act(): void

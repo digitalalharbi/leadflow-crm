@@ -27,7 +27,7 @@ class LandingPages
         // A token first: those addresses are already printed on ads and QR codes. A page's own address second.
         $link = $this->context->withoutScope(fn () => TrackingLink::withoutGlobalScopes()->where('token', $token)->first()
             ?? TrackingLink::withoutGlobalScopes()->whereKey(LandingForm::withoutGlobalScopes()->where('slug', $token)->value('default_link_id')
-                ?? LandingForm::withoutGlobalScopes()->whereKey(DB::table('landing_slug_history')->where('slug', $token)->value('landing_form_id'))->value('default_link_id'))->first());
+                ?? LandingForm::withoutGlobalScopes()->whereKey(DB::table('landing_slug_claims')->where('slug', $token)->value('landing_form_id'))->value('default_link_id'))->first());
 
         if ($link === null || ! $link->isLive() || $link->mode !== 'landing' || $link->landing_form_id === null) {
             return null;

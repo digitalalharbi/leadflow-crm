@@ -146,7 +146,7 @@ manager text is plain text; tenant isolation is checked on every new endpoint.
 
 ## Project landing pages and lead sources
 
-A landing page is a `LandingForm` with `page` set, not a second system. Publishing gives it a global `slug` and a `default_link_id`, so `/l/<slug>` resolves to a tracking link and the visit, submission, beacons, sessions, analytics and destinations run on the path every link uses. Tokens resolve first; a page's old slugs stay reserved and keep opening it (`landing_slug_history`).
+A landing page is a `LandingForm` with `page` set, not a second system. Publishing gives it a global `slug` and a `default_link_id`, so `/l/<slug>` resolves to a tracking link and the visit, submission, beacons, sessions, analytics and destinations run on the path every link uses. Tokens resolve first; a page's old slugs stay reserved and keep opening it (`landing_slug_claims`).
 
 - **Config:** `LandingPageConfig`, a closed list, frozen in each published version.
 - **Lead:** `leads.landing_form_id` keeps the first page that brought it.

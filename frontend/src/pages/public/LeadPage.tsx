@@ -15,7 +15,9 @@ const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_c
 /** What the address carries that the server should hear about: the click ids and the UTMs. */
 function fromAddress(search: string) {
   const q = new URLSearchParams(search)
-  const click_ids = Object.fromEntries(CLICK_ID_KEYS.flatMap((k) => (q.get(k) ? [[k, q.get(k)!] as [string, string]] : [])))
+  // Platforms spell their own names as they like (Snapchat's links say `ScCid`): a known click id is matched in any case, and sent under the one name the server keeps.
+  const anyCase = new Map([...q].map(([k, v]) => [k.toLowerCase(), v]))
+  const click_ids = Object.fromEntries(CLICK_ID_KEYS.flatMap((k) => { const v = q.get(k) || anyCase.get(k); return v ? [[k, v] as [string, string]] : [] }))
   const utm = Object.fromEntries(UTM_KEYS.flatMap((k) => (q.get(k) ? [[k, q.get(k)!] as [string, string]] : [])))
 
   return { click_ids, utm, mt_vid: q.get('mt_vid') ?? undefined, mt_sid: q.get('mt_sid') ?? undefined }

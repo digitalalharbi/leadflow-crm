@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Automation\ConditionEvaluator;
 use App\Domain\Sheets\GoogleTokens;
+use App\Domain\Tracking\ClickIds;
 use App\Domain\Tracking\Forms\LandingSlugs;
 use App\Domain\Tracking\WhatsappReference;
 use App\Enums\IntegrationProvider;
@@ -15,11 +16,13 @@ use App\Models\Integration;
 use App\Models\LandingForm;
 use App\Models\Lead;
 use App\Models\LeadFormMapping;
+use App\Models\LeadSourceEvent;
 use App\Models\PermissionRule;
 use App\Models\Project;
 use App\Models\SheetSource;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
+use App\Models\VisitorSession;
 use App\Services\Leads\LeadIngestionService;
 use App\Services\Whatsapp\InboundWhatsappProcessor;
 use App\Support\SafeSvg;
@@ -361,6 +364,116 @@ class LeadSourcesAndLandingPagesTest extends TestCase
         $this->assertSame(1, $this->asTenant($this->a['tenant'], fn () => Lead::count()), 'The honeypot makes nothing.');
 
         $this->submit($form['slug'], ['answers' => ['name' => '', 'mobile' => '']])->assertUnprocessable();
+    }
+
+    // ------------------------------------------------------------- click ids on a page's address
+
+    private function leadOf(string $mobile): Lead
+    {
+        return $this->asTenant($this->a['tenant'], fn () => Lead::where('phone_normalized', '+966'.substr($mobile, 1))->firstOrFail());
+    }
+
+    private function answers(string $mobile): array
+    {
+        return ['answers' => ['name' => 'سارة', 'mobile' => $mobile]];
+    }
+
+    public function test_every_click_id_on_a_page_address_reaches_the_lead_whichever_way_it_arrives(): void
+    {
+        $slug = $this->published()['slug'];
+
+        foreach (ClickIds::KEYS as $i => $key) {
+            $value = "id-{$key}";
+
+            // Only the address carried it: the visit remembers it for the lead.
+            $tracking = $this->public("{$slug}?{$key}={$value}")->assertOk()->json('data.tracking');
+            $viaVisit = sprintf('05512345%02d', $i);
+            $this->submit($slug, ['visitor_id' => $tracking['visitor_id'], 'session_id' => $tracking['session_id']] + $this->answers($viaVisit))->assertOk();
+
+            $lead = $this->leadOf($viaVisit);
+            $this->assertSame([$key => $value], $lead->click_ids['first'] ?? null, $key);
+            $this->assertSame([$key => $value], $lead->click_ids['last'] ?? null, $key);
+            $this->assertSame($value, $lead->click_id, $key);
+            $session = $this->asTenant($this->a['tenant'], fn () => VisitorSession::where('session_id', $tracking['session_id'])->firstOrFail());
+            $this->assertSame($lead->id, $session->lead_id);
+            $this->assertSame($value, $session->first_touch['click_ids'][$key] ?? null);
+
+            // Only the form carried it: a visitor the view never met.
+            $viaForm = sprintf('05612345%02d', $i);
+            $this->submit($slug, ['visitor_id' => 'v_'.str_repeat((string) ($i % 10), 20), 'session_id' => 's_'.str_repeat((string) ($i % 10), 20), 'click_ids' => [$key => $value]] + $this->answers($viaForm))->assertOk();
+            $this->assertSame([$key => $value], $this->leadOf($viaForm)->click_ids['first'] ?? null, $key);
+        }
+    }
+
+    public function test_snapchat_click_id_is_one_id_however_the_address_spells_it(): void
+    {
+        $slug = $this->published()['slug'];
+
+        foreach (['ScCid', 'scCid', 'sccid', 'SCCID'] as $i => $spelling) {
+            $tracking = $this->public("{$slug}?{$spelling}=snap-{$i}")->assertOk()->json('data.tracking');
+            $mobile = sprintf('05712345%02d', $i);
+            $this->submit($slug, ['visitor_id' => $tracking['visitor_id'], 'session_id' => $tracking['session_id']] + $this->answers($mobile))->assertOk();
+
+            $this->assertSame(['sccid' => "snap-{$i}"], $this->leadOf($mobile)->click_ids['first'] ?? null, $spelling);
+            $this->assertSame("snap-{$i}", $this->leadOf($mobile)->click_id, $spelling);
+        }
+
+        // Only the known names are matched this way, the proper spelling wins, and the list stays closed.
+        $this->assertSame(['gclid' => 'g', 'sccid' => 's'], ClickIds::from(['ScCid' => 's', 'GCLID' => 'g', 'Other' => 'kept out']));
+        $this->assertSame(['sccid' => 'proper'], ClickIds::from(['ScCid' => 'loose', 'sccid' => 'proper']));
+        $this->assertSame([], ClickIds::from(['GCLID2' => 'x', 'ScCid' => ['not', 'text'], 'FBCLID' => '']));
+    }
+
+    public function test_a_click_id_stays_with_its_visitor_and_the_first_is_never_overwritten(): void
+    {
+        $slug = $this->published()['slug'];
+        $mobile = '0551110000';
+
+        $tracking = $this->public("{$slug}?gclid=first")->assertOk()->json('data.tracking');
+        $own = ['visitor_id' => $tracking['visitor_id'], 'session_id' => $tracking['session_id']];
+        $carryOn = "mt_vid={$own['visitor_id']}&mt_sid={$own['session_id']}";
+
+        // A reload with the address bare loses nothing, and a later click is the last touch, never the first.
+        $this->public("{$slug}?{$carryOn}")->assertOk();
+        $this->public("{$slug}?{$carryOn}&gclid=later")->assertOk();
+
+        // Another visitor on the same page gets none of it. (Holding the first one's session id too: see the E2E, this test's transaction cannot survive that collision.)
+        $stranger = '0552220000';
+        $this->submit($slug, ['visitor_id' => 'v_'.str_repeat('c', 20), 'session_id' => 's_'.str_repeat('c', 20)] + $this->answers($stranger))->assertOk();
+        $this->assertNull($this->leadOf($stranger)->click_ids);
+        $this->assertNull($this->leadOf($stranger)->click_id);
+
+        $id = (string) str()->uuid();
+        $this->submit($slug, $own + ['submission_id' => $id] + $this->answers($mobile))->assertOk();
+        $lead = $this->leadOf($mobile);
+        $this->assertEquals(['first' => ['gclid' => 'first'], 'last' => ['gclid' => 'later']], $lead->click_ids);
+        $this->assertSame('first', $lead->click_id);
+        $sessions = fn () => $this->asTenant($this->a['tenant'], fn () => VisitorSession::where('lead_id', $lead->id)->count());
+        $this->assertSame(1, $sessions());
+
+        // The same submission again changes nothing and credits nobody twice.
+        $this->submit($slug, $own + ['submission_id' => $id] + $this->answers($mobile))->assertOk()->assertJsonPath('data.duplicate', true);
+        $this->assertEquals(['first' => ['gclid' => 'first'], 'last' => ['gclid' => 'later']], $this->leadOf($mobile)->click_ids);
+
+        // The same person back later from another ad, on another device: still the first click that found them.
+        $again = $this->public("{$slug}?fbclid=another-ad")->assertOk()->json('data.tracking');
+        $this->submit($slug, ['visitor_id' => $again['visitor_id'], 'session_id' => $again['session_id'], 'click_ids' => ['fbclid' => 'another-ad']] + $this->answers($mobile))->assertOk();
+        $this->assertSame(1, $this->asTenant($this->a['tenant'], fn () => Lead::where('phone_normalized', '+966'.substr($mobile, 1))->count()));
+        $this->assertSame(['gclid' => 'first'], $this->leadOf($mobile)->click_ids['first'] ?? null);
+        // That later click is not lost: it stands on the source event of the return.
+        $returned = $this->asTenant($this->a['tenant'], fn () => LeadSourceEvent::where('lead_id', $lead->id)->orderByDesc('id')->firstOrFail());
+        $this->assertSame('another-ad', data_get($returned->payload, 'tracking.click_ids.fbclid'));
+    }
+
+    public function test_a_thank_you_redirect_cannot_lose_the_click_id(): void
+    {
+        $slug = $this->published([], ['settings' => ['thanks' => ['redirect_url' => 'https://example.com/thanks', 'redirect_delay' => 0]]])['slug'];
+        $tracking = $this->public("{$slug}?ScCid=before-redirect")->assertOk()->json('data.tracking');
+
+        // By the time the page is told where to go, the lead is already saved with it.
+        $this->submit($slug, ['visitor_id' => $tracking['visitor_id'], 'session_id' => $tracking['session_id']] + $this->answers('0553330000'))
+            ->assertOk()->assertJsonPath('data.thank_you.redirect_url', 'https://example.com/thanks');
+        $this->assertSame(['sccid' => 'before-redirect'], $this->leadOf('0553330000')->click_ids['first'] ?? null);
     }
 
     public function test_a_lead_keeps_the_first_page_that_brought_it(): void

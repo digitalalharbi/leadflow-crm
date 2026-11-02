@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
+import path from 'node:path'
+import { expect, test, type Page } from '@playwright/test'
 import { apiGet, apiLogin, apiPost, type ApiSession } from '../../fixtures/api'
 import { ALPHA, BETA } from '../../fixtures/data'
 import { resetFixtures } from '../../fixtures/seed'
@@ -6,6 +8,47 @@ import { signInAs } from '../../fixtures/pages'
 import { collectPageErrors, expectNoSidewaysScroll } from './helpers'
 
 interface Created { id: string; slug: string }
+
+/** What the store kept on the lead: no screen shows click ids, and they are what the sale is credited back with. */
+function storedClickIds(phone: string): { click_id: string | null; click_ids: { first?: Record<string, string>; last?: Record<string, string> } | null } {
+  const code = `echo json_encode(DB::table('leads')->where('phone_normalized', '+966${phone.slice(1)}')->first(['click_id', 'click_ids']));`
+  const out = execFileSync('php', ['artisan', 'tinker', `--execute=${code}`], { cwd: process.env.E2E_BACKEND_DIR ?? path.resolve(process.cwd(), '../backend'), env: process.env, encoding: 'utf8' })
+  const row = JSON.parse(out.trim()) as { click_id: string | null; click_ids: string | null }
+
+  return { click_id: row.click_id, click_ids: row.click_ids ? JSON.parse(row.click_ids) : null }
+}
+
+/** Fill the page's form as a person would and send it, however many steps it turned itself into. */
+async function fillAndSend(page: Page, phone: string) {
+  const form = page.getByTestId('page-form')
+
+  // A long form turned itself into steps: walk them, filling what each asks.
+  for (let step = 0; step < 6; step++) {
+    for (const input of await form.locator('input:visible:not([type=checkbox]):not([type=radio]):not([tabindex="-1"])').all()) {
+      const type = await input.getAttribute('type')
+      if (await input.inputValue()) continue
+      const mode = await input.getAttribute('inputmode')
+      const email = type === 'email' || mode === 'email' || (await input.getAttribute('data-testid'))?.includes('email')
+      const numeric = type === 'number' || mode === 'numeric' || mode === 'decimal' || (await input.getAttribute('data-testid'))?.includes('budget')
+      await input.fill(type === 'tel' ? phone : email ? `sara${Date.now()}@example.com` : numeric ? '1000000' : 'سارة العتيبي')
+    }
+
+    // The country stays what the page chose: the number below is a Saudi one.
+    for (const select of await form.locator('select:visible:not([data-testid^="country-"])').all()) {
+      await select.selectOption({ index: 1 }).catch(() => undefined)
+    }
+
+    const radios = form.locator('input[type=radio]:visible')
+    if (await radios.count()) await radios.first().check()
+    // The same button moves on, and on the last step sends.
+    await form.getByTestId('landing-submit').click()
+
+    // Sending takes a moment on the last step: the thanks replaces the form, so there is nothing more to press.
+    if (await page.getByTestId('landing-thanks').waitFor({ timeout: 2000 }).then(() => true).catch(() => false)) break
+  }
+
+  await expect(page.getByTestId('landing-thanks')).toBeVisible()
+}
 
 /**
  * A landing page is a native source of its project: published from inside Mohtam to a public address, fits the first screen of a
@@ -113,33 +156,7 @@ test.describe('Lead sources and landing pages', () => {
     await page.goto(`/l/${slug}?utm_source=tiktok&utm_campaign=autumn`)
     await expect(page.getByTestId('landing-headline')).toBeVisible()
 
-    const form = page.getByTestId('page-form')
-
-    // A long form turned itself into steps: walk them, filling what each asks.
-    for (let step = 0; step < 6; step++) {
-      for (const input of await form.locator('input:visible:not([type=checkbox]):not([type=radio]):not([tabindex="-1"])').all()) {
-        const type = await input.getAttribute('type')
-        if (await input.inputValue()) continue
-        const mode = await input.getAttribute('inputmode')
-        const email = type === 'email' || mode === 'email' || (await input.getAttribute('data-testid'))?.includes('email')
-        const numeric = type === 'number' || mode === 'numeric' || mode === 'decimal' || (await input.getAttribute('data-testid'))?.includes('budget')
-        await input.fill(type === 'tel' ? phone : email ? `sara${Date.now()}@example.com` : numeric ? '1000000' : 'سارة العتيبي')
-      }
-
-      for (const select of await form.locator('select:visible').all()) {
-        await select.selectOption({ index: 1 }).catch(() => undefined)
-      }
-
-      const radios = form.locator('input[type=radio]:visible')
-      if (await radios.count()) await radios.first().check()
-      // The same button moves on, and on the last step sends.
-      await form.getByTestId('landing-submit').click()
-
-      // Sending takes a moment on the last step: the thanks replaces the form, so there is nothing more to press.
-      if (await page.getByTestId('landing-thanks').waitFor({ timeout: 2000 }).then(() => true).catch(() => false)) break
-    }
-
-    await expect(page.getByTestId('landing-thanks')).toBeVisible()
+    await fillAndSend(page, phone)
 
     const sources = await apiGet<{ sources: { type: string; id: string; leads: number; status: string; path: string | null }[] }>(admin, `/api/v1/projects/${projectId}/lead-sources`)
     const source = sources.sources.find((s) => s.id === page1.id)
@@ -156,6 +173,60 @@ test.describe('Lead sources and landing pages', () => {
     const analytics = await apiGet<{ page: { leads: number; funnel: { key: string; n: number }[] } }>(admin, `/api/v1/tracking/forms/${page1.id}/analytics`)
     expect(analytics.page.leads).toBeGreaterThan(0)
     expect(analytics.page.funnel.find((s) => s.key === 'view')?.n).toBeGreaterThan(0)
+  })
+
+  test('all nine click ids reach the lead through a reload, a look elsewhere and the steps, and the address keeps its own spelling', async ({ page }) => {
+    const phone = `05${String(Date.now()).slice(-8)}`
+    const ids = { gclid: 'E2E-g', gbraid: 'E2E-gb', wbraid: 'E2E-wb', fbclid: 'E2E-fb', ttclid: 'E2E-tt', ScCid: 'E2E-sn', msclkid: 'E2E-ms', li_fat_id: 'E2E-li', twclid: 'E2E-tw' }
+    const address = `/l/${slug}?${new URLSearchParams({ ...ids, Keep: 'CaseStays' })}`
+    await page.goto(address)
+    await expect(page.getByTestId('landing-headline')).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByTestId('landing-headline')).toBeVisible()
+    await page.goto('/privacy')
+    await page.goBack()
+    await expect(page.getByTestId('landing-headline')).toBeVisible()
+    expect(new URL(page.url()).search).toContain('ScCid=E2E-sn&msclkid=E2E-ms')
+    expect(new URL(page.url()).search).toContain('Keep=CaseStays')
+
+    await fillAndSend(page, phone)
+
+    const { ScCid, ...rest } = ids
+    expect(storedClickIds(phone).click_ids?.first).toEqual({ ...rest, sccid: ScCid })
+    expect(storedClickIds(phone).click_id).toBe('E2E-g')
+  })
+
+  for (const spelling of ['ScCid', 'scCid', 'sccid']) {
+    test(`Snapchat's ${spelling} on the address is kept as sccid on the lead`, async ({ page }) => {
+      const phone = `05${String(Date.now()).slice(-8)}`
+      await page.goto(`/l/${slug}?${spelling}=E2E-${spelling}`)
+      await expect(page.getByTestId('landing-headline')).toBeVisible()
+
+      await fillAndSend(page, phone)
+
+      expect(storedClickIds(phone)).toEqual({ click_id: `E2E-${spelling}`, click_ids: { first: { sccid: `E2E-${spelling}` }, last: { sccid: `E2E-${spelling}` } } })
+    })
+  }
+
+  test('a visitor holding someone else\'s session id gets none of their click ids, and nobody is credited twice', async ({ page, request }, testInfo) => {
+    const phone = `05${String(Date.now()).slice(-8)}`
+    const asked = page.waitForResponse((r) => r.url().includes(`/public/landing/${slug}`) && r.request().method() === 'GET')
+    await page.goto(`/l/${slug}?gclid=E2E-theirs`)
+    const { data } = await (await asked).json() as { data: { tracking: { session_id: string } } }
+
+    const body = {
+      submission_id: crypto.randomUUID(), answers: { full_name: 'زائر آخر', name: 'زائر آخر', phone, mobile: phone },
+      visitor_id: `v_${testInfo.project.name.replace(/\W/g, '')}${'c'.repeat(24)}`.slice(0, 24), session_id: data.tracking.session_id,
+    }
+    const url = `${process.env.E2E_API_URL ?? 'http://127.0.0.1:8000'}/api/v1/public/landing/${slug}/submit`
+    const first = await request.post(url, { data: body })
+    expect(first.status(), await first.text()).toBe(200)
+    expect(storedClickIds(phone)).toEqual({ click_id: null, click_ids: null })
+
+    const again = await request.post(url, { data: body })
+    expect((await again.json()).data.duplicate).toBe(true)
+    expect(storedClickIds(phone)).toEqual({ click_id: null, click_ids: null })
   })
 
   test('a landing page downloads nothing of the product behind it, and still does its work', async ({ page }) => {

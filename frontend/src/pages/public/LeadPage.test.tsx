@@ -74,6 +74,24 @@ describe('the landing page', () => {
     expect(landing).toHaveBeenCalledWith('abc123', expect.objectContaining({ utm_source: 'facebook', fbclid: 'FB1' }))
   })
 
+  it.each(['ScCid', 'scCid', 'sccid'])('hears Snapchat under one name when the address says %s, and leaves the rest of the address alone', async (spelling) => {
+    renderWithProviders(<LeadPage token="abc123" search={`?${spelling}=SN1&utm_source=Snap&Keep=Case`} />)
+    await screen.findByTestId('landing-form')
+
+    expect(landing).toHaveBeenCalledWith('abc123', expect.objectContaining({ sccid: 'SN1', utm_source: 'Snap' }))
+    const [, asked] = landing.mock.calls.at(-1)!
+    expect(Object.keys(asked as object).filter((k) => k.toLowerCase() === 'sccid')).toEqual(['sccid'])
+    expect(asked).not.toHaveProperty('keep')
+  })
+
+  it('asks with all nine click ids, whatever case they came in, and only those', async () => {
+    const ids = { GCLID: 'a', gbraid: 'b', WbRaId: 'c', FbClId: 'd', TTCLID: 'e', ScCid: 'f', MsClkId: 'g', LI_FAT_ID: 'h', TwClId: 'i' }
+    renderWithProviders(<LeadPage token="abc123" search={`?${new URLSearchParams({ ...ids, gclid2: 'no' })}`} />)
+    await screen.findByTestId('landing-form')
+
+    expect(landing.mock.calls.at(-1)![1]).toEqual({ gclid: 'a', gbraid: 'b', wbraid: 'c', fbclid: 'd', ttclid: 'e', sccid: 'f', msclkid: 'g', li_fat_id: 'h', twclid: 'i' })
+  })
+
   it('shows a conditional question only after the answer that asks for it', async () => {
     const user = userEvent.setup()
     open()

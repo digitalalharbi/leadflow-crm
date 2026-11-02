@@ -17,15 +17,19 @@ class ClickIds
     private const MAX_LENGTH = 512;
 
     /**
+     * Platforms spell their own names as they like (Snapchat's links say `ScCid`), so a known name is matched in any case
+     * and kept under the list's spelling. The proper spelling wins when an address carries both.
+     *
      * @param  array<string,mixed>  $source
      * @return array<string,string> only the click ids present and well-formed, in the list's order
      */
     public static function from(array $source): array
     {
         $found = [];
+        $anyCase = array_change_key_case($source);
 
         foreach (self::KEYS as $key) {
-            $value = $source[$key] ?? null;
+            $value = $source[$key] ?? $anyCase[$key] ?? null;
 
             if (is_string($value) && $value !== '' && mb_strlen($value) <= self::MAX_LENGTH) {
                 $found[$key] = $value;

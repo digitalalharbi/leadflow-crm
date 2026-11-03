@@ -7,8 +7,8 @@
 export const HOME = '/dashboard'
 
 /** Where signing in lands. A salesperson's day is their queue; everybody else starts from the dashboard. */
-export function homeFor(user: { role?: string | null } | null | undefined): string {
-  return user?.role === 'sales' ? '/work' : HOME
+export function homeFor(user: { role?: string | null; home?: string | null } | null | undefined): string {
+  return user?.home ?? (user?.role === 'sales' ? '/work' : HOME)
 }
 
 /** The official public origin: the marketing page, the login, and the canonical address search engines are told. */

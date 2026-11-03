@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1\SuperAdmin;
 
+use App\Domain\Access\Permissions;
+use App\Domain\Access\WorkspaceModules;
 use App\Domain\Billing\BillingProvider;
 use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\SubscriptionSummary;
 use App\Domain\Platform\PlatformAudit;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Plan;
@@ -47,6 +50,8 @@ class SubscriptionController extends Controller
             'seat_limit_override' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100000'],
             'limit_overrides' => ['sometimes', 'nullable', 'array'],
             'limit_overrides.*' => ['nullable', 'integer', 'min:0'],
+            'disabled_modules' => ['sometimes', 'nullable', 'array'],
+            'disabled_modules.*' => ['string', Rule::in(array_keys(WorkspaceModules::MODULES))],
             'addons' => ['sometimes', 'nullable', 'array'],
             'addons.*' => ['string', Rule::in(Plan::FEATURES)],
             'trial_ends_at' => ['sometimes', 'nullable', 'date'],
@@ -167,6 +172,23 @@ class SubscriptionController extends Controller
         return Tenant::where('uuid', $uuid)->firstOrFail();
     }
 
+    /** Who can reach what in this company, as the API would decide it: the same chain, read out. */
+    public function accessMatrix(string $uuid)
+    {
+        $tenant = $this->tenant($uuid);
+        $off = WorkspaceModules::disabled($tenant);
+        $roles = array_values(array_filter(Role::cases(), fn (Role $role) => $role !== Role::SuperAdmin));
+
+        return ApiResponse::success([
+            'roles' => array_map(fn (Role $role) => $role->value, $roles),
+            'rows' => collect(WorkspaceModules::MODULES)->map(fn (array $module, string $key) => [
+                'module' => $key,
+                'enabled' => ! in_array($key, $off, true),
+                'roles' => collect($roles)->mapWithKeys(fn (Role $role) => [$role->value => ! in_array($key, $off, true) && in_array($module['permission'], Permissions::forRole($role), true)])->all(),
+            ])->values(),
+        ]);
+    }
+
     private function payload(Tenant $tenant): array
     {
         return $this->context->withoutScope(fn () => [
@@ -177,6 +199,8 @@ class SubscriptionController extends Controller
                 'seat_limit_override' => $tenant->seat_limit_override,
                 'limit_overrides' => $tenant->limit_overrides,
                 'addons' => $tenant->addons ?? [],
+                'disabled_modules' => WorkspaceModules::disabled($tenant),
+                'modules' => array_keys(WorkspaceModules::MODULES),
                 'billing_provider' => $tenant->billing_provider,
                 'billing_customer_ref' => $tenant->billing_customer_ref,
                 'billing_subscription_ref' => $tenant->billing_subscription_ref,

@@ -7,6 +7,7 @@ import { apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
+import { useProject } from '@/stores/project'
 import { Button } from '@/components/ui'
 
 interface Workspace {
@@ -49,6 +50,7 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
       }
 
       tokenStorage.set(result.token)
+      useProject.getState().select(null)
       onDone()
       await restore()
       window.location.assign(HOME)

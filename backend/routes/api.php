@@ -768,6 +768,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/plans/{uuid}', [PlanController::class, 'update']);
             Route::get('/tenants/{uuid}/subscription', [SubscriptionController::class, 'show']);
             Route::patch('/tenants/{uuid}/subscription', [SubscriptionController::class, 'update']);
+            Route::get('/tenants/{uuid}/access-matrix', [SubscriptionController::class, 'accessMatrix']);
             Route::post('/tenants/{uuid}/subscription/{action}', [SubscriptionController::class, 'transition'])
                 ->whereIn('action', ['activate', 'extend', 'past_due', 'suspend', 'reactivate', 'cancel']);
             Route::post('/tenants/{uuid}/invoices', [InvoiceController::class, 'store']);

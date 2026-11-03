@@ -41,7 +41,7 @@ function useKeyboardOpen(): boolean {
  */
 export function BottomNav() {
   const { t } = useTranslation()
-  const { primary } = useNavigation()
+  const { tabs } = useNavigation()
   const sidebarOpen = useUi((s) => s.sidebarOpen)
   const setSidebarOpen = useUi((s) => s.setSidebarOpen)
   const keyboard = useKeyboardOpen()
@@ -56,7 +56,7 @@ export function BottomNav() {
       data-testid="bottom-nav"
       className="bottom-nav fixed inset-x-0 bottom-0 z-[25] flex items-stretch bg-[var(--color-surface)] shadow-[0_-1px_0_var(--color-line),0_-8px_24px_-12px_rgb(0_0_0/0.12)] lg:hidden print:hidden"
     >
-      {primary.slice(0, TABS).map(({ to, labelKey, Icon }) => (
+      {tabs.slice(0, TABS).map(({ to, labelKey, Icon }) => (
         <NavLink
           key={to}
           to={to}

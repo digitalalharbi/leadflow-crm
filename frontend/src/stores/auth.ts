@@ -13,11 +13,12 @@ interface Access {
 }
 
 /** The session's access travels beside the user in the response; the rest of the app reads it off the user. */
-function withAccess(user: User, access: Partial<Access>): User {
-  return { ...user, permissions: access.permissions ?? user.permissions, hidden_data: access.hidden_data ?? user.hidden_data, hidden_elements: access.hidden_elements ?? user.hidden_elements, access_role: access.access_role === undefined ? user.access_role : access.access_role, project_scope: access.project_scope === undefined ? user.project_scope : access.project_scope }
+function withAccess(user: User, access: Partial<Access> & { home?: string }): User {
+  return { ...user, home: access.home ?? user.home, permissions: access.permissions ?? user.permissions, hidden_data: access.hidden_data ?? user.hidden_data, hidden_elements: access.hidden_elements ?? user.hidden_elements, access_role: access.access_role === undefined ? user.access_role : access.access_role, project_scope: access.project_scope === undefined ? user.project_scope : access.project_scope }
 }
 
 interface LoginResponse extends Partial<Access> {
+  home?: string
   token: string
   user: User
   branding: Branding | null
@@ -45,7 +46,7 @@ interface AuthState {
   /** null until the first /me call settles, so the router can hold the redirect. */
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
   /** Resolves `mfa` when the account has a second factor and no (valid) code was sent yet. */
-  login: (credentials: { email: string; password: string; tenant?: string; code?: string; remember?: boolean }) => Promise<'ok' | 'mfa'>
+  login: (credentials: { email: string; password: string; tenant?: string; code?: string; remember?: boolean }) => Promise<'ok' | 'mfa' | 'platform'>
   /** Back from Google with the server's one-time ticket. */
   loginGoogle: (credentials: { ticket: string; code?: string; remember?: boolean }) => Promise<'ok' | 'mfa'>
   /** The platform owner's own door. Resolves `mfa` when a code is still needed. */
@@ -71,8 +72,9 @@ export const useAuth = create<AuthState>((set) => ({
   status: 'idle',
 
   login: async (credentials) => {
-    const data = await apiPost<LoginResponse | { mfa_required: true }>('/auth/login', credentials)
+    const data = await apiPost<LoginResponse | { mfa_required: true } | { platform: true }>('/auth/login', credentials)
 
+    if ('platform' in data) return 'platform'
     if ('mfa_required' in data) return 'mfa'
 
     tokenStorage.set(data.token)

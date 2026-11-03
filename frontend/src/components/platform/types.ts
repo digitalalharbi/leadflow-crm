@@ -34,6 +34,8 @@ export interface PlatformInvoice {
 }
 
 export interface PlatformSubscription extends Subscription {
+  disabled_modules?: string[]
+  modules?: string[]
   plan_id: string | null
   billing_cycle: 'monthly' | 'yearly'
   extra_seats: number

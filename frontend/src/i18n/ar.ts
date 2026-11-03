@@ -4013,7 +4013,11 @@ export default {
       disabled: { title: 'مساحة العمل معطّلة', body: 'عطّل مزوّد الخدمة مساحة العمل هذه.' },
     },
   },
+  projectSwitcher: { all: 'كل المشاريع', title: 'اختر مشروعًا', search: 'ابحث عن مشروع' },
   platformAdmin: {
+    modules: 'الوحدات المتاحة لهذه الشركة',
+    modulesHint: 'ما يُوقف هنا يرفضه الخادم ويختفي من القوائم، وكل تغيير يُسجّل.',
+    module: { visits: 'الزيارات', reservations: 'الحجوزات', units: 'الوحدات العقارية', automation: 'الأتمتة', reports: 'التقارير', public_sharing: 'مشاركة التقارير', landing: 'صفحات الهبوط', lead_sources: 'مصادر العملاء', google_sheets: 'جداول Google', integrations: 'التكاملات', exports: 'التصدير', api: 'مفاتيح الربط', webhooks: 'إشعارات الربط', campaigns: 'الحملات', tracking: 'التتبع', partners: 'الشركاء', revenue: 'الإيرادات والأرقام المالية' },
     ownerSetupNote: 'يصل المالكَ رابطٌ على بريده ليختار كلمة مروره بنفسه، صالح لسبعة أيام.',
     sections: { companies: 'الشركات', business: 'الأعمال', plans: 'الباقات', support: 'جلسات الدعم', audit: 'سجل المنصة', security: 'الأمان' },
     loginTitle: 'دخول إدارة المنصة',

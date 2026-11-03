@@ -149,6 +149,8 @@ class IntegrationController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', Integration::class);
+        // Webhook keys and errors of the whole company.
+        abort_if($request->user()->isLimited(), 403, 'Your role does not include this.');
 
         $configured = Integration::with('webhookEndpoints')->get()->keyBy(fn ($i) => $i->provider->value);
 

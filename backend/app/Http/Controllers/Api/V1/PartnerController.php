@@ -23,6 +23,8 @@ class PartnerController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', Partner::class);
+        // The list is the whole company's.
+        abort_if($request->user()->isLimited(), 403, 'Your role does not include this.');
 
         $f = $request->validate(['type' => ['nullable', Rule::in(Partner::TYPES)], 'days' => ['nullable', 'integer', 'min:1', 'max:365'], 'search' => ['nullable', 'string', 'max:100']]);
 

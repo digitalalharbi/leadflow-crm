@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Tracking\Forms\LandingSubmission;
 use App\Enums\Role;
 use App\Models\Import;
 use App\Models\ImportRow;
@@ -137,5 +138,41 @@ class IsolationRound4Test extends TestCase
         $this->actingAs($this->a['admin'])->getJson("/api/v1/projects/{$project->uuid}")->assertNotFound();
         $this->actingAs($this->a['admin'])->patchJson("/api/v1/leads/{$lead->uuid}", ['full_name' => 'x'])->assertNotFound();
         $this->actingAs($this->a['admin'])->postJson('/api/v1/leads', ['full_name' => 'x', 'phone' => '0553334445', 'project_id' => $project->uuid])->assertNotFound();
+    }
+
+    public function test_a_project_override_applies_only_to_a_project_this_person_was_given(): void
+    {
+        $this->assertTrue($this->limited->reaches($this->mine->id));
+        $this->assertFalse($this->limited->reaches($this->other->id));
+    }
+
+    public function test_a_viewer_cannot_spell_out_a_number_by_searching_or_read_conversations(): void
+    {
+        $viewer = $this->makeUser($this->a['tenant'], Role::ClientViewer);
+        $viewer->projects()->sync([$this->mine->id]);
+        $lead = $this->lead(['phone' => '0551234567', 'phone_normalized' => '+966551234567', 'email' => 'x@y.test', 'project_id' => $this->mine->id]);
+
+        $this->assertSame([], $this->actingAs($viewer)->getJson('/api/v1/leads?search=0551')->assertOk()->json('data'));
+        $this->assertSame([], $this->actingAs($viewer)->getJson('/api/v1/leads?search=x@y')->assertOk()->json('data'));
+        $this->actingAs($viewer)->getJson("/api/v1/leads/{$lead->uuid}/messages")->assertForbidden();
+    }
+
+    public function test_project_limited_marketing_cannot_read_integration_settings_or_sheet_secrets(): void
+    {
+        $marketing = $this->makeUser($this->a['tenant'], Role::MarketingManager);
+        $marketing->forceFill(['all_projects' => false])->save();
+        $marketing->projects()->sync([$this->mine->id]);
+
+        $this->actingAs($marketing)->getJson('/api/v1/integrations')->assertForbidden();
+        $this->actingAs($marketing)->getJson('/api/v1/integrations/sheets')->assertForbidden();
+        $this->actingAs($marketing)->getJson('/api/v1/partners')->assertForbidden();
+    }
+
+    public function test_a_public_form_does_not_say_which_project_a_known_number_belongs_to(): void
+    {
+        $source = LandingSubmission::class;
+        $code = (string) file_get_contents((new \ReflectionClass($source))->getFileName());
+
+        $this->assertStringNotContainsString('Project::whereKey($lead->project_id)', $code);
     }
 }

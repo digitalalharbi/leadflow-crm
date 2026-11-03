@@ -125,6 +125,7 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::get('/auth/providers', fn () => ApiResponse::success(['providers' => config('platform.login_providers')]));
     // Into an account without a password in hand. Every answer is the same whether or not an email is registered.
     Route::middleware('throttle:login')->group(function () {
         Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);

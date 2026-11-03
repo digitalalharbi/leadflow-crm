@@ -40,7 +40,7 @@ export default {
     email: 'Email', password: 'Password', currentPassword: 'Current password',
     newPassword: 'New password', confirmPassword: 'Confirm password',
     changePassword: 'Change password', passwordChanged: 'Password updated.',
-    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your Mohtam workspace',
+    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your Mohtam workspace', needHelp: 'Need help getting started?', contactUs: 'Contact us', orAnotherWay: 'or choose another way', show: 'Show', hide: 'Hide', verify: 'Verify', mfaTitle: 'Two-step verification', chooseWorkspace: 'Choose a workspace', chooseWorkspaceHint: 'Your account is in more than one company. Where to?', continueWith: 'Continue with {{provider}}',
     remember: 'Remember me on this device', forgot: 'Forgot your password?', moreOrganizations: 'More than one organisation?', about: 'What is Mohtam?',
     organization: 'Organisation', organizationHint: 'Leave blank if you only have one account',
   },

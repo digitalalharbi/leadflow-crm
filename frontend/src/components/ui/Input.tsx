@@ -50,8 +50,10 @@ export function Input({
   containerClassName,
   className,
   id,
+  startSlot,
+  endSlot,
   ...props
-}: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+}: FieldProps & { startSlot?: React.ReactNode; endSlot?: React.ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
   const generated = useId()
   const fieldId = id ?? generated
   const errorId = `${fieldId}-error`
@@ -109,6 +111,12 @@ export function Input({
           >
             {placeholder}
           </span>
+        </div>
+      ) : startSlot || endSlot ? (
+        <div className="relative">
+          {field}
+          {startSlot && <span aria-hidden className="pointer-events-none absolute inset-y-0 start-3.5 flex items-center text-[var(--color-ink-muted)]">{startSlot}</span>}
+          {endSlot && <span className="absolute inset-y-0 end-0 flex items-center">{endSlot}</span>}
         </div>
       ) : (
         field

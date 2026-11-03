@@ -50,6 +50,6 @@ class PasswordLink extends Model
 
     public static function url(string $token): string
     {
-        return rtrim((string) config('integrations.app_url'), '/').'/set-password/'.$token;
+        return rtrim((string) config('integrations.app_url'), '/').'/reset-password?token='.$token;
     }
 }

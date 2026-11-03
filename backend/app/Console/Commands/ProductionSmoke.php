@@ -85,7 +85,7 @@ class ProductionSmoke extends Command
         $this->step('forgot and reset password');
         $this->api('POST', '/auth/password/forgot', ['email' => $ownerEmail]);
         $password = Str::password(24);
-        $this->api('POST', '/auth/password/reset', ['token' => $this->tokenIn($ownerEmail, 'set-password/'), 'password' => $password, 'password_confirmation' => $password]);
+        $this->api('POST', '/auth/password/reset', ['token' => $this->tokenIn($ownerEmail, 'reset-password?token='), 'password' => $password, 'password_confirmation' => $password]);
         $owner = $this->api('POST', '/auth/login', ['email' => $ownerEmail, 'password' => $password])['token'];
 
         $this->step('email verification');

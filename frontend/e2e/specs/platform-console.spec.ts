@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { ALPHA, BETA, PASSWORD } from '../fixtures/data'
 import { authenticateAsPlatform } from '../fixtures/pages'
 import { apiPlatformLogin } from '../fixtures/api'
-import { artisan, resetFixtures } from '../fixtures/seed'
+import { resetFixtures, ensurePlatformOwner } from '../fixtures/seed'
 
 // The platform owner is not part of the tenant fixtures, so this spec makes
 // its own — the demo seeder's owner has a different password.
@@ -20,7 +20,7 @@ const OWNER = 'owner@e2e-console.test'
 test.describe('Platform console', () => {
   test.beforeAll(() => {
     resetFixtures()
-    artisan(['leadflow:create-super-admin', `--email=${OWNER}`, `--password=${PASSWORD}`])
+    ensurePlatformOwner(OWNER, PASSWORD)
   })
 
   test.beforeEach(async ({ page }) => {

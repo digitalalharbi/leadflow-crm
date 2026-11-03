@@ -22,6 +22,8 @@ return [
         'name' => env('LEADFLOW_MAIL_FROM_NAME', 'مهتم — Mohtam'),
     ],
 
+    'reply_to' => env('LEADFLOW_MAIL_REPLY_TO', 'info@mohtam.pro'),
+
     /*
      * Retries: the seconds to wait before attempt 2, 3, 4… A delivery that fails every time is
      * marked failed after the last, with every attempt on its failure log.

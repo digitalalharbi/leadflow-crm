@@ -35,8 +35,7 @@ class FirstRealClientFlowTest extends TestCase
     private function linkIn(string $email, string $path): string
     {
         $html = (string) EmailDelivery::withoutGlobalScopes()->where('to_email', $email)->latest('id')->value('html');
-        $this->assertSame(1, preg_match('#/'.$path.'/([A-Za-z0-9]{48})#', $html), "No /{$path}/ link reached {$email}.");
-        preg_match('#/'.$path.'/([A-Za-z0-9]{48})#', $html, $m);
+        $this->assertSame(1, preg_match('#/'.$path.'([A-Za-z0-9]{48})#', $html, $m), "No {$path} link reached {$email}.");
 
         return $m[1];
     }
@@ -53,7 +52,7 @@ class FirstRealClientFlowTest extends TestCase
         // Login: the owner chooses their own password from the emailed link, and can then sign in with it
         $this->flushHeaders();
         $this->app['auth']->forgetGuards();
-        $this->postJson('/api/v1/auth/password/reset', ['token' => $this->linkIn('noura@rawaq.test', 'set-password'), 'password' => 'a-strong-pass', 'password_confirmation' => 'a-strong-pass'])->assertOk();
+        $this->postJson('/api/v1/auth/password/reset', ['token' => $this->linkIn('noura@rawaq.test', 'reset-password\?token='), 'password' => 'a-strong-pass', 'password_confirmation' => 'a-strong-pass'])->assertOk();
         $this->assertNotNull(User::where('email', 'noura@rawaq.test')->first()->email_verified_at);
         $owner = $this->postJson('/api/v1/auth/login', ['email' => 'noura@rawaq.test', 'password' => 'a-strong-pass'])->assertOk()->json('data.token');
 
@@ -64,7 +63,7 @@ class FirstRealClientFlowTest extends TestCase
         $this->as($owner)->postJson('/api/v1/invitations', ['name' => 'سلطان', 'email' => 'sultan@rawaq.test', 'role' => 'sales', 'project_ids' => [$project], 'all_projects' => false])->assertCreated();
         $this->flushHeaders();
         $this->app['auth']->forgetGuards();
-        $rep = $this->postJson('/api/v1/public/invitations/'.$this->linkIn('sultan@rawaq.test', 'i').'/accept', ['name' => 'سلطان', 'password' => 'another-pass', 'password_confirmation' => 'another-pass'])
+        $rep = $this->postJson('/api/v1/public/invitations/'.$this->linkIn('sultan@rawaq.test', 'i/').'/accept', ['name' => 'سلطان', 'password' => 'another-pass', 'password_confirmation' => 'another-pass'])
             ->assertCreated()->assertJsonPath('data.user.role', 'sales')->json('data.token');
 
         // Add Lead Source + Publish Landing Page

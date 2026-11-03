@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { useAuth } from '@/stores/auth'
-import { Button, Card, CardBody, Input, Skeleton } from '@/components/ui'
-import { Logo } from '@/components/brand'
+import { Button, Input, Skeleton } from '@/components/ui'
+import { AuthCard, AuthShell } from '@/components/auth/AuthShell'
 
 /*
  * The three doors into an account that do not start with a password the person already has: an invitation to a
@@ -16,15 +16,9 @@ import { Logo } from '@/components/brand'
 
 function Shell({ title, children, testId }: { title: string; children: ReactNode; testId: string }) {
   return (
-    <div className="grid min-h-dvh place-items-center bg-[var(--color-canvas)] p-4" data-testid={testId}>
-      <Card className="w-full max-w-md">
-        <CardBody className="space-y-4">
-          <Logo layout="horizontal" height={36} />
-          <h1 className="text-[1.25rem] font-semibold" data-testid="page-title">{title}</h1>
-          {children}
-        </CardBody>
-      </Card>
-    </div>
+    <AuthShell testId={testId}>
+      <AuthCard title={title}>{children}</AuthCard>
+    </AuthShell>
   )
 }
 

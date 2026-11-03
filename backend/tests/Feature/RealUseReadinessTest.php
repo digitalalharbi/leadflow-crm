@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DataTransferObjects\IncomingLead;
 use App\Domain\Auth\EmailVerification;
+use App\Domain\Mail\AccountEmail;
 use App\Domain\Privacy\SuppressionList;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
@@ -13,6 +14,7 @@ use App\Models\EmailDelivery;
 use App\Models\Integration;
 use App\Models\Invitation;
 use App\Models\Lead;
+use App\Models\PasswordLink;
 use App\Models\Project;
 use App\Models\Tenant;
 use App\Models\User;
@@ -289,5 +291,35 @@ class RealUseReadinessTest extends TestCase
         $this->assertFalse($limited->reaches($other->id));
         $this->actingAs($limited)->postJson('/api/v1/automation/rules', ['name' => 'x'])->assertForbidden();
         $this->actingAs($limited)->getJson('/api/v1/settings/suppressions')->assertForbidden();
+    }
+
+    public function test_every_link_and_address_in_an_account_email_is_the_official_one(): void
+    {
+        config(['integrations.app_url' => 'https://mohtam.pro']);
+        ['tenant' => $tenant] = $this->provisionTenant();
+        $user = $this->makeUser($tenant, Role::Admin, ['email' => 'p@x.test']);
+
+        $this->assertSame('https://mohtam.pro/reset-password?token=abc', PasswordLink::url('abc'));
+        $this->assertStringStartsWith('https://mohtam.pro/verify-email?token=', EmailVerification::url('abc'));
+        $this->assertStringStartsWith('https://mohtam.pro/i/', $this->asTenant($tenant, fn () => new Invitation)->url('abc'));
+        $this->assertSame('info@mohtam.pro', config('leadflow_mail.reply_to'));
+        $this->assertSame('مهتم — Mohtam', config('leadflow_mail.from.name'));
+
+        $mailer = $this->fakeMailer(true);
+        app(AccountEmail::class)->verification($user, EmailVerification::token($user), $tenant);
+        $this->assertSame('info@mohtam.pro', $mailer->sent[0]->replyTo);
+        $this->assertStringContainsString('https://mohtam.pro/verify-email?token=', $mailer->sent[0]->html);
+    }
+
+    public function test_no_other_way_to_sign_in_is_offered_until_one_works(): void
+    {
+        $this->getJson('/api/v1/auth/providers')->assertOk()->assertExactJson(['success' => true, 'data' => ['providers' => []], 'message' => null, 'errors' => null]);
+    }
+
+    public function test_the_browser_tests_owner_cannot_be_made_in_production(): void
+    {
+        $this->app['env'] = 'production';
+        $this->artisan('leadflow:e2e-platform-owner', ['email' => 'x@x.test'])->assertFailed();
+        $this->assertSame(0, User::where('email', 'x@x.test')->count());
     }
 }

@@ -15,4 +15,4 @@ export function homeFor(user: { role?: string | null; home?: string | null } | n
 export const PUBLIC_ORIGIN = (import.meta.env.VITE_PUBLIC_ORIGIN as string | undefined) ?? 'https://mohtam.pro'
 
 /** The pages a search engine may index: the marketing page and the legal/contact pages. Everything else is the app. */
-export const INDEXABLE_PATHS = ['/', '/features', '/journey', '/vision', '/about', '/contact', '/privacy', '/terms', '/security', '/data-deletion'] as const
+export const INDEXABLE_PATHS = ['/', '/insights', '/features', '/journey', '/vision', '/about', '/contact', '/privacy', '/terms', '/security', '/data-deletion'] as const

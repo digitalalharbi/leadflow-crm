@@ -3,6 +3,8 @@
 namespace App\Domain\Access;
 
 use App\Models\Tenant;
+use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 /**
@@ -33,6 +35,14 @@ class WorkspaceModules
         // No route of its own: every figure in money is taken out of the response, the way a role without it is treated.
         'revenue' => ['paths' => [], 'permission' => 'revenue.view'],
     ];
+
+    /** The company in this request when it is this person's, so asking costs no query. */
+    public static function of(User $user): ?Tenant
+    {
+        $current = app(TenantContext::class)->get();
+
+        return $current !== null && $current->id === $user->tenant_id ? $current : $user->tenant;
+    }
 
     /** @return list<string> */
     public static function disabled(?Tenant $tenant): array

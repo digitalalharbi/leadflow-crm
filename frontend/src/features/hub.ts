@@ -146,6 +146,10 @@ export type PageCtaKind = 'form' | 'whatsapp' | 'phone'
 export type PageFactKey = 'location' | 'project_type' | 'price_from' | 'unit_types' | 'delivery'
 
 /** What makes a form a campaign page: a closed list, so a manager chooses within a page that stays good. */
+export type PageSectionKey = 'benefits' | 'gallery' | 'location' | 'financing'
+
+export const PAGE_SECTIONS: PageSectionKey[] = ['benefits', 'gallery', 'location', 'financing']
+
 export interface LandingPageConfig {
   template: PageTemplate
   developer_name: string | null
@@ -161,6 +165,10 @@ export interface LandingPageConfig {
     floating_call: boolean
   }
   auto_steps: boolean
+  sections?: Array<{ key: PageSectionKey; visible: boolean }>
+  gallery?: string[]
+  location_note?: string | null
+  financing_note?: string | null
   seo: { title: string | null; description: string | null; og_image: string | null; index: boolean }
   tags?: string[]
   mirror?: { enabled: boolean; spreadsheet_id: string | null; tab: string | null }

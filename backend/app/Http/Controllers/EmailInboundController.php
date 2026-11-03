@@ -9,6 +9,7 @@ use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
 use App\Events\LeadReplied;
+use App\Models\EmailDelivery;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Services\Leads\ActivityLogger;
@@ -49,10 +50,18 @@ class EmailInboundController extends Controller
         }
 
         $events = $this->normalise($request);
-        $handled = ['replies' => 0, 'bounces' => 0, 'unmatched' => 0];
+        $handled = ['replies' => 0, 'bounces' => 0, 'delivered' => 0, 'unmatched' => 0];
 
         foreach ($events as $event) {
-            $outcome = $event['type'] === 'bounce' ? $this->bounce($event) : $this->reply($event);
+            if (in_array($event['type'], ['bounce', 'delivered'], true)) {
+                $this->markDelivery($event);
+            }
+
+            $outcome = match ($event['type']) {
+                'bounce' => $this->bounce($event),
+                'delivered' => 'delivered',
+                default => $this->reply($event),
+            };
             $handled[$outcome]++;
         }
 
@@ -72,9 +81,11 @@ class EmailInboundController extends Controller
 
         // SendGrid's event webhook: a JSON array of events.
         if (array_is_list($payload) && $payload !== []) {
-            return array_values(array_filter(array_map(fn ($e) => ($e['event'] ?? null) === 'bounce' || ($e['event'] ?? null) === 'dropped'
-                ? ['type' => 'bounce', 'email' => $e['email'] ?? null, 'reason' => $e['reason'] ?? null]
-                : null, $payload)));
+            return array_values(array_filter(array_map(fn ($e) => match ($e['event'] ?? null) {
+                'bounce', 'dropped' => ['type' => 'bounce', 'email' => $e['email'] ?? null, 'reason' => $e['reason'] ?? null],
+                'delivered' => ['type' => 'delivered', 'email' => $e['email'] ?? null],
+                default => null,
+            }, $payload)));
         }
 
         // Mailgun's event webhook.
@@ -84,6 +95,15 @@ class EmailInboundController extends Controller
             return ($data['event'] ?? null) === 'failed' && ($data['severity'] ?? null) === 'permanent'
                 ? [['type' => 'bounce', 'email' => $data['recipient'] ?? null, 'reason' => $data['delivery-status']['message'] ?? null]]
                 : [];
+        }
+
+        if (($payload['RecordType'] ?? null) === 'Delivery') {
+            return [['type' => 'delivered', 'email' => $payload['Recipient'] ?? null]];
+        }
+
+        // Resend's webhook.
+        if (in_array($payload['type'] ?? null, ['email.delivered', 'email.bounced', 'email.complained'], true)) {
+            return [['type' => $payload['type'] === 'email.delivered' ? 'delivered' : 'bounce', 'email' => ($payload['data']['to'] ?? [null])[0] ?? null, 'reason' => $payload['data']['bounce']['message'] ?? null]];
         }
 
         // Postmark's bounce webhook.
@@ -213,6 +233,19 @@ class EmailInboundController extends Controller
     }
 
     /** @return 'bounces'|'unmatched' */
+    /** What the provider says happened to the last email the product accepted for this address, across its own log. */
+    private function markDelivery(array $event): void
+    {
+        $email = mb_strtolower(trim((string) ($event['email'] ?? '')));
+
+        if ($email === '') {
+            return;
+        }
+
+        EmailDelivery::withoutGlobalScopes()->where('to_email', $email)->where('status', EmailDelivery::SENT)->where('updated_at', '>=', now()->subDays(3))
+            ->latest('id')->first()?->forceFill(['status' => $event['type'] === 'delivered' ? EmailDelivery::DELIVERED : EmailDelivery::BOUNCED])->save();
+    }
+
     private function bounce(array $event): string
     {
         $email = mb_strtolower(trim((string) ($event['email'] ?? '')));

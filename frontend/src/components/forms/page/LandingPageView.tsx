@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { MapPin, MessageCircle, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { FormDesign, LandingPageConfig, PageCtaKind } from '@/features/hub'
+import { PAGE_SECTIONS, type FormDesign, type LandingPageConfig, type PageCtaKind } from '@/features/hub'
 import { cn } from '@/lib/cn'
 import { designVars } from '@/lib/formDesign'
 
@@ -126,11 +126,33 @@ export function LandingPageView({ content, form, preview = false, onCta }: {
           </section>
         )}
 
-        {(showcase && content.benefits.length > 0) && (
-          <ul className="grid gap-2 @2xl:grid-cols-2 @4xl:col-span-full" data-testid="page-benefits">
-            {content.benefits.map((b) => <li key={b} className="rounded-lg border border-[var(--f-border)] bg-white p-3 text-[0.9375rem]">{b}</li>)}
-          </ul>
-        )}
+        {(page.sections ?? PAGE_SECTIONS.map((key) => ({ key, visible: true }))).filter((row) => row.visible).map((row) => {
+          if (row.key === 'benefits' && showcase && content.benefits.length > 0) {
+            return (
+              <ul key={row.key} className="grid gap-2 @2xl:grid-cols-2 @4xl:col-span-full" data-testid="page-benefits">
+                {content.benefits.map((b) => <li key={b} className="rounded-lg border border-[var(--f-border)] bg-white p-3 text-[0.9375rem]">{b}</li>)}
+              </ul>
+            )
+          }
+
+          if (row.key === 'gallery' && !minimal && (page.gallery?.length ?? 0) > 0) {
+            return (
+              <div key={row.key} className="grid grid-cols-2 gap-2 @2xl:grid-cols-3 @4xl:col-span-full" data-testid="page-gallery">
+                {page.gallery?.map((url) => <img key={url} src={url} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-[var(--f-radius)] object-cover" />)}
+              </div>
+            )
+          }
+
+          if (row.key === 'location' && page.location_note) {
+            return <p key={row.key} className="rounded-lg border border-[var(--f-border)] bg-white p-3 text-[0.9375rem] @4xl:col-span-full" data-testid="page-location"><MapPin className="me-1 inline size-4" aria-hidden />{page.location_note}</p>
+          }
+
+          if (row.key === 'financing' && page.financing_note) {
+            return <p key={row.key} className="rounded-lg border border-[var(--f-border)] bg-white p-3 text-[0.9375rem] @4xl:col-span-full" data-testid="page-financing">{page.financing_note}</p>
+          }
+
+          return null
+        })}
 
         {!preview && (
           <footer className={cn('text-center text-[0.8125rem] text-[var(--f-muted)] @4xl:col-span-full', floating && 'pb-20 lg:pb-0')} data-testid="page-legal">

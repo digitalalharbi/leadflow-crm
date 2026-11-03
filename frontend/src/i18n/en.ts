@@ -20,6 +20,7 @@ export default {
     updateReady: 'A newer version of Mohtam is ready.', updateNow: 'Update now',
   },
   errors: {
+    emailVerificationRequired: 'Confirm your email first: send the link from your profile.',
     offline: 'There is no internet connection, so the change was not made. Try again when you are back online.',
     network: 'Could not reach the server. Check your connection.',
     timeout: 'The request took too long. Please try again.',

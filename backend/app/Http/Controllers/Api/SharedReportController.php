@@ -28,9 +28,10 @@ class SharedReportController extends Controller
     {
         $share = $this->context->withoutScope(fn () => ReportShare::withoutGlobalScopes()->where('token_hash', ReportShare::hash($token))->first());
 
-        abort_if($share === null || $share->isRevoked(), 404);
+        abort_if($share === null || $share->isRevoked() || $share->archived_at !== null, 404);
 
-        if ($share->isExpired()) {
+        // Paused says the same as expired to whoever holds the link: not now, and nothing about why.
+        if ($share->isExpired() || $share->paused_at !== null) {
             return ApiResponse::error('This report has expired.', null, 410);
         }
 
@@ -53,7 +54,7 @@ class SharedReportController extends Controller
             return response()->json(['success' => false, 'message' => 'A password is required.', 'data' => ['password_required' => true, 'workspace' => $brand, 'name' => $share->name]], 401);
         }
 
-        $data = $this->context->withTenant($tenant, fn () => $this->report->build($share->setRelation('tenant', $tenant)));
+        $data = $share->isSnapshot() ? $share->frozen_payload + ['snapshot' => $share->frozen_meta] : $this->context->withTenant($tenant, fn () => $this->report->build($share->setRelation('tenant', $tenant)));
 
         // An open page asking again for fresh numbers is the same view, not another one.
         if (! $request->hasHeader('X-Share-Refresh')) {

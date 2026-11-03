@@ -98,7 +98,8 @@ class HealthController extends Controller
     private function reverbListening(): bool
     {
         $server = config('reverb.servers.'.config('reverb.default', 'reverb'), []);
-        $host = in_array($server['host'] ?? '', ['0.0.0.0', '', '::'], true) ? '127.0.0.1' : $server['host'];
+        // Where it can be reached from here: in production Reverb is its own container, and 0.0.0.0 is only what it binds to.
+        $host = in_array($server['host'] ?? '', ['0.0.0.0', '', '::'], true) ? (($server['hostname'] ?? null) ?: '127.0.0.1') : $server['host'];
         $socket = @fsockopen($host, (int) ($server['port'] ?? 8080), $errno, $errstr, 1.0);
 
         if ($socket === false) {

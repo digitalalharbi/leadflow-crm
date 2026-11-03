@@ -8,6 +8,7 @@ import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 import type { Feature } from '@/types/api'
 import { ALL_FEATURES, LIMIT_KEYS, type PlatformInvoice, type PlatformPlan, type PlatformSubscription } from './types'
+import { AccessMatrix } from './AccessMatrix'
 
 type Action = 'activate' | 'extend' | 'past_due' | 'suspend' | 'reactivate' | 'cancel'
 
@@ -99,6 +100,7 @@ export function SubscriptionManager({ tenantId }: { tenantId: string }) {
       )}
 
       <Entitlements sub={sub} pending={update.isPending} onSave={(body) => update.mutate(body)} />
+      <AccessMatrix tenantId={tenantId} />
 
       <section>
         <h4 className="label-caps mb-2">{t('billing.invoices')}</h4>

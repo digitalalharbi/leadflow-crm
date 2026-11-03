@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\AccessResolver;
+use App\Domain\Access\Destination;
 use App\Domain\Access\Permissions;
 use App\Domain\Auth\SecondFactor;
 use App\Domain\Billing\SubscriptionSummary;
@@ -61,6 +62,11 @@ class AuthController extends Controller
         $user = $matching->first(fn (User $u) => $u->is_active && $u->tenant?->is_active)
             ?? $matching->first(fn (User $u) => $u->is_active)
             ?? $matching->first();
+
+        // One door for everybody. The platform's own account continues on its stricter path, password and second factor.
+        if (! $user && User::query()->whereNull('tenant_id')->where('email', $email)->get()->contains(fn (User $owner) => Hash::check($password, $owner->password))) {
+            return ApiResponse::success(['platform' => true]);
+        }
 
         if (! $user) {
             /*
@@ -172,6 +178,7 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            'home' => Destination::for($user),
             // What this person may do (the interface hides the rest; the API refuses it), and which
             // projects they are limited to (null: all of them).
             'permissions' => Permissions::forUser($user),
@@ -202,6 +209,7 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            'home' => Destination::for($user),
             // What this person may do (the interface hides the rest; the API refuses it), and which
             // projects they are limited to (null: all of them).
             'permissions' => Permissions::forUser($user),

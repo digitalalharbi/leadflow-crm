@@ -140,6 +140,8 @@ class WebhookSubscriptionController extends Controller
         $user = $request->user();
 
         abort_unless($user->usesMatrix() || $user->isAdmin(), 403, 'Your role does not include this.');
+        // These reach the whole company, past any project limit.
+        abort_if($user->isProjectScoped(), 403, 'Your role does not include this.');
     }
 
     private function present(WebhookSubscription $s): array

@@ -7,6 +7,7 @@ use App\Models\Invitation;
 use App\Models\PasswordLink;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Brand;
 use App\Support\TenantContext;
 
 /**
@@ -81,6 +82,36 @@ class AccountEmail
             'note' => $en ? 'The link works for '.EmailVerification::HOURS.' hours. If you did not ask for this, ignore this email.' : 'الرابط صالح لمدة '.EmailVerification::HOURS.' ساعة. إن لم تطلب ذلك فتجاهل الرسالة.',
             'workspace' => $company,
         ], 'account', null, $user->locale);
+    }
+
+    /**
+     * Something changed on this person's account: they hear it from us, in case it was not them. Never gets in the way of
+     * the change itself, and carries no secret. The platform's own accounts belong to no company's delivery log.
+     */
+    public function securityNotice(User $user, string $event, ?string $to = null): void
+    {
+        $tenant = $user->tenant_id ? Tenant::with('branding')->find($user->tenant_id) : null;
+
+        if ($tenant === null) {
+            return;
+        }
+
+        $en = $user->locale === 'en';
+        [$title, $body] = match ($event) {
+            'password_changed' => $en ? ['Your password was changed', 'The password of your Mohtam account has just been changed.'] : ['تغيّرت كلمة مرورك', 'تغيّرت كلمة مرور حسابك في مهتم للتو.'],
+            'email_changed' => $en ? ['Your sign-in email was changed', 'The email of your Mohtam account was changed to '.$user->email.'.'] : ['تغيّر بريد الدخول', 'تغيّر بريد حسابك في مهتم إلى '.$user->email.'.'],
+            'mfa_enabled' => $en ? ['Two-step sign-in is on', 'Two-step sign-in was turned on for your Mohtam account.'] : ['فُعّل التحقق بخطوتين', 'فُعّل التحقق بخطوتين على حسابك في مهتم.'],
+            'mfa_disabled' => $en ? ['Two-step sign-in is off', 'Two-step sign-in was turned off for your Mohtam account.'] : ['أُوقف التحقق بخطوتين', 'أُوقف التحقق بخطوتين على حسابك في مهتم.'],
+        };
+
+        rescue(fn () => $this->send($tenant, $to ?? $user->email, $user->name, $title, [
+            'title' => $title,
+            'body' => $body,
+            'link' => rtrim((string) config('integrations.app_url'), '/').'/forgot-password',
+            'button' => $en ? 'Secure my account' : 'تأمين حسابي',
+            'note' => $en ? 'If this was you, there is nothing to do. If not, reset your password now and write to '.Brand::EMAIL.'.' : 'إن كنت أنت فلا شيء عليك. وإن لم تكن أنت فأعد تعيين كلمة المرور الآن وراسلنا على '.Brand::EMAIL.'.',
+            'workspace' => $tenant->branding?->company_name ?? $tenant->name,
+        ], 'security', null, $user->locale));
     }
 
     private function send(Tenant $tenant, string $email, ?string $name, string $subject, array $view, string $kind, ?string $key, ?string $locale = null): void

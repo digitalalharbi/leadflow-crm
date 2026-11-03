@@ -37,6 +37,7 @@ export function LoginPage() {
   const [tenant, setTenant] = useState(searchParams.get('tenant') ?? '')
   const [code, setCode] = useState('')
   const [needsCode, setNeedsCode] = useState(false)
+  const [remember, setRemember] = useState(true)
   const notice = (location.state as { notice?: string } | null)?.notice === 'mfaAfterReset' ? t('auth.mfaAfterReset') : null
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,7 +80,7 @@ export function LoginPage() {
     setFieldErrors({})
 
     try {
-      const result = await login({ email, password, tenant: tenant || undefined, code: needsCode ? code.trim() : undefined })
+      const result = await login({ email, password, tenant: tenant || undefined, code: needsCode ? code.trim() : undefined, remember })
 
       // The password was right and the account has a second factor: ask for the code, keep what was typed.
       if (result === 'mfa') {
@@ -262,6 +263,11 @@ export function LoginPage() {
                   data-testid="login-mfa-code"
                 />
               )}
+
+              <label className="flex min-h-11 items-center gap-2 text-[0.9375rem]">
+                <input type="checkbox" className="size-4" checked={remember} onChange={(e) => setRemember(e.target.checked)} data-testid="login-remember" />
+                {t('auth.remember')}
+              </label>
 
               <div>
                 <button

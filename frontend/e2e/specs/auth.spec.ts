@@ -90,7 +90,10 @@ test.describe('the plain names of the account links', () => {
     await page.goto('/verify-email')
     await expect(page.getByTestId('verify-invalid')).toBeVisible()
 
+    // Opening a link changes nothing; a bad one says so once the password is given.
     await page.goto('/verify-email?token=not-a-real-link')
+    await page.getByTestId('verify-password').fill('not-the-password')
+    await page.getByTestId('verify-submit').click()
     await expect(page.getByTestId('verify-invalid')).toBeVisible()
 
     await page.goto('/reset-password')

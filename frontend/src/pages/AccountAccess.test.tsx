@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AcceptInviteRedirect, ResetPasswordRedirect, VerifyEmailPage } from './AccountAccess'
 import { homeFor } from '@/lib/routes'
@@ -25,8 +25,13 @@ describe('the plain names of the account links', () => {
     const post = vi.spyOn(api, 'apiPost').mockResolvedValue({ verified: true })
     at('/verify-email?token=abc.def', <VerifyEmailPage />)
 
+    // Opening the link does nothing by itself: a mail scanner opens it too.
+    expect(post).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByTestId('verify-password'), { target: { value: 'my-password' } })
+    fireEvent.click(screen.getByTestId('verify-submit'))
+
     await waitFor(() => expect(screen.getByTestId('verify-done')).toBeInTheDocument())
-    expect(post).toHaveBeenCalledWith('/auth/email/verify', { token: 'abc.def' })
+    expect(post).toHaveBeenCalledWith('/auth/email/verify', { token: 'abc.def', password: 'my-password' })
   })
 
   it('says so when a link is no good, and does not call the server without one', async () => {

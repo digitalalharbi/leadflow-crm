@@ -288,6 +288,12 @@ class User extends Authenticatable
         return $custom !== null ? $custom->external : ($this->role?->isExternal() ?? false);
     }
 
+    /** Whether news of a lead in this project is this person's to hear. Limited to some projects: only about those. */
+    public function reaches(?int $projectId): bool
+    {
+        return ! $this->isProjectScoped() || ($projectId !== null && $this->projects()->withoutGlobalScopes()->where('projects.id', $projectId)->exists());
+    }
+
     /** Super admins belong to no tenant; everyone else must. */
     public function belongsToTenant(?int $tenantId): bool
     {

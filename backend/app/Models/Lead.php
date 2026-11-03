@@ -74,6 +74,12 @@ class Lead extends Model
 
         // A number or address on the company's do-not-contact list arrives already opted out.
         static::creating(fn (self $lead) => app(SuppressionList::class)->applyTo($lead));
+        // And one that arrives later, by an edit, a backfill or a merge.
+        static::updating(function (self $lead) {
+            if ($lead->isDirty(['email', 'phone_normalized'])) {
+                app(SuppressionList::class)->applyTo($lead);
+            }
+        });
 
         static::saving(function (self $lead) {
             // The clock "time in stage" reads. A new lead starts it on arrival.

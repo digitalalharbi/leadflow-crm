@@ -186,7 +186,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(config('integrations.login.per_ip_per_minute'))
                 ->by($request->ip()),
             ...(filled($request->input('email')) ? [Limit::perMinutes(15, config('integrations.login.per_account_per_quarter_hour'))
-                ->by('account:'.strtolower((string) $request->input('email')))] : []),
+                ->by('account:'.$request->path().':'.strtolower((string) $request->input('email')))
+                // Wrong passwords only, per door: someone else's guessing should not cost a person their forgot-password link.
+                ->after(fn ($response) => $response->getStatusCode() === 422)] : []),
         ]);
 
         // The public API, per key (by its hash, so the limiter's store never holds a usable key), else per address.

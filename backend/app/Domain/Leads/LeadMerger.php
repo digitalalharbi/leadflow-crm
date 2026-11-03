@@ -36,7 +36,7 @@ class LeadMerger
     ];
 
     /** Fields the kept lead takes from the duplicate only when it has none. */
-    private const FILL = ['email', 'city', 'project_id', 'budget_min', 'budget_max', 'whatsapp', 'phone'];
+    private const FILL = ['email', 'city', 'project_id', 'budget_min', 'budget_max', 'whatsapp', 'phone', 'email_opt_out_at', 'whatsapp_opt_out_at'];
 
     private const ATTRIBUTION = [
         'platform', 'source', 'campaign_name', 'campaign_id', 'campaign_ref_id', 'ad_set_ref_id', 'ad_ref_id',

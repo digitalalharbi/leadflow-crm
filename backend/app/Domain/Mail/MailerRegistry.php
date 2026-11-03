@@ -18,6 +18,12 @@ class MailerRegistry
         return $this->get((string) config('leadflow_mail.provider', 'log'));
     }
 
+    /** False while mail is only written down: nobody receives a link sent this way. */
+    public function delivers(): bool
+    {
+        return $this->current()->key() !== 'log';
+    }
+
     public function get(string $key): MailerProvider
     {
         return app(self::PROVIDERS[$key] ?? LogMailer::class);

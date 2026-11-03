@@ -230,23 +230,33 @@ export function VerifyEmailPage() {
   const { t } = useTranslation()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
-  const [state, setState] = useState<'checking' | 'done' | 'invalid'>(token ? 'checking' : 'invalid')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [state, setState] = useState<'ask' | 'done' | 'invalid'>(token ? 'ask' : 'invalid')
 
-  useEffect(() => {
-    if (!token) return
+  // Nothing happens on opening the link: mail scanners open links too, and the password says this is the person's own account.
+  async function confirm(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
 
-    let active = true
-
-    apiPost('/auth/email/verify', { token })
-      .then(() => { if (active) setState('done') })
-      .catch(() => { if (active) setState('invalid') })
-
-    return () => { active = false }
-  }, [token])
+    try {
+      await apiPost('/auth/email/verify', { token, password })
+      setState('done')
+    } catch {
+      setState('invalid')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <Shell title={t('account.verifyTitle')} testId="verify-email">
-      {state === 'checking' && <Skeleton className="h-6 w-full" />}
+      {state === 'ask' && (
+        <form onSubmit={confirm} className="space-y-3">
+          <Input dir="ltr" type="password" autoComplete="current-password" label={t('auth.password')} value={password} onChange={(e) => setPassword(e.target.value)} data-testid="verify-password" />
+          <Button type="submit" className="w-full" loading={submitting} disabled={!password} data-testid="verify-submit">{t('account.verifyConfirm')}</Button>
+        </form>
+      )}
       {state === 'done' && <p data-testid="verify-done">{t('account.verifyDone')}</p>}
       {state === 'invalid' && <p data-testid="verify-invalid">{t('account.verifyInvalid')}</p>}
       <Link to="/login" className="t-caption underline">{t('account.backToLogin')}</Link>

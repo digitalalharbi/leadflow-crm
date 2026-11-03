@@ -6,7 +6,7 @@ import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
 import { Badge, Button, Card, CardBody, CardHeader, Input, Skeleton } from '@/components/ui'
 import {
-  WEBHOOK_EVENTS, createWebhook, deleteWebhook, fetchWebhookDeliveries, fetchWebhooks, replayDelivery, testWebhook, updateWebhook,
+  WEBHOOK_EVENTS, createWebhook, deleteWebhook, fetchWebhookDeliveries, fetchWebhooks, replayDelivery, rotateWebhook, testWebhook, updateWebhook,
   type WebhookEvent, type WebhookSubscriptionRow,
 } from '@/features/webhooks'
 import { formatDateTime } from '@/lib/format'
@@ -46,6 +46,7 @@ export function WebhooksCard() {
   })
   const toggle = useMutation({ mutationFn: (row: WebhookSubscriptionRow) => updateWebhook(row.id, { is_active: !row.is_active || row.paused }), onSuccess: refresh, onError })
   const remove = useMutation({ mutationFn: deleteWebhook, onSuccess: refresh, onError })
+  const rotate = useMutation({ mutationFn: rotateWebhook, onSuccess: (result) => setSecret(result.secret), onError })
   const test = useMutation({
     mutationFn: testWebhook,
     onSuccess: (delivery) => {
@@ -105,6 +106,7 @@ export function WebhooksCard() {
                     <Button size="sm" variant="outline" loading={test.isPending && test.variables === row.id} onClick={() => test.mutate(row.id)}>{t('webhooks.test')}</Button>
                     <Button size="sm" variant="ghost" onClick={() => toggle.mutate(row)}>{row.is_active && !row.paused ? t('webhooks.pause') : t('webhooks.resume')}</Button>
                     <Button size="sm" variant="ghost" onClick={() => setOpen(open === row.id ? null : row.id)} aria-expanded={open === row.id}>{t('webhooks.log')}</Button>
+                    <Button size="sm" variant="ghost" loading={rotate.isPending && rotate.variables === row.id} onClick={() => rotate.mutate(row.id)} data-testid={`webhook-rotate-${row.id}`}>{t('integrations.rotateSecret')}</Button>
                     <Button size="sm" variant="ghost" onClick={() => remove.mutate(row.id)}>{t('webhooks.delete')}</Button>
                   </div>
                 </div>

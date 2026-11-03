@@ -18,6 +18,8 @@ class GuardSupportSession
     private const REFUSED = [
         ['POST', 'api/v1/auth/password'],
         ['POST', 'api/v1/auth/logout-all'],
+        ['PATCH', 'api/v1/settings/security'],
+        ['POST', 'api/v1/auth/calendar-feed/rotate'],
         ['DELETE', 'api/v1/users/*'],
         ['POST', 'api/v1/users'],
         ['POST', 'api/v1/invitations*'],

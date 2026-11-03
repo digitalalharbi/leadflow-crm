@@ -64,7 +64,7 @@ class AutomationCentreController extends Controller
             'lead' => ['nullable', 'uuid'],
         ]);
 
-        $page = $this->centre->history($filters);
+        $page = $this->centre->history($filters, viewer: $request->user());
 
         return ApiResponse::success([
             'entries' => collect($page->items())->map(fn (AutomationActionLog $log) => [

@@ -8,6 +8,7 @@ use App\Models\AutomationActionLog;
 use App\Models\AutomationRule;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -151,9 +152,11 @@ class AutomationCentre
     }
 
     /** The Action History, newest first, filtered the way a manager asks. */
-    public function history(array $filters, int $perPage = 30)
+    public function history(array $filters, int $perPage = 30, ?User $viewer = null)
     {
         return AutomationActionLog::query()
+            // What the system did about a lead is as private as the lead.
+            ->when($viewer && (! $viewer->seesAllLeads() || $viewer->isProjectScoped()), fn ($q) => $q->whereHas('lead', fn ($l) => $l->visibleTo($viewer)))
             ->with(['lead:id,uuid,full_name,score', 'rule:id,uuid,name'])
             ->when($filters['result'] ?? null, fn ($q, $r) => $q->where('result', $r))
             ->when($filters['action'] ?? null, fn ($q, $a) => $q->where('action_type', $a))

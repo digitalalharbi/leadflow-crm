@@ -41,6 +41,7 @@ export const createWebhook = (body: { name: string; url: string; events: Webhook
   apiPost<{ subscription: WebhookSubscriptionRow; secret: string }>('/webhook-subscriptions', body)
 export const updateWebhook = (id: string, body: Partial<{ name: string; url: string; events: WebhookEvent[]; is_active: boolean }>) =>
   apiPatch<WebhookSubscriptionRow>(`/webhook-subscriptions/${id}`, body)
+export const rotateWebhook = (id: string) => apiPost<{ secret: string }>(`/webhook-subscriptions/${id}/rotate`)
 export const deleteWebhook = (id: string) => apiDelete<null>(`/webhook-subscriptions/${id}`)
 export const testWebhook = (id: string) => apiPost<WebhookDeliveryRow>(`/webhook-subscriptions/${id}/test`)
 export const fetchWebhookDeliveries = (id: string) => apiGet<WebhookDeliveryRow[]>(`/webhook-subscriptions/${id}/deliveries`)

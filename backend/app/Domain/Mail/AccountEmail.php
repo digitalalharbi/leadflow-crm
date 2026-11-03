@@ -100,6 +100,8 @@ class AccountEmail
         [$title, $body] = match ($event) {
             'password_changed' => $en ? ['Your password was changed', 'The password of your Mohtam account has just been changed.'] : ['تغيّرت كلمة مرورك', 'تغيّرت كلمة مرور حسابك في مهتم للتو.'],
             'email_changed' => $en ? ['Your sign-in email was changed', 'The email of your Mohtam account was changed to '.$user->email.'.'] : ['تغيّر بريد الدخول', 'تغيّر بريد حسابك في مهتم إلى '.$user->email.'.'],
+            'google_linked' => $en ? ['Google sign-in is on', 'Your Google account can now sign in to your Mohtam account.'] : ['ربطت حساب Google', 'أصبح بإمكان حسابك في Google تسجيل الدخول إلى حسابك في مهتم.'],
+            'google_unlinked' => $en ? ['Google sign-in is off', 'Your Google account can no longer sign in to your Mohtam account.'] : ['أُزيل ربط Google', 'لم يعد بإمكان حسابك في Google تسجيل الدخول إلى حسابك في مهتم.'],
             'mfa_enabled' => $en ? ['Two-step sign-in is on', 'Two-step sign-in was turned on for your Mohtam account.'] : ['فُعّل التحقق بخطوتين', 'فُعّل التحقق بخطوتين على حسابك في مهتم.'],
             'mfa_disabled' => $en ? ['Two-step sign-in is off', 'Two-step sign-in was turned off for your Mohtam account.'] : ['أُوقف التحقق بخطوتين', 'أُوقف التحقق بخطوتين على حسابك في مهتم.'],
         };

@@ -101,7 +101,7 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
             placeholder={t('auth.mfaCode')}
             data-testid="workspace-code"
             dir="ltr"
-            className="min-h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2 text-[0.9375rem]"
+            className="field field-otp min-w-0 flex-1"
           />
           <Button type="submit" size="sm" loading={switchTo.isPending} disabled={code.trim() === ''}>{t('common.confirm')}</Button>
         </form>

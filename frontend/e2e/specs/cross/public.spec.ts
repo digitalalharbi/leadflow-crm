@@ -288,6 +288,24 @@ test.describe('Login', () => {
     await expect(page.getByLabel(/المؤسسة/)).toHaveCount(0)
   })
 
+  test('Google comes after the form, and only when the server offers it', async ({ page }) => {
+    await page.route('**/api/v1/auth/providers', (route) => route.fulfill({ json: { success: true, data: { providers: [{ key: 'google', label: 'Google', url: '/api/v1/auth/google/redirect' }] }, message: null, errors: null } }))
+    await ready(page, '/login')
+
+    const google = page.getByTestId('login-provider-google')
+    await expect(google).toHaveText('المتابعة باستخدام Google')
+    expect((await google.boundingBox())!.y).toBeGreaterThan((await page.getByRole('button', { name: 'تسجيل الدخول' }).boundingBox())!.y)
+    expect((await google.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await expectNoSidewaysScroll(page, 'login')
+  })
+
+  test('a refusal from Google is said in words, and leaves the address clean', async ({ page }) => {
+    await ready(page, '/login?google_error=no_account')
+
+    await expect(page.getByRole('alert')).toContainText('لا يوجد حساب بهذا البريد')
+    await expect(page).toHaveURL(/\/login$/)
+  })
+
   test('the password can be shown and hidden', async ({ page }) => {
     await ready(page, '/login')
     const field = page.getByLabel('كلمة المرور', { exact: true })

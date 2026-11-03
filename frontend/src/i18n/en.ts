@@ -41,7 +41,7 @@ export default {
     email: 'Email', password: 'Password', currentPassword: 'Current password',
     newPassword: 'New password', confirmPassword: 'Confirm password',
     changePassword: 'Change password', passwordChanged: 'Password updated.',
-    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your Mohtam workspace', needHelp: 'Need help getting started?', contactUs: 'Contact us', orAnotherWay: 'or choose another way', show: 'Show', hide: 'Hide', verify: 'Verify', mfaTitle: 'Two-step verification', chooseWorkspace: 'Choose a workspace', chooseWorkspaceHint: 'Your account is in more than one company. Where to?', continueWith: 'Continue with {{provider}}',
+    welcome: 'Welcome back', welcomeSubtitle: 'Sign in to your Mohtam workspace', needHelp: 'Need help getting started?', contactUs: 'Contact us', orAnotherWay: 'or', google: { linked: 'Google sign-in is on', unlink: 'Remove the link', no_account: 'There is no account with this email. Ask your company admin for an invitation.', unverified: 'Google has not confirmed this email.', failed: 'Could not sign in with Google. Try again.', linked_elsewhere: 'This email is linked to another Google account.' }, show: 'Show', hide: 'Hide', verify: 'Verify', mfaTitle: 'Two-step verification', chooseWorkspace: 'Choose a workspace', chooseWorkspaceHint: 'Your account is in more than one company. Where to?', continueWith: 'Continue with {{provider}}',
     remember: 'Remember me on this device', forgot: 'Forgot your password?', moreOrganizations: 'More than one organisation?', about: 'What is Mohtam?',
     organization: 'Organisation', organizationHint: 'Leave blank if you only have one account',
   },

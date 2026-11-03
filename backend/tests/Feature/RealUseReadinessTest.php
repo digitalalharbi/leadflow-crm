@@ -313,6 +313,7 @@ class RealUseReadinessTest extends TestCase
 
     public function test_no_other_way_to_sign_in_is_offered_until_one_works(): void
     {
+        config(['services.google_login.client_id' => null, 'services.google_login.client_secret' => null]);
         $this->getJson('/api/v1/auth/providers')->assertOk()->assertExactJson(['success' => true, 'data' => ['providers' => []], 'message' => null, 'errors' => null]);
     }
 

@@ -322,4 +322,33 @@ class RealUseReadinessTest extends TestCase
         $this->artisan('leadflow:e2e-platform-owner', ['email' => 'x@x.test'])->assertFailed();
         $this->assertSame(0, User::where('email', 'x@x.test')->count());
     }
+
+    public function test_what_reaches_outside_waits_for_a_proven_address_once_mail_goes_out(): void
+    {
+        config(['platform.require_verified_email' => true]);
+        $user = $this->makeUser($this->provisionTenant()['tenant'], Role::Admin);
+
+        // No provider: nobody could prove anything, so nothing is held back.
+        config(['leadflow_mail.provider' => 'log']);
+        $this->actingAs($user)->postJson('/api/v1/invitations', ['email' => 'a@x.test', 'role' => 'sales'])->assertCreated();
+
+        $this->fakeMailer();
+        $this->actingAs($user)->postJson('/api/v1/invitations', ['email' => 'b@x.test', 'role' => 'sales'])->assertForbidden()->assertJsonPath('data.code', 'email_verification_required');
+        $this->actingAs($user)->postJson('/api/v1/api-keys', ['name' => 'k'])->assertForbidden();
+        // Everyday work goes on, and so does the way to prove it.
+        $this->actingAs($user)->getJson('/api/v1/leads')->assertOk();
+        $this->actingAs($user)->postJson('/api/v1/auth/email/verification')->assertOk();
+
+        $user->forceFill(['email_verified_at' => now()])->save();
+        $this->actingAs($user->fresh())->postJson('/api/v1/invitations', ['email' => 'b@x.test', 'role' => 'sales'])->assertCreated();
+    }
+
+    public function test_the_platform_owner_is_not_held_back_by_it(): void
+    {
+        config(['platform.require_verified_email' => true]);
+        $this->fakeMailer();
+        $owner = $this->makePlatformOwner();
+
+        $this->actingAs($owner)->postJson('/api/v1/super-admin/tenants', ['company_name' => 'New Co', 'admin_name' => 'A', 'admin_email' => 'a@new.test'])->assertCreated();
+    }
 }

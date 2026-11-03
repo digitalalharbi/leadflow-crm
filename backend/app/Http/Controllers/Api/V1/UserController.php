@@ -286,7 +286,8 @@ class UserController extends Controller
             // To the address it was: that is the person who needs to hear about it.
             app(AccountEmail::class)->securityNotice($user, 'email_changed', $previousEmail);
             $current = $request->user()->currentAccessToken();
-            $user->forceFill(['email_verified_at' => null])->save();
+            // A Google link was proof of the old address only.
+            $user->forceFill(['email_verified_at' => null, 'google_id' => null])->save();
             $user->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))->delete();
             $this->audit->log('user.email_changed', $request->user(), $user, ['ip' => $request->ip()]);
         }

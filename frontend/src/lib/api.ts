@@ -160,8 +160,8 @@ export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
   return data.data
 }
 
-export async function apiDelete<T>(url: string): Promise<T> {
-  const { data } = await http.delete<ApiEnvelope<T>>(url)
+export async function apiDelete<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.delete<ApiEnvelope<T>>(url, body === undefined ? undefined : { data: body })
   return data.data
 }
 

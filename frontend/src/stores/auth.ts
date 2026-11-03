@@ -46,6 +46,8 @@ interface AuthState {
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
   /** Resolves `mfa` when the account has a second factor and no (valid) code was sent yet. */
   login: (credentials: { email: string; password: string; tenant?: string; code?: string; remember?: boolean }) => Promise<'ok' | 'mfa'>
+  /** Back from Google with the server's one-time ticket. */
+  loginGoogle: (credentials: { ticket: string; code?: string; remember?: boolean }) => Promise<'ok' | 'mfa'>
   /** The platform owner's own door. Resolves `mfa` when a code is still needed. */
   loginPlatform: (credentials: { email: string; password: string; code?: string }) => Promise<'ok' | 'mfa'>
   logout: () => Promise<void>
@@ -70,6 +72,24 @@ export const useAuth = create<AuthState>((set) => ({
 
   login: async (credentials) => {
     const data = await apiPost<LoginResponse | { mfa_required: true }>('/auth/login', credentials)
+
+    if ('mfa_required' in data) return 'mfa'
+
+    tokenStorage.set(data.token)
+
+    set({
+      user: withAccess(data.user, data),
+      branding: data.branding,
+      isSuperAdmin: data.is_super_admin,
+      workspaceLanguage: data.workspace_language,
+      subscription: data.subscription ?? null,
+      status: 'authenticated',
+    })
+
+    return 'ok'
+  },
+  loginGoogle: async (credentials) => {
+    const data = await apiPost<LoginResponse | { mfa_required: true }>('/auth/google/complete', credentials)
 
     if ('mfa_required' in data) return 'mfa'
 

@@ -110,7 +110,7 @@ export function SpendModal({
               value={campaign}
               onChange={(event) => setCampaign(event.target.value)}
               data-testid="spend-campaign"
-              className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
+              className="field"
             >
               <option value="">—</option>
               {campaigns.map((row) => (
@@ -128,7 +128,7 @@ export function SpendModal({
               value={date}
               onChange={(event) => setDate(event.target.value)}
               data-testid="spend-date"
-              className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
+              className="field"
             />
           </label>
 
@@ -144,7 +144,7 @@ export function SpendModal({
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
               data-testid="spend-amount"
-              className="tabular w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
+              className="field tabular"
             />
           </label>
         </div>

@@ -1,7 +1,7 @@
 export { Button, ButtonLink, buttonClasses } from './Button'
 export { Card, CardHeader, CardBody } from './Card'
 export { Badge, StatusBadge, TemperatureBadge } from './Badge'
-export { Input, Textarea, Select } from './Input'
+export { Input, Textarea, Select, OtpInput } from './Input'
 export { Skeleton, SkeletonTable, SkeletonCards, EmptyState, ErrorState } from './States'
 export { Modal } from './Modal'
 export { Drawer } from './Drawer'

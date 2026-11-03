@@ -71,4 +71,34 @@ describe('signing in, one step at a time', () => {
 
     expect(await screen.findByTestId('login-providers')).toHaveTextContent('Google')
   })
+
+  it('shows Google after the form, with or between them, only when offered', async () => {
+    vi.mocked(api.apiGet).mockImplementation(async (path: string) => (path === '/auth/providers' ? { providers: [{ key: 'google', label: 'Google', url: '/api/v1/auth/google/redirect' }] } : null) as never)
+    renderWithProviders(<LoginPage />)
+
+    const google = await screen.findByTestId('login-provider-google')
+    expect(google).toHaveAttribute('href', '/api/v1/auth/google/redirect')
+    expect(google).toHaveTextContent('المتابعة باستخدام Google')
+    expect(screen.getByRole('button', { name: 'تسجيل الدخول' }).compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByTestId('login-providers')).toHaveTextContent('أو')
+  })
+
+  it('finishes a return from Google in the same card, asking for the code when the account has one', async () => {
+    const loginGoogle = vi.fn().mockResolvedValueOnce('mfa').mockResolvedValueOnce('ok')
+    useAuth.setState({ loginGoogle } as never)
+    window.location.hash = '#google=abc'
+    renderWithProviders(<LoginPage />)
+
+    fireEvent.change(await screen.findByTestId('login-mfa-code'), { target: { value: '123456' } })
+    expect(window.location.hash).toBe('')
+    fireEvent.click(screen.getByTestId('login-mfa-submit'))
+
+    await waitFor(() => expect(loginGoogle).toHaveBeenLastCalledWith(expect.objectContaining({ ticket: 'abc', code: '123456' })))
+  })
+
+  it('says why Google was refused', async () => {
+    renderWithProviders(<LoginPage />, { route: '/login?google_error=no_account' })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('لا يوجد حساب بهذا البريد')
+  })
 })

@@ -41,7 +41,7 @@ export function ListEditor({ items, onChange, min = 1, max = 40, testId, label }
           <li key={`${o.value}-${i}`} draggable onDragStart={() => setDrag(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (drag !== null) move(drag, i); setDrag(null) }}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5" data-testid={`${testId}-item-${i}`}>
             <GripVertical className="size-4 shrink-0 cursor-grab text-[var(--color-ink-subtle)]" aria-hidden />
-            <input aria-label={t('hub.builder.list.label')} value={o.label} onChange={(e) => rename(i, e.target.value)} className="h-9 min-w-0 flex-1 rounded-md bg-transparent px-2 text-sm outline-none focus:bg-[var(--color-surface-muted)]" data-testid={`${testId}-label-${i}`} />
+            <input aria-label={t('hub.builder.list.label')} value={o.label} onChange={(e) => rename(i, e.target.value)} className="field !h-10 min-w-0 flex-1" data-testid={`${testId}-label-${i}`} />
             <Button size="sm" variant="ghost" aria-label={t('hub.builder.moveUp')} disabled={i === 0} icon={<ArrowUp className="size-3.5" />} onClick={() => move(i, i - 1)} />
             <Button size="sm" variant="ghost" aria-label={t('hub.builder.moveDown')} disabled={i === items.length - 1} icon={<ArrowDown className="size-3.5" />} onClick={() => move(i, i + 1)} />
             <Button size="sm" variant="ghost" aria-label={t('hub.builder.duplicate')} disabled={items.length >= max} icon={<Copy className="size-3.5" />}

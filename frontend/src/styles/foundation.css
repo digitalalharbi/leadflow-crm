@@ -80,6 +80,8 @@
   --color-surface-sunken: var(--mh-stone);
   --color-border: var(--mh-line);
   --color-border-strong: color-mix(in srgb, var(--mh-line) 65%, var(--mh-slate));
+  --color-field-border: color-mix(in srgb, var(--mh-slate) 62%, var(--mh-line));
+  --color-field-border-hover: var(--mh-slate);
   /* The fill of the round buttons in the header and the nav track. */
   --color-chrome-fill: var(--mh-limestone);
   --color-line: var(--mh-line);
@@ -258,6 +260,8 @@
   --color-surface-sunken: color-mix(in srgb, var(--mh-ink) 72%, black);
   --color-border: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
   --color-border-strong: color-mix(in srgb, var(--mh-limestone) 22%, transparent);
+  --color-field-border: color-mix(in srgb, var(--mh-limestone) 42%, transparent);
+  --color-field-border-hover: color-mix(in srgb, var(--mh-limestone) 62%, transparent);
   --color-chrome-fill: color-mix(in srgb, var(--mh-ink) 82%, var(--mh-limestone));
   --color-line: color-mix(in srgb, var(--mh-limestone) 12%, transparent);
 

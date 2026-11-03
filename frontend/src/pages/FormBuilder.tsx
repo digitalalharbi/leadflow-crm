@@ -272,11 +272,11 @@ export function FormBuilderPage() {
         <>
           <div className="flex items-center justify-between"><h2 className="font-extrabold">{t('hub.builder.sectionSettings')}</h2><Button size="sm" variant="ghost" onClick={() => setSelection(null)}>{t('hub.builder.back')}</Button></div>
           <label className="block text-[0.9375rem] font-semibold">{t('hub.builder.sectionTitle')}
-            <input className="mt-1.5 h-10 w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-sm font-normal" value={selectedSection.title ?? ''} onChange={(e) => draftOp((d) => updateSection(d, selectedSection.id, { title: e.target.value || null }))} data-testid="section-title" /></label>
+            <input className="field mt-1.5" value={selectedSection.title ?? ''} onChange={(e) => draftOp((d) => updateSection(d, selectedSection.id, { title: e.target.value || null }))} data-testid="section-title" /></label>
           {multi && <label className="block text-[0.9375rem] font-semibold">{t('hub.builder.stepTitle')}
-            <input className="mt-1.5 h-10 w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-sm font-normal" value={selectedSection.step_title ?? ''} onChange={(e) => draftOp((d) => updateSection(d, selectedSection.id, { step_title: e.target.value || null }))} data-testid="section-step-title" /></label>}
+            <input className="field mt-1.5" value={selectedSection.step_title ?? ''} onChange={(e) => draftOp((d) => updateSection(d, selectedSection.id, { step_title: e.target.value || null }))} data-testid="section-step-title" /></label>}
           <label className="block text-[0.9375rem] font-semibold">{t('hub.forms.description')}
-            <input className="mt-1.5 h-10 w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-sm font-normal" value={selectedSection.description ?? ''} onChange={(e) => draftOp((d) => updateSection(d, selectedSection.id, { description: e.target.value || null }))} /></label>
+            <input className="field mt-1.5" value={selectedSection.description ?? ''} onChange={(e) => draftOp((d) => updateSection(d, selectedSection.id, { description: e.target.value || null }))} /></label>
           <LogicEditor title={t('hub.builder.logic.showWhen')} group={selectedSection.show_when} fields={doc.fields} onChange={(g) => draftOp((d) => updateSection(d, selectedSection.id, { show_when: g }))} testId="section-logic-show" />
           <LogicEditor title={t('hub.builder.logic.hideWhen')} group={selectedSection.hide_when} fields={doc.fields} onChange={(g) => draftOp((d) => updateSection(d, selectedSection.id, { hide_when: g }))} testId="section-logic-hide" />
         </>

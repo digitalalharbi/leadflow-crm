@@ -233,7 +233,7 @@ function SavedViews({ filters, onChange }: { filters: LeadFilters; onChange: (ne
             placeholder={t('leads.segments.saveName')}
             aria-label={t('leads.segments.saveName')}
             data-testid="saved-view-name"
-            className="h-8 w-36 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 text-[0.9375rem]"
+            className="field !h-9 w-40"
           />
           <button type="submit" data-testid="saved-view-confirm" disabled={!name.trim() || create.isPending} className="pressable rounded-full bg-[var(--brand)] px-3 py-1.5 text-[0.9375rem] font-semibold text-[var(--brand-ink)] disabled:opacity-50">
             {t('leads.segments.saveConfirm')}

@@ -6,7 +6,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 import { can, useAuth } from '@/stores/auth'
-import { Badge, Button, Card, CardBody, CardHeader, Input, Skeleton } from '@/components/ui'
+import { Badge, Button, Card, CardBody, CardHeader, Input, OtpInput, Skeleton } from '@/components/ui'
 import { formatDateTime } from '@/lib/format'
 
 interface Security { mfa_enabled: boolean; recovery_codes_left: number; workspace_requires_mfa: boolean }
@@ -60,6 +60,16 @@ export function SecurityCard() {
   })
   const end = useMutation({ mutationFn: (id: number) => apiDelete(`/auth/security/sessions/${id}`), onSuccess: refresh, onError })
   const endOthers = useMutation({ mutationFn: () => apiPost('/auth/security/sessions/end-others'), onSuccess: refresh, onError })
+  const [googlePassword, setGooglePassword] = useState('')
+  const restore = useAuth((s) => s.restore)
+  const unlinkGoogle = useMutation({
+    mutationFn: () => apiDelete('/auth/security/google', { password: googlePassword }),
+    onSuccess: async () => {
+      setGooglePassword('')
+      await restore()
+    },
+    onError,
+  })
   const policy = useMutation({ mutationFn: (on: boolean) => apiPatch('/settings/security', { require_mfa: on }), onSuccess: refresh, onError })
 
   if (security.isLoading) return <Skeleton className="h-40" />
@@ -73,6 +83,19 @@ export function SecurityCard() {
         action={<Badge tone={data?.mfa_enabled ? 'success' : 'neutral'} testId="mfa-state">{data?.mfa_enabled ? t('security.on') : t('security.off')}</Badge>}
       />
       <CardBody className="space-y-5">
+        {user?.google_linked && (
+          <form
+            className="flex flex-wrap items-end gap-2"
+            data-testid="google-linked"
+            onSubmit={(event) => {
+              event.preventDefault()
+              unlinkGoogle.mutate()
+            }}
+          >
+            <Input containerClassName="min-w-0 flex-1" dir="ltr" type="password" autoComplete="current-password" label={t('auth.google.linked')} hint={t('auth.currentPassword')} value={googlePassword} onChange={(e) => setGooglePassword(e.target.value)} />
+            <Button type="submit" variant="outline" disabled={!googlePassword} loading={unlinkGoogle.isPending} data-testid="google-unlink">{t('auth.google.unlink')}</Button>
+          </form>
+        )}
         {data?.workspace_requires_mfa && !data.mfa_enabled && (
           <p role="alert" className="notice notice-warning" data-testid="mfa-required-notice">{t('security.requiredNotice')}</p>
         )}
@@ -95,7 +118,7 @@ export function SecurityCard() {
             <code dir="ltr" className="block break-all rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[0.8125rem]" data-testid="mfa-secret">{setup.secret}</code>
             <a dir="ltr" href={setup.otpauth_uri} className="t-caption underline">{t('security.openApp')}</a>
             <div className="flex flex-wrap items-end gap-2">
-              <Input label={t('auth.mfaCode')} autoComplete="one-time-code" dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} data-testid="mfa-confirm-code" />
+              <OtpInput label={t('auth.mfaCode')} value={code} onChange={(e) => setCode(e.target.value)} data-testid="mfa-confirm-code" />
               <Button loading={confirm.isPending} disabled={code.trim().length < 6} onClick={() => confirm.mutate()} data-testid="mfa-confirm">{t('security.confirm')}</Button>
             </div>
           </div>

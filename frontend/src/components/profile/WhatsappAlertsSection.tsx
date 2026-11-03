@@ -69,11 +69,11 @@ export function WhatsappAlertsSection({ prefs, onChange }: { prefs: WhatsappPref
               <div className="flex flex-wrap items-center gap-3 ps-6">
                 <label className="flex items-center gap-1.5 text-[0.875rem]">
                   {t('alerts.whatsapp.from')}
-                  <input type="time" dir="ltr" value={prefs.quiet.start} data-testid="whatsapp-quiet-start" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, start: e.target.value } })} className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1" />
+                  <input type="time" dir="ltr" value={prefs.quiet.start} data-testid="whatsapp-quiet-start" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, start: e.target.value } })} className="field !h-10 !w-auto" />
                 </label>
                 <label className="flex items-center gap-1.5 text-[0.875rem]">
                   {t('alerts.whatsapp.to')}
-                  <input type="time" dir="ltr" value={prefs.quiet.end} data-testid="whatsapp-quiet-end" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, end: e.target.value } })} className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1" />
+                  <input type="time" dir="ltr" value={prefs.quiet.end} data-testid="whatsapp-quiet-end" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, end: e.target.value } })} className="field !h-10 !w-auto" />
                 </label>
                 <Badge tone="neutral" testId="whatsapp-quiet-source">{t(`alerts.whatsapp.source.${prefs.quiet.source}`)}</Badge>
                 {prefs.quiet.source === 'own' && (

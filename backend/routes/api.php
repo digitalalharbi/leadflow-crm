@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\V1\FollowUpPlanController;
 use App\Http\Controllers\Api\V1\FormAssetController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
+use App\Http\Controllers\Api\V1\GoogleLoginController;
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
@@ -126,7 +127,13 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
-    Route::get('/auth/providers', fn () => ApiResponse::success(['providers' => config('platform.login_providers')]));
+    Route::get('/auth/providers', [GoogleLoginController::class, 'providers']);
+    // A round trip is three requests, and an office shares one address: its own limit, not the password form's.
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::get('/auth/google/redirect', [GoogleLoginController::class, 'redirect']);
+        Route::get('/auth/google/callback', [GoogleLoginController::class, 'callback']);
+        Route::post('/auth/google/complete', [GoogleLoginController::class, 'complete']);
+    });
     // Into an account without a password in hand. Every answer is the same whether or not an email is registered.
     Route::middleware('throttle:login')->group(function () {
         Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);
@@ -241,6 +248,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/security/mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:10,1');
         Route::get('/auth/security/sessions', [AccountSecurityController::class, 'sessions']);
         Route::delete('/auth/security/sessions/{id}', [AccountSecurityController::class, 'endSession'])->whereNumber('id');
+        Route::delete('/auth/security/google', [GoogleLoginController::class, 'unlink'])->middleware('throttle:10,1');
         Route::post('/auth/security/sessions/end-others', [AccountSecurityController::class, 'endOtherSessions'])->middleware('throttle:10,1');
         Route::post('/auth/email/verification', [AccountAccessController::class, 'sendVerification'])->middleware('throttle:3,1');
         Route::post('/auth/password', [AuthController::class, 'changePassword']);

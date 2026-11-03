@@ -7,6 +7,7 @@ use App\Models\Invitation;
 use App\Models\PasswordLink;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Notifications\ImportantNotification;
 use App\Support\Brand;
 use App\Support\TenantContext;
 
@@ -102,9 +103,16 @@ class AccountEmail
             'email_changed' => $en ? ['Your sign-in email was changed', 'The email of your Mohtam account was changed to '.$user->email.'.'] : ['تغيّر بريد الدخول', 'تغيّر بريد حسابك في مهتم إلى '.$user->email.'.'],
             'google_linked' => $en ? ['Google sign-in is on', 'Your Google account can now sign in to your Mohtam account.'] : ['ربطت حساب Google', 'أصبح بإمكان حسابك في Google تسجيل الدخول إلى حسابك في مهتم.'],
             'google_unlinked' => $en ? ['Google sign-in is off', 'Your Google account can no longer sign in to your Mohtam account.'] : ['أُزيل ربط Google', 'لم يعد بإمكان حسابك في Google تسجيل الدخول إلى حسابك في مهتم.'],
+            'new_device' => $en ? ['A new device signed in', 'Your Mohtam account was just opened on a device we have not seen before.'] : ['دخول من جهاز جديد', 'فُتح حسابك في مهتم للتو من جهاز لم نره من قبل.'],
+            'session_revoked' => $en ? ['A session was ended', 'A signed-in device was removed from your Mohtam account.'] : ['أُنهيت جلسة', 'أُزيل جهاز من الأجهزة المسجّلة في حسابك في مهتم.'],
+            'api_key_created' => $en ? ['An API key was created', 'A new API key was created in your company on Mohtam.'] : ['أُنشئ مفتاح API', 'أُنشئ مفتاح API جديد في شركتك على مهتم.'],
+            'api_key_rotated' => $en ? ['An API key was rotated', 'An API key in your company on Mohtam was replaced.'] : ['دُوّر مفتاح API', 'استُبدل مفتاح API في شركتك على مهتم.'],
+            'webhook_secret_rotated' => $en ? ['A webhook secret was rotated', 'A webhook secret in your company on Mohtam was replaced.'] : ['دُوّر سرّ Webhook', 'استُبدل سرّ Webhook في شركتك على مهتم.'],
             'mfa_enabled' => $en ? ['Two-step sign-in is on', 'Two-step sign-in was turned on for your Mohtam account.'] : ['فُعّل التحقق بخطوتين', 'فُعّل التحقق بخطوتين على حسابك في مهتم.'],
             'mfa_disabled' => $en ? ['Two-step sign-in is off', 'Two-step sign-in was turned off for your Mohtam account.'] : ['أُوقف التحقق بخطوتين', 'أُوقف التحقق بخطوتين على حسابك في مهتم.'],
         };
+
+        rescue(fn () => $user->notify(new ImportantNotification('security_alert', $title, $body, null, '/profile#security', 'warning')));
 
         rescue(fn () => $this->send($tenant, $to ?? $user->email, $user->name, $title, [
             'title' => $title,

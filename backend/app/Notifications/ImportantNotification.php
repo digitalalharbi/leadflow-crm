@@ -43,6 +43,7 @@ class ImportantNotification extends Notification implements ShouldQueue
             'type' => 'important',
             'kind' => $this->kind,
             'severity' => $this->severity,
+            'priority' => AlertKinds::priorityOf($this->kind, $this->severity),
             'title' => $this->title,
             'body' => $this->body,
             'lead_id' => $this->leadId,

@@ -7,8 +7,11 @@ use App\Domain\Leads\NextBestAction;
 use App\Enums\Platform;
 use App\Models\Lead;
 use App\Models\Project;
+use App\Models\Task;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\ImportantNotification;
+use App\Support\TenantContext;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -197,6 +200,66 @@ class ImportantAlerts
         self::send(self::managers(), new ImportantNotification(
             'automation_failed', 'فشل في الأتمتة', trim(($ruleName ? "القاعدة «{$ruleName}»: " : '').($why ?? 'لم يُنفَّذ إجراء.')), null, '/automation', 'warning',
         ));
+    }
+
+    /** A template about a lead, in each person's own language: its owner, and the people above them when asked. */
+    public static function aboutLead(string $template, Lead $lead, array $variables = [], bool $andManagers = false): void
+    {
+        try {
+            $people = self::recipients($lead);
+
+            if ($andManagers) {
+                $people = $people->concat(self::managers($lead->tenant_id, $lead))->unique('id')->values();
+            }
+
+            self::fromTemplate($template, $people, ['lead_name' => $lead->full_name] + $variables, $lead->uuid, null);
+        } catch (\Throwable $e) {
+            Log::warning('important_alert_failed', ['lead' => $lead->id, 'template' => $template, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public static function aboutTask(string $template, Task $task): void
+    {
+        try {
+            $owner = User::query()->where('is_active', true)->whereKey($task->assigned_to)->get();
+            self::fromTemplate($template, $owner, ['task_title' => $task->title], $task->lead?->uuid, '/tasks');
+        } catch (\Throwable $e) {
+            Log::warning('important_alert_failed', ['task' => $task->id, 'template' => $template, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Something a company depends on stopped working. Once a day per thing, to the people who can fix it, and never in the
+     * way of the failure being handled: this is called from the failure paths themselves.
+     */
+    public static function integrationFailure(int $tenantId, string $template, string $thing, array $variables = []): void
+    {
+        try {
+            $tenant = Tenant::query()->find($tenantId);
+
+            if ($tenant === null) {
+                return;
+            }
+
+            app(TenantContext::class)->withTenant($tenant, function () use ($template, $thing, $variables, $tenantId) {
+                if (AlertGate::once("integration:{$template}:{$thing}:".now()->toDateString())) {
+                    self::fromTemplate($template, self::managers($tenantId)->filter(fn (User $user) => $user->isAdmin())->values(), $variables, null, '/integrations');
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('important_alert_failed', ['template' => $template, 'error' => $e->getMessage()]);
+        }
+    }
+
+    private static function fromTemplate(string $template, Collection $people, array $variables, ?string $leadUuid, ?string $link): void
+    {
+        foreach ($people as $person) {
+            $copy = NotificationTemplates::render($template, $person->locale, $variables);
+
+            if ($copy !== null) {
+                $person->notify(new ImportantNotification($copy['kind'], $copy['title'], $copy['body'], $leadUuid, $link, $copy['severity']));
+            }
+        }
     }
 
     /** @return Collection<int,User> */

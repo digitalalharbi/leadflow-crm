@@ -4,6 +4,7 @@ namespace App\Domain\Sheets;
 
 use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Enums\IntegrationProvider;
 use App\Models\Project;
 use App\Models\SheetSource;
@@ -400,6 +401,10 @@ class SheetImporter
 
     private function finish(SheetSyncRun $run, SheetSource $source, ?string $error): SheetSyncRun
     {
+        if ($error !== null) {
+            ImportantAlerts::integrationFailure((int) $source->tenant_id, 'sheets_sync_failed', 'sheet:'.$source->id, ['source_name' => $source->name ?? $source->sheet_name]);
+        }
+
         $run->forceFill([
             'status' => $error === null ? SheetSyncRun::COMPLETED : SheetSyncRun::FAILED,
             'error' => $error,

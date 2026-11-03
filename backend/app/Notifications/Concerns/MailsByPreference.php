@@ -10,6 +10,7 @@ use App\Notifications\Channels\ProviderMailChannel;
 use App\Notifications\Channels\StaffWhatsappChannel;
 use App\Notifications\Channels\TenantDatabaseChannel;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Adds the email to a notification — for the people who asked for it to arrive at once.
@@ -42,7 +43,7 @@ trait MailsByPreference
         $forSummary = in_array($mode, ['daily', 'weekly'], true) && NotificationPrefs::allows($person, $category, 'email');
         $channels = $person === null || $forSummary || NotificationPrefs::allows($person, $category, 'in_app') ? [TenantDatabaseChannel::class] : [];
 
-        if ($person !== null && filled($person->email) && $mode === 'instant' && NotificationPrefs::allows($person, $category, 'email')) {
+        if ($person !== null && filled($person->email) && $mode === 'instant' && $this->withinCooldown($person, $category) && NotificationPrefs::allows($person, $category, 'email')) {
             $channels[] = ProviderMailChannel::class;
         }
 
@@ -52,6 +53,29 @@ trait MailsByPreference
         }
 
         return $channels;
+    }
+
+    /** Quiet hours hold back the ordinary emails until morning. What is urgent goes through. @return array<string, mixed> */
+    public function withDelay(object $notifiable): array
+    {
+        if (! $notifiable instanceof User || $this->isUrgent()) {
+            return [];
+        }
+
+        $until = StaffWhatsapp::quietUntil($notifiable);
+
+        return $until ? [ProviderMailChannel::class => $until] : [];
+    }
+
+    /** Ten of the same alert in a few minutes is one problem: five emails an hour per kind, the rest stay in the bell and the summary. */
+    private function withinCooldown(User $person, string $category): bool
+    {
+        return $this->isUrgent() || RateLimiter::attempt("alert-mail:{$person->id}:{$category}", 5, fn () => true, 3600);
+    }
+
+    private function isUrgent(): bool
+    {
+        return AlertKinds::priorityOf($this->kind ?? null, $this->alertContent()['severity'] ?? null) === 'critical';
     }
 
     public function toMail(object $notifiable): MailMessage

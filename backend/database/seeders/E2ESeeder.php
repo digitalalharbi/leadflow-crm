@@ -107,6 +107,9 @@ class E2ESeeder extends Seeder
         $this->seedBeta($context);
 
         $this->command?->info('E2E fixtures ready (alpha + beta).');
+
+        // A new company starts with its journey off. These fixtures are companies that reviewed it and turned it on.
+        AutomationRule::withoutGlobalScopes()->whereNotNull('template_key')->update(['is_enabled' => true]);
     }
 
     private function seedAlpha(TenantContext $context): void

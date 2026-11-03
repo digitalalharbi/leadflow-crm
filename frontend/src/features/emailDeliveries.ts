@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiGet, apiPost } from '@/lib/api'
 
-export type DeliveryStatus = 'queued' | 'sending' | 'sent' | 'logged' | 'failed'
+export type DeliveryStatus = 'delivered' | 'bounced' | 'queued' | 'sending' | 'sent' | 'logged' | 'failed'
 export type MailProviderKey = 'log' | 'smtp' | 'ses' | 'resend'
 
 export interface MailProviderState {

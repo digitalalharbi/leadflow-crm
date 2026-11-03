@@ -24,6 +24,11 @@ class EmailDelivery extends Model
 
     public const FAILED = 'failed';
 
+    /** The provider said so afterwards. Never assumed from being accepted. */
+    public const DELIVERED = 'delivered';
+
+    public const BOUNCED = 'bounced';
+
     protected $fillable = [
         'kind', 'to_email', 'to_name', 'subject', 'html', 'text', 'provider', 'status', 'attempts', 'max_attempts', 'provider_message_id', 'last_error',
         'subject_type', 'subject_id', 'idempotency_key', 'created_by', 'next_attempt_at', 'sent_at', 'failed_at',

@@ -2,6 +2,9 @@ import { publicPageAr } from './publicPage.ar'
 
 export default {
   common: {
+    lastUpdated: 'آخر تحديث: {{when}}',
+    up: 'أعلى',
+    down: 'أسفل',
     others: 'أخرى',
     appName: 'مهتم',
     save: 'حفظ',
@@ -2985,7 +2988,7 @@ export default {
       back: 'رجوع', undo: 'تراجع', redo: 'إعادة', publish: 'نشر', unsaved: 'تعديلات غير محفوظة', unpublished: 'تعديلات غير منشورة', fixProblems: 'هناك ما يحتاج تصحيحًا قبل الحفظ.',
       liveVersion: 'منشور · الإصدار {{n}}', version: 'الإصدار {{n}}', live: 'منشور', moveUp: 'تحريك للأعلى', moveDown: 'تحريك للأسفل', duplicate: 'تكرار', duplicateForm: 'نسخ',
       settings: 'الإعدادات', settingsOf: 'إعدادات: {{name}}', rowSettings: 'الصف', sectionSettings: 'القسم', sectionTitle: 'عنوان القسم', stepTitle: 'عنوان الخطوة',
-      panes: { build: 'البناء', preview: 'المعاينة', analytics: 'النتائج' },
+      panes: { build: 'البناء', preview: 'المعاينة', analytics: 'النتائج', submissions: 'العملاء' },
       tabs: { page: 'الصفحة', basics: 'الأساسيات', design: 'التصميم', thanks: 'بعد الإرسال', tracking: 'التتبّع', intent: 'الاهتمام' },
       library: { title: 'الحقول', basic: 'أساسية', choice: 'اختيارات', display: 'نصوص وتنسيق', advanced: 'متقدمة', realEstate: 'عقارية' },
       canvas: {
@@ -3059,6 +3062,7 @@ export default {
     page: {
       templates: { real_estate_lead: 'عقاري مختصر', project_showcase: 'عرض المشروع', minimal_lead: 'بسيط' },
       templateHint: { real_estate_lead: 'صورة وحقائق المشروع والنموذج في الشاشة الأولى.', project_showcase: 'مثل المختصر مع نقاط بيع أكثر أسفل الشاشة الأولى.', minimal_lead: 'الشعار والعنوان والنموذج فقط.' },
+      sections: { title: 'الأقسام وترتيبها', benefits: 'المزايا', gallery: 'صور المشروع', location: 'الموقع', financing: 'التمويل', galleryHint: 'رابط صورة في كل سطر، حتى 6 صور' },
       builder: {
         address: 'عنوان الصفحة', slug: 'الرابط', slugProblem: { invalid: 'أحرف إنجليزية صغيرة وأرقام وشرطات فقط.', reserved: 'هذا الاسم محجوز.', taken: 'هذا الرابط مستخدم.' },
         template: 'القالب', developer: 'اسم المطور (اختياري)', developerLogo: 'شعار المطور (اختياري)', facts: 'حقائق المشروع', show: 'إظهار', ctas: 'طرق التواصل', number: 'الرقم', message: 'نص الرسالة', messageHint: 'يُضاف إليها رمز مرجعي تلقائيًا لربط المحادثة بالمصدر.',
@@ -3067,7 +3071,7 @@ export default {
         seo: 'محركات البحث والمشاركة', seoTitle: 'العنوان', seoDescription: 'الوصف', index: 'السماح بفهرسة الصفحة',
         mirror: 'نسخة في Google Sheets', mirrorHint: 'مهتم يبقى مصدر الحقيقة. تعطل Google لا يمنع إنشاء العميل.', mirrorOn: 'انسخ كل عميل جديد إلى جدول', spreadsheet: 'معرّف الجدول',
         campaignLink: 'إنشاء رابط حملة', platform: 'المنصة', campaign: 'الحملة', adGroup: 'المجموعة الإعلانية (اختياري)', ad: 'الإعلان (اختياري)', medium: 'الوسيط', copy: 'نسخ', copied: 'نُسخ', qr: 'إنشاء QR', qrName: 'رمز QR',
-        pause: 'إيقاف مؤقت', resume: 'استئناف', archive: 'أرشفة', archiveConfirm: 'أرشفة الصفحة؟ سيتوقف رابطها وتبقى بياناتها.', duplicate: 'نسخ',
+        pause: 'إيقاف مؤقت', resume: 'استئناف', archive: 'أرشفة', restore: 'استعادة', deleteConfirm: 'حذف هذه الصفحة؟ العملاء الذين جاءت بهم يبقون.', noSubmissions: 'لا عملاء من هذه الصفحة بعد.', archiveConfirm: 'أرشفة الصفحة؟ سيتوقف رابطها وتبقى بياناتها.', duplicate: 'نسخ',
       },
       analytics: {
         unique_visitors: 'زوار فريدون', whatsapp_clicks: 'نقرات واتساب', call_clicks: 'نقرات الاتصال', leads: 'عملاء', sales: 'مبيعات', revenue_minor: 'الإيراد',
@@ -3757,7 +3761,7 @@ export default {
     provider: { log: 'السجل فقط', smtp: 'خادم SMTP', ses: 'أمازون SES', resend: 'ريسند Resend' },
     logOnly: 'يُكتب كل بريد في السجل ولا يُرسل شيء: لا مزوّد مربوط.', ready: 'جاهز للإرسال.', missing: 'غير مكتمل: ينقصه {{what}}.',
     configured: 'مضبوط', needs: 'ينقصه {{what}}',
-    status: { queued: 'في الانتظار', sending: 'يُرسل', sent: 'أُرسل', logged: 'سُجّل فقط', failed: 'فشل' },
+    status: { queued: 'في الانتظار', sending: 'تجري المحاولة', sent: 'قبله المزوّد', delivered: 'وصل', bounced: 'ارتد', logged: 'سُجّل فقط', failed: 'فشل' },
     emptyTitle: 'لا رسائل بعد', emptyBody: 'أرسل تقريرًا بالبريد من «مشاركة مباشرة» وسيظهر هنا بحالته.',
     retry: 'أعد المحاولة', retried: 'أُعيدت المحاولة.', log: 'سجل المحاولات', loggedNote: 'كُتب في السجل ولم يُرسل: لا مزوّد بريد مربوط.',
     attemptOk: 'نجحت', attemptRetry: 'فشلت — ستُعاد', attemptFinal: 'فشلت — لا فائدة من الإعادة',
@@ -4013,6 +4017,14 @@ export default {
       expired: { title: 'انتهى الاشتراك', body: 'انتهت الفترة المدفوعة لهذا الاشتراك.' },
       disabled: { title: 'مساحة العمل معطّلة', body: 'عطّل مزوّد الخدمة مساحة العمل هذه.' },
     },
+  },
+  insightsPage: { title: 'رؤى مهتم', summary: 'ما يهم من يدير فريق مبيعات: سرعة الرد، والمراحل، والمتابعة.' },
+  contactForm: {
+    title: { demo: 'اطلب عرضًا', insights: 'تصلك الرؤى الجديدة' },
+    submit: { demo: 'أرسل الطلب', insights: 'اشترك' },
+    sent: { demo: 'وصل طلبك. سنتواصل معك قريبًا.', insights: 'تم. ستصلك الرؤى الجديدة.' },
+    consent: { demo: 'أوافق على تواصل فريق مهتم معي بشأن هذا الطلب.', insights: 'أوافق على استلام رؤى مهتم عبر البريد، ويمكنني إلغاء الاشتراك متى شئت.' },
+    name: 'الاسم', email: 'البريد الإلكتروني', phone: 'الجوال', company: 'الشركة', message: 'رسالتك',
   },
   projectSwitcher: { all: 'كل المشاريع', title: 'اختر مشروعًا', search: 'ابحث عن مشروع' },
   platformAdmin: {

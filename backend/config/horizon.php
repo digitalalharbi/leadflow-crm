@@ -59,7 +59,8 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            // `heavy` is read here too wherever no worker of its own is defined.
+            'queue' => ['default', 'heavy'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -75,9 +76,19 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
+                'queue' => ['default'],
                 'maxProcesses' => 10,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
+            ],
+            // Imports and sheet syncs on their own worker: a big file does not hold up an alert.
+            'supervisor-heavy' => [
+                'connection' => 'redis',
+                'queue' => ['heavy'],
+                'balance' => 'simple',
+                'maxProcesses' => 1,
+                'memory' => 256,
+                'timeout' => 900,
             ],
         ],
 

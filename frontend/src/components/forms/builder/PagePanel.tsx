@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Copy, QrCode } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Select, Textarea } from '@/components/ui'
-import { addPageLink, checkPageSlug, uploadFormAsset, type LandingPageConfig, type PageCtaKind, type PageFactKey, type PageTemplate } from '@/features/hub'
+import { PAGE_SECTIONS, addPageLink, checkPageSlug, uploadFormAsset, type LandingPageConfig, type PageCtaKind, type PageFactKey, type PageTemplate } from '@/features/hub'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 
@@ -127,6 +127,19 @@ export function PagePanel({ page, slug, formId, published, onPage, onSlug, onQr 
 
       <section className="space-y-2">
         <h3 className="font-semibold">{t('hub.page.builder.behaviour')}</h3>
+        <fieldset className="space-y-2" data-testid="page-sections">
+          <legend className="text-[0.9375rem] font-semibold">{t('hub.page.sections.title')}</legend>
+          {(page.sections ?? PAGE_SECTIONS.map((key) => ({ key, visible: true }))).map((row, index, rows) => (
+            <div key={row.key} className="flex items-center gap-2">
+              <label className="flex min-h-10 flex-1 items-center gap-2 text-[0.9375rem]"><input type="checkbox" className="size-5" checked={row.visible} data-testid={`page-section-${row.key}`} onChange={(e) => onPage({ ...page, sections: rows.map((r) => (r.key === row.key ? { ...r, visible: e.target.checked } : r)) })} />{t(`hub.page.sections.${row.key}`)}</label>
+              <Button size="sm" variant="ghost" aria-label={t('common.up')} disabled={index === 0} onClick={() => { const next = [...rows]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; onPage({ ...page, sections: next }) }}>↑</Button>
+              <Button size="sm" variant="ghost" aria-label={t('common.down')} disabled={index === rows.length - 1} onClick={() => { const next = [...rows]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; onPage({ ...page, sections: next }) }}>↓</Button>
+            </div>
+          ))}
+          <Input label={t('hub.page.sections.location')} value={page.location_note ?? ''} onChange={(e) => onPage({ ...page, location_note: e.target.value || null })} data-testid="page-location-note" />
+          <Input label={t('hub.page.sections.financing')} value={page.financing_note ?? ''} onChange={(e) => onPage({ ...page, financing_note: e.target.value || null })} data-testid="page-financing-note" />
+          <Textarea label={t('hub.page.sections.gallery')} hint={t('hub.page.sections.galleryHint')} dir="ltr" value={(page.gallery ?? []).join('\n')} onChange={(e) => onPage({ ...page, gallery: e.target.value.split('\n').map((u) => u.trim()).filter(Boolean).slice(0, 6) })} data-testid="page-gallery-urls" />
+        </fieldset>
         <label className="flex items-center gap-2 text-[0.9375rem]"><input type="checkbox" className="size-5" checked={page.auto_steps} onChange={(e) => onPage({ ...page, auto_steps: e.target.checked })} data-testid="page-auto-steps" />{t('hub.page.builder.autoSteps')}</label>
         <Input label={t('hub.page.builder.tags')} hint={t('hub.page.builder.tagsHint')} value={(page.tags ?? []).join('، ')} onChange={(e) => onPage({ ...page, tags: e.target.value.split(/[,،]/).map((v) => v.trimStart()).slice(0, 5) })} data-testid="page-tags" />
       </section>

@@ -16,6 +16,7 @@ use App\Domain\Tracking\Forms\LandingSlugs;
 use App\Domain\Tracking\Forms\PhoneCountries;
 use App\Http\Controllers\Controller;
 use App\Models\LandingForm;
+use App\Models\Lead;
 use App\Models\Project;
 use App\Models\SheetSource;
 use App\Models\TrackingEvent;
@@ -188,6 +189,19 @@ class LandingFormController extends Controller
     }
 
     /** A page holds its address from the moment it exists. It cannot give one up: a page always has somewhere it can be reached. */
+    /** The people this page brought, as far as this person may see them. */
+    public function submissions(Request $request, string $uuid)
+    {
+        $form = LandingForm::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('view', $form);
+
+        $leads = Lead::query()->visibleTo($request->user())->where('landing_form_id', $form->id)->latest('id')->limit(100)->get();
+
+        return ApiResponse::success(['submissions' => $leads->map(fn (Lead $lead) => [
+            'id' => $lead->uuid, 'name' => $lead->full_name, 'status' => $lead->status?->value, 'source' => $lead->utm_source ?? $lead->platform, 'campaign' => $lead->utm_campaign, 'created_at' => $lead->created_at?->toIso8601String(),
+        ])]);
+    }
+
     private function holdAddress(LandingForm $form, ?string $slug): void
     {
         $slugs = app(LandingSlugs::class);

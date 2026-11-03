@@ -120,7 +120,7 @@ class EmailDeliveries
     private function outbound(EmailDelivery $d): OutboundEmail
     {
         return new OutboundEmail(
-            $d->to_email, $d->to_name, $d->subject, (string) $d->html, $d->text,
+            $d->to_email, $d->to_name, Brand::subject((string) $d->subject), (string) $d->html, $d->text,
             (string) config('leadflow_mail.from.address'), (string) config('leadflow_mail.from.name'),
             // Stable across every attempt of this delivery.
             $d->uuid, ['kind' => $d->kind],

@@ -36,6 +36,8 @@ const TermsPage = lazy(() => import('@/pages/public/pages').then((m) => ({ defau
 const DataDeletionPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.DataDeletionPage })))
 const SecurityPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.SecurityPage })))
 const ContactPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.ContactPage })))
+const InsightsPage = lazy(() => import('@/pages/public/Insights').then((m) => ({ default: m.InsightsPage })))
+const InsightPage = lazy(() => import('@/pages/public/Insights').then((m) => ({ default: m.InsightPage })))
 const AboutPage = lazy(() => import('@/pages/public/pages').then((m) => ({ default: m.AboutPage })))
 const FeaturesPage = lazy(() => import('@/pages/public/Marketing').then((m) => ({ default: m.FeaturesPage })))
 const JourneyPage = lazy(() => import('@/pages/public/Marketing').then((m) => ({ default: m.JourneyPage })))
@@ -229,6 +231,8 @@ export function App() {
         <Route path="/terms" element={<Suspense fallback={<PageFallback />}><TermsPage /></Suspense>} />
         <Route path="/data-deletion" element={<Suspense fallback={<PageFallback />}><DataDeletionPage /></Suspense>} />
         <Route path="/security" element={<Suspense fallback={<PageFallback />}><SecurityPage /></Suspense>} />
+        <Route path="/insights" element={<Suspense fallback={<PageFallback />}><InsightsPage /></Suspense>} />
+        <Route path="/insights/:slug" element={<Suspense fallback={<PageFallback />}><InsightPage /></Suspense>} />
         <Route path="/contact" element={<Suspense fallback={<PageFallback />}><ContactPage /></Suspense>} />
         <Route path="/about" element={<Suspense fallback={<PageFallback />}><AboutPage /></Suspense>} />
         {/* The page a tracking link opens: the project, and the form that turns interest into a lead. No session, no chrome. */}

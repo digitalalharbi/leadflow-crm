@@ -135,13 +135,13 @@ describe('landing page', () => {
     expect(within(nav).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['المزايا', '/features'], ['الرحلة', '/journey'], ['الرؤية', '/vision']])
   })
 
-  it('footer links lead to the six public pages', () => {
+  it('footer links lead to the public pages', () => {
     renderWithProviders(<LandingPage />)
 
     const footer = screen.getByTestId('public-footer')
     const links = within(within(footer).getByRole('navigation')).getAllByRole('link').map((a) => a.getAttribute('href'))
 
-    expect(links).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
+    expect(links).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/insights', '/about'])
     // The front door's footer is one short line; the contact details are on every other public page.
     expect(screen.queryByTestId('footer-contact')).toBeNull()
   })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { Link } from 'react-router-dom'
 import {
   AlertTriangle, CalendarClock, ChevronDown, PhoneOff, UserPlus,
@@ -61,7 +62,7 @@ export function DashboardPage() {
     date_from: dateFrom,
   }
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['dashboard', filters],
     queryFn: () => apiGet<DashboardData>('/dashboard', filters),
     /*
@@ -98,6 +99,7 @@ export function DashboardPage() {
 
   return (
     <>
+      <LastUpdated at={dataUpdatedAt} />
       <PageHeader
         title={user?.name ? t('dashboard.welcomeBack') : t('dashboard.title')}
         titleMuted={user?.name ? user.name.split(' ')[0] : undefined}

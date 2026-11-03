@@ -129,7 +129,7 @@ class ImportController extends Controller
             'status' => Import::PROCESSING,
         ]);
 
-        ProcessLeadImport::dispatch($import->id, $import->tenant_id);
+        ProcessLeadImport::dispatch($import->id, $import->tenant_id)->onQueue('heavy');
 
         return ApiResponse::success(['import' => $this->present($import->fresh())], 'Import started.');
     }

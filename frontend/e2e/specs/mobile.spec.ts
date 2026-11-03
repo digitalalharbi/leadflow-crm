@@ -155,4 +155,30 @@ test.describe('Mobile layout', () => {
     )
     expect(overflow).toBeLessThanOrEqual(1)
   })
+
+  test('More is a full screen, grouped for a thumb, with who you are and signing out', async ({ page }) => {
+    await page.getByTestId('bottom-nav-more').click()
+    const menu = page.getByTestId('more-menu')
+    await expect(menu).toBeInViewport()
+
+    const box = (await menu.boundingBox())!
+    expect(box.width).toBe(page.viewportSize()!.width)
+    await expect(page.getByTestId('more-identity')).toBeVisible()
+    await expect(page.getByTestId('more-logout')).toBeAttached()
+
+    for (const row of await menu.getByRole('link').all()) {
+      const height = (await row.boundingBox())?.height
+      if (height) expect(height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+  })
+
+  test('notifications open as a whole screen, and close again', async ({ page }) => {
+    await page.getByTestId('notifications-toggle').click()
+    const center = page.getByTestId('notification-center')
+    await expect(center).toBeVisible()
+    expect((await center.boundingBox())!.width).toBe(page.viewportSize()!.width)
+    await page.getByTestId('notifications-close').click()
+    await expect(center).toHaveCount(0)
+  })
 })

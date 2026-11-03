@@ -65,7 +65,7 @@ class Permissions
     {
         $hidden = $user->role ? AccessResolver::resolve($user, $projectId)->hiddenElements : [];
 
-        $hidden = [...$hidden, ...WorkspaceModules::hiddenPages($user->tenant)];
+        $hidden = [...$hidden, ...WorkspaceModules::hiddenPages(WorkspaceModules::of($user))];
 
         // These read the whole company, and the API refuses them to someone limited to some projects.
         return $user->isProjectScoped() ? array_values(array_unique([...$hidden, 'page.audit', 'page.agents', 'page.partners'])) : array_values(array_unique($hidden));
@@ -135,7 +135,7 @@ class Permissions
         }
 
         // Revenue switched off for the company is off for everybody in it.
-        $companyOff = in_array('revenue', WorkspaceModules::disabled($user->tenant), true) ? ['revenue'] : [];
+        $companyOff = in_array('revenue', WorkspaceModules::disabled(WorkspaceModules::of($user)), true) ? ['revenue'] : [];
 
         // The specialised roles hold only what the table gives them. A long-standing role is held
         // back only from what the workspace has explicitly taken away.

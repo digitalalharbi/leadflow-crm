@@ -2,6 +2,9 @@ import { publicPageEn } from './publicPage.en'
 
 export default {
   common: {
+    lastUpdated: 'Last updated: {{when}}',
+    up: 'Up',
+    down: 'Down',
     others: 'Others',
     appName: 'Mohtam',
     save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm',
@@ -2711,7 +2714,7 @@ export default {
       back: 'Back', undo: 'Undo', redo: 'Redo', publish: 'Publish', unsaved: 'unsaved changes', unpublished: 'changes not published', fixProblems: 'Some things need fixing before this can be saved.',
       liveVersion: 'Live · version {{n}}', version: 'Version {{n}}', live: 'live', moveUp: 'Move up', moveDown: 'Move down', duplicate: 'Duplicate', duplicateForm: 'Copy',
       settings: 'Settings', settingsOf: 'Settings: {{name}}', rowSettings: 'Row', sectionSettings: 'Section', sectionTitle: 'Section title', stepTitle: 'Step title',
-      panes: { build: 'Build', preview: 'Preview', analytics: 'Results' },
+      panes: { build: 'Build', preview: 'Preview', analytics: 'Results', submissions: 'Leads' },
       tabs: { page: 'Page', basics: 'Basics', design: 'Design', thanks: 'After sending', tracking: 'Tracking', intent: 'Intent' },
       library: { title: 'Fields', basic: 'Basic', choice: 'Choices', display: 'Text and layout', advanced: 'Advanced', realEstate: 'Real estate' },
       canvas: {
@@ -2785,6 +2788,7 @@ export default {
     page: {
       templates: { real_estate_lead: 'Real estate lead', project_showcase: 'Project showcase', minimal_lead: 'Minimal' },
       templateHint: { real_estate_lead: 'Picture, project facts and the form on the first screen.', project_showcase: 'Like the short one, with more selling points below the first screen.', minimal_lead: 'Logo, headline and form only.' },
+      sections: { title: 'Sections and their order', benefits: 'Benefits', gallery: 'Project photos', location: 'Location', financing: 'Financing', galleryHint: 'One image address per line, up to 6' },
       builder: {
         address: 'Page address', slug: 'Link', slugProblem: { invalid: 'Lowercase letters, numbers and hyphens only.', reserved: 'This name is reserved.', taken: 'This link is taken.' },
         template: 'Template', developer: 'Developer name (optional)', developerLogo: 'Developer logo (optional)', facts: 'Project facts', show: 'Show', ctas: 'Ways to act', number: 'Number', message: 'Message text', messageHint: 'A reference is added automatically to tie the conversation to its source.',
@@ -2793,7 +2797,7 @@ export default {
         seo: 'Search and sharing', seoTitle: 'Title', seoDescription: 'Description', index: 'Allow this page to be indexed',
         mirror: 'Copy in Google Sheets', mirrorHint: 'Mohtam stays the source of truth. Google failing never stops a lead.', mirrorOn: 'Copy every new lead to a sheet', spreadsheet: 'Spreadsheet ID',
         campaignLink: 'Create campaign link', platform: 'Platform', campaign: 'Campaign', adGroup: 'Ad set (optional)', ad: 'Ad (optional)', medium: 'Medium', copy: 'Copy', copied: 'Copied', qr: 'Create QR', qrName: 'QR',
-        pause: 'Pause', resume: 'Resume', archive: 'Archive', archiveConfirm: 'Archive this page? Its link stops and its data stays.', duplicate: 'Duplicate',
+        pause: 'Pause', resume: 'Resume', archive: 'Archive', restore: 'Restore', deleteConfirm: 'Delete this page? The leads it brought stay.', noSubmissions: 'No leads from this page yet.', archiveConfirm: 'Archive this page? Its link stops and its data stays.', duplicate: 'Duplicate',
       },
       analytics: {
         unique_visitors: 'Unique visitors', whatsapp_clicks: 'WhatsApp clicks', call_clicks: 'Call clicks', leads: 'Leads', sales: 'Sales', revenue_minor: 'Revenue',
@@ -3416,7 +3420,7 @@ export default {
     provider: { log: 'Log only', smtp: 'SMTP', ses: 'Amazon SES', resend: 'Resend' },
     logOnly: 'Every email is written to the log and nothing is sent: no provider is connected.', ready: 'Ready to send.', missing: 'Incomplete: needs {{what}}.',
     configured: 'Configured', needs: 'Needs {{what}}',
-    status: { queued: 'Waiting', sending: 'Sending', sent: 'Sent', logged: 'Logged only', failed: 'Failed' },
+    status: { queued: 'Waiting', sending: 'Attempting', sent: 'Accepted by provider', delivered: 'Delivered', bounced: 'Bounced', logged: 'Logged only', failed: 'Failed' },
     emptyTitle: 'No emails yet', emptyBody: 'Email a report from “Live sharing” and it shows up here with its status.',
     retry: 'Try again', retried: 'Trying again.', log: 'Attempt log', loggedNote: 'Written to the log, not sent: no mail provider is connected.',
     attemptOk: 'Succeeded', attemptRetry: 'Failed — will retry', attemptFinal: 'Failed — retrying will not help',
@@ -3617,6 +3621,14 @@ export default {
       expired: { title: 'Subscription expired', body: 'The paid period of this subscription has ended.' },
       disabled: { title: 'Workspace disabled', body: 'The service provider has disabled this workspace.' },
     },
+  },
+  insightsPage: { title: 'Mohtam insights', summary: 'What matters to whoever runs a sales team: reply speed, stages and follow-up.' },
+  contactForm: {
+    title: { demo: 'Request a demo', insights: 'Get new insights' },
+    submit: { demo: 'Send request', insights: 'Subscribe' },
+    sent: { demo: 'Your request arrived. We will be in touch soon.', insights: 'Done. New insights will reach you.' },
+    consent: { demo: 'I agree that the Mohtam team may contact me about this request.', insights: 'I agree to receive Mohtam insights by email, and can unsubscribe at any time.' },
+    name: 'Name', email: 'Email', phone: 'Mobile', company: 'Company', message: 'Your message',
   },
   projectSwitcher: { all: 'All projects', title: 'Choose a project', search: 'Search projects' },
   platformAdmin: {

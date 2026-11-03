@@ -38,8 +38,8 @@ class InterestSlaSweeper
             ->whereIn('interest_level', array_keys(InterestSla::KEYS))
             ->whereNotNull('assigned_to')
             ->with('assignee')
-            ->orderBy('interest_level_changed_at')
-            ->limit(500)
+            ->orderByDesc('interest_level_changed_at')
+            ->limit(2000)
             ->get()
             ->each(function (Lead $lead) use (&$counts, $managers) {
                 $sla = InterestSla::for($lead);
@@ -78,7 +78,7 @@ class InterestSlaSweeper
                     "تجاوز مهلة العميل ({$label}): {$sla['target_minutes']} دقيقة",
                     ['by' => 'sla', 'sla' => 'interest_breached', 'level' => $sla['level']]);
 
-                foreach ($managers->reject(fn (User $user) => $user->id === $lead->assigned_to) as $manager) {
+                foreach ($managers->reject(fn (User $user) => $user->id === $lead->assigned_to || ! $user->reaches($lead->project_id)) as $manager) {
                     $manager->notify(new ImportantNotification(
                         'interest_sla_escalated', "تصعيد: عميل {$label} بلا رد",
                         "{$lead->full_name} عند {$lead->assignee?->name} تجاوز مهلته.", $lead->uuid, null, 'critical',

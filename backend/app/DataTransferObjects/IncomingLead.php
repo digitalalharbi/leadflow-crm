@@ -2,6 +2,7 @@
 
 namespace App\DataTransferObjects;
 
+use App\Domain\Tracking\ClickIds;
 use App\Enums\IntegrationProvider;
 use Illuminate\Support\Arr;
 
@@ -76,6 +77,29 @@ class IncomingLead
      * Build from an already-mapped associative array (webhook + CSV + sheets all
      * run their field mapping first, then land here).
      */
+    /** The same lead with a platform form's mapping applied: what it already knows stands, unless the map names that answer. */
+    public function withMapping(?int $projectId, array $fields, array $custom): self
+    {
+        $names = ['full_name' => 'fullName', 'first_name' => 'firstName', 'last_name' => 'lastName', 'phone' => 'phone', 'email' => 'email', 'city' => 'city', 'budget_min' => 'budgetMin', 'budget_max' => 'budgetMax',
+            'purchase_purpose' => 'purchasePurpose', 'payment_method' => 'paymentMethod', 'preferred_property_type' => 'preferredPropertyType', 'preferred_location' => 'preferredLocation', 'purchase_timeline' => 'purchaseTimeline'];
+        $vars = get_object_vars($this);
+        $vars['projectId'] = $projectId;
+        $vars['custom'] = $custom + (array) ($this->custom ?? []);
+
+        foreach ($fields as $key => $value) {
+            // A budget is a number or it is nothing: a platform's "half a million" must not cost the lead.
+            if (in_array($key, ['budget_min', 'budget_max'], true)) {
+                $value = is_numeric(str_replace([',', ' '], '', (string) $value)) ? (float) str_replace([',', ' '], '', (string) $value) : null;
+            }
+
+            if (isset($names[$key]) && $value !== null) {
+                $vars[$names[$key]] = $value;
+            }
+        }
+
+        return new self(...$vars);
+    }
+
     public static function fromArray(IntegrationProvider $provider, array $data, array $raw = []): self
     {
         $first = Arr::get($data, 'first_name');
@@ -115,14 +139,10 @@ class IncomingLead
             /*
              * Each platform names its click id differently, and a landing page
              * that forwards one usually forwards it under the platform's own
-             * name. Accepting all four costs nothing and is the difference
-             * between a sale that can be credited and one that cannot.
+             * name and spelling. Accepting them all costs nothing and is the
+             * difference between a sale that can be credited and one that cannot.
              */
-            clickId: Arr::get($data, 'click_id')
-                ?? Arr::get($data, 'gclid')
-                ?? Arr::get($data, 'fbclid')
-                ?? Arr::get($data, 'ttclid')
-                ?? Arr::get($data, 'sccid'),
+            clickId: Arr::get($data, 'click_id') ?? ClickIds::primary(ClickIds::from($data + $raw)),
             utmSource: Arr::get($data, 'utm_source'),
             utmMedium: Arr::get($data, 'utm_medium'),
             utmCampaign: Arr::get($data, 'utm_campaign'),

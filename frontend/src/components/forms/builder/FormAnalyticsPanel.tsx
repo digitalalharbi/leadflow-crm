@@ -28,6 +28,41 @@ export function FormAnalyticsPanel({ formId }: { formId: string }) {
         {[7, 30, 90].map((d) => <option key={d} value={d}>{t('dashboard.lastDays', { count: d })}</option>)}
       </Select>
 
+      {data.page && (
+        <section className="space-y-3" data-testid="page-analytics">
+          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {(['unique_visitors', 'whatsapp_clicks', 'call_clicks', 'leads', 'sales', 'revenue_minor'] as const).map((k) => (
+              <div key={k} className="rounded-xl bg-[var(--color-surface-muted)] p-2 text-center" data-testid={`page-metric-${k}`}>
+                <dd className="tabular text-[1.125rem] font-bold">{k === 'revenue_minor' ? Math.round(data.page![k] / 100).toLocaleString(i18n.language) : data.page![k]}</dd>
+                <dt className="t-caption">{t(`hub.page.analytics.${k}`)}</dt>
+              </div>
+            ))}
+          </dl>
+          <ol className="space-y-1" data-testid="page-funnel">
+            {data.page.funnel.map((s) => {
+              const top = data.page!.funnel[0]?.n || 1
+
+              return (
+                <li key={s.key} className="grid grid-cols-[6.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 text-[0.875rem]" data-testid={`page-funnel-${s.key}`}>
+                  <span>{t(`hub.page.analytics.funnel.${s.key}`)}</span>
+                  <span className="h-2.5 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]"><span className="block h-full rounded-full bg-[var(--brand)]" data-chart-mark style={{ width: `${Math.min(100, (s.n / top) * 100)}%` }} /></span>
+                  <span className="tabular text-end">{s.n}{s.rate !== null ? ` · ${s.rate}%` : ''}</span>
+                </li>
+              )
+            })}
+          </ol>
+          {data.page.cost.spend_minor !== null && (
+            <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6" data-testid="page-cost">
+              {(['cpl', 'cpql', 'per_appointment', 'per_reservation', 'cpa', 'roas'] as const).map((k) => (
+                <div key={k} className="rounded-xl border border-[var(--color-line)] p-2 text-center">
+                  <dd className="tabular font-bold">{data.page!.cost[k] === null ? '—' : k === 'roas' ? data.page!.cost[k] : Math.round(data.page!.cost[k]! / 100).toLocaleString(i18n.language)}</dd>
+                  <dt className="t-caption">{t(`hub.page.analytics.cost.${k}`)}</dt>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+      )}
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="form-analytics-totals">
         {cards.map(([k, v]) => (
           <div key={k} className="rounded-xl bg-[var(--color-surface-muted)] px-3 py-2" data-testid={`fa-${k}`}>

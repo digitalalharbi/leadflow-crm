@@ -41,7 +41,7 @@ class VisitsAndReservationsTest extends TestCase
     private function lead(array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create($attributes + [
-            'full_name' => 'سلمان', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'project_id' => $this->project->id,
+            'full_name' => 'سلمان', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'project_id' => $this->project->id,
             'status' => 'contacted', 'assigned_to' => $this->t['admin']->id,
         ]));
     }

@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\Leads\ActivityLogger;
 use App\Support\ApiResponse;
+use App\Support\CompanyContext;
 use App\Support\ProjectContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -104,6 +105,11 @@ class TaskController extends Controller
 
         if (! $user->seesAllLeads()) {
             $query->where(fn ($q) => $q->where('assigned_to', $user->id)->orWhere('created_by', $user->id));
+        }
+
+        // Limited to some companies: a task about another company's lead is not there.
+        if (($companies = app(CompanyContext::class)->ids()) !== null) {
+            $query->where(fn ($q) => $q->whereNull('lead_id')->orWhereIn('lead_id', fn ($l) => $l->select('id')->from('leads')->whereIn('company_id', $companies ?: [-1])));
         }
 
         // Limited to some projects: a task about a lead or project outside them is not there.

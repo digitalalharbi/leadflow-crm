@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Auth\SecondFactor;
+use App\Domain\Mail\AccountEmail;
 use App\Http\Controllers\Controller;
 use App\Models\TenantSetting;
 use App\Services\AuditLogger;
@@ -56,6 +57,7 @@ class AccountSecurityController extends Controller
         $current = $user->currentAccessToken();
         $user->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))->delete();
         $this->audit->log('auth.mfa_enabled', $user, $user);
+        app(AccountEmail::class)->securityNotice($user, 'mfa_enabled');
 
         return ApiResponse::success(['recovery_codes' => $codes]);
     }
@@ -75,6 +77,7 @@ class AccountSecurityController extends Controller
 
         $this->factor->remove($user);
         $this->audit->log('auth.mfa_disabled', $user, $user);
+        app(AccountEmail::class)->securityNotice($user, 'mfa_disabled');
 
         return ApiResponse::success(null, 'Second factor removed.');
     }
@@ -108,6 +111,21 @@ class AccountSecurityController extends Controller
         $this->audit->log('auth.session_ended', $user, $user, ['ip' => $token->ip]);
 
         return ApiResponse::success(null, 'Signed out of that device.');
+    }
+
+    /** Every other device, keeping this one. */
+    public function endOtherSessions(Request $request)
+    {
+        $user = $request->user();
+        $current = $user->currentAccessToken();
+
+        $ended = $user->tokens()->where('name', 'like', 'spa-%')
+            ->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))
+            ->delete();
+
+        $this->audit->log('auth.other_sessions_ended', $user, $user, ['ip' => $request->ip(), 'count' => $ended]);
+
+        return ApiResponse::success(['ended' => $ended], 'Signed out of your other devices.');
     }
 
     /** The workspace rule: every member signs in with an authenticator app. Administrators only. */

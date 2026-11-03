@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedBody;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
@@ -32,7 +33,7 @@ class EmailDelivery extends Model
 
     protected function casts(): array
     {
-        return ['attempts' => 'integer', 'max_attempts' => 'integer', 'next_attempt_at' => 'datetime', 'sent_at' => 'datetime', 'failed_at' => 'datetime'];
+        return ['attempts' => 'integer', 'max_attempts' => 'integer', 'html' => EncryptedBody::class, 'text' => EncryptedBody::class, 'next_attempt_at' => 'datetime', 'sent_at' => 'datetime', 'failed_at' => 'datetime'];
     }
 
     public function attemptsLog(): HasMany

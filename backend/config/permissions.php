@@ -99,7 +99,7 @@ return [
             'projects' => ['view', 'edit'],
             'properties' => ['view', 'create', 'edit'],
             'campaigns' => ['view'],
-            'tracking' => ['view'],
+            'tracking' => ['view', 'create', 'edit'],
             'analytics' => ['view'],
             'settings' => ['view'],
             'contacts' => ['view'], 'spend' => ['view'], 'revenue' => ['view'],

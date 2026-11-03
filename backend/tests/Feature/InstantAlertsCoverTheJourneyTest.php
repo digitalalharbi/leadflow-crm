@@ -49,7 +49,7 @@ class InstantAlertsCoverTheJourneyTest extends TestCase
     private function lead(array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create($attributes + [
-            'full_name' => 'سلمان القحطاني', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'contacted',
+            'full_name' => 'سلمان القحطاني', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'contacted',
             'assigned_to' => $this->rep->id, 'project_id' => $this->project->id,
         ]));
     }

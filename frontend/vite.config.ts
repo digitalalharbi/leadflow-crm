@@ -72,7 +72,8 @@ export default defineConfig({
           if (id.includes('recharts') || id.includes('d3-')) return 'charts'
           if (id.includes('react-router')) return 'router'
           if (id.includes('/react/') || id.includes('react-dom')) return 'react'
-          if (id.includes('@tanstack')) return 'query'
+          // The icons a landing page draws, together: each would otherwise be a request of its own, shared with some lazy screen.
+          if (/lucide-react\/dist\/esm\/icons\/(calendar-check|circle-check|circle-check-big|check-circle|check-circle-2|download|external-link|loader-circle|map-pin|message-circle|phone|plus|shield-check|trash-2?)\.[cm]?js/.test(id)) return 'form-icons'
           return undefined
         },
       },

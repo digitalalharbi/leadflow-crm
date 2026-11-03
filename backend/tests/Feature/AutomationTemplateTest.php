@@ -158,7 +158,7 @@ class AutomationTemplateTest extends TestCase
         $lead = $this->asTenant($this->t['tenant'], fn () => Lead::create([
             'full_name' => 'عميل القالب',
             'email' => 'template@example.com',
-            'phone_normalized' => '+9665009'.random_int(10000, 99999),
+            'phone_normalized' => '+9665009'.self::uniqueDigits(5),
             'status' => 'new',
             'assigned_to' => $this->t['admin']->id,
             'project_id' => $project->id,

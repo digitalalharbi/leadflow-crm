@@ -38,7 +38,7 @@ class DuplicateMatcher
      * thinks failed. This is idempotency, not deduplication, and it is the one
      * case where re-engagement would be wrong.
      */
-    private function byProviderLeadId(IncomingLead $incoming): ?Lead
+    public function byProviderLeadId(IncomingLead $incoming): ?Lead
     {
         if (blank($incoming->providerLeadId)) {
             return null;

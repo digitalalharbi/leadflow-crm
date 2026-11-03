@@ -87,7 +87,8 @@ class SecondFactor
     /** @return list<string>|null the recovery codes, shown once; null when the code does not match the pending secret */
     public function confirm(User $user, string $code): ?array
     {
-        if ($user->mfa_secret === null || ! Totp::verify($user->mfa_secret, trim($code))) {
+        // Already on: confirming again would hand out fresh recovery codes for a session's asking.
+        if ($this->enabled($user) || $user->mfa_secret === null || ! Totp::verify($user->mfa_secret, trim($code))) {
             return null;
         }
 

@@ -66,7 +66,7 @@ class EventListenerRegistrationTest extends TestCase
             ]),
             Lead::create([
                 'full_name' => 'عميل',
-                'phone_normalized' => '+9665007'.random_int(10000, 99999),
+                'phone_normalized' => '+9665007'.self::uniqueDigits(5),
                 'status' => 'qualified',
                 'assigned_to' => $t['admin']->id,
             ]),

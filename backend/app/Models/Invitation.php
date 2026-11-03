@@ -19,7 +19,7 @@ class Invitation extends Model
 
     protected $fillable = [
         'tenant_id', 'email', 'name', 'role', 'access_role_id', 'project_ids', 'all_projects', 'phone', 'token_hash',
-        'invited_by', 'expires_at', 'last_sent_at', 'send_count', 'accepted_at', 'accepted_user_id', 'revoked_at',
+        'invited_by', 'expires_at', 'last_sent_at', 'send_count', 'accepted_at', 'accepted_user_id', 'revoked_at', 'manual_link_at',
     ];
 
     protected $hidden = ['token_hash'];
@@ -33,6 +33,7 @@ class Invitation extends Model
             'last_sent_at' => 'datetime',
             'accepted_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'manual_link_at' => 'datetime',
         ];
     }
 

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Route, Routes } from 'react-router-dom'
 import { renderWithProviders } from '@/test/utils'
 import { DEFAULT_DESIGN, DEFAULT_SETTINGS, type FormField, type PublicLanding } from '@/features/hub'
 import { LeadPage } from './LeadPage'
@@ -9,8 +8,7 @@ import { LeadPage } from './LeadPage'
 const submit = vi.fn()
 const landing = vi.fn()
 
-vi.mock('@/features/hub', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/hub')>()),
+vi.mock('@/features/publicLanding', () => ({
   fetchLanding: (...a: unknown[]) => landing(...a),
   submitLanding: (...a: unknown[]) => submit(...a),
 }))
@@ -44,7 +42,7 @@ const page = (over: Partial<PublicLanding['landing']> = {}): PublicLanding => ({
 })
 
 const done = { ok: true, duplicate: false, event_id: 'ev', thank_you: { title: null, message: null, actions: [], redirect_url: null, redirect_delay: 5 }, datalayer: { event_id: 'ev', source: 'meta' } }
-const open = () => renderWithProviders(<Routes><Route path="/l/:token" element={<LeadPage />} /></Routes>, { route: '/l/abc123?utm_source=facebook&fbclid=FB1' })
+const open = () => renderWithProviders(<LeadPage token="abc123" search="?utm_source=facebook&fbclid=FB1" />)
 
 beforeEach(() => {
   localStorage.clear()
@@ -74,6 +72,24 @@ describe('the landing page', () => {
     await screen.findByTestId('landing-form')
 
     expect(landing).toHaveBeenCalledWith('abc123', expect.objectContaining({ utm_source: 'facebook', fbclid: 'FB1' }))
+  })
+
+  it.each(['ScCid', 'scCid', 'sccid'])('hears Snapchat under one name when the address says %s, and leaves the rest of the address alone', async (spelling) => {
+    renderWithProviders(<LeadPage token="abc123" search={`?${spelling}=SN1&utm_source=Snap&Keep=Case`} />)
+    await screen.findByTestId('landing-form')
+
+    expect(landing).toHaveBeenCalledWith('abc123', expect.objectContaining({ sccid: 'SN1', utm_source: 'Snap' }))
+    const [, asked] = landing.mock.calls.at(-1)!
+    expect(Object.keys(asked as object).filter((k) => k.toLowerCase() === 'sccid')).toEqual(['sccid'])
+    expect(asked).not.toHaveProperty('keep')
+  })
+
+  it('asks with all nine click ids, whatever case they came in, and only those', async () => {
+    const ids = { GCLID: 'a', gbraid: 'b', WbRaId: 'c', FbClId: 'd', TTCLID: 'e', ScCid: 'f', MsClkId: 'g', LI_FAT_ID: 'h', TwClId: 'i' }
+    renderWithProviders(<LeadPage token="abc123" search={`?${new URLSearchParams({ ...ids, gclid2: 'no' })}`} />)
+    await screen.findByTestId('landing-form')
+
+    expect(landing.mock.calls.at(-1)![1]).toEqual({ gclid: 'a', gbraid: 'b', wbraid: 'c', fbclid: 'd', ttclid: 'e', sccid: 'f', msclkid: 'g', li_fat_id: 'h', twclid: 'i' })
   })
 
   it('shows a conditional question only after the answer that asks for it', async () => {

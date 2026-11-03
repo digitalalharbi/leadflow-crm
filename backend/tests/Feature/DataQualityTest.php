@@ -31,7 +31,7 @@ class DataQualityTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'عميل '.random_int(1000, 9999),
-            'phone_normalized' => '+9665004'.random_int(10000, 99999),
+            'phone_normalized' => '+9665004'.self::uniqueDigits(5),
             'status' => 'new',
             'platform' => 'meta',
             'source' => 'paid_social',

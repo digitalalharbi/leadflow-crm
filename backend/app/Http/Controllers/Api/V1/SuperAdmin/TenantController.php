@@ -6,6 +6,7 @@ use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\SubscriptionSummary;
 use App\Domain\Billing\UsageMeter;
 use App\Domain\Mail\AccountEmail;
+use App\Domain\Mail\MailerRegistry;
 use App\Domain\Platform\PlatformAudit;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
@@ -115,6 +116,9 @@ class TenantController extends Controller
             'assignment_mode' => ['nullable', 'in:manual,round_robin'],
         ]);
 
+        // A new company's leads get an owner from the first one; triaging by hand is a setting it can choose.
+        $data['assignment_mode'] ??= 'round_robin';
+
         $result = $this->provisioning->provision($data);
 
         app(PlatformAudit::class)->log('tenant.created', $request->user(), $result['tenant'], $result['tenant'], [
@@ -123,7 +127,7 @@ class TenantController extends Controller
 
         return ApiResponse::created([
             'tenant' => $this->present($result['tenant']->loadCount(['users', 'leads'])),
-            'admin' => ['name' => $result['admin']->name, 'email' => $result['admin']->email, 'setup_link_sent' => $result['setup_link_sent']],
+            'admin' => ['name' => $result['admin']->name, 'email' => $result['admin']->email, 'setup_link_sent' => $result['setup_link_sent'], 'setup_link' => $this->handedSetupLink($result['setup_token'], $result['admin'])],
             'webhook' => [
                 'url' => url("/api/v1/integrations/webhooks/{$result['webhook_key']}/leads"),
                 'secret' => $result['webhook_secret'],
@@ -268,7 +272,22 @@ class TenantController extends Controller
 
         app(PlatformAudit::class)->log('tenant.owner_setup_link_sent', $request->user(), $tenant, $owner, ['email' => $owner->email, 'purpose' => $purpose]);
 
-        return ApiResponse::success(null, 'Link sent.');
+        return ApiResponse::success(['link' => $this->handedSetupLink($token, $owner)], 'Link sent.');
+    }
+
+    /**
+     * With no mail provider the owner would never get in, so the platform owner passes the link on by hand. Not when the
+     * address is in another company too: a password link changes the password there as well, and that takes the inbox.
+     */
+    private function handedSetupLink(?string $token, User $owner): ?string
+    {
+        if ($token === null || app(MailerRegistry::class)->delivers()) {
+            return null;
+        }
+
+        $elsewhere = User::withoutGlobalScopes()->where('email', $owner->email)->whereNotNull('tenant_id')->where('tenant_id', '!=', $owner->tenant_id)->exists();
+
+        return $elsewhere ? null : PasswordLink::url($token);
     }
 
     private function present(Tenant $tenant): array

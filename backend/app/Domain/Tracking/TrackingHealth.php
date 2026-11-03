@@ -15,6 +15,7 @@ use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
 use App\Models\WebhookLog;
 use App\Models\WhatsappEvent;
+use App\Support\ProjectContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -149,7 +150,7 @@ class TrackingHealth
         $links = TrackingLink::withTrashed()->pluck('channel', 'id');
         $out = [];
 
-        TrackingEvent::query()->where('occurred_at', '>=', $since)->whereNotNull('tracking_link_id')
+        TrackingEvent::query()->where('occurred_at', '>=', $since)->whereNotNull('tracking_link_id')->when(app(ProjectContext::class)->ids() !== null, fn ($q) => $q->whereIn('project_id', app(ProjectContext::class)->ids() ?: [-1]))
             ->selectRaw('tracking_link_id, count(*) as n, max(occurred_at) as last')->groupBy('tracking_link_id')->get()
             ->each(function ($row) use ($links, &$out) {
                 $p = self::CHANNEL_PLATFORM[$links[$row->tracking_link_id] ?? ''] ?? null;
@@ -242,7 +243,7 @@ class TrackingHealth
             });
 
         $links = TrackingLink::withTrashed()->pluck('channel', 'id');
-        TrackingEvent::query()->where('occurred_at', '>=', $from)->whereNotNull('tracking_link_id')->selectRaw('tracking_link_id, date(occurred_at) as d, count(*) as n')->groupBy('tracking_link_id', 'd')->get()
+        TrackingEvent::query()->where('occurred_at', '>=', $from)->whereNotNull('tracking_link_id')->when(app(ProjectContext::class)->ids() !== null, fn ($q) => $q->whereIn('project_id', app(ProjectContext::class)->ids() ?: [-1]))->selectRaw('tracking_link_id, date(occurred_at) as d, count(*) as n')->groupBy('tracking_link_id', 'd')->get()
             ->each(function ($r) use (&$counts, $links) {
                 $p = self::CHANNEL_PLATFORM[$links[$r->tracking_link_id] ?? ''] ?? null;
                 $p && $counts[$p][$r->d] = ($counts[$p][$r->d] ?? 0) + (int) $r->n;

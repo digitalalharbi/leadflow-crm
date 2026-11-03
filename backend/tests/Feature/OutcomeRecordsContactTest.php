@@ -37,7 +37,7 @@ class OutcomeRecordsContactTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'عميل',
-            'phone_normalized' => '+9665009'.random_int(10000, 99999),
+            'phone_normalized' => '+9665009'.self::uniqueDigits(5),
             'status' => 'new',
             'assigned_to' => $this->t['admin']->id,
         ], $attributes)));

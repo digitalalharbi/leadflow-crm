@@ -124,6 +124,7 @@ class EmailDeliveries
             (string) config('leadflow_mail.from.address'), (string) config('leadflow_mail.from.name'),
             // Stable across every attempt of this delivery.
             $d->uuid, ['kind' => $d->kind],
+            replyTo: (string) config('leadflow_mail.reply_to'),
         );
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * A link that knows what it is for: `/t/{token}`.
@@ -22,6 +23,11 @@ class TrackingLink extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(new ProjectScope);
+
+        // A page's own links are made by the page, not the wizard: they still need an address of their own.
+        static::creating(function (self $link) {
+            $link->token ??= Str::random(10);
+        });
     }
 
     use BelongsToTenant, HasUuid, SoftDeletes;

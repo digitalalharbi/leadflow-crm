@@ -55,8 +55,9 @@ class SlaSweeper
             ->whereNotNull('assigned_to')
             ->whereIn('status', [LeadStatus::New->value, LeadStatus::Contacted->value])
             ->with(['project:id,automation_settings', 'assignee'])
-            ->orderBy('created_at')
-            ->limit(500)
+            // Newest first: a backlog of old ones must not keep a new lead from being looked at.
+            ->orderByDesc('created_at')
+            ->limit(2000)
             ->get();
 
         /*
@@ -194,7 +195,9 @@ class SlaSweeper
             ->whereIn('role', [Role::Admin->value, Role::Manager->value])
             ->where('is_active', true)
             ->when($lead->assigned_to, fn ($q) => $q->where('id', '!=', $lead->assigned_to))
-            ->get();
+            ->get()
+            ->filter(fn (User $user) => $user->reaches($lead->project_id))
+            ->values();
     }
 
     /** Someone other than the current owner, by round robin. */
@@ -207,7 +210,8 @@ class SlaSweeper
         }
 
         for ($attempt = 0; $attempt < 3; $attempt++) {
-            $candidate = $this->assignment->roundRobin($tenant);
+            // By the company's own routing, so the lead stays with the project's team.
+            $candidate = $this->assignment->byStrategy($tenant, $lead);
 
             if (! $candidate) {
                 return null;

@@ -46,7 +46,7 @@ class InterestEngineTest extends TestCase
     private function lead(array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create($attributes + [
-            'full_name' => 'سلمان', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999),
+            'full_name' => 'سلمان', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5),
             'email' => 'a'.random_int(1, 99999).'@example.com', 'project_id' => $this->project->id, 'status' => 'contacted',
         ]));
     }

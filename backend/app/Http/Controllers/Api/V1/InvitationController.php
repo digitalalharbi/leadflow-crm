@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Billing\PlanLimits;
 use App\Domain\Mail\AccountEmail;
+use App\Domain\Mail\MailerRegistry;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\AccessRole;
@@ -22,7 +23,7 @@ use Illuminate\Validation\ValidationException;
  */
 class InvitationController extends Controller
 {
-    public function __construct(private AuditLogger $audit, private AccountEmail $email, private TenantContext $context) {}
+    public function __construct(private AuditLogger $audit, private AccountEmail $email, private TenantContext $context, private MailerRegistry $mailers) {}
 
     public function index(Request $request)
     {
@@ -79,12 +80,12 @@ class InvitationController extends Controller
             'invited_by' => $request->user()->id,
         ]);
         $token = $invitation->issueToken();
-        $invitation->forceFill(['last_sent_at' => now(), 'send_count' => 1])->save();
+        $invitation->forceFill(['last_sent_at' => now(), 'send_count' => 1, 'manual_link_at' => $this->mailers->delivers() ? null : now()])->save();
 
-        $this->email->invitation($invitation, $token, $tenant, $request->user()->name);
+        $this->email->invitation($invitation, $token, $tenant, $request->user()->name, $request->user()->locale);
         $this->audit->log('invitation.sent', $request->user(), $invitation, ['email' => $email, 'role' => $invitation->role]);
 
-        return ApiResponse::created(['invitation' => $this->present($invitation)]);
+        return ApiResponse::created(['invitation' => $this->present($invitation)] + $this->handedLink($invitation, $token));
     }
 
     /** A new link, a new week. The old link stops working. */
@@ -94,12 +95,12 @@ class InvitationController extends Controller
         $invitation = Invitation::where('uuid', $uuid)->whereNull('accepted_at')->whereNull('revoked_at')->firstOrFail();
 
         $token = $invitation->issueToken();
-        $invitation->forceFill(['last_sent_at' => now(), 'send_count' => $invitation->send_count + 1])->save();
+        $invitation->forceFill(['last_sent_at' => now(), 'send_count' => $invitation->send_count + 1, 'manual_link_at' => $this->mailers->delivers() ? null : now()])->save();
 
-        $this->email->invitation($invitation, $token, $this->context->get(), $request->user()->name);
+        $this->email->invitation($invitation, $token, $this->context->get(), $request->user()->name, $request->user()->locale);
         $this->audit->log('invitation.resent', $request->user(), $invitation, ['email' => $invitation->email]);
 
-        return ApiResponse::success(['invitation' => $this->present($invitation)]);
+        return ApiResponse::success(['invitation' => $this->present($invitation)] + $this->handedLink($invitation, $token));
     }
 
     public function destroy(Request $request, string $uuid)
@@ -111,6 +112,15 @@ class InvitationController extends Controller
         $this->audit->log('invitation.revoked', $request->user(), $invitation, ['email' => $invitation->email]);
 
         return ApiResponse::success(null, 'Invitation revoked.');
+    }
+
+    /**
+     * With no mail provider nothing reaches anybody, and a team could never be brought in. Then, and only then, the
+     * person inviting gets the link to pass on. Such a link proves nothing about the inbox: see AccountAccessController::accept.
+     */
+    private function handedLink(Invitation $invitation, string $token): array
+    {
+        return $invitation->manual_link_at !== null ? ['link' => $invitation->url($token)] : [];
     }
 
     private function present(Invitation $invitation): array

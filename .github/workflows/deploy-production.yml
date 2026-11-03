@@ -169,7 +169,8 @@ jobs:
     needs: [branch, verify]
     if: github.ref == 'refs/heads/main' && vars.PRODUCTION_ENABLED == 'true' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Waiting for CI (200 minutes at most, below) + the deploy, health and smoke (25).
+    timeout-minutes: 225
     environment:
       name: production
       url: https://${{ vars.PRODUCTION_DOMAIN || 'app.example.com' }}
@@ -177,17 +178,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Ship only what CI has passed.
+      # Ship only what CI has passed. A push starts CI and this together, so this waits
+      # for it: longer than the end-to-end job may run (180 minutes), never open-ended.
       - name: CI must have passed for this commit
         id: ci
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/ci/ci-is-green.sh "${{ github.sha }}" 600 | tee -a "$GITHUB_OUTPUT"
+        run: ./scripts/ci/ci-is-green.sh "${{ github.sha }}" 12000 | tee -a "$GITHUB_OUTPUT"
 
       - name: Refuse — CI is not green
         if: steps.ci.outputs.green != 'true'
         run: |
-          echo "::error title=Production deploy refused::CI is not green for this commit (${{ steps.ci.outputs.green }})."
+          echo "::error title=Production deploy refused::CI is not green for this commit (${{ steps.ci.outputs.green }}). The step above and the job summary name the job and why. The server was not contacted."
           exit 1
 
       - name: Require the deployment secrets

@@ -49,8 +49,8 @@ class RuleSimulationTest extends TestCase
 
         return $this->asTenant($this->t['tenant'], function () use ($attributes, $guarded) {
             $lead = Lead::create(array_merge([
-                'full_name' => 'عميل '.random_int(100, 999), 'phone' => '0551234567', 'email' => 'x'.random_int(1, 99999).'@example.com',
-                'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new',
+                'full_name' => 'عميل '.self::uniqueDigits(3), 'phone' => '0551234567', 'email' => 'x'.random_int(1, 99999).'@example.com',
+                'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new',
             ], array_diff_key($attributes, $guarded)));
             if ($guarded) {
                 $lead->forceFill($guarded)->saveQuietly();

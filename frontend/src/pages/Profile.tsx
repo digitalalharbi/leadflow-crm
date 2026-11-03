@@ -19,6 +19,11 @@ export function ProfilePage() {
 
   const [awayUntil, setAwayUntil] = useState(user?.away_until?.slice(0, 10) ?? '')
   const [form, setForm] = useState({ current_password: '', password: '', password_confirmation: '' })
+  const sendVerification = useMutation({
+    mutationFn: () => apiPost('/auth/email/verification'),
+    onSuccess: () => toast(t('account.verificationSent'), 'success'),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const away = useMutation({
@@ -72,6 +77,12 @@ export function ProfilePage() {
               <span className="text-[var(--color-ink-muted)]">{t('auth.email')}</span>
               <span className="font-medium" dir="ltr">{user?.email}</span>
             </div>
+            {user?.email_verified === false && (
+              <div className="flex flex-wrap items-center justify-between gap-2" data-testid="email-unverified">
+                <span className="t-caption">{t('account.emailUnverified')}</span>
+                <Button size="sm" variant="secondary" loading={sendVerification.isPending} onClick={() => sendVerification.mutate()} data-testid="send-verification">{t('account.sendVerification')}</Button>
+              </div>
+            )}
             <div className="flex justify-between gap-3">
               <span className="text-[var(--color-ink-muted)]">{t('users.role')}</span>
               <span className="font-medium">{t(`roles.${user?.role ?? 'sales'}`)}</span>

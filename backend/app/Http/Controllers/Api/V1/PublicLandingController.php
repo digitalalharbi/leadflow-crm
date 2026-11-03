@@ -9,10 +9,12 @@ use App\Domain\Tracking\EventType;
 use App\Domain\Tracking\Forms\FormDefinition;
 use App\Domain\Tracking\Forms\FormDesign;
 use App\Domain\Tracking\Forms\FormSchema;
+use App\Domain\Tracking\Forms\LandingPageConfig;
 use App\Domain\Tracking\Forms\LandingPages;
 use App\Domain\Tracking\Forms\LandingSubmission;
 use App\Domain\Tracking\Sessions;
 use App\Domain\Tracking\Visitor;
+use App\Domain\Tracking\WhatsappReference;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\TrackingDestination;
@@ -79,7 +81,9 @@ class PublicLandingController extends Controller
                     'logo_url' => $def['logo_url'],
                     'image_url' => $def['image_url'],
                     'thank_you' => ['title' => $def['thank_you_title'], 'message' => $def['thank_you_message']],
-                    'project' => $link->project_id ? ['name' => Project::whereKey($link->project_id)->value('name')] : null,
+                    'project' => $link->project_id ? Project::whereKey($link->project_id)->first(['name', 'logo_url'])?->only(['name', 'logo_url']) : null,
+                    // Only a page has this; a form on a tracking link carries on as it was.
+                    'page' => isset($def['page']) ? LandingPageConfig::publicShape($def['page']) : null,
                     'fields' => $this->schema->publicShape($fields),
                     'layout' => $def['layout'],
                     'design' => $def['design'],
@@ -94,6 +98,8 @@ class PublicLandingController extends Controller
                     'session_id' => $session->session_id,
                     // The id the page's own pixel may use for the same view, so a platform counts it once.
                     'view_event_id' => $view?->event_id,
+                    // Said in a WhatsApp message, so the conversation can be tied back to this visit.
+                    'ref' => WhatsappReference::for($session->session_id),
                     // What the page pushes to its dataLayer for the view — the same event id the server recorded.
                     'datalayer' => array_filter([
                         'event' => EventType::Visit->canonical(),
@@ -153,7 +159,7 @@ class PublicLandingController extends Controller
         return TrackingDestination::query()->where('is_enabled', true)
             ->where(fn ($q) => $q->whereNull('project_id')->orWhere('project_id', $projectId))->get()
             ->filter(fn (TrackingDestination $d) => $d->destinationKind()->browser() && $d->destinationKind()->configErrors((array) $d->config) === [])
-            ->map(fn (TrackingDestination $d) => ['kind' => $d->kind, 'id' => (string) ((array) $d->config)[$d->destinationKind()->config()[0]]])
+            ->map(fn (TrackingDestination $d) => ['kind' => $d->kind, 'id' => (string) ((array) $d->config)[$d->destinationKind()->config()[0]], 'submit_event' => ((array) $d->event_map)['form_submitted'] ?? null])
             ->values()->all();
     }
 }

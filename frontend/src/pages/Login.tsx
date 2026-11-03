@@ -1,45 +1,60 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { HOME } from '@/lib/routes'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { homeFor, HOME } from '@/lib/routes'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import { apiGet, ApiError } from '@/lib/api'
+import { ArrowRight, ChevronLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { apiGet, apiPost, ApiError, tokenStorage } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useApiError } from '@/hooks/useApiError'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { applyLocale } from '@/i18n'
 import { Button, Input } from '@/components/ui'
 import type { Branding } from '@/types/api'
-import { Logo } from '@/components/brand'
-import { Journey } from '@/components/public/Journey'
-import markUrl from '@/assets/brand/logo/mono-black/mohtam-mark-mono-black.svg?url'
-import { cn } from '@/lib/cn'
+import { AuthCard, AuthShell, type AuthProvider } from '@/components/auth/AuthShell'
+
+interface Workspace {
+  id: string
+  name: string
+  role: string
+  current: boolean
+}
+
+type Step = 'credentials' | 'code' | 'workspace'
 
 /**
- * The login screen renders the *customer's* brand, not ours: logo, colours and
- * product name come from a public endpoint keyed by subdomain. This is the first
- * thing a prospect sees in a demo, so it has to be theirs from the first pixel.
+ * Authentication first: an email and a password say who this is, then the server says where they belong. One company:
+ * straight in. More than one: they choose. A workspace's own login still wears its name, keyed by subdomain or ?tenant=.
  */
 export function LoginPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const login = useAuth((s) => s.login)
+  const restore = useAuth((s) => s.restore)
   const status = useAuth((s) => s.status)
+  const user = useAuth((s) => s.user)
   const translateError = useApiError()
 
   const [branding, setBranding] = useState<Branding | null>(null)
+  const [providers, setProviders] = useState<AuthProvider[]>([])
+  const [step, setStep] = useState<Step>('credentials')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [tenant, setTenant] = useState(searchParams.get('tenant') ?? '')
+  const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [code, setCode] = useState('')
-  const [needsCode, setNeedsCode] = useState(false)
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
+  const [workspaceNeedingCode, setWorkspaceNeedingCode] = useState<string | null>(null)
   const notice = (location.state as { notice?: string } | null)?.notice === 'mfaAfterReset' ? t('auth.mfaAfterReset') : null
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // While this sign-in is still deciding where to go, being signed in is not yet a reason to leave.
+  const deciding = useRef(false)
+
+  // Kept for deep links and for a person with the same password in two unlinked companies; never something to type.
+  const tenant = searchParams.get('tenant') ?? undefined
 
   /*
    * Where the person was going when the session asked them to sign in — an alert's link to a lead, say.
@@ -48,12 +63,12 @@ export function LoginPage() {
    */
   const wanted = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
   const landing =
-    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' && wanted.pathname !== '/' ? `${wanted.pathname}${wanted.search ?? ''}` : HOME
+    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' && wanted.pathname !== '/' ? `${wanted.pathname}${wanted.search ?? ''}` : homeFor(user)
 
   useBrandingTheme(branding)
 
   useEffect(() => {
-    if (status === 'authenticated') navigate(landing, { replace: true })
+    if (status === 'authenticated' && !deciding.current) navigate(landing, { replace: true })
   }, [status, navigate, landing])
 
   // Resolve branding from ?tenant= or the subdomain the user arrived on.
@@ -69,266 +84,233 @@ export function LoginPage() {
       .catch(() => {
         /* Branding is optional — a generic login still works. */
       })
+
+    // The server names the ways in that really work; none is drawn on hope.
+    apiGet<{ providers: AuthProvider[] }>('/auth/providers')
+      .then((data) => setProviders(data?.providers ?? []))
+      .catch(() => setProviders([]))
   }, [searchParams])
 
-  async function handleSubmit(event: FormEvent) {
+  function catchErrors(caught: unknown) {
+    if (caught instanceof ApiError && caught.status === 422 && caught.errors) {
+      const next: Record<string, string> = {}
+      for (const [field, messages] of Object.entries(caught.errors)) {
+        if (messages[0]) next[field] = messages[0]
+      }
+      setFieldErrors(next)
+      if (!next.email && !next.password && !next.code) setError(translateError(caught))
+    } else {
+      setError(translateError(caught))
+    }
+  }
+
+  async function signIn(event: FormEvent) {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
+    deciding.current = true
 
     try {
-      const result = await login({ email, password, tenant: tenant || undefined, code: needsCode ? code.trim() : undefined })
+      const result = await login({ email, password, tenant, code: step === 'code' ? code.trim() : undefined, remember })
 
       // The password was right and the account has a second factor: ask for the code, keep what was typed.
       if (result === 'mfa') {
-        setNeedsCode(true)
+        setStep('code')
+
+        return
+      }
+
+      const memberships = await apiGet<{ workspaces: Workspace[] }>('/auth/workspaces').then((data) => data.workspaces).catch(() => [])
+
+      if (memberships.length > 1) {
+        setWorkspaces(memberships)
+        setStep('workspace')
 
         return
       }
 
       navigate(landing, { replace: true })
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 422 && caught.errors) {
-        const next: Record<string, string> = {}
-        for (const [field, messages] of Object.entries(caught.errors)) {
-          if (messages[0]) next[field] = messages[0]
-        }
-        setFieldErrors(next)
-        if (!next.email && !next.password && !next.code) setError(translateError(caught))
-      } else {
-        setError(translateError(caught))
-      }
+      catchErrors(caught)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const systemName = branding?.system_name ?? t('common.appName')
-  const logo = branding?.login_logo_url ?? branding?.logo_url
-  /*
-   * One name for the question the whole brand panel turns on: is the picture the tenant's or ours? A
-   * photograph they uploaded keeps the dark, white-type treatment; a workspace with its own name and logo
-   * gets its own heading; everyone else gets مهتم — the logo, the headline, the journey.
-   */
-  const ownBackground = Boolean(branding?.login_background_url)
-  const platformLook = !ownBackground && !branding?.company_name && !logo && !branding?.system_name
-  const journey = JOURNEY.map((key) => t(`brand.journey.${key}`))
-  // The organisation field is for the person with more than one; it opens by itself when a link names one.
-  const [organizationOpen, setOrganizationOpen] = useState(Boolean(tenant))
+  /** The server checks the membership, and the other company's own second factor; the browser never says where it is. */
+  async function enter(workspace: Workspace, withCode?: string) {
+    if (workspace.current) {
+      navigate(landing, { replace: true })
+
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    setFieldErrors({})
+
+    try {
+      const result = await apiPost<{ token?: string; mfa_required?: boolean }>(`/auth/workspaces/${workspace.id}/switch`, withCode ? { code: withCode } : undefined)
+
+      if (!result.token) {
+        setWorkspaceNeedingCode(workspace.id)
+        setCode('')
+
+        return
+      }
+
+      tokenStorage.set(result.token)
+      await restore()
+      navigate(HOME, { replace: true })
+    } catch (caught) {
+      catchErrors(caught)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const errorBox = error && (
+    <p role="alert" className="rounded-[var(--radius-control)] border border-[color-mix(in_srgb,var(--color-status-lost)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-3 py-2.5 text-[0.9375rem] text-[var(--color-status-lost)]">
+      {error}
+    </p>
+  )
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
-      {/* The brand panel: first in the markup, so it sits at the start edge — the right, in Arabic. */}
-      <div
-        className={cn('relative hidden overflow-hidden lg:block', ownBackground ? undefined : 'login-panel')}
-        style={ownBackground ? { background: `url(${branding?.login_background_url}) center/cover` } : undefined}
-        data-testid="login-brand-panel"
-      >
-        {/* The official mark, large and quiet, in the second pine: cut from the kit's own file and filled with a token. */}
-        {!ownBackground && (
-          <span
-            aria-hidden
-            data-testid="login-watermark"
-            className="pointer-events-none absolute -top-24 -end-28 size-[36rem] bg-[var(--chrome-2)]"
-            style={{ WebkitMask: `url("${markUrl}") center / contain no-repeat`, mask: `url("${markUrl}") center / contain no-repeat` }}
-          />
-        )}
-        {ownBackground && <div className="absolute inset-0 bg-[var(--color-neutral-950)]/15" />}
+    <AuthShell branding={branding} intro>
+      {step === 'credentials' && (
+        <AuthCard title={t('auth.welcome')} subtitle={t('auth.welcomeSubtitle')} providers={providers} help testId="login-card">
+          {notice && <p role="status" className="notice notice-info" data-testid="login-notice">{notice}</p>}
 
-        <div className="relative flex h-full flex-col justify-between p-12 text-[var(--chrome-ink)]">
-          <div>{platformLook && <Logo variant="reverse" layout="horizontal" height={56} />}</div>
+          <form onSubmit={signIn} className="space-y-3" noValidate>
+            <Input
+              type="email"
+              name="email"
+              autoComplete="username"
+              required
+              dir="ltr"
+              label={t('auth.email')}
+              value={email}
+              error={fieldErrors.email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+              className="h-12 px-11 text-[1rem]"
+              startSlot={<Mail className="size-4" aria-hidden />}
+            />
 
-          <div>
-            {platformLook ? (
-              <>
-                <p className="inline-flex rounded-full bg-[var(--chrome-2)] px-3.5 py-1 text-[0.9375rem] font-semibold text-[var(--accent-on-dark)]" data-testid="login-badge">{t('brand.badge')}</p>
-                <h2 className="mt-4 text-[2.625rem] leading-[1.2] font-bold" data-testid="login-headline">{t('brand.tagline')}</h2>
-                <p className="mt-3 max-w-md text-[1.0625rem] leading-relaxed text-[var(--chrome-ink)]/80" data-testid="login-description">{t('brand.subtext')}</p>
-                <Journey steps={journey} tone="dark" className="mt-7" testId="login-journey" />
-              </>
-            ) : (
-              <>
-                <h2 className="text-[2.125rem] leading-[1.15] font-semibold ltr:tracking-[-0.02em]">{branding?.company_name ?? systemName}</h2>
-                {/* The tagline belongs to مهتم; a workspace's own name stands alone. */}
-                <p className="mt-2.5 text-[1.0625rem] font-medium text-[var(--chrome-ink)]/90">{t('auth.welcomeSubtitle')}</p>
-              </>
-            )}
-
-            {!ownBackground && (
-              <ul className="mt-8 space-y-2.5" data-testid="login-pillars">
-                {PILLARS.map(({ key, icon: Icon }) => (
-                  <li key={key} className="flex items-center gap-3 text-[1rem] font-medium">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--chrome-2)] text-[var(--chrome-muted)]" aria-hidden><Icon className="size-4" /></span>
-                    {t(`brand.pillars.${key}`)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* The form side: limestone, one white card, nothing else competing with it. */}
-      <div className="flex flex-col bg-[var(--color-canvas)] px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-10 lg:py-5">
-        <div className="flex items-center justify-between gap-3">
-          {/* The logo leads on a phone, where there is no brand panel; on a laptop the panel carries it. */}
-          <div className={cn(platformLook && 'lg:invisible')}>
-            {logo || branding?.system_name ? (
-              <div className="flex items-center gap-2.5">
-                {logo ? <img src={logo} alt="" className="size-9 rounded-[var(--radius-control)] object-contain" /> : <Logo variant="auto" layout="mark" height={32} />}
-                <span className="text-[1.0625rem] font-semibold">{systemName}</span>
-              </div>
-            ) : (
-              <Logo variant="auto" layout="horizontal" height={48} />
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => applyLocale(i18n.language.startsWith('ar') ? 'en' : 'ar')}
-            className="pressable flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[0.9375rem] text-[var(--color-ink-muted)] hover:bg-[var(--color-chrome-fill)] hover:text-[var(--color-ink)]"
-          >
-            <Globe className="size-4" aria-hidden />
-            {i18n.language.startsWith('ar') ? 'English' : 'العربية'}
-          </button>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-4">
-          {/* On a phone the idea is one line above the card, not a panel beside it. */}
-          {platformLook && (
-            <div className="w-full max-w-md lg:hidden" data-testid="login-mobile-intro">
-              <p className="text-[1.5rem] font-bold leading-tight">{t('brand.tagline')}</p>
-              <p className="mt-1 text-[0.9375rem] text-[var(--color-ink-muted)]">{t('brand.badge')}</p>
-            </div>
-          )}
-
-          <div className="w-full max-w-md rounded-[1.25rem] border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-[0_1px_2px_rgb(20_32_29/0.04)] sm:p-7" data-testid="login-card">
-            <h1 className="text-[1.75rem] leading-tight font-bold">{t('auth.welcome')}</h1>
-            <p className="mt-1.5 text-[1rem] text-[var(--color-ink-muted)]">{t('auth.welcomeSubtitle')}</p>
-
-            {notice && <p role="status" className="notice notice-info mt-4" data-testid="login-notice">{notice}</p>}
-
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-              <Input
-                type="email"
-                name="email"
-                autoComplete="username"
-                required
-                dir="ltr"
-                label={t('auth.email')}
-                value={email}
-                error={fieldErrors.email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                className="h-12 text-[1rem]"
-              />
-
-              <div>
-                <Input
-                  type="password"
-                  name="password"
-                  autoComplete="current-password"
-                  required
-                  dir="ltr"
-                  label={t('auth.password')}
-                  value={password}
-                  error={fieldErrors.password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="h-12 text-[1rem]"
-                />
-                {/* Self-service: a one-hour link by email, never a password. */}
-                <Link to="/forgot-password" className="mt-1 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
-                  {t('auth.forgot')}
-                </Link>
-              </div>
-
-              {needsCode && (
-                <Input
-                  name="one-time-code"
-                  autoComplete="one-time-code"
-                  inputMode="text"
-                  autoFocus
-                  dir="ltr"
-                  label={t('auth.mfaCode')}
-                  hint={t('auth.mfaCodeHint')}
-                  value={code}
-                  error={fieldErrors.code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="123456"
-                  className="h-12 text-[1rem] tracking-widest"
-                  data-testid="login-mfa-code"
-                />
-              )}
-
-              <div>
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              autoComplete="current-password"
+              required
+              dir="ltr"
+              label={t('auth.password')}
+              value={password}
+              error={fieldErrors.password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-12 px-11 text-[1rem]"
+              startSlot={<Lock className="size-4" aria-hidden />}
+              endSlot={
                 <button
                   type="button"
-                  onClick={() => setOrganizationOpen((value) => !value)}
-                  aria-expanded={organizationOpen}
-                  className="pressable flex min-h-11 items-center gap-1.5 text-[0.9375rem] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-                  data-testid="login-organization-toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? t('auth.hide') : t('auth.show')}
+                  aria-pressed={showPassword}
+                  className="pressable grid size-11 place-items-center text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                  data-testid="login-show-password"
                 >
-                  <ChevronDown className={cn('size-4 transition-transform', organizationOpen && 'rotate-180')} aria-hidden />
-                  {t('auth.moreOrganizations')}
+                  {showPassword ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
                 </button>
-                {organizationOpen && (
-                  <Input
-                    name="tenant"
-                    dir="ltr"
-                    label={t('auth.organization')}
-                    hint={t('common.optional')}
-                    value={tenant}
-                    onChange={(e) => setTenant(e.target.value)}
-                    placeholder="company"
-                    className="h-12 text-[1rem]"
-                    containerClassName="mt-1"
-                  />
-                )}
-              </div>
+              }
+            />
 
-              {error && (
-                <p
-                  role="alert"
-                  className="rounded-[var(--radius-control)] border border-[color-mix(in_srgb,var(--color-status-lost)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-status-lost)_12%,transparent)] px-3 py-2.5 text-[0.9375rem] text-[var(--color-status-lost)]"
-                >
-                  {error}
-                </p>
-              )}
-
-              <Button type="submit" size="lg" loading={submitting} className="h-12 w-full text-[1rem]">
-                {submitting ? t('auth.signingIn') : t('auth.signIn')}
-              </Button>
-            </form>
-
-            {branding?.support_email && (
-              <p className="mt-5 text-center text-[0.875rem] text-[var(--color-ink-subtle)]">{branding.support_email}</p>
-            )}
-          </div>
-
-          {/* The journey, short, for the person on a phone. */}
-          {platformLook && (
-            <div className="w-full max-w-md rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 lg:hidden" data-testid="login-mobile-journey">
-              <Journey steps={journey} tone="light" testId="login-mobile-journey-steps" compact />
+            <div className="flex flex-wrap items-center justify-between gap-x-3">
+              <label className="flex min-h-11 items-center gap-2 text-[0.875rem]">
+                <input type="checkbox" className="size-4" checked={remember} onChange={(e) => setRemember(e.target.checked)} data-testid="login-remember" />
+                {t('auth.remember')}
+              </label>
+              {/* Self-service: a one-hour link by email, never a password. */}
+              <Link to="/forgot-password" className="inline-flex min-h-11 items-center text-[0.875rem] font-medium text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
+                {t('auth.forgot')}
+              </Link>
             </div>
-          )}
 
-          <nav aria-label="مهتم" className="flex flex-wrap justify-center gap-x-1 text-[0.9375rem]">
-            <Link to="/" className="inline-flex min-h-11 items-center rounded-lg px-2.5 font-medium text-[var(--brand-text)] hover:underline" data-testid="login-about">{t('auth.about')}</Link>
-            <Link to="/privacy" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-[var(--color-ink-muted)] hover:underline">{t('brand.links.privacy')}</Link>
-            <Link to="/terms" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-[var(--color-ink-muted)] hover:underline">{t('brand.links.terms')}</Link>
-          </nav>
-        </div>
-      </div>
-    </div>
+            {errorBox}
+
+            <Button type="submit" size="lg" loading={submitting} className="h-12 w-full text-[1rem]">
+              {submitting ? t('auth.signingIn') : t('auth.signIn')}
+              {!submitting && <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />}
+            </Button>
+          </form>
+
+          {branding?.support_email && <p className="text-center text-[0.875rem] text-[var(--color-ink-subtle)]">{branding.support_email}</p>}
+        </AuthCard>
+      )}
+
+      {step === 'code' && (
+        <AuthCard title={t('auth.mfaTitle')} subtitle={t('auth.mfaCodeHint')} testId="login-card">
+          <form onSubmit={signIn} className="space-y-3" noValidate>
+            <Input
+              name="one-time-code"
+              autoComplete="one-time-code"
+              inputMode="text"
+              autoFocus
+              dir="ltr"
+              label={t('auth.mfaCode')}
+              value={code}
+              error={fieldErrors.code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+              className="h-11 text-[1rem] tracking-widest"
+              data-testid="login-mfa-code"
+            />
+            {errorBox}
+            <Button type="submit" size="lg" loading={submitting} className="h-12 w-full text-[1rem]" data-testid="login-mfa-submit">{t('auth.verify')}</Button>
+            <Button type="button" variant="ghost" className="min-h-11 w-full" onClick={() => { setStep('credentials'); setCode(''); setError(null); setFieldErrors({}) }} data-testid="login-mfa-back">
+              <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden />
+              {t('common.back')}
+            </Button>
+          </form>
+        </AuthCard>
+      )}
+
+      {step === 'workspace' && (
+        <AuthCard title={t('auth.chooseWorkspace')} subtitle={t('auth.chooseWorkspaceHint')} testId="login-workspaces">
+          <ul className="space-y-2">
+            {workspaces.map((workspace) => (
+              <li key={workspace.id}>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => void enter(workspace)}
+                  className="pressable flex min-h-14 w-full items-center justify-between gap-2 rounded-[var(--radius-control)] border border-[var(--color-border)] px-3 py-2 text-start hover:bg-[var(--color-surface-muted)]"
+                  data-testid={`login-workspace-${workspace.id}`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{workspace.name}</span>
+                    <span className="block text-[0.8125rem] text-[var(--color-ink-subtle)]">{t(`roles.${workspace.role}`, { defaultValue: workspace.role })}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {workspaceNeedingCode && (
+            <form
+              className="space-y-3"
+              data-testid="login-workspace-code"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const target = workspaces.find((workspace) => workspace.id === workspaceNeedingCode)
+                if (target) void enter(target, code.trim())
+              }}
+            >
+              <Input dir="ltr" autoFocus autoComplete="one-time-code" label={t('auth.mfaCode')} value={code} error={fieldErrors.code} onChange={(e) => setCode(e.target.value)} className="h-11 tracking-widest" />
+              <Button type="submit" className="h-11 w-full" loading={submitting}>{t('auth.verify')}</Button>
+            </form>
+          )}
+          {errorBox}
+        </AuthCard>
+      )}
+    </AuthShell>
   )
 }
-
-const PILLARS: Array<{ key: 'ads' | 'speed' | 'loop'; icon: LucideIcon }> = [
-  { key: 'ads', icon: Megaphone },
-  { key: 'speed', icon: Timer },
-  { key: 'loop', icon: Repeat2 },
-]
-
-const JOURNEY = ['arrived', 'contacted', 'qualified', 'appointment', 'won'] as const

@@ -18,7 +18,8 @@ import { TrackingPanel } from '@/components/forms/builder/TrackingPanel'
 import { LinkWizard } from '@/components/tracking/LinkWizard'
 import { QrDialog } from '@/components/tracking/QrDialog'
 import type { RenderForm } from '@/components/forms/FormRenderer'
-import { fetchForm, fetchFormPresets, publishForm, updateForm, type FormDesign, type FormField, type FormSettings, type LandingForm } from '@/features/hub'
+import { duplicateForm, fetchForm, fetchFormPresets, publishForm, updateForm, type FormDesign, type FormField, type FormSettings, type LandingForm, type LandingPageConfig } from '@/features/hub'
+import { PagePanel } from '@/components/forms/builder/PagePanel'
 import { fetchProjects } from '@/features/leads'
 import { fetchLinks, type TrackingLink } from '@/features/tracking'
 import { ApiError } from '@/lib/api'
@@ -38,6 +39,8 @@ interface Doc extends Draft {
   image_url: string | null
   thank_title: string
   thank_message: string
+  page: LandingPageConfig | null
+  slug: string
 }
 
 const toDoc = (f: LandingForm): Doc => ({
@@ -50,12 +53,14 @@ const toDoc = (f: LandingForm): Doc => ({
   image_url: f.image_url,
   thank_title: f.thank_you_title ?? '',
   thank_message: f.thank_you_message ?? '',
+  page: f.page ?? null,
+  slug: f.slug ?? '',
 })
 
 const PANES = ['build', 'preview', 'analytics'] as const
 type Pane = (typeof PANES)[number]
 const FORM_TABS = ['basics', 'design', 'thanks', 'tracking', 'intent'] as const
-type FormTab = (typeof FORM_TABS)[number]
+type FormTab = (typeof FORM_TABS)[number] | 'page'
 
 /**
  * `/tracking/forms/:id` — build the form: what to ask and how it is laid out, how it looks, what happens after, how it is measured.
@@ -130,6 +135,7 @@ export function FormBuilderPage() {
     benefits: (d.basics.benefits ?? []).filter((b) => b.trim() !== ''), cta_label: d.basics.cta_label, consent_required: d.basics.consent_required, consent_text: d.basics.consent_text,
     privacy_url: d.basics.privacy_url || null, logo_url: d.logo_url, image_url: d.image_url, thank_you_title: d.thank_title || null, thank_you_message: d.thank_message || null,
     fields: d.fields.map((f, i) => ({ ...f, order: i + 1 })), layout: d.layout, design: d.design, settings: d.settings,
+    ...(d.page ? { page: d.page, slug: d.slug || null } : {}),
   })
 
   const refresh = () => {
@@ -154,6 +160,18 @@ export function FormBuilderPage() {
     mutationFn: async () => (await updateForm(id, payload(doc!))).form,
     onSuccess: () => { setProblems([]); setSavedKey(JSON.stringify(doc)); refresh(); toast(t('common.saved'), 'success') },
     onError: readProblems,
+  })
+
+  const setStatus = useMutation({
+    mutationFn: (status: LandingForm['status']) => updateForm(id, { status } as Parameters<typeof updateForm>[1]),
+    onSuccess: () => refresh(),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const duplicate = useMutation({
+    mutationFn: () => duplicateForm(id),
+    onSuccess: (r) => navigate(`/tracking/forms/${r.form.id}`),
+    onError: (caught) => toast(translateError(caught), 'error'),
   })
 
   const publish = useMutation({
@@ -264,7 +282,8 @@ export function FormBuilderPage() {
         </>
       ) : (
         <>
-          <Tabs testId="form-settings-tabs" value={formTab} onChange={setFormTab} items={FORM_TABS.map((k) => ({ key: k, label: t(`hub.builder.tabs.${k}`) }))} />
+          <Tabs testId="form-settings-tabs" value={formTab} onChange={setFormTab} items={(doc.page ? (['page', ...FORM_TABS] as FormTab[]) : [...FORM_TABS]).map((k) => ({ key: k, label: t(`hub.builder.tabs.${k}`) }))} />
+          {formTab === 'page' && doc.page && <PagePanel page={doc.page} slug={doc.slug} formId={id} published={form?.status === 'published'} onPage={(page) => change((d) => ({ ...d, page }))} onSlug={(slug) => change((d) => ({ ...d, slug }))} onQr={(l) => setQr(l as unknown as TrackingLink)} />}
           {formTab === 'basics' && <BasicsPanel basics={doc.basics} projects={projects ?? []} onChange={(p) => change((d) => ({ ...d, basics: { ...d.basics, ...p } }))} />}
           {formTab === 'design' && <DesignPanel design={doc.design} logoUrl={doc.logo_url} imageUrl={doc.image_url} onDesign={(design) => change((d) => ({ ...d, design }))} onLogo={(logo_url) => change((d) => ({ ...d, logo_url }))} onImage={(image_url) => change((d) => ({ ...d, image_url }))} />}
           {formTab === 'thanks' && <ThanksPanel title={doc.thank_title} message={doc.thank_message} settings={doc.settings} onTitle={(v) => change((d) => ({ ...d, thank_title: v }))} onMessage={(v) => change((d) => ({ ...d, thank_message: v }))} onSettings={(settings) => change((d) => ({ ...d, settings }))} />}
@@ -289,6 +308,11 @@ export function FormBuilderPage() {
         <Button size="sm" variant="ghost" aria-label={t('hub.builder.undo')} disabled={history.past.length === 0} icon={<Undo2 className="size-4" />} onClick={() => setHistory((h) => (h ? undo(h) : h))} data-testid="undo" />
         <Button size="sm" variant="ghost" aria-label={t('hub.builder.redo')} disabled={history.future.length === 0} icon={<Redo2 className="size-4" />} onClick={() => setHistory((h) => (h ? redo(h) : h))} data-testid="redo" />
         {canEdit && <Button size="sm" variant="secondary" icon={<Save className="size-4" />} loading={save.isPending} disabled={!dirty} onClick={() => save.mutate()} data-testid="save-form">{t('common.save')}</Button>}
+        {canEdit && doc.page && form.status === 'published' && <Button size="sm" variant="outline" loading={setStatus.isPending} onClick={() => setStatus.mutate('paused')} data-testid="page-pause">{t('hub.page.builder.pause')}</Button>}
+        {canEdit && doc.page && form.status === 'paused' && <Button size="sm" variant="outline" loading={setStatus.isPending} onClick={() => setStatus.mutate('published')} data-testid="page-resume">{t('hub.page.builder.resume')}</Button>}
+        {canEdit && doc.page && form.status !== 'archived' && form.status !== 'draft' && <Button size="sm" variant="ghost" loading={setStatus.isPending} onClick={() => { if (window.confirm(t('hub.page.builder.archiveConfirm'))) setStatus.mutate('archived') }} data-testid="page-archive">{t('hub.page.builder.archive')}</Button>}
+        {canEdit && doc.page && <Button size="sm" variant="ghost" loading={duplicate.isPending} onClick={() => duplicate.mutate()} data-testid="page-duplicate">{t('hub.page.builder.duplicate')}</Button>}
+        {doc.page && form.public_path && form.status === 'published' && <a href={form.public_path} target="_blank" rel="noopener noreferrer" className="t-small underline" dir="ltr" data-testid="page-public-link">{form.public_path}</a>}
         {canEdit && <Button size="sm" icon={<Rocket className="size-4" />} loading={publish.isPending} disabled={!dirty && !form.has_unpublished_changes && form.published_version !== null} onClick={() => publish.mutate()} data-testid="publish-form">{t('hub.builder.publish')}</Button>}
       </div>
 
@@ -316,7 +340,7 @@ export function FormBuilderPage() {
         </div>
       )}
 
-      {pane === 'preview' && renderForm && <PreviewPane form={renderForm} thanks={{ title: doc.thank_title || null, message: doc.thank_message || null }} device={device} onDevice={setDevice} />}
+      {pane === 'preview' && renderForm && <PreviewPane page={doc.page ? { page: doc.page, design: doc.design, headline: doc.basics.headline, description: doc.basics.description, benefits: doc.basics.benefits ?? [], logo: doc.logo_url, image: doc.image_url, project: form?.project?.name ?? null, cta_label: doc.basics.cta_label } : undefined} form={renderForm} thanks={{ title: doc.thank_title || null, message: doc.thank_message || null }} device={device} onDevice={setDevice} />}
       {pane === 'analytics' && <FormAnalyticsPanel formId={id} />}
 
       <LinkWizard open={wizard} preset={{ project_id: doc.basics.project_id || undefined, landing_form_id: id }} onClose={() => setWizard(false)} onAnalytics={(l) => { setWizard(false); navigate(`/tracking?link=${l.id}`) }} onQr={setQr} />

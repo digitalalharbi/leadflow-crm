@@ -16,6 +16,8 @@ use App\Models\ReportShare;
 use App\Models\ReportShareView;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
+use App\Support\ProjectContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -35,7 +37,7 @@ class ReportShareController extends Controller
         $this->authorize('viewAny', ReportShare::class);
 
         return ApiResponse::success([
-            'shares' => ReportShare::query()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
+            'shares' => $this->shares()->with(['project:id,uuid,name', 'partner:id,uuid,name,show_revenue', 'schedules'])->latest('id')->get()->map(fn (ReportShare $s) => $this->present($s)),
             // The reports a workspace starts from, ready-made: who each is for, how far back it looks, what it carries.
             'presets' => ReportPresets::all(),
             'templates' => collect(ReportTemplates::TEMPLATES)->map(fn ($_, $key) => ['key' => $key, 'sections' => ReportTemplates::sectionsFor($key), 'layout' => ReportTemplates::layoutFor($key)])->values(),
@@ -51,6 +53,8 @@ class ReportShareController extends Controller
         $this->authorize('create', ReportShare::class);
 
         $data = $this->validated($request);
+        // Someone limited to some projects shares those; a report over the whole company is more than they can see.
+        abort_if(app(ProjectContext::class)->ids() !== null && empty($data['project_id']), 422, 'Choose one of your projects for this report.');
         // A preset fills in what the form leaves out; anything the form says wins.
         $preset = isset($data['preset']) ? ReportPresets::find($data['preset']) : null;
         $template = $data['template'] ?? $preset['template'];
@@ -82,7 +86,7 @@ class ReportShareController extends Controller
 
     public function update(Request $request, string $uuid)
     {
-        $share = ReportShare::where('uuid', $uuid)->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $share);
 
         $data = $this->validated($request, partial: true);
@@ -133,7 +137,7 @@ class ReportShareController extends Controller
     /** Shut the door: the link answers "gone" from now on, and the record stays. */
     public function revoke(Request $request, string $uuid)
     {
-        $share = ReportShare::where('uuid', $uuid)->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $share);
 
         $share->forceFill(['revoked_at' => now()])->save();
@@ -145,7 +149,7 @@ class ReportShareController extends Controller
     /** A new link in place of the old: whoever has the old one is locked out, and a revoked report is open again. */
     public function regenerate(Request $request, string $uuid)
     {
-        $share = ReportShare::where('uuid', $uuid)->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $share);
 
         $share->rotateToken();
@@ -162,7 +166,7 @@ class ReportShareController extends Controller
      */
     public function email(Request $request, string $uuid, EmailDeliveries $deliveries)
     {
-        $share = ReportShare::where('uuid', $uuid)->with(['tenant.branding', 'tenant.settings'])->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->with(['tenant.branding', 'tenant.settings'])->firstOrFail();
         $this->authorize('update', $share);
         abort_if($share->status() !== 'active', 422, 'Only an active link can be sent.');
 
@@ -195,7 +199,7 @@ class ReportShareController extends Controller
      */
     public function preview(Request $request, string $uuid)
     {
-        $share = ReportShare::where('uuid', $uuid)->with('partner')->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->with('partner')->firstOrFail();
         $this->authorize('view', $share);
 
         $sees = fn (string $section) => Permissions::sees($request->user(), "report.section.{$section}");
@@ -207,7 +211,7 @@ class ReportShareController extends Controller
     /** Who opened a link and when: the views over time, how many different visitors, and the last few. */
     public function analytics(Request $request, string $uuid)
     {
-        $share = ReportShare::where('uuid', $uuid)->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $share);
 
         $views = ReportShareView::query()->where('report_share_id', $share->id);
@@ -225,7 +229,7 @@ class ReportShareController extends Controller
 
     public function destroy(Request $request, string $uuid)
     {
-        $share = ReportShare::where('uuid', $uuid)->firstOrFail();
+        $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $share);
 
         $this->audit->log('report_share.deleted', $request->user(), $share, ['before' => $this->trail($share)]);
@@ -295,6 +299,14 @@ class ReportShareController extends Controller
                 throw ValidationException::withMessages(['sections' => ["You cannot add the {$section} section."]]);
             }
         }
+    }
+
+    /** The links this person may see. Someone limited to some projects sees those projects' links, and no company-wide one. */
+    private function shares(): Builder
+    {
+        $ids = app(ProjectContext::class)->ids();
+
+        return ReportShare::query()->when($ids !== null, fn ($q) => $q->whereIn('project_id', $ids ?: [-1]));
     }
 
     private function partnerId(array $data): ?int

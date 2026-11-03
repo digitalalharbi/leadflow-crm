@@ -56,7 +56,7 @@ class LinkAnalyticsTest extends TestCase
     private function lead(array $attributes = []): Lead
     {
         return $this->asTenant($this->t['tenant'], function () use ($attributes) {
-            $lead = Lead::create(['full_name' => 'عميل', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => 'new', 'project_id' => $this->project->id]);
+            $lead = Lead::create(['full_name' => 'عميل', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => 'new', 'project_id' => $this->project->id]);
             // A lead past "new" has been contacted: the database insists on a time for it.
             if (($attributes['status'] ?? 'new') !== 'new') {
                 $attributes += ['first_contact_at' => now()->subDay(), 'last_contact_at' => now()->subDay()];

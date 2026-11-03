@@ -171,7 +171,11 @@ class AppServiceProvider extends ServiceProvider
          * `throttle:N,M` shares one counter between every route it is put on, so a page's views and a form's step reports would
          * spend the same few submits — and the customer the button was for would be told to slow down.
          */
-        RateLimiter::for('landing-view', fn (Request $request) => Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')));
+        // Per page, and per address across all pages: a page's address is a word that can be guessed, and each guess must not get a fresh allowance.
+        RateLimiter::for('landing-view', fn (Request $request) => [
+            Limit::perMinute(120)->by('lv:'.$request->ip().':'.$request->route('token')),
+            Limit::perMinute((int) config('integrations.landing.views_per_ip_per_minute', 600))->by('lv-ip:'.$request->ip()),
+        ]);
         RateLimiter::for('landing-beacon', fn (Request $request) => Limit::perMinute(240)->by('lb:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-submit', fn (Request $request) => Limit::perMinute(30)->by('ls:'.$request->ip().':'.$request->route('token')));
         RateLimiter::for('landing-asset', fn (Request $request) => Limit::perMinute(240)->by('la:'.$request->ip()));
@@ -181,6 +185,10 @@ class AppServiceProvider extends ServiceProvider
                 ->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
             Limit::perMinute(config('integrations.login.per_ip_per_minute'))
                 ->by($request->ip()),
+            ...(filled($request->input('email')) ? [Limit::perMinutes(15, config('integrations.login.per_account_per_quarter_hour'))
+                ->by('account:'.$request->path().':'.strtolower((string) $request->input('email')))
+                // Wrong passwords only, per door: someone else's guessing should not cost a person their forgot-password link.
+                ->after(fn ($response) => $response->getStatusCode() === 422)] : []),
         ]);
 
         // The public API, per key (by its hash, so the limiter's store never holds a usable key), else per address.

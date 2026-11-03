@@ -46,7 +46,7 @@ class AutomationPackV2Test extends TestCase
     private function lead(Project $project): Lead
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create([
-            'full_name' => 'سلطان', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999),
+            'full_name' => 'سلطان', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5),
             'status' => 'new', 'project_id' => $project->id,
         ]));
     }
@@ -126,7 +126,7 @@ class AutomationPackV2Test extends TestCase
         $relaxed = $this->project(['name' => 'مريح']);
 
         $make = fn (Project $p) => $this->asTenant($this->t['tenant'], function () use ($p) {
-            $lead = Lead::create(['full_name' => 'س', 'phone' => '0551111111', 'phone_normalized' => '+966551'.random_int(100000, 999999), 'status' => 'new', 'project_id' => $p->id, 'assigned_to' => $this->t['admin']->id]);
+            $lead = Lead::create(['full_name' => 'س', 'phone' => '0551111111', 'phone_normalized' => '+966551'.self::uniqueDigits(6), 'status' => 'new', 'project_id' => $p->id, 'assigned_to' => $this->t['admin']->id]);
             $lead->forceFill(['created_at' => now()->subMinutes(20)])->saveQuietly();
 
             return $lead->fresh();

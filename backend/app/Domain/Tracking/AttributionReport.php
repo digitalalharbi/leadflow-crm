@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\Reservation;
 use App\Models\TrackingEvent;
 use App\Models\TrackingLink;
+use App\Support\ProjectContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -245,6 +246,7 @@ class AttributionReport
         $rows = TrackingEvent::query()->whereBetween('occurred_at', [$from, $to])
             ->whereIn('event_type', ['click', 'whatsapp_click', 'call_click'])->whereNotNull('tracking_link_id')
             ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->when(app(ProjectContext::class)->ids() !== null, fn ($q) => $q->whereIn('project_id', app(ProjectContext::class)->ids() ?: [-1]))
             ->selectRaw('tracking_link_id, count(*) as n')->groupBy('tracking_link_id')->pluck('n', 'tracking_link_id');
 
         $links = TrackingLink::withTrashed()->with(['campaign:id,name', 'ad:id,name', 'creative:id,name', 'project:id,name', 'rep:id,name'])->whereIn('id', $rows->keys())->get()->keyBy('id');

@@ -109,6 +109,10 @@ test.describe('Visits and reservations', () => {
     await expect(confirmed).toBeVisible()
 
     await confirmed.getByTestId('reservation-convert').click()
+    // A sale needs its figure before it can be recorded.
+    await expect(confirmed.getByTestId('reservation-convert-confirm')).toBeVisible()
+    await confirmed.getByTestId('reservation-deal-value').fill('750000')
+    await confirmed.getByTestId('reservation-convert-confirm').click()
     // Sold: it leaves the open list.
     await expect(page.locator('[data-testid^="reservation-"]').filter({ hasText: name })).toHaveCount(0)
   })

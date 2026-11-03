@@ -23,6 +23,7 @@ class AgentController extends Controller
     public function index(Request $request, AgentDirectory $directory)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
         $directory->ensure();
 
         $latest = AgentThread::query()->where('routine', 'daily_analysis')->latest('id')->with('messages')->first();
@@ -50,6 +51,7 @@ class AgentController extends Controller
     public function run(Request $request, Orchestrator $orchestrator, string $routine)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
         abort_unless(array_key_exists($routine, AgentDirectory::ROUTINES), 404);
 
         $thread = $orchestrator->run($routine, $request->user());
@@ -60,6 +62,7 @@ class AgentController extends Controller
     public function thread(Request $request, string $uuid)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
 
         return ApiResponse::success(['thread' => $this->present(AgentThread::query()->where('uuid', $uuid)->with('messages')->firstOrFail())]);
     }
@@ -67,6 +70,7 @@ class AgentController extends Controller
     public function reports(Request $request)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
 
         return ApiResponse::success([
             'reports' => AgentReport::query()->latest('id')->limit(30)->get()->map(fn (AgentReport $r) => [
@@ -79,6 +83,7 @@ class AgentController extends Controller
     public function report(Request $request, string $uuid)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
         $r = AgentReport::query()->where('uuid', $uuid)->firstOrFail();
 
         return ApiResponse::success(['report' => [
@@ -92,6 +97,7 @@ class AgentController extends Controller
     public function conversations(Request $request)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
 
         return ApiResponse::success(['threads' => AgentThread::query()
             ->whereNull('routine')->where('started_by', $request->user()->id)
@@ -102,6 +108,7 @@ class AgentController extends Controller
     public function start(Request $request, AgentConversation $conversation)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
         $data = $request->validate(['message' => ['required', 'string', 'max:4000'], 'agent' => ['nullable', 'in:'.implode(',', AgentConversation::AGENTS)]]);
 
         $thread = AgentThread::create([
@@ -118,6 +125,7 @@ class AgentController extends Controller
     public function say(Request $request, AgentConversation $conversation, string $uuid)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited($request);
         $data = $request->validate(['message' => ['required', 'string', 'max:4000'], 'agent' => ['nullable', 'in:'.implode(',', AgentConversation::AGENTS)]]);
 
         $thread = AgentThread::query()->where('uuid', $uuid)->where('started_by', $request->user()->id)->firstOrFail();
@@ -130,6 +138,7 @@ class AgentController extends Controller
     public function ai(BrainFactory $brains)
     {
         $this->authorize('export', Lead::class);
+        $this->refuseProjectLimited(request());
         $settings = app(TenantContext::class)->get()?->settings;
 
         return ApiResponse::success([
@@ -177,5 +186,11 @@ class AgentController extends Controller
             'title' => $t->title,
             'messages' => $t->messages->map(fn ($m) => ['role' => $m->role, 'agent' => $m->agent, 'content' => $m->content, 'data' => $m->data, 'at' => $m->created_at?->toIso8601String()])->all(),
         ];
+    }
+
+    /** These read the whole company: the routines are not built per project, so someone limited to some projects does not get them. */
+    private function refuseProjectLimited(Request $request): void
+    {
+        abort_if($request->user()->isProjectScoped(), 403, 'Your role does not include this.');
     }
 }

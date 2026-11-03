@@ -9,11 +9,13 @@ use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Jobs\SyncSheetSource;
 use App\Models\Integration;
+use App\Models\Project;
 use App\Models\SheetSource;
 use App\Models\SheetSyncRun;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -205,6 +207,10 @@ class SheetSourceController extends Controller
             'cursor_row' => ['sometimes', 'integer', 'min:0'],
         ]);
 
+        if (array_key_exists('defaults', $data)) {
+            $data['defaults'] = $this->defaults($data['defaults']);
+        }
+
         $source->update($data);
 
         return ApiResponse::success(['source' => $this->present($source->refresh())]);
@@ -287,6 +293,22 @@ class SheetSourceController extends Controller
         return ApiResponse::success(['source' => $this->present($source->refresh())]);
     }
 
+    /** A default project arrives as a uuid and is found under the tenant and project scopes; nothing else names one. */
+    private function defaults(?array $defaults): ?array
+    {
+        if (! array_key_exists('project_id', $defaults ?? [])) {
+            return $defaults;
+        }
+
+        $id = filled($defaults['project_id']) && Str::isUuid((string) $defaults['project_id']) ? Project::where('uuid', $defaults['project_id'])->value('id') : null;
+
+        if ($id === null) {
+            throw ValidationException::withMessages(['defaults.project_id' => ['This project does not exist in your organisation.']]);
+        }
+
+        return ['project_id' => $id] + $defaults;
+    }
+
     private function validateSource(Request $request): array
     {
         $data = $request->validate([
@@ -300,6 +322,10 @@ class SheetSourceController extends Controller
         ]);
 
         $data['mapping'] = array_intersect_key($data['mapping'] ?? [], array_flip(SheetSource::MAPPABLE));
+
+        if (array_key_exists('defaults', $data)) {
+            $data['defaults'] = $this->defaults($data['defaults']);
+        }
 
         /*
          * A sheet with neither a phone nor an email column cannot produce a

@@ -56,6 +56,8 @@ class RoutePermission
             $area = match ($segments[2]) {
                 'thresholds', 'scoring', 'automation-pack', 'questions' => 'automation',
                 'properties' => 'properties',
+                // A project's lead sources are its pages, links and forms: tracking, wherever the screen sits.
+                'lead-sources' => 'tracking',
                 default => 'projects',
             };
         }

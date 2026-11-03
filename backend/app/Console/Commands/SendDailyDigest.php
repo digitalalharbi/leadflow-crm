@@ -75,7 +75,8 @@ class SendDailyDigest extends Command
                     $recipients = User::where('tenant_id', $tenant->id)
                         ->where('is_active', true)
                         ->whereIn('role', [Role::Admin->value, Role::Manager->value])
-                        ->get();
+                        ->get()
+                        ->reject(fn (User $user) => $user->isProjectScoped());
 
                     foreach ($recipients as $user) {
                         $user->notify(new DailyDigestNotification($figures));

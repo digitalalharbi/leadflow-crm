@@ -65,9 +65,16 @@ class EmailTrackingController extends Controller
         return redirect()->away($url);
     }
 
-    /** GET for a person in a browser, POST for a mail client's one-click header. */
+    /**
+     * Opening the link only asks: mail scanners and link checkers open every link they see, and would unsubscribe people who
+     * never asked. Only a POST stops the mail, from the page's button or from a mail client's one-click header.
+     */
     public function unsubscribe(Request $request, string $token)
     {
+        if (! $request->isMethod('post')) {
+            return $this->unsubscribePage('إلغاء الاشتراك', 'هل تريد إيقاف رسائل البريد من هذا المرسل؟', route('email.unsubscribe', $token));
+        }
+
         $message = LeadMessage::withoutGlobalScopes()->where('tracking_token', $token)->first();
 
         if ($message) {
@@ -86,15 +93,23 @@ class EmailTrackingController extends Controller
             }
         }
 
-        if ($request->isMethod('post')) {
+        if (! $request->has('confirm')) {
             return response('', 200);
         }
 
-        // The same page whether the token was real or not: it must not say which.
+        return $this->unsubscribePage('تم إلغاء اشتراكك', 'لن تصلك رسائل بريد أخرى من هذا المرسل.');
+    }
+
+    /** The same page whether the token was real or not: it must not say which. */
+    private function unsubscribePage(string $title, string $text, ?string $action = null): Response
+    {
+        $form = $action === null ? '' : '<form method="post" action="'.e($action).'"><input type="hidden" name="confirm" value="1">'
+            .'<button type="submit" style="font:inherit;padding:.6rem 1.5rem;border:0;border-radius:999px;background:#1D5E52;color:#fff;cursor:pointer">إلغاء الاشتراك</button></form>';
+
         return new Response(
-            '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            .'<title>تم إلغاء الاشتراك</title><body style="font-family:sans-serif;text-align:center;padding:4rem 1rem">'
-            .'<h1 style="font-size:1.25rem">تم إلغاء اشتراكك</h1><p>لن تصلك رسائل بريد أخرى من هذا المرسل.</p></body></html>',
+            '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">'
+            .'<title>'.e($title).'</title><body style="font-family:sans-serif;text-align:center;padding:4rem 1rem">'
+            .'<h1 style="font-size:1.25rem">'.e($title).'</h1><p>'.e($text).'</p>'.$form.'</body></html>',
             200,
             ['Content-Type' => 'text/html; charset=utf-8'],
         );

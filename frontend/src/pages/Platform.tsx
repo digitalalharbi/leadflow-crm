@@ -15,6 +15,7 @@ import {
   Pagination, Select, SkeletonCards, SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { ManualLinkDialog } from '@/components/account/ManualLinkDialog'
 import { Tabs } from '@/components/ui'
 import { BusinessOverview } from '@/components/platform/BusinessOverview'
 import { PlansManager } from '@/components/platform/PlansManager'
@@ -90,7 +91,7 @@ export function PlatformPage() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [created, setCreated] = useState<{ url: string; secret: string } | null>(null)
+  const [created, setCreated] = useState<{ url: string; secret: string; setupLink: string | null } | null>(null)
   const [inspecting, setInspecting] = useState<TenantSummary | null>(null)
 
   const debouncedSearch = useDebounced(search)
@@ -114,7 +115,7 @@ export function PlatformPage() {
 
   const create = useMutation({
     mutationFn: () =>
-      apiPost<{ webhook: { url: string; secret: string } }>('/super-admin/tenants', {
+      apiPost<{ webhook: { url: string; secret: string }; admin: { setup_link?: string | null } }>('/super-admin/tenants', {
         ...form,
         system_name: form.system_name || undefined,
         subdomain: form.subdomain || undefined,
@@ -123,7 +124,7 @@ export function PlatformPage() {
     onSuccess: (result) => {
       setOpen(false)
       setForm(EMPTY_FORM)
-      setCreated({ url: result.webhook.url, secret: result.webhook.secret })
+      setCreated({ url: result.webhook.url, secret: result.webhook.secret, setupLink: result.admin.setup_link ?? null })
       void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
       void queryClient.invalidateQueries({ queryKey: ['platform-stats'] })
       toast(t('superAdmin.created'), 'success')
@@ -533,6 +534,12 @@ export function PlatformPage() {
         <div className="space-y-3">
           <CopyField label={t('integrations.webhookUrl')} value={created?.url ?? ''} />
           <CopyField label={t('integrations.webhookSecret')} value={created?.secret ?? ''} />
+          {created?.setupLink && (
+            <>
+              <CopyField label={t('account.manualLinkTitle')} value={created.setupLink} />
+              <p className="t-caption">{t('account.manualLinkNote')}</p>
+            </>
+          )}
         </div>
       </Modal>
     </>
@@ -619,9 +626,14 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
+  const [manualLink, setManualLink] = useState<string | null>(null)
+
   const setupLink = useMutation({
-    mutationFn: () => apiPost(`/super-admin/tenants/${tenant?.id}/owner/setup-link`),
-    onSuccess: () => toast(t('account.setupLinkSent'), 'success'),
+    mutationFn: () => apiPost<{ link?: string | null } | null>(`/super-admin/tenants/${tenant?.id}/owner/setup-link`),
+    onSuccess: (result) => {
+      setManualLink(result?.link ?? null)
+      toast(result?.link ? t('account.inviteLinkReady') : t('account.setupLinkSent'), 'success')
+    },
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
@@ -717,6 +729,7 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
           </div>
         </div>
       )}
+      <ManualLinkDialog link={manualLink} onClose={() => setManualLink(null)} />
     </Modal>
   )
 }

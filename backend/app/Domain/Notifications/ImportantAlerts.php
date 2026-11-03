@@ -95,7 +95,7 @@ class ImportantAlerts
                 return;
             }
 
-            self::send(self::managers($lead->tenant_id), new ImportantNotification(
+            self::send(self::managers($lead->tenant_id, $lead), new ImportantNotification(
                 'new_lead', 'عميل جديد بلا مسؤول', "{$lead->full_name}".self::about($lead).' — أسنده إلى مندوب.', $lead->uuid, null, 'warning',
             ));
         } catch (\Throwable $e) {
@@ -204,7 +204,7 @@ class ImportantAlerts
     {
         $owner = $lead->assigned_to ? User::query()->where('tenant_id', $lead->tenant_id)->where('is_active', true)->find($lead->assigned_to) : null;
 
-        return $owner ? collect([$owner]) : self::managers($lead->tenant_id);
+        return $owner ? collect([$owner]) : self::managers($lead->tenant_id, $lead);
     }
 
     /**
@@ -212,9 +212,12 @@ class ImportantAlerts
      *
      * @return Collection<int,User>
      */
-    private static function managers(?int $tenantId = null): Collection
+    private static function managers(?int $tenantId = null, ?Lead $lead = null): Collection
     {
-        return User::query()->inWorkspace($tenantId)->managers()->get();
+        return User::query()->inWorkspace($tenantId)->managers()->get()
+            // Limited to some projects: the news of those only, and none of the whole company's.
+            ->filter(fn (User $user) => $lead ? $user->reaches($lead->project_id) : ! $user->isProjectScoped())
+            ->values();
     }
 
     private static function send(Collection $users, ImportantNotification $notification): void

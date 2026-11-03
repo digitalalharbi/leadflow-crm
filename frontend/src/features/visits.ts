@@ -59,6 +59,6 @@ export function fetchReservations(bucket: 'open' | 'all', page = 1) {
   return apiGetPaginated<Reservation[]>('/reservations', { ...(bucket === 'open' ? { bucket: 'open' } : {}), page, per_page: 20 })
 }
 
-export function actOnReservation(id: string, action: 'confirm' | 'cancel' | 'convert', payload: { reason?: string } = {}) {
+export function actOnReservation(id: string, action: 'confirm' | 'cancel' | 'convert', payload: { reason?: string; deal_value?: number } = {}) {
   return apiPost<{ reservation: Reservation }>(`/reservations/${id}/${action}`, payload)
 }

@@ -62,6 +62,7 @@ use App\Http\Controllers\Api\V1\ProjectActivityController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDevelopmentController;
 use App\Http\Controllers\Api\V1\ProjectFileController;
+use App\Http\Controllers\Api\V1\ProjectLeadSourceController;
 use App\Http\Controllers\Api\V1\ProjectQuestionController;
 use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\PublicApiController;
@@ -103,6 +104,7 @@ use App\Http\Controllers\EmailInboundController;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\RequireVerifiedEmail;
 use App\Http\Middleware\RequireWorkspaceMfa;
 use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
@@ -124,11 +126,13 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::get('/auth/providers', fn () => ApiResponse::success(['providers' => config('platform.login_providers')]));
     // Into an account without a password in hand. Every answer is the same whether or not an email is registered.
     Route::middleware('throttle:login')->group(function () {
         Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);
         Route::get('/auth/password/links/{token}', [AccountAccessController::class, 'link'])->where('token', '[A-Za-z0-9]{48}');
         Route::post('/auth/password/reset', [AccountAccessController::class, 'reset']);
+        Route::post('/auth/email/verify', [AccountAccessController::class, 'verifyEmail']);
         Route::get('/public/invitations/{token}', [AccountAccessController::class, 'invitation'])->where('token', '[A-Za-z0-9]{48}');
         Route::post('/public/invitations/{token}/accept', [AccountAccessController::class, 'accept'])->where('token', '[A-Za-z0-9]{48}');
     });
@@ -148,9 +152,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/track/{token}', TrackBeaconController::class)->middleware('throttle:landing-beacon')->where('token', '[A-Za-z0-9]{6,24}');
 
     // The landing page a tracking link opens, and its form. Public by nature; the token is the only thing the visitor holds.
-    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:landing-asset')->where('name', '[a-f0-9]{32}\.(png|jpg|webp)');
-    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:landing-view')->where('token', '[A-Za-z0-9]{6,24}');
-    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9]{6,24}');
+    Route::get('/public/form-assets/{name}', [FormAssetController::class, 'show'])->middleware('throttle:landing-asset')->where('name', '[a-f0-9]{32}\.(png|jpg|webp|svg)');
+    Route::get('/public/landing/{token}', [PublicLandingController::class, 'show'])->middleware('throttle:landing-view')->where('token', '[A-Za-z0-9-]{3,64}');
+    Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9-]{3,64}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
@@ -227,7 +231,7 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', RequireWorkspaceMfa::class, 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', RequireWorkspaceMfa::class, RequireVerifiedEmail::class, 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);
@@ -237,6 +241,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/security/mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:10,1');
         Route::get('/auth/security/sessions', [AccountSecurityController::class, 'sessions']);
         Route::delete('/auth/security/sessions/{id}', [AccountSecurityController::class, 'endSession'])->whereNumber('id');
+        Route::post('/auth/security/sessions/end-others', [AccountSecurityController::class, 'endOtherSessions'])->middleware('throttle:10,1');
+        Route::post('/auth/email/verification', [AccountAccessController::class, 'sendVerification'])->middleware('throttle:3,1');
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
         // One person in several companies: the server lists their memberships and moves the session.
         Route::get('/auth/workspaces', [WorkspaceController::class, 'index']);
@@ -453,13 +459,24 @@ Route::prefix('v1')->group(function () {
             Route::patch('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'update'])->whereUuid('uuid');
             Route::delete('/tracking/destinations/{uuid}', [TrackingDestinationController::class, 'destroy'])->whereUuid('uuid');
             // The landing pages a link can open, and the form on each.
+            // Everything that brings a project its leads, on one list.
+            Route::get('/projects/{uuid}/lead-sources', [ProjectLeadSourceController::class, 'index'])->whereUuid('uuid');
+            Route::get('/projects/{uuid}/lead-sources/compare', [ProjectLeadSourceController::class, 'compare'])->whereUuid('uuid');
+            Route::get('/projects/{uuid}/lead-sources/mappings', [ProjectLeadSourceController::class, 'mappings'])->whereUuid('uuid');
+            Route::post('/projects/{uuid}/lead-sources/mappings', [ProjectLeadSourceController::class, 'storeMapping'])->whereUuid('uuid');
+            Route::patch('/projects/{uuid}/lead-sources/mappings/{mapping}', [ProjectLeadSourceController::class, 'updateMapping'])->whereUuid(['uuid', 'mapping']);
+            Route::delete('/projects/{uuid}/lead-sources/mappings/{mapping}', [ProjectLeadSourceController::class, 'destroyMapping'])->whereUuid(['uuid', 'mapping']);
+            Route::patch('/projects/{uuid}/lead-sources/logo', [ProjectLeadSourceController::class, 'logo'])->whereUuid('uuid');
+
             Route::get('/tracking/forms/presets', [LandingFormController::class, 'presets']);
             Route::get('/tracking/forms/templates', [LandingFormController::class, 'templates']);
+            Route::post('/tracking/forms/slug', [LandingFormController::class, 'slug']);
             Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
             Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/analytics', [LandingFormController::class, 'analytics'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
+            Route::post('/tracking/forms/{uuid}/links', [LandingFormController::class, 'addLink'])->whereUuid('uuid');
             Route::get('/tracking/forms', [LandingFormController::class, 'index']);
             Route::post('/tracking/forms', [LandingFormController::class, 'store']);
             Route::get('/tracking/forms/{uuid}', [LandingFormController::class, 'show'])->whereUuid('uuid');

@@ -8,6 +8,7 @@ use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * One person, several companies. Each company holds its own account for them (its own role, its own projects); these
@@ -54,7 +55,15 @@ class WorkspaceController extends Controller
         $this->audit->log('auth.workspace_left', $user, null, ['to' => $target->tenant->slug]);
         $this->audit->logForTenant($target->tenant_id, 'auth.workspace_entered', $target, $target, ['from_session' => true]);
 
-        return ApiResponse::success(app(AuthController::class)->issueSession($target, $request, 'auth.workspace_switch'));
+        // Moving is not a second login: the session in the company being left ends here, and this one ends when it would have.
+        $left = $user->currentAccessToken();
+        $session = app(AuthController::class)->issueSession($target, $request, 'auth.workspace_switch', $left instanceof PersonalAccessToken ? $left->expires_at : null);
+
+        if ($left instanceof PersonalAccessToken) {
+            $left->delete();
+        }
+
+        return ApiResponse::success($session);
     }
 
     /**

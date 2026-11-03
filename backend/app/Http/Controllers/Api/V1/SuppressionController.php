@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Privacy\SuppressionList;
 use App\Http\Controllers\Controller;
 use App\Models\Suppression;
@@ -69,6 +70,8 @@ class SuppressionController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user->usesMatrix() || $user->isAdmin() || $user->isManager(), 403, 'Your role does not include this.');
+        abort_unless($user->isAdmin() || $user->isManager() || ($user->usesMatrix() && Permissions::has($user, 'contacts.view')), 403, 'Your role does not include this.');
+        // The list is the whole company's phones and addresses.
+        abort_if($user->isProjectScoped(), 403, 'Your role does not include this.');
     }
 }

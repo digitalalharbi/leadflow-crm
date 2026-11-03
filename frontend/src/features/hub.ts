@@ -89,7 +89,7 @@ export const DEFAULT_SETTINGS: FormSettings = { mode: 'single', default_country:
 export interface LandingForm {
   id: string
   name: string
-  status: 'draft' | 'published' | 'archived'
+  status: 'draft' | 'published' | 'paused' | 'archived'
   project: { id: string; name: string } | null
   headline: string | null
   description: string | null
@@ -110,6 +110,9 @@ export interface LandingForm {
   published_version: { id: string; version: number; published_at: string } | null
   has_unpublished_changes: boolean
   links_count: number | null
+  slug?: string | null
+  page?: LandingPageConfig | null
+  public_path?: string | null
 }
 
 export type FormInput = Partial<Omit<LandingForm, 'id' | 'project' | 'steps' | 'links_count' | 'published_version' | 'has_unpublished_changes'>> & { project_id?: string | null; template?: string }
@@ -122,16 +125,50 @@ export interface FormPresets {
 
 export const fetchForms = () => apiGet<{ forms: LandingForm[] }>('/tracking/forms').then((r) => r.forms)
 export const fetchFormPresets = () => apiGet<FormPresets>('/tracking/forms/presets')
+export const checkPageSlug = (slug: string, form?: string) => apiPost<{ slug: string; available: boolean; problem: string | null; suggestion: string | null }>('/tracking/forms/slug', { slug, form })
+export const addPageLink = (formId: string, body: { name: string; channel: string; kind?: 'link' | 'qr'; placement?: string; utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string }) =>
+  apiPost<{ link: { id: string; token: string; name: string; channel: string; kind: string; path: string } }>(`/tracking/forms/${formId}/links`, body)
 export const createForm = (input: FormInput) => apiPost<{ form: LandingForm }>('/tracking/forms', input)
 export const updateForm = (id: string, input: FormInput) => apiPatch<{ form: LandingForm }>(`/tracking/forms/${id}`, input)
 export const deleteForm = (id: string) => apiDelete(`/tracking/forms/${id}`)
 
 /* ------------------------------------------------------------------ the public landing page */
 
-export interface LandingTag { kind: string; id: string }
+export interface LandingTag {
+  kind: string
+  id: string
+  /** What a form submission is called on this platform, when the workspace mapped it. The server sends the same name under the same id. */
+  submit_event?: string | null
+}
+
+export type PageTemplate = 'real_estate_lead' | 'project_showcase' | 'minimal_lead'
+export type PageCtaKind = 'form' | 'whatsapp' | 'phone'
+export type PageFactKey = 'location' | 'project_type' | 'price_from' | 'unit_types' | 'delivery'
+
+/** What makes a form a campaign page: a closed list, so a manager chooses within a page that stays good. */
+export interface LandingPageConfig {
+  template: PageTemplate
+  developer_name: string | null
+  developer_logo_url: string | null
+  facts: { key: PageFactKey; value: string; visible?: boolean }[]
+  cta: {
+    form: { enabled: boolean }
+    whatsapp: { enabled: boolean; number: string | null; message: string | null; mode?: 'track' | 'inbound' }
+    phone: { enabled: boolean; number: string | null }
+    primary: PageCtaKind
+    secondary: PageCtaKind | null
+    floating_whatsapp: boolean
+    floating_call: boolean
+  }
+  auto_steps: boolean
+  seo: { title: string | null; description: string | null; og_image: string | null; index: boolean }
+  tags?: string[]
+  mirror?: { enabled: boolean; spreadsheet_id: string | null; tab: string | null }
+}
 
 export interface PublicLanding {
   landing: {
+    page?: LandingPageConfig | null
     token: string
     version: number
     headline: string | null
@@ -141,7 +178,7 @@ export interface PublicLanding {
     logo_url: string | null
     image_url: string | null
     thank_you: { title: string | null; message: string | null }
-    project: { name: string } | null
+    project: { name: string; logo_url?: string | null } | null
     fields: FormField[]
     layout: FormLayout
     design: FormDesign
@@ -150,14 +187,7 @@ export interface PublicLanding {
     consent: { required: boolean; text: string | null; privacy_url: string | null }
     tags: LandingTag[]
   }
-  tracking: { visitor_id: string; session_id: string; view_event_id: string | null; datalayer: Record<string, string> }
-}
-
-export async function fetchLanding(token: string, query: Record<string, string>): Promise<PublicLanding> {
-  const { http } = await import('@/lib/api')
-  const response = await http.get<{ data: PublicLanding }>(`/public/landing/${token}`, { params: query })
-
-  return response.data.data
+  tracking: { visitor_id: string; session_id: string; view_event_id: string | null; ref?: string; datalayer: Record<string, string> }
 }
 
 export interface LandingSubmitInput {
@@ -184,13 +214,6 @@ export interface LandingSubmitResult {
   thank_you: { title: string | null; message: string | null; actions: ThankAction[]; redirect_url: string | null; redirect_delay: number }
   /** Ids and campaign names only: never a customer's name, number or address. */
   datalayer: Record<string, string | number>
-}
-
-export async function submitLanding(token: string, input: LandingSubmitInput): Promise<LandingSubmitResult> {
-  const { http } = await import('@/lib/api')
-  const response = await http.post<{ data: LandingSubmitResult }>(`/public/landing/${token}/submit`, input)
-
-  return response.data.data
 }
 
 /* ------------------------------------------------------------------ link analytics */
@@ -262,6 +285,8 @@ export interface Destination {
   is_enabled: boolean
   config: Record<string, string>
   credentials_set: string[]
+  /** Mohtam's event → the platform's, when the workspace says so. */
+  event_map?: Record<string, string> | null
   events: string[]
   send_value: boolean
   hash_identifiers: boolean
@@ -281,13 +306,14 @@ export interface DestinationInput {
   is_enabled?: boolean
   config?: Record<string, string>
   credentials?: Record<string, string>
+  event_map?: Record<string, string>
   events?: string[]
   send_value?: boolean
   hash_identifiers?: boolean
   consent_mode?: 'required' | 'unless_denied'
 }
 
-export const fetchDestinationCatalogue = () => apiGet<{ kinds: DestinationKindInfo[]; events: string[]; default_events: string[] }>('/tracking/destinations/catalogue')
+export const fetchDestinationCatalogue = () => apiGet<{ kinds: DestinationKindInfo[]; events: string[]; default_events: string[]; platform_events?: string[] }>('/tracking/destinations/catalogue')
 export const fetchDestinations = () => apiGet<{ destinations: Destination[] }>('/tracking/destinations').then((r) => r.destinations)
 export const createDestination = (input: DestinationInput) => apiPost<{ destination: Destination }>('/tracking/destinations', input)
 export const updateDestination = (id: string, input: DestinationInput) => apiPatch<{ destination: Destination }>(`/tracking/destinations/${id}`, input)
@@ -360,6 +386,20 @@ export async function uploadFormAsset(file: File): Promise<{ url: string; width:
 }
 
 export interface FormAnalyticsData {
+  page?: {
+    unique_visitors: number
+    whatsapp_clicks: number
+    call_clicks: number
+    leads: number
+    qualified: number
+    appointments: number
+    visits: number
+    reservations: number
+    sales: number
+    revenue_minor: number
+    funnel: { key: string; n: number; rate: number | null }[]
+    cost: { spend_minor: number | null; cpl: number | null; cpql: number | null; per_appointment: number | null; per_reservation: number | null; cpa: number | null; roas: number | null }
+  } | null
   form: { id: string; name: string }
   range: { from: string; to: string; days: number }
   totals: { views: number; starts: number; submits: number; completion_rate: number | null; abandonment_rate: number | null; avg_completion_seconds: number | null }

@@ -16,7 +16,7 @@ class TrackingDestination extends Model
 {
     use BelongsToTenant, HasUuid;
 
-    protected $fillable = [
+    protected $fillable = ['event_map',
         'project_id', 'kind', 'name', 'is_enabled', 'config', 'credentials', 'events', 'send_value', 'hash_identifiers', 'consent_mode',
         'last_event_at', 'last_error', 'created_by',
     ];
@@ -26,7 +26,7 @@ class TrackingDestination extends Model
 
     protected function casts(): array
     {
-        return [
+        return ['event_map' => 'array',
             'is_enabled' => 'boolean', 'config' => 'array', 'credentials' => 'encrypted:array', 'events' => 'array',
             'send_value' => 'boolean', 'hash_identifiers' => 'boolean', 'last_event_at' => 'datetime',
         ];

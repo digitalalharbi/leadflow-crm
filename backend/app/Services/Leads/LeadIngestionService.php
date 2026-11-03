@@ -6,6 +6,7 @@ use App\DataTransferObjects\IncomingLead;
 use App\DataTransferObjects\IngestionResult;
 use App\Domain\Campaigns\CampaignResolver;
 use App\Domain\Leads\DuplicateMatcher;
+use App\Domain\LeadSources\LeadFormMappings;
 use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\Attribution;
 use App\Domain\Tracking\EventRecorder;
@@ -48,6 +49,8 @@ class LeadIngestionService
     public function ingest(Tenant $tenant, IncomingLead $incoming): IngestionResult
     {
         return $this->context->withTenant($tenant, function () use ($tenant, $incoming) {
+            // A platform's form tied to a project: its project and its answers, before anything else looks at the lead.
+            $incoming = app(LeadFormMappings::class)->apply($incoming);
             $settings = $tenant->settings;
             $countryCode = $settings?->default_country_code ?? '966';
 
@@ -63,6 +66,11 @@ class LeadIngestionService
                 // platform with a different number on the form. See
                 // DuplicateMatcher for why the order of signals matters.
                 $existing = $this->duplicates->find($incoming, $normalizedPhone);
+
+                // The provider sent this same submission again: nothing new happened, so nothing changes and no rule fires.
+                if ($existing && $normalizedPhone === $existing->phone_normalized && $this->duplicates->byProviderLeadId($incoming)?->is($existing)) {
+                    return IngestionResult::reEngaged($existing, false);
+                }
 
                 if ($existing) {
                     return $this->reEngage($existing, $incoming, $normalizedPhone);

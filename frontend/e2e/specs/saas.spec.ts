@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { ALPHA, BETA, PASSWORD } from '../fixtures/data'
 import { apiGet, apiLogin, apiPlatformLogin, apiPost } from '../fixtures/api'
 import { authenticateAs, signInPlatform } from '../fixtures/pages'
-import { artisan, linkFromEmail, resetFixtures } from '../fixtures/seed'
+import { linkFromEmail, resetFixtures, ensurePlatformOwner } from '../fixtures/seed'
 
 const OWNER = 'owner@e2e-saas.test'
 
@@ -35,7 +35,7 @@ async function tenantId(slug: string): Promise<string> {
 test.describe('SaaS', () => {
   test.beforeAll(() => {
     resetFixtures()
-    artisan(['leadflow:create-super-admin', `--email=${OWNER}`, `--password=${PASSWORD}`])
+    ensurePlatformOwner(OWNER, PASSWORD)
   })
 
   test('a feature outside the plan is not offered, and its address says the plan decides it', async ({ page }) => {

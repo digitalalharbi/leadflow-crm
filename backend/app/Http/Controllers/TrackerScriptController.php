@@ -26,13 +26,15 @@ class TrackerScriptController extends Controller
 (function () {
   var ENDPOINT = %s, TOKEN = %s, KEY = 'mt_vid';
   var qs = new URLSearchParams(location.search);
+  var clickIds = {};
+  qs.forEach(function (value, name) { clickIds[name.toLowerCase()] = value; });
   var vid = qs.get('mt_vid');
   try { if (vid) localStorage.setItem(KEY, vid); else vid = localStorage.getItem(KEY); } catch (e) {}
   function send(event, meta) {
     var body = { event: event, visitor_id: vid || undefined, url: location.href, referrer: document.referrer || undefined,
       utm_source: qs.get('utm_source') || undefined, utm_medium: qs.get('utm_medium') || undefined, utm_campaign: qs.get('utm_campaign') || undefined,
       utm_term: qs.get('utm_term') || undefined, utm_content: qs.get('utm_content') || undefined,
-      click_id: qs.get('gclid') || qs.get('fbclid') || qs.get('ttclid') || qs.get('sccid') || undefined, meta: meta };
+      click_id: clickIds.gclid || clickIds.fbclid || clickIds.ttclid || clickIds.sccid || undefined, meta: meta };
     var data = JSON.stringify(body);
     if (navigator.sendBeacon) { navigator.sendBeacon(ENDPOINT, new Blob([data], { type: 'text/plain' })); }
     else { fetch(ENDPOINT, { method: 'POST', body: data, keepalive: true, mode: 'no-cors', headers: { 'Content-Type': 'text/plain' } }); }

@@ -505,6 +505,7 @@ class TrackingEngineTest extends TestCase
         $this->assertSame([
             'landing_viewed', 'link_clicked', 'form_started', 'form_submitted', 'whatsapp_started', 'call_started', 'brochure_opened', 'project_viewed', 'property_viewed',
             'appointment_requested', 'visit_completed', 'reservation_created', 'won', 'form_step_completed', 'form_abandoned', 'lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue_recorded',
+            'cta_click', 'form_view', 'form_error',
         ], array_map(fn (EventType $t) => $t->canonical(), EventType::cases()));
         $this->assertNotContains('won', EventType::browserSafeValues());
         foreach (['lead_created', 'qualified', 'interested', 'appointment_booked', 'lost', 'revenue'] as $serverOnly) {

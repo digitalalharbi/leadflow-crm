@@ -58,7 +58,7 @@ class ARuleCanWaitTest extends TestCase
     {
         return $this->asTenant($this->t['tenant'], fn () => Lead::create(array_merge([
             'full_name' => 'عميل',
-            'phone_normalized' => '+96650017'.random_int(1000, 9999),
+            'phone_normalized' => '+96650017'.self::uniqueDigits(4),
             'status' => 'new',
             'assigned_to' => $this->t['admin']->id,
         ], $attributes)));

@@ -66,6 +66,8 @@ return [
     'login' => [
         'per_email_per_minute' => (int) env('LOGIN_RATE_LIMIT_PER_MINUTE', 5),
         'per_ip_per_minute' => (int) env('LOGIN_RATE_LIMIT_PER_IP_PER_MINUTE', 20),
+        // One address from anywhere: guessing spread across many addresses still meets this.
+        'per_account_per_quarter_hour' => (int) env('LOGIN_RATE_LIMIT_PER_ACCOUNT_PER_15_MINUTES', 50),
     ],
 
     /*

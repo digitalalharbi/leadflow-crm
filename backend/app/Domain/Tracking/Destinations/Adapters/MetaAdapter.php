@@ -31,10 +31,11 @@ class MetaAdapter extends AbstractAdapter
             'fbc' => isset($ids['fbclid']) ? 'fb.1.'.(strtotime($payload['occurred_at']) * 1000).'.'.$ids['fbclid'] : null,
         ]);
 
+        $eventName = ((array) $destination->event_map)[$payload['event']] ?? 'Lead';
         $pixel = $this->config($destination, 'pixel_id');
         $body = [
             'data' => [array_filter([
-                'event_name' => 'Lead',
+                'event_name' => $eventName,
                 'event_time' => strtotime($payload['occurred_at']),
                 'event_id' => $payload['event_id'],
                 'action_source' => 'website',
@@ -46,7 +47,7 @@ class MetaAdapter extends AbstractAdapter
 
         return $this->post(
             "https://graph.facebook.com/v21.0/{$pixel}/events?access_token=".urlencode($this->credential($destination, 'access_token')),
-            $body, [], ['event' => 'Lead', 'event_id' => $payload['event_id']],
+            $body, [], ['event' => $eventName, 'event_id' => $payload['event_id']],
         );
     }
 }

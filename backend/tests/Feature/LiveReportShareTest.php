@@ -33,7 +33,7 @@ class LiveReportShareTest extends TestCase
             MetricSnapshot::create(['platform' => 'meta', 'level' => 'campaign', 'campaign_id' => $campaign->id, 'date' => now()->subDay()->toDateString(), 'spend_minor' => 100_000, 'currency' => 'SAR']);
 
             foreach ([['contacted', null], ['won', 50_000_000]] as [$status, $value]) {
-                $lead = Lead::create(['full_name' => 'عميل', 'phone_normalized' => '+9665512'.random_int(10000, 99999), 'status' => $status, 'deal_value_minor' => $value, 'assigned_to' => $this->t['admin']->id]);
+                $lead = Lead::create(['full_name' => 'عميل', 'phone_normalized' => '+9665512'.self::uniqueDigits(5), 'status' => $status, 'deal_value_minor' => $value, 'assigned_to' => $this->t['admin']->id]);
                 DB::table('leads')->where('id', $lead->id)->update(['campaign_ref_id' => $campaign->id, 'created_at' => now()->subDay()]);
             }
         });
@@ -70,7 +70,7 @@ class LiveReportShareTest extends TestCase
         $this->assertSame('Share Co', $data['workspace']['name']);
 
         // Live: a new lead is in the next load.
-        $this->asTenant($this->t['tenant'], fn () => DB::table('leads')->where('id', Lead::create(['full_name' => 'جديد', 'phone_normalized' => '+9665599'.random_int(10000, 99999)])->id)->update(['created_at' => now()->subHour()]));
+        $this->asTenant($this->t['tenant'], fn () => DB::table('leads')->where('id', Lead::create(['full_name' => 'جديد', 'phone_normalized' => '+9665599'.self::uniqueDigits(5)])->id)->update(['created_at' => now()->subHour()]));
         $this->assertSame(3, $this->open($share)->assertOk()->json('data.kpis.leads'));
     }
 

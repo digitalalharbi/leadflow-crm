@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ShieldCheck } from 'lucide-react'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useApiError } from '@/hooks/useApiError'
-import { Button, Card, CardBody, Input } from '@/components/ui'
+import { Button, Input } from '@/components/ui'
+import { AuthCard, AuthShell } from '@/components/auth/AuthShell'
 
 /**
  * The platform owner's door — not a company's login with a different heading. It talks to its own endpoint, accepts
@@ -55,15 +55,10 @@ export function PlatformLoginPage() {
   }
 
   return (
-    <div className="grid min-h-dvh place-items-center bg-[var(--color-outer)] p-4" data-console="platform">
-      <Card className="w-full max-w-sm">
-        <CardBody>
+    <div data-console="platform">
+      <AuthShell panel={false} footer={false}>
+        <AuthCard title={t('platformAdmin.loginTitle')} subtitle={t('platformAdmin.loginHint')}>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate data-testid="platform-login">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="size-5" aria-hidden />
-              <h1 className="text-[1.25rem] font-semibold">{t('platformAdmin.loginTitle')}</h1>
-            </div>
-            <p className="t-caption">{t('platformAdmin.loginHint')}</p>
             <Input dir="ltr" type="email" autoComplete="username" label={t('auth.email')} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <Input dir="ltr" type="password" autoComplete="current-password" label={t('auth.password')} value={password} onChange={(e) => setPassword(e.target.value)} required />
             {needsCode && (
@@ -72,8 +67,8 @@ export function PlatformLoginPage() {
             {error && <p role="alert" className="text-[0.9375rem] text-[var(--color-status-lost)]" data-testid="platform-login-error">{error}</p>}
             <Button type="submit" className="w-full" loading={submitting}>{t('auth.signIn')}</Button>
           </form>
-        </CardBody>
-      </Card>
+        </AuthCard>
+      </AuthShell>
     </div>
   )
 }

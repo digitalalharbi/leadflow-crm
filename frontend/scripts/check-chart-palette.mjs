@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const css = readFileSync(resolve(here, '../src/index.css'), 'utf8')
+const css = readFileSync(resolve(here, '../src/styles/foundation.css'), 'utf8')
 const ts = readFileSync(resolve(here, '../src/components/charts/palette.ts'), 'utf8')
 
 /*

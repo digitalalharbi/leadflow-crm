@@ -56,7 +56,7 @@ class AutomationRecoveryTest extends TestCase
 
         return $this->asTenant($this->t['tenant'], function () use ($attributes, $guarded) {
             $lead = Lead::create(array_merge([
-                'full_name' => 'سعد', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.random_int(10000, 99999),
+                'full_name' => 'سعد', 'phone' => '0551234567', 'phone_normalized' => '+9665512'.self::uniqueDigits(5),
                 'email' => 'saad'.random_int(1, 99999).'@example.com', 'status' => 'contacted', 'assigned_to' => $this->t['admin']->id,
             ], array_diff_key($attributes, $guarded)));
             if ($guarded) {

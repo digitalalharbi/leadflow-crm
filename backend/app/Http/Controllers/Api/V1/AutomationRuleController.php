@@ -49,6 +49,7 @@ class AutomationRuleController extends Controller
         'lead.sheet_row', 'lead.email_opened', 'lead.email_clicked', 'lead.file_opened',
         'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
         'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed', 'lead.reservation_created',
+        'lead.form_submitted', 'lead.whatsapp_click', 'lead.call_click',
     ];
 
     private const FIELDS = [
@@ -63,6 +64,7 @@ class AutomationRuleController extends Controller
         'minutes_since_last_contact', 'was_contacted', 'has_replied',
         'is_priority', 'classification', 'language', 'provider', 'campaign_id', 'ad_name',
         'automation_state', 'attempts', 'no_reply_minutes', 'tags',
+        'landing_page', 'lead_source', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
         // How interested they are, apart from how good a fit.
         'interest_level', 'interest_score',
     ];
@@ -142,6 +144,7 @@ class AutomationRuleController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', AutomationRule::class);
+        $this->refuseProjectLimited($request);
 
         $data = $this->validated($request);
 
@@ -157,6 +160,7 @@ class AutomationRuleController extends Controller
         // a 404, which is the right answer — a 403 would confirm it exists.
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $rule);
+        $this->refuseProjectLimited($request);
 
         $before = $this->trail($rule);
         $rule->update($this->validated($request, partial: true));
@@ -181,6 +185,7 @@ class AutomationRuleController extends Controller
     public function duplicate(Request $request, string $uuid)
     {
         $this->authorize('create', AutomationRule::class);
+        $this->refuseProjectLimited($request);
 
         $original = AutomationRule::where('uuid', $uuid)->firstOrFail();
 
@@ -209,6 +214,12 @@ class AutomationRuleController extends Controller
      * and two rules with the same name in one list is the thing that makes the
      * trace unreadable later.
      */
+    /** A rule runs over the whole company, so someone limited to some projects cannot write one. */
+    private function refuseProjectLimited(Request $request): void
+    {
+        abort_if($request->user()->isProjectScoped(), 403, 'Automation rules cover the whole company.');
+    }
+
     private function copyName(string $name): string
     {
         $base = 'نسخة من '.$name;
@@ -231,6 +242,7 @@ class AutomationRuleController extends Controller
     {
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
         $this->authorize('delete', $rule);
+        $this->refuseProjectLimited($request);
 
         $this->audited('automation_rule.deleted', $request, $rule, ['before' => $this->trail($rule)]);
         $rule->delete();
@@ -638,6 +650,7 @@ class AutomationRuleController extends Controller
     public function installTemplate(Request $request, string $key)
     {
         $this->authorize('create', AutomationRule::class);
+        $this->refuseProjectLimited($request);
 
         if (! RuleTemplates::has($key)) {
             return ApiResponse::error('لا يوجد قالب بهذا الاسم.', status: 404);

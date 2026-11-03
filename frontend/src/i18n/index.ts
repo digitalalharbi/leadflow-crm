@@ -2,23 +2,9 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import ar from './ar'
 import en from './en'
+import { DIRECTION, LOCALE_KEY, storedLocale, type AppLocale } from './locale'
 
-export const LOCALE_KEY = 'leadflow.locale'
-export type AppLocale = 'ar' | 'en'
-
-export const DIRECTION: Record<AppLocale, 'rtl' | 'ltr'> = { ar: 'rtl', en: 'ltr' }
-
-function storedLocale(): AppLocale {
-  try {
-    const saved = localStorage.getItem(LOCALE_KEY)
-    if (saved === 'ar' || saved === 'en') return saved
-  } catch {
-    /* private browsing */
-  }
-
-  // Arabic is the default for the first release; the architecture supports both.
-  return 'ar'
-}
+export { DIRECTION, LOCALE_KEY, type AppLocale }
 
 void i18n.use(initReactI18next).init({
   resources: { ar: { translation: ar }, en: { translation: en } },

@@ -198,15 +198,17 @@ describe('marketing pages', () => {
 })
 
 describe('login page', () => {
-  it('has the real controls and no pretend ones: email, password, sign in — no Google, no sign-up, no remember-me with nothing behind it', async () => {
+  it('has the real controls and no pretend ones: email, password, remember me, forgot password, sign in — no Google, no sign-up', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const { container } = renderWithProviders(<LoginPage />)
 
     expect(screen.getByLabelText('البريد الإلكتروني')).toBeInTheDocument()
     expect(screen.getByLabelText('كلمة المرور', { exact: true })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'تسجيل الدخول' })).toBeInTheDocument()
-    expect(container.textContent).not.toMatch(/Google|إنشاء حساب|Sign up|تذكرني|Remember/i)
-    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(0)
+    expect(screen.getByLabelText('تذكرني على هذا الجهاز')).toBeChecked()
+    expect(screen.getByTestId('login-forgot')).toHaveAttribute('href', '/forgot-password')
+    expect(container.textContent).not.toMatch(/Google|Apple|إنشاء حساب|Sign up|رمز عبر البريد/i)
+    expect(screen.queryByTestId('login-providers')).toBeNull()
   })
 
   it('sends a forgotten password to the self-service reset, which emails a one-use link', () => {
@@ -215,12 +217,9 @@ describe('login page', () => {
     expect(screen.getByTestId('login-forgot')).toHaveAttribute('href', '/forgot-password')
   })
 
-  it('keeps the organisation field for the person with more than one, closed until it is asked for or a link names one', () => {
-    renderWithProviders(<LoginPage />)
-    expect(screen.queryByLabelText('المؤسسة')).toBeNull()
-
+  it('asks nobody to type an organisation, even from a link that names one', () => {
     renderWithProviders(<LoginPage />, { route: '/login?tenant=acme' })
-    expect(screen.getAllByLabelText(/المؤسسة/).length).toBeGreaterThan(0)
+    expect(screen.queryByLabelText(/المؤسسة/)).toBeNull()
   })
 
   it('says the official things on the brand panel and leads to the marketing page', () => {
@@ -230,6 +229,7 @@ describe('login page', () => {
     expect(screen.getByTestId('login-badge')).toHaveTextContent('منصة تشغيل التسويق والمبيعات العقارية')
     expect(screen.getByTestId('login-description')).toHaveTextContent('امنح فريق المبيعات الأولوية للعملاء الأكثر جاهزية')
     expect(within(screen.getByTestId('login-pillars')).getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByTestId('login-contact')).toHaveAttribute('href', '/contact')
     expect(screen.getByTestId('login-about')).toHaveAttribute('href', '/')
   })
 })

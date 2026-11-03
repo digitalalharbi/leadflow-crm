@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Tracking\Forms\FieldPresets;
 use App\Domain\Tracking\Forms\FormAnalytics;
 use App\Domain\Tracking\Forms\FormDefinition;
@@ -10,14 +11,19 @@ use App\Domain\Tracking\Forms\FormLayout;
 use App\Domain\Tracking\Forms\FormPublisher;
 use App\Domain\Tracking\Forms\FormSchema;
 use App\Domain\Tracking\Forms\FormTemplates;
+use App\Domain\Tracking\Forms\LandingPageConfig;
+use App\Domain\Tracking\Forms\LandingSlugs;
 use App\Domain\Tracking\Forms\PhoneCountries;
 use App\Http\Controllers\Controller;
 use App\Models\LandingForm;
 use App\Models\Project;
+use App\Models\SheetSource;
 use App\Models\TrackingEvent;
+use App\Models\TrackingLink;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -91,7 +97,13 @@ class LandingFormController extends Controller
         $base = $template === null ? [] : (FormTemplates::get((string) $template) ?? throw ValidationException::withMessages(['template' => ['unknown']]));
 
         // A column default never reaches a model that was created without naming the column.
-        $form = LandingForm::create($this->validated($request, base: $base) + ['status' => 'draft', 'consent_required' => $base['consent_required'] ?? true, 'created_by' => $request->user()->id]);
+        $data = $this->validated($request, base: $base);
+        $form = DB::transaction(function () use ($data, $base, $request) {
+            $form = LandingForm::create(array_diff_key($data, ['slug' => true]) + ['status' => 'draft', 'consent_required' => $base['consent_required'] ?? true, 'created_by' => $request->user()->id]);
+            $this->holdAddress($form, $data['slug'] ?? null);
+
+            return $form;
+        });
         $this->audit->log('landing_form.created', $request->user(), $form, ['after' => ['name' => $form->name, 'status' => $form->status, 'fields' => count($form->fields), 'template' => $template]]);
 
         return ApiResponse::created(['form' => $this->shape($form->load(['project:id,uuid,name', 'publishedVersion'])->loadCount('links'))]);
@@ -107,7 +119,25 @@ class LandingFormController extends Controller
         $status = $data['status'] ?? null;
         unset($data['status']);
 
-        $form->update($data);
+        // Held to some projects: a page cannot be moved out of them into nobody's.
+        abort_if($request->user()->isProjectScoped() && array_key_exists('project_id', $data) && $data['project_id'] === null, 422, 'A page needs a project.');
+
+        $slugBefore = $form->slug;
+        $projectBefore = $form->project_id;
+
+        DB::transaction(function () use ($form, $data) {
+            $form->update(array_diff_key($data, ['slug' => true]));
+            $this->holdAddress($form, $data['slug'] ?? null);
+        });
+
+        if ($slugBefore !== null && $form->slug !== $slugBefore) {
+            $this->audit->log('landing_form.slug_changed', $request->user(), $form, ['before' => $slugBefore, 'after' => $form->slug]);
+        }
+
+        // Every way in moves with the page, or its old links would keep feeding the old project.
+        if ($form->project_id !== $projectBefore) {
+            TrackingLink::where('landing_form_id', $form->id)->update(['project_id' => $form->project_id]);
+        }
 
         if ($status === 'published') {
             $this->publishOrRefuse($form, $request);
@@ -157,18 +187,86 @@ class LandingFormController extends Controller
         return ApiResponse::success(['form' => ['id' => $form->uuid, 'name' => $form->name], 'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'days' => $days]] + $analytics->for($form, $from, $to));
     }
 
+    /** A page holds its address from the moment it exists. It cannot give one up: a page always has somewhere it can be reached. */
+    private function holdAddress(LandingForm $form, ?string $slug): void
+    {
+        $slugs = app(LandingSlugs::class);
+
+        if (filled($slug) && $slug !== $form->slug) {
+            // Free a moment ago, when it was checked: somebody may have got there since.
+            if (! $slugs->claim($form, $slug)) {
+                throw $slugs->refuse($slug, 'taken', $form->id);
+            }
+
+            $form->forceFill(['slug' => $slug])->save();
+        } elseif ($form->page !== null && $form->slug === null) {
+            $slugs->assign($form);
+        }
+    }
+
     public function duplicate(Request $request, string $uuid)
     {
         $form = LandingForm::where('uuid', $uuid)->firstOrFail();
         $this->authorize('create', LandingForm::class);
         $this->authorize('view', $form);
 
-        $copy = $form->replicate(['uuid', 'status', 'published_version_id', 'published_at', 'created_by']);
-        $copy->fill(['name' => mb_substr($form->name, 0, 140).' (نسخة)', 'status' => 'draft', 'created_by' => $request->user()->id])->save();
+        // A page's slug and link stay the page's: a copy that is a page takes the next free address, as any new page does.
+        $copy = $form->replicate(['uuid', 'status', 'published_version_id', 'published_at', 'created_by', 'slug', 'default_link_id']);
+        DB::transaction(function () use ($copy, $form, $request) {
+            $copy->fill(['name' => mb_substr($form->name, 0, 140).' (نسخة)', 'status' => 'draft', 'created_by' => $request->user()->id])->save();
+            $this->holdAddress($copy, null);
+        });
 
         $this->audit->log('landing_form.duplicated', $request->user(), $copy, ['after' => ['from' => $form->uuid, 'name' => $copy->name]]);
 
         return ApiResponse::created(['form' => $this->shape($copy->load(['project:id,uuid,name', 'publishedVersion'])->loadCount('links'))]);
+    }
+
+    /** A free address for a page, from a name, in any language. */
+    public function slug(Request $request, LandingSlugs $slugs)
+    {
+        $this->authorize('create', LandingForm::class);
+        $data = $request->validate(['name' => ['required_without:slug', 'string', 'max:160'], 'slug' => ['nullable', 'string', 'max:64'], 'form' => ['nullable', 'uuid']]);
+        $except = isset($data['form']) ? LandingForm::where('uuid', $data['form'])->value('id') : null;
+
+        if (filled($data['slug'] ?? null)) {
+            $slug = mb_strtolower(trim($data['slug']));
+            $problem = $slugs->problem($slug, $except);
+
+            return ApiResponse::success(['slug' => $slug, 'available' => $problem === null, 'problem' => $problem, 'suggestion' => $problem === null || $problem === 'invalid' ? null : $slugs->suggest($slug, $except)]);
+        }
+
+        return ApiResponse::success(['slug' => $slugs->suggest($data['name'], $except), 'available' => true, 'problem' => null, 'suggestion' => null]);
+    }
+
+    /**
+     * A source of its own for this page: a poster, a booth, an agent. Same page, same form, its own credit — and, for print,
+     * its QR, which keeps saying where the visitor came from.
+     */
+    public function addLink(Request $request, string $uuid)
+    {
+        $form = LandingForm::where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $form);
+        abort_unless($form->isPublished() && $form->default_link_id !== null, 422, 'Publish the page first.');
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:160'],
+            'channel' => ['required', Rule::in(array_values(TrackingLink::CHANNELS))],
+            'kind' => ['sometimes', Rule::in(['link', 'qr'])],
+            'placement' => ['nullable', 'string', 'max:60'],
+            'utm_source' => ['nullable', 'string', 'max:255'],
+            'utm_medium' => ['nullable', 'string', 'max:255'],
+            'utm_campaign' => ['nullable', 'string', 'max:255'],
+            'utm_content' => ['nullable', 'string', 'max:255'],
+            'utm_term' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $link = TrackingLink::create(array_map(fn ($v) => is_string($v) ? trim(strip_tags($v)) : $v, $data) + [
+            'kind' => 'link', 'mode' => 'landing', 'landing_form_id' => $form->id, 'project_id' => $form->project_id, 'is_active' => true, 'created_by' => $request->user()->id,
+        ]);
+        $this->audit->log('landing_form.link_added', $request->user(), $form, ['after' => ['link' => $link->uuid, 'channel' => $link->channel, 'kind' => $link->kind]]);
+
+        return ApiResponse::created(['link' => ['id' => $link->uuid, 'token' => $link->token, 'name' => $link->name, 'channel' => $link->channel, 'kind' => $link->kind, 'path' => '/t/'.$link->token]]);
     }
 
     public function destroy(Request $request, string $uuid)
@@ -226,6 +324,8 @@ class LandingFormController extends Controller
             'layout' => ['sometimes', 'nullable', 'array'],
             'design' => ['sometimes', 'nullable', 'array'],
             'settings' => ['sometimes', 'nullable', 'array'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'page' => ['sometimes', 'nullable', 'array'],
         ]);
 
         unset($data['template']);
@@ -239,6 +339,35 @@ class LandingFormController extends Controller
 
         if (isset($data['benefits'])) {
             $data['benefits'] = array_values(array_filter(array_map(fn ($b) => trim(strip_tags((string) $b)), $data['benefits']), fn ($b) => $b !== ''));
+        }
+
+        // An address is for a page. A form on a tracking link has no business holding a public name.
+        if (filled($data['slug'] ?? null) && ($data['page'] ?? $current?->page) === null) {
+            throw ValidationException::withMessages(['slug' => ['not_a_page']]);
+        }
+
+        if (filled($data['slug'] ?? null)) {
+            $data['slug'] = mb_strtolower(trim((string) $data['slug']));
+
+            if (($problem = app(LandingSlugs::class)->problem($data['slug'], $current?->id)) !== null) {
+                throw app(LandingSlugs::class)->refuse($data['slug'], $problem, $current?->id);
+            }
+        }
+
+        if (array_key_exists('page', $data) && $data['page'] !== null) {
+            $data['page'] = LandingPageConfig::normalize($data['page']);
+
+            // A sheet this workspace reads leads FROM must not also receive them: every lead would come back in again.
+            $mirror = $data['page']['mirror']['spreadsheet_id'] ?? null;
+
+            if ($data['page']['mirror']['enabled'] && $mirror !== null && SheetSource::where('spreadsheet_id', $mirror)->exists()) {
+                throw ValidationException::withMessages(['page.mirror.spreadsheet_id' => ['is_a_source']]);
+            }
+        }
+
+        // Someone held to some projects makes pages for those: a page with no project would be nobody's to see.
+        if ($request->user()->isProjectScoped() && $current === null && blank($data['project_id'] ?? null)) {
+            throw ValidationException::withMessages(['project_id' => ['required']]);
         }
 
         // The template under, the request over.
@@ -297,6 +426,19 @@ class LandingFormController extends Controller
         return $merged;
     }
 
+    /** Which spreadsheet a page copies to is for those who can change it. @return array<string,mixed> */
+    private function pageFor(LandingForm $form): array
+    {
+        $page = LandingPageConfig::normalize($form->page);
+        $user = request()->user();
+
+        if ($user !== null && ! Permissions::has($user, 'tracking.edit')) {
+            unset($page['mirror']);
+        }
+
+        return $page;
+    }
+
     /** @return array<string,mixed> */
     private function shape(LandingForm $form): array
     {
@@ -323,6 +465,9 @@ class LandingFormController extends Controller
             'layout' => $snapshot['layout'],
             'design' => $snapshot['design'],
             'settings' => $snapshot['settings'],
+            'slug' => $form->slug,
+            'page' => $form->page === null ? null : $this->pageFor($form),
+            'public_path' => $form->slug ? '/l/'.$form->slug : null,
             'steps' => FormDefinition::steps($snapshot),
             'published_version' => $live ? ['id' => $live->uuid, 'version' => $live->version, 'published_at' => $live->published_at->toIso8601String()] : null,
             'has_unpublished_changes' => $live !== null && $live->checksum !== FormDefinition::checksum($snapshot),

@@ -66,10 +66,15 @@ class CommandCenterController extends Controller
         // Both are the last week: a failure from March is history, not a task.
         $since = now()->subDays(7);
 
-        $automationFailures = AutomationRun::query()
+        // Counted over the leads this person may see: a company-wide count says what is happening elsewhere.
+        $mine = fn ($query) => $user->isProjectScoped()
+            ? $query->whereIn('lead_id', Lead::query()->visibleTo($user)->select('leads.id'))
+            : $query;
+
+        $automationFailures = $mine(AutomationRun::query())
             ->where('outcome', 'failed')->where('created_at', '>=', $since)->count();
 
-        $messageFailures = LeadMessage::query()
+        $messageFailures = $mine(LeadMessage::query())
             ->where('status', MessageStatus::Failed->value)->where('created_at', '>=', $since)->count();
 
         $stalled = Lead::query()->visibleTo($user)->whereRaw(PipelineOverview::stalledSql())->count();

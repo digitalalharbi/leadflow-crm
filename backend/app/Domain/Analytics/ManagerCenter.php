@@ -127,7 +127,7 @@ class ManagerCenter
         $qualify = Lead::query()->visibleTo($user)->reorder()->where('leads.qualified_at', '>=', $since)->whereColumn('leads.qualified_at', '>=', 'leads.created_at')
             ->selectRaw('count(*) as n, avg(extract(epoch from (leads.qualified_at - leads.created_at))) as seconds')->first();
 
-        $logs = AutomationActionLog::query()->where('happened_at', '>=', $since)->whereIn('result', [AutomationActionLog::RECOVERED, AutomationActionLog::NEEDS_HUMAN])
+        $logs = AutomationActionLog::query()->when($user->isProjectScoped(), fn ($q) => $q->whereIn('lead_id', Lead::query()->visibleTo($user)->select('leads.id')))->where('happened_at', '>=', $since)->whereIn('result', [AutomationActionLog::RECOVERED, AutomationActionLog::NEEDS_HUMAN])
             ->selectRaw('result, count(*) as n')->groupBy('result')->pluck('n', 'result');
 
         $lost = Lead::query()->visibleTo($user)->reorder()->where('leads.status', 'lost')->where('leads.lost_at', '>=', $since)

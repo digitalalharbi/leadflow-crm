@@ -34,7 +34,9 @@ $guards = ['guards' => ['sanctum']];
  */
 Broadcast::channel('tenant.{tenantUuid}.leads', function (User $user, string $tenantUuid) {
     return $user->tenant?->uuid === $tenantUuid
-        && ($user->isAdmin() || $user->isManager());
+        && ($user->isAdmin() || $user->isManager())
+        // The feed is the whole company's leads.
+        && ! $user->isProjectScoped();
 }, $guards);
 
 /**

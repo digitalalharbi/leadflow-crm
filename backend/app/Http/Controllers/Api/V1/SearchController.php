@@ -94,6 +94,10 @@ class SearchController extends Controller
 
     private function partners(string $term): array
     {
+        if (request()->user()?->isProjectScoped()) {
+            return [];
+        }
+
         return Partner::query()->where(fn ($q) => $q->where('name', 'ilike', '%'.$term.'%')->orWhere('company', 'ilike', '%'.$term.'%'))->limit(self::PER_GROUP)->get()
             ->map(fn (Partner $p) => ['id' => $p->uuid, 'name' => $p->name, 'type' => $p->type])->all();
     }

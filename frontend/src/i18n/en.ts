@@ -3632,6 +3632,9 @@ export default {
   },
   projectSwitcher: { all: 'All projects', title: 'Choose a project', search: 'Search projects' },
   platformAdmin: {
+    auditDetail: 'What changed',
+    matrix: 'Who can reach what',
+    matrixHint: 'As the server decides for each role. Project limits narrow it further for each person.',
     modules: 'Modules this company can use',
     modulesHint: 'What is off here the server refuses and the menus drop, and every change is recorded.',
     module: { visits: 'Visits', reservations: 'Reservations', units: 'Units', automation: 'Automation', reports: 'Reports', public_sharing: 'Report sharing', landing: 'Landing pages', lead_sources: 'Lead sources', google_sheets: 'Google Sheets', integrations: 'Integrations', exports: 'Exports', api: 'API keys', webhooks: 'Webhooks', campaigns: 'Campaigns', tracking: 'Tracking', partners: 'Partners', revenue: 'Revenue and financial figures' },

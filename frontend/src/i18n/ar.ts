@@ -4028,6 +4028,9 @@ export default {
   },
   projectSwitcher: { all: 'كل المشاريع', title: 'اختر مشروعًا', search: 'ابحث عن مشروع' },
   platformAdmin: {
+    auditDetail: 'ما تغيّر',
+    matrix: 'من يصل إلى ماذا',
+    matrixHint: 'كما يقرره الخادم فعليًا لكل دور. حدود المشاريع تضيّقه لكل شخص.',
     modules: 'الوحدات المتاحة لهذه الشركة',
     modulesHint: 'ما يُوقف هنا يرفضه الخادم ويختفي من القوائم، وكل تغيير يُسجّل.',
     module: { visits: 'الزيارات', reservations: 'الحجوزات', units: 'الوحدات العقارية', automation: 'الأتمتة', reports: 'التقارير', public_sharing: 'مشاركة التقارير', landing: 'صفحات الهبوط', lead_sources: 'مصادر العملاء', google_sheets: 'جداول Google', integrations: 'التكاملات', exports: 'التصدير', api: 'مفاتيح الربط', webhooks: 'إشعارات الربط', campaigns: 'الحملات', tracking: 'التتبع', partners: 'الشركاء', revenue: 'الإيرادات والأرقام المالية' },

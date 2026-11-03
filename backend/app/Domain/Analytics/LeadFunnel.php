@@ -20,6 +20,24 @@ class LeadFunnel
 {
     public const STEPS = ['leads', 'qualified', 'interested', 'visit', 'reservation', 'won'];
 
+    /** The whole road a report walks, from the same conditions plus the steps only it shows. */
+    public const FULL_STEPS = ['leads', 'contacted', 'replied', 'qualified', 'interested', 'appointment', 'visit', 'reservation', 'negotiation', 'won'];
+
+    /** @param  Builder<Lead>  $leads  Already scoped. @return array<string,int> */
+    public static function full(Builder $leads): array
+    {
+        ['steps' => $steps, 'booked' => $booked] = self::counts($leads);
+
+        // Reached it or anything past it, the same rule as every other step.
+        $row = (clone $leads)->reorder()->selectRaw("
+            count(*) filter (where leads.first_contact_at is not null or leads.status not in ('new')) as contacted,
+            count(*) filter (where leads.first_response_at is not null or leads.status in ('replied','qualified','appointment','negotiation','won')) as replied,
+            count(*) filter (where leads.status in ('negotiation','won')) as negotiation
+        ")->first();
+
+        return $steps + ['contacted' => (int) $row->contacted, 'replied' => (int) $row->replied, 'appointment' => $booked, 'negotiation' => (int) $row->negotiation];
+    }
+
     /**
      * Each step as a SQL condition on `leads`: "reached this one, or any later one". The same
      * five conditions serve the funnel, the campaign table and the trend, so a number cannot

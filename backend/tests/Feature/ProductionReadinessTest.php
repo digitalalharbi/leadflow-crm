@@ -70,7 +70,7 @@ class ProductionReadinessTest extends TestCase
         );
 
         $this->assertSame(
-            ['vps', 'domain', 'google', 'mail', 'google_login', 'automation', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
+            ['vps', 'domain', 'google', 'mail', 'google_login', 'automation', 'landing_reports', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
             $items->pluck('key')->all(),
         );
 

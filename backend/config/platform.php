@@ -8,6 +8,9 @@ return [
     // Other ways to sign in, shown only when listed here with a working flow behind them: [key, label, url]. None yet.
     'login_providers' => [],
 
+    // What reaches outside a company waits for a proven address, once mail really goes out.
+    'require_verified_email' => (bool) env('PLATFORM_REQUIRE_VERIFIED_EMAIL', true),
+
     'require_mfa' => (bool) env('PLATFORM_REQUIRE_MFA', false),
 
     /* How long a console session lasts before signing in again. */

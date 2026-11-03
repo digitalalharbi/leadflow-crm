@@ -127,7 +127,8 @@ http.interceptors.response.use(
 
     // 422 carries field errors the forms render; everything else gets a generic
     // translated message so backend internals never surface.
-    const message = status === 422 ? (data?.message ?? 'validation') : errorKeyForStatus(status)
+    const code = (data?.data as { code?: string } | null | undefined)?.code
+    const message = status === 422 ? (data?.message ?? 'validation') : code === 'email_verification_required' ? 'emailVerificationRequired' : errorKeyForStatus(status)
 
     return Promise.reject(new ApiError(message, status, data?.errors ?? null))
   },

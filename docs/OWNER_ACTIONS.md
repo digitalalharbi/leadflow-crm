@@ -31,8 +31,8 @@ Public sign-up does not exist: there is no route for it, and a test keeps it tha
 
 Known and accepted for now, none blocks use:
 - A Google Sheet's rows must be added at the bottom. Deleting or sorting rows above the read position can make the importer skip new ones.
-- Sessions are bearer tokens in the browser's storage, not cookies. No Secure/HttpOnly/SameSite cookie carries a sign-in.
-- Email verification is offered and proves links between companies, but is not required to sign in.
+- Once mail goes out, an unproven address cannot export, invite, create API keys or webhooks, share reports or change security policy until it is confirmed. Everyday work is not held back. Until then, nothing is held back, because nobody could confirm.
+- Sessions stay bearer tokens for now: see `docs/POST_LAUNCH_SECURITY.md`.
 - A visit has no unit picker, Work Now lists leads and not tasks, custom fields cannot be edited after creation, follow-ups have no delete button.
 
 Not needed from you: code, tests, migrations, UI, documentation, deployment scripts.

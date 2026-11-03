@@ -21,6 +21,7 @@
         <!-- ~1,600 tests share one process; the suite outgrew PHP's 128M default once an SDK was added. -->
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
+        <env name="PLATFORM_REQUIRE_VERIFIED_EMAIL" value="false"/>
         <!-- No test may reach a real model, whatever a developer has in .env. -->
         <env name="ANTHROPIC_API_KEY" value=""/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

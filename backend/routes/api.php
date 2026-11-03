@@ -104,6 +104,7 @@ use App\Http\Controllers\EmailInboundController;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePlatformSession;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\RequireVerifiedEmail;
 use App\Http\Middleware\RequireWorkspaceMfa;
 use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
@@ -230,7 +231,7 @@ Route::prefix('v1')->group(function () {
     | Authenticated
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth:sanctum', 'tenant', RequireWorkspaceMfa::class, 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', RequireWorkspaceMfa::class, RequireVerifiedEmail::class, 'support.guard', 'company', 'project.scope', 'permission', 'hide.fields'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/logout-all', [AuthController::class, 'logoutAll']);

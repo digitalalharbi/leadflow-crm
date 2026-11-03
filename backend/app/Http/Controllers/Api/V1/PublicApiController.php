@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\Tracking\ClickIds;
 use App\DataTransferObjects\IncomingLead;
+use App\Domain\Tracking\ClickIds;
 use App\Enums\IntegrationProvider;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;

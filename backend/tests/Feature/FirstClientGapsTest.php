@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Enums\IntegrationProvider;
 use App\DataTransferObjects\IncomingLead;
+use App\Enums\IntegrationProvider;
 use App\Models\Integration;
 use App\Models\Project;
 use App\Models\SheetSource;

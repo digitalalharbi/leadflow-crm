@@ -68,6 +68,9 @@ class SecurityRound3Test extends TestCase
         $this->actingAs($this->limited)->getJson('/api/v1/agent-reports')->assertForbidden();
         $this->actingAs($this->limited)->getJson('/api/v1/audit')->assertForbidden();
         $this->actingAs($this->a['admin'])->getJson('/api/v1/agent-reports')->assertOk();
+
+        // And the interface does not offer what the API refuses.
+        $this->assertContains('page.agents', $this->actingAs($this->limited)->getJson('/api/v1/auth/me')->assertOk()->json('data.hidden_elements'));
     }
 
     public function test_a_support_session_cannot_reach_what_would_outlive_it(): void

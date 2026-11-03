@@ -154,7 +154,7 @@ export function Topbar() {
                     {t('notifications.empty')}
                   </p>
                 ) : (
-                  data?.notifications.map((notification) => (
+                  [...(data?.notifications ?? [])].sort((a, b) => Number(b.data.severity === 'critical') - Number(a.data.severity === 'critical')).map((notification) => (
                     <button
                       key={notification.id}
                       type="button"

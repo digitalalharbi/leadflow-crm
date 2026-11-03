@@ -66,7 +66,7 @@ class LiveReportShareTest extends TestCase
         $this->assertEquals(500000, $data['kpis']['revenue']);
         $this->assertEquals(1000, $data['kpis']['spend']);
         $this->assertEquals(500, $data['kpis']['roas']);
-        $this->assertSame(['leads', 'qualified', 'interested', 'visits', 'reservations', 'won'], collect($data['funnel'])->pluck('key')->all());
+        $this->assertSame(['leads', 'contacted', 'replied', 'qualified', 'interested', 'appointment', 'visits', 'reservations', 'negotiation', 'won'], collect($data['funnel'])->pluck('key')->all());
         $this->assertSame('Share Co', $data['workspace']['name']);
 
         // Live: a new lead is in the next load.

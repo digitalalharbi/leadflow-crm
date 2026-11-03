@@ -189,11 +189,11 @@ class LiveReport
     /** @return list<array<string,mixed>> */
     private function funnel(ReportShare $share, array $window, bool $money): array
     {
-        $counts = LeadFunnel::counts($this->leads($share, $window))['steps'];
+        $counts = LeadFunnel::full($this->leads($share, $window));
         $spend = $this->revenue($share, $window['from'], $window['to'])['totals']['spend'];
         $previous = null;
 
-        return collect(['leads', 'qualified', 'interested', 'visit', 'reservation', 'won'])->map(function (string $step) use ($counts, &$previous, $money, $spend) {
+        return collect(LeadFunnel::FULL_STEPS)->map(function (string $step) use ($counts, &$previous, $money, $spend) {
             $count = $counts[$step];
             $row = [
                 'key' => $step === 'visit' ? 'visits' : ($step === 'reservation' ? 'reservations' : $step),

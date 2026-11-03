@@ -222,7 +222,7 @@ export default {
   },
   revenue: {
     tab: { overview: 'Overview', revenue: 'Spend to revenue' },
-    kpi: { spend: 'Spend', leads: 'Leads', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', won: 'Won', revenue: 'Revenue', roas: 'ROAS', cac: 'CAC', cpl: 'CPL' },
+    kpi: { contacted: 'Contacted', replied: 'Replied', appointment: 'Appointments', negotiation: 'Negotiation', spend: 'Spend', leads: 'Leads', interested: 'Interested', visits: 'Visits', reservations: 'Reservations', won: 'Won', revenue: 'Revenue', roas: 'ROAS', cac: 'CAC', cpl: 'CPL' },
     step: { leads: 'Leads', qualified: 'Qualified', interested: 'Interested', visits: 'Visited', reservations: 'Reserved', won: 'Won' },
     funnel: 'From lead to sale',
     beforeStep: 'before “{{step}}”',

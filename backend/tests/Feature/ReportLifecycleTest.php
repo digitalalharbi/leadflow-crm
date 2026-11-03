@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Analytics\LeadFunnel;
 use App\Enums\Role;
 use App\Models\Lead;
 use App\Models\Project;
@@ -96,5 +97,21 @@ class ReportLifecycleTest extends TestCase
         }
 
         $this->assertNull(ReportShare::withoutGlobalScopes()->where('uuid', $share['id'])->value('paused_at'));
+    }
+
+    public function test_the_funnel_walks_the_whole_road_and_counts_from_the_same_leads(): void
+    {
+        $this->asTenant($this->a['tenant'], function () {
+            Lead::create(['full_name' => 'New', 'phone' => '0551000001']);
+            Lead::create(['full_name' => 'Talking', 'phone' => '0551000002', 'status' => 'negotiation']);
+        });
+
+        $counts = $this->asTenant($this->a['tenant'], fn () => LeadFunnel::full(Lead::query()));
+
+        $this->assertSame(['leads', 'contacted', 'replied', 'qualified', 'interested', 'appointment', 'visit', 'reservation', 'negotiation', 'won'], LeadFunnel::FULL_STEPS);
+        $this->assertSame(2, $counts['leads']);
+        $this->assertSame(1, $counts['contacted']);
+        $this->assertSame(1, $counts['negotiation']);
+        $this->assertSame(0, $counts['won']);
     }
 }

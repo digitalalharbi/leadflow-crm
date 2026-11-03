@@ -37,6 +37,7 @@ class SheetSourceController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', Integration::class);
+        abort_if($request->user()->isLimited(), 403, 'Your role does not include this.');
 
         $sources = SheetSource::with('connection')->orderBy('id')->get();
 
@@ -417,7 +418,7 @@ class SheetSourceController extends Controller
             'custom_columns' => array_keys($source->mapping_meta['custom'] ?? []),
             'headers' => $source->mapping_meta['headers'] ?? [],
             // The address the sheet's own trigger calls when a row is added.
-            'ping_url' => url("/api/v1/integrations/sheets/{$source->uuid}/ping/{$source->push_token}"),
+            'ping_url' => request()->user()?->isAdmin() ? url("/api/v1/integrations/sheets/{$source->uuid}/ping/{$source->push_token}") : null,
             'last_push_at' => $source->last_push_at?->toIso8601String(),
             'defaults' => $source->defaults,
             'is_active' => $source->is_active,

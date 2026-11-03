@@ -66,6 +66,9 @@ class EnforcePermissions
             return null;
         }
 
-        return Project::withoutGlobalScopes()->where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->value('id');
+        // A project this person was not given brings them none of its overrides, whatever the request names.
+        $id = Project::withoutGlobalScopes()->where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->value('id');
+
+        return $id !== null && $request->user()->reaches($id) ? $id : null;
     }
 }

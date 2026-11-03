@@ -126,7 +126,7 @@ class LandingSubmission
                 'meta' => array_filter(['form' => $version->form->uuid, 'version' => $version->version, 'duplicate_customer' => $ingested->isDuplicate(), 'matrix' => $this->matrixChoices($fields, $result['values'])]),
             ] + $agent);
 
-            return $this->ok($def, $in['submission_id'], duplicate: false, link: $link, projectUuid: Project::whereKey($lead->project_id)->value('uuid'), version: $version);
+            return $this->ok($def, $in['submission_id'], duplicate: false, link: $link, projectUuid: Project::whereKey($version->form->project_id)->value('uuid'), version: $version);
         });
     }
 

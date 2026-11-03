@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Ingestion\IngestionInsights;
 use App\Domain\Integrations\IntegrationHealthReport;
+use App\Domain\Mail\AccountEmail;
 use App\Enums\IntegrationProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IntegrationResource;
@@ -292,6 +293,7 @@ class IntegrationController extends Controller
         $endpoint->update(['secret_hash' => Hash::make($secret)]);
 
         $this->audit->log('integration.webhook_secret_rotated', $request->user(), $endpoint);
+        app(AccountEmail::class)->securityNotice($request->user(), 'webhook_secret_rotated');
 
         return ApiResponse::success([
             'secret' => $secret,

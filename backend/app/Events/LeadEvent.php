@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 /**
  * What happened to a lead, as a fact rather than a function call.
@@ -33,6 +34,14 @@ abstract class LeadEvent implements LeadDomainEvent
     ) {}
 
     /** The stable name a rule matches on. */
+    /** One occurrence, kept when a queued job is retried: what a rule's steps are counted against. */
+    private ?string $eventId = null;
+
+    public function id(): string
+    {
+        return $this->eventId ??= (string) Str::uuid();
+    }
+
     abstract public function name(): string;
 
     public function tenantId(): int

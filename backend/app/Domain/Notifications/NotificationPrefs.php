@@ -17,9 +17,9 @@ class NotificationPrefs
     /** The channels a person switches per kind of alert. WhatsApp has its own opt-in, quiet hours and caps. */
     public const CHANNELS = ['in_app', 'email'];
 
-    private const REP_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach'];
+    private const REP_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'appointment', 'task_due', 'reservation'];
 
-    private const MANAGER_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'tracking_failure'];
+    private const MANAGER_INSTANT = ['hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'tracking_failure', 'appointment', 'reservation', 'integration_failure'];
 
     /** @return array{alerts: array<string,string>, digests: array<string,bool>} */
     public static function defaults(User $user): array
@@ -28,7 +28,7 @@ class NotificationPrefs
         $instant = $manages ? self::MANAGER_INSTANT : self::REP_INSTANT;
         // A new lead reaches its owner in the app and does the work by itself; a rep is not mailed every one,
         // and a manager hears of the ones nobody owns in the day's summary.
-        $daily = $manages ? ['new_lead', 'high_value', 'budget_anomaly'] : [];
+        $daily = $manages ? ['new_lead', 'high_value', 'budget_anomaly', 'sale', 'task_due'] : [];
 
         return [
             'alerts' => collect(AlertKinds::CATEGORIES)->mapWithKeys(fn (string $c) => [

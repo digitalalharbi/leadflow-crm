@@ -3,6 +3,7 @@
 namespace App\Domain\Visits;
 
 use App\Domain\Leads\OutcomeRecorder;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
 use App\Enums\ActivityType;
@@ -161,6 +162,8 @@ class VisitWorkflow
             default => null,
         };
 
+        $this->announce($visit, $lead, $to);
+
         return $visit->refresh();
     }
 
@@ -223,6 +226,31 @@ class VisitWorkflow
         $owner?->notify(new ImportantNotification(
             'visit_no_show', 'عميل لم يحضر الزيارة', "{$lead->full_name} لم يحضر موعده — تواصل معه لإعادة الجدولة.", $lead->uuid, null, 'warning',
         ));
+    }
+
+    /** What a change means to the people around it, and to any rule listening. */
+    private function announce(Appointment $visit, Lead $lead, string $to): void
+    {
+        $zone = (string) ($lead->tenant?->settings?->timezone ?: 'Asia/Riyadh');
+        $at = $visit->scheduled_at?->setTimezone($zone);
+
+        match ($to) {
+            Appointment::RESCHEDULED => ImportantAlerts::aboutLead('appointment_changed', $lead, ['appointment_date' => $at?->format('Y-m-d'), 'appointment_time' => $at?->format('H:i')]),
+            Appointment::CANCELLED => ImportantAlerts::aboutLead('appointment_cancelled', $lead),
+            Appointment::COMPLETED => ImportantAlerts::aboutLead('visit_completed', $lead),
+            default => null,
+        };
+
+        $signal = match ($to) {
+            Appointment::COMPLETED => 'lead.visit_completed',
+            Appointment::NO_SHOW => 'lead.no_show',
+            Appointment::CONFIRMED, Appointment::RESCHEDULED, Appointment::CANCELLED => 'lead.appointment_updated',
+            default => null,
+        };
+
+        if ($signal !== null) {
+            LeadSignal::dispatch($lead, $signal, ['appointment' => $visit->uuid, 'to' => $to]);
+        }
     }
 
     /** A booked visit is progress, so the stage follows — forwards only. */

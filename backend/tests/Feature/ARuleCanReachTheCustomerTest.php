@@ -197,7 +197,8 @@ class ARuleCanReachTheCustomerTest extends TestCase
 
         $result = $this->fire($lead, ['type' => 'send_whatsapp', 'template_uuid' => $this->template()->uuid]);
 
-        $this->assertFalse($result['ok']);
+        // Respected, not failed: nothing is retried and nobody is alerted about it.
+        $this->assertSame('skipped', $result['result'] ?? null);
         $this->assertSame(0, LeadMessage::withoutGlobalScopes()->where('lead_id', $lead->id)->count());
     }
 
@@ -299,7 +300,7 @@ class ARuleCanReachTheCustomerTest extends TestCase
 
         $result = $this->fire($lead, ['type' => 'share_file']);
 
-        $this->assertFalse($result['ok']);
+        $this->assertSame('skipped', $result['result'] ?? null);
         $this->assertSame(1, FileShare::withoutGlobalScopes()->where('lead_id', $lead->id)->count());
     }
 

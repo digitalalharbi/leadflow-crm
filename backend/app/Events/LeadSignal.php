@@ -16,6 +16,9 @@ class LeadSignal extends LeadEvent
         'lead.email_opened', 'lead.email_clicked', 'lead.file_opened', 'lead.no_reply',
         'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
         'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed', 'lead.reservation_created',
+        'lead.updated', 'lead.sla_warning', 'lead.appointment_updated', 'lead.visit_completed', 'lead.no_show',
+        'lead.reservation_updated', 'lead.reservation_expiring', 'lead.reservation_cancelled', 'lead.sale_completed',
+        'lead.task_due', 'lead.task_overdue',
     ];
 
     public function __construct(Lead $lead, public readonly string $signal, array $context = [], ?User $actor = null)

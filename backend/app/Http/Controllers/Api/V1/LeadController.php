@@ -407,6 +407,7 @@ class LeadController extends Controller
         $this->activities->log($lead, ActivityType::Updated, $request->user(), null, [
             'fields' => array_keys($data),
         ]);
+        LeadSignal::dispatch($lead, 'lead.updated', ['fields' => array_keys($data)], $request->user());
 
         return ApiResponse::success(['lead' => new LeadResource($lead->fresh(['assignee', 'project', 'lostReason']))]);
     }

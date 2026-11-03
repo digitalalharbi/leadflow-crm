@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Mail\AccountEmail;
 use App\Domain\Webhooks\OutboundWebhooks;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeliverWebhook;
@@ -66,6 +67,7 @@ class WebhookSubscriptionController extends Controller
 
         $subscription->update(['secret' => $secret]);
         $this->audit->log('webhook.secret_rotated', $request->user(), $subscription);
+        app(AccountEmail::class)->securityNotice($request->user(), 'webhook_secret_rotated');
 
         return ApiResponse::success(['subscription' => $this->present($subscription), 'secret' => $secret]);
     }

@@ -60,32 +60,6 @@ export function WhatsappAlertsSection({ prefs, onChange }: { prefs: WhatsappPref
             ))}
           </ul>
 
-          <div className="space-y-2" data-testid="whatsapp-quiet">
-            <label className="flex cursor-pointer items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-[0.9375rem] font-medium"><MoonStar className="size-4 text-[var(--color-ink-muted)]" aria-hidden />{t('alerts.whatsapp.quiet')}</span>
-              <input type="checkbox" role="switch" checked={prefs.quiet.enabled} data-testid="whatsapp-quiet-enabled" onChange={(e) => onChange({ quiet: { enabled: e.target.checked } })} className="size-4 accent-[var(--brand)]" />
-            </label>
-            {prefs.quiet.enabled && (
-              <div className="flex flex-wrap items-center gap-3 ps-6">
-                <label className="flex items-center gap-1.5 text-[0.875rem]">
-                  {t('alerts.whatsapp.from')}
-                  <input type="time" dir="ltr" value={prefs.quiet.start} data-testid="whatsapp-quiet-start" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, start: e.target.value } })} className="field !h-10 !w-auto" />
-                </label>
-                <label className="flex items-center gap-1.5 text-[0.875rem]">
-                  {t('alerts.whatsapp.to')}
-                  <input type="time" dir="ltr" value={prefs.quiet.end} data-testid="whatsapp-quiet-end" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, end: e.target.value } })} className="field !h-10 !w-auto" />
-                </label>
-                <Badge tone="neutral" testId="whatsapp-quiet-source">{t(`alerts.whatsapp.source.${prefs.quiet.source}`)}</Badge>
-                {prefs.quiet.source === 'own' && (
-                  <button type="button" aria-label={t('alerts.whatsapp.useWorkspace')} title={t('alerts.whatsapp.useWorkspace')} data-testid="whatsapp-quiet-reset" onClick={() => onChange({ quiet: null })} className="pressable grid size-7 place-items-center rounded-full hover:bg-[var(--color-chrome-fill)]">
-                    <RotateCcw className="size-3.5" aria-hidden />
-                  </button>
-                )}
-              </div>
-            )}
-            <p className="t-caption">{t('alerts.whatsapp.limits')}</p>
-          </div>
-
           <div>
             <button type="button" aria-expanded={showLog} data-testid="whatsapp-log-toggle" onClick={() => setShowLog((v) => !v)} className="t-small font-medium text-[var(--brand)] underline">{t('alerts.whatsapp.recent')}</button>
             {showLog && (
@@ -103,6 +77,33 @@ export function WhatsappAlertsSection({ prefs, onChange }: { prefs: WhatsappPref
           </div>
         </>
       )}
+
+      {/* Quiet hours hold back ordinary emails too, so they do not depend on WhatsApp being on. */}
+      <div className="space-y-2" data-testid="whatsapp-quiet">
+        <label className="flex cursor-pointer items-center justify-between gap-3">
+          <span className="flex items-center gap-2 text-[0.9375rem] font-medium"><MoonStar className="size-4 text-[var(--color-ink-muted)]" aria-hidden />{t('alerts.whatsapp.quiet')}</span>
+          <input type="checkbox" role="switch" checked={prefs.quiet.enabled} data-testid="whatsapp-quiet-enabled" onChange={(e) => onChange({ quiet: { enabled: e.target.checked } })} className="size-4 accent-[var(--brand)]" />
+        </label>
+        {prefs.quiet.enabled && (
+          <div className="flex flex-wrap items-center gap-3 ps-6">
+            <label className="flex items-center gap-1.5 text-[0.875rem]">
+              {t('alerts.whatsapp.from')}
+              <input type="time" dir="ltr" value={prefs.quiet.start} data-testid="whatsapp-quiet-start" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, start: e.target.value } })} className="field !h-10 !w-auto" />
+            </label>
+            <label className="flex items-center gap-1.5 text-[0.875rem]">
+              {t('alerts.whatsapp.to')}
+              <input type="time" dir="ltr" value={prefs.quiet.end} data-testid="whatsapp-quiet-end" onChange={(e) => e.target.value && onChange({ quiet: { enabled: true, end: e.target.value } })} className="field !h-10 !w-auto" />
+            </label>
+            <Badge tone="neutral" testId="whatsapp-quiet-source">{t(`alerts.whatsapp.source.${prefs.quiet.source}`)}</Badge>
+            {prefs.quiet.source === 'own' && (
+              <button type="button" aria-label={t('alerts.whatsapp.useWorkspace')} title={t('alerts.whatsapp.useWorkspace')} data-testid="whatsapp-quiet-reset" onClick={() => onChange({ quiet: null })} className="pressable grid size-7 place-items-center rounded-full hover:bg-[var(--color-chrome-fill)]">
+                <RotateCcw className="size-3.5" aria-hidden />
+              </button>
+            )}
+          </div>
+        )}
+        <p className="t-caption">{t('alerts.whatsapp.limits')}</p>
+      </div>
     </div>
   )
 }

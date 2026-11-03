@@ -82,6 +82,49 @@ class RuleTemplates
             ],
         ],
 
+        'visit_follow_up' => [
+            'name' => 'بعد الزيارة: مهمة ونتيجة',
+            'description' => 'عند إتمام الزيارة تُنشأ مهمة ليسجّل المندوب نتيجتها ويتابع العميل.',
+            'trigger' => 'lead.visit_completed',
+            'priority' => 40,
+            'conditions' => [],
+            'actions' => [['type' => 'create_task', 'title' => 'سجّل نتيجة الزيارة وتابع العميل', 'in_hours' => 4, 'priority' => 'high']],
+        ],
+
+        'reservation_expiry' => [
+            'name' => 'حجز يوشك أن ينتهي',
+            'description' => 'قبل انتهاء الحجز بيوم: مهمة للمندوب وتنبيه للإدارة.',
+            'trigger' => 'lead.reservation_expiring',
+            'priority' => 40,
+            'conditions' => [],
+            'actions' => [
+                ['type' => 'create_task', 'title' => 'الحجز ينتهي خلال يوم: أكّد مع العميل', 'in_hours' => 2, 'priority' => 'high'],
+                ['type' => 'notify', 'audience' => 'managers', 'message' => 'حجز ينتهي خلال يوم.'],
+            ],
+        ],
+
+        'sla_escalation' => [
+            'name' => 'تصعيد تجاوز المهلة',
+            'description' => 'عند تجاوز مهلة أول تواصل: تنبيه للإدارة ومهمة عاجلة.',
+            'trigger' => 'lead.sla_breached',
+            'priority' => 20,
+            'conditions' => [],
+            'actions' => [['type' => 'escalate_sla']],
+        ],
+
+        'sheet_import_assign' => [
+            'name' => 'صف جديد من Google Sheets',
+            'description' => 'عند وصول عميل من جدول: إسناد وتنبيه ومتابعة.',
+            'trigger' => 'lead.sheet_row',
+            'priority' => 20,
+            'conditions' => [],
+            'actions' => [
+                ['type' => 'assign', 'strategy' => 'round_robin'],
+                ['type' => 'notify', 'audience' => 'owner', 'message' => 'عميل جديد من الجدول.'],
+                ['type' => 'schedule_follow_up', 'in_hours' => 1, 'note' => 'أول اتصال'],
+            ],
+        ],
+
         'new_lead_assign_notify' => [
             'name' => 'عميل جديد: إسناد وتنبيه ومتابعة',
             'description' => 'يُسنَد العميل الجديد لأقل مندوب انشغالًا، ويُنبَّه فورًا، وتُحدَّد متابعة خلال ساعة.',

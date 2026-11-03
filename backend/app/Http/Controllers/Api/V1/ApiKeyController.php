@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Api\ApiKeys;
+use App\Domain\Mail\AccountEmail;
 use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
 use App\Services\AuditLogger;
@@ -69,6 +70,8 @@ class ApiKeyController extends Controller
 
         $this->audit->log('api_key.created', $request->user(), $key, ['name' => $key->name, 'scopes' => $key->scopes, 'prefix' => $key->prefix]);
 
+        app(AccountEmail::class)->securityNotice($request->user(), 'api_key_created');
+
         return ApiResponse::created(['key' => $this->present($key->load('creator:id,name')), 'plain' => $plain]);
     }
 
@@ -103,6 +106,8 @@ class ApiKeyController extends Controller
         $old->forceFill(['revoked_at' => now()])->save();
 
         $this->audit->log('api_key.rotated', $request->user(), $key, ['name' => $key->name, 'old_prefix' => $old->prefix, 'prefix' => $key->prefix]);
+
+        app(AccountEmail::class)->securityNotice($request->user(), 'api_key_rotated');
 
         return ApiResponse::created(['key' => $this->present($key->load('creator:id,name')), 'plain' => $plain]);
     }

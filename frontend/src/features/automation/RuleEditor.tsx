@@ -38,6 +38,9 @@ const ACTION_DEFAULTS: Record<string, Record<string, unknown>> = {
   adjust_score: { by: 10 },
   schedule_follow_up: { in_hours: 24 },
   add_tag: { tag: '' },
+  remove_tag: { tag: '' },
+  create_task: { title: '', in_hours: 24 },
+  escalate_sla: {},
   add_note: { body: '' },
   notify: { audience: 'owner', message: '' },
   stop_follow_ups: {},
@@ -715,6 +718,17 @@ function ActionDetail({
         />
       )
 
+    case 'create_task':
+      return (
+        <Input
+          className="min-w-40 flex-1"
+          label={labelled ? t('automation.taskTitle') : undefined}
+          value={String(action.title ?? '')}
+          onChange={(e) => onChange({ title: e.target.value })}
+        />
+      )
+
+    case 'remove_tag':
     case 'add_tag':
       return (
         <Input

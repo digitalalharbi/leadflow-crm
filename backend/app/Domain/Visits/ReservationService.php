@@ -5,6 +5,7 @@ namespace App\Domain\Visits;
 use App\Domain\Conversions\ConversionEvent;
 use App\Domain\Conversions\ConversionRecorder;
 use App\Domain\Leads\OutcomeRecorder;
+use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\EventRecorder;
 use App\Domain\Tracking\EventType;
 use App\Enums\ActivityType;
@@ -72,6 +73,7 @@ class ReservationService
 
             $this->activities->log($lead, ActivityType::ReservationCreated, $actor, null, ['reservation_id' => $reservation->uuid, 'property_id' => $property?->uuid]);
             app(EventRecorder::class)->outcome($lead, EventType::Reservation, ['reservation' => $reservation->uuid], $reservation->uuid);
+            ImportantAlerts::aboutLead('reservation_created', $lead, [], true);
             // The signal a campaign can be optimised on, long before the sale.
             app(ConversionRecorder::class)->record($lead, ConversionEvent::Reservation);
             // A trigger for automations and outbound webhooks, after the hold is committed.
@@ -87,6 +89,7 @@ class ReservationService
 
         // The deposit has been agreed: the hold no longer lapses on its own.
         $reservation->forceFill(['status' => 'confirmed', 'reserved_at' => now(), 'expires_at' => null])->save();
+        LeadSignal::dispatch($reservation->lead, 'lead.reservation_updated', ['reservation' => $reservation->uuid, 'to' => 'confirmed']);
         $this->activities->log($reservation->lead, ActivityType::ReservationUpdated, $actor, null, ['reservation_id' => $reservation->uuid, 'to' => 'confirmed']);
 
         return $reservation->refresh();
@@ -96,6 +99,8 @@ class ReservationService
     {
         $this->mustBe($reservation, Reservation::OPEN);
         $this->end($reservation, 'cancelled', $actor, ['cancelled_at' => now(), 'cancel_reason' => $reason]);
+        ImportantAlerts::aboutLead('reservation_cancelled', $reservation->lead, [], true);
+        LeadSignal::dispatch($reservation->lead, 'lead.reservation_cancelled', ['reservation' => $reservation->uuid]);
 
         return $reservation->refresh();
     }
@@ -124,6 +129,9 @@ class ReservationService
 
             $this->outcomes->record($lead, 'won', $actor, null, 'reservation');
         });
+
+        ImportantAlerts::aboutLead('sale_completed', $reservation->lead, [], true);
+        LeadSignal::dispatch($reservation->lead, 'lead.sale_completed', ['reservation' => $reservation->uuid]);
 
         return $reservation->refresh();
     }

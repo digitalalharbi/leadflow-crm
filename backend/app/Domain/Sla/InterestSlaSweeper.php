@@ -58,6 +58,10 @@ class InterestSlaSweeper
                 $label = self::LABELS[$sla['level']];
                 $late = $sla['state'] === 'breached';
 
+                if (! $late) {
+                    LeadSignal::dispatch($lead, 'lead.sla_warning', ['interest_level' => $sla['level']]);
+                }
+
                 $lead->assignee?->notify(new ImportantNotification(
                     $late ? 'interest_sla_breached' : 'interest_sla_due_soon',
                     $late ? "عميل {$label} ينتظر ردًّا" : "عميل {$label} يقترب موعده",

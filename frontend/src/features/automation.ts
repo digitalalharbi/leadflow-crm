@@ -62,6 +62,7 @@ export interface AutomationRule {
   template_key?: string | null
   /** How it last ran, for the table's result column. */
   last_run?: { outcome: 'applied' | 'skipped' | 'failed'; at: string } | null
+  stats?: { applied: number; failed: number }
   /** The project its conditions name, if any. */
   project?: string | null
   priority: number

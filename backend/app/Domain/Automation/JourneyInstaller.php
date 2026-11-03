@@ -79,7 +79,8 @@ class JourneyInstaller
                 'priority' => $template['priority'],
                 'conditions' => $template['conditions'],
                 'actions' => array_map(fn (array $action) => $action + ['rule_name' => $template['name']], $template['actions']),
-                'is_enabled' => true,
+                // Written, ready and off: nothing a company did not review writes to its customers.
+                'is_enabled' => false,
                 'template_key' => $key,
             ]);
         }

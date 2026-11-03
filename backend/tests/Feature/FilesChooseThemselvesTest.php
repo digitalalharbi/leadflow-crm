@@ -439,7 +439,7 @@ class FilesChooseThemselvesTest extends TestCase
 
         $result = $this->perform($lead, ['channel' => 'email']);
 
-        $this->assertFalse($result['ok']);
+        $this->assertSame('skipped', $result['result'] ?? null);
         $this->assertStringContainsString('الرابط', $result['description']);
     }
 

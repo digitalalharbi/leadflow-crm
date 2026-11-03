@@ -109,8 +109,8 @@ class EmailAlertsAndDigestsTest extends TestCase
         // Always kept in the app, whatever the email setting.
         $this->assertContains(TenantDatabaseChannel::class, $this->channelsFor($this->rep->fresh(), 'hot_lead'));
 
-        // Not one of the eight: never an email.
-        $this->assertNotContains(ProviderMailChannel::class, $this->channelsFor($this->manager, 'visit_no_show'));
+        // In no category: never an email.
+        $this->assertNotContains(ProviderMailChannel::class, $this->channelsFor($this->manager, 'not_a_kind'));
         // And never Laravel's own mail channel, whatever the setting.
         $this->assertNotContains('mail', $this->channelsFor($this->rep->fresh(), 'hot_lead'));
     }

@@ -11,7 +11,7 @@ namespace App\Domain\Notifications;
  */
 class AlertKinds
 {
-    public const CATEGORIES = ['new_lead', 'hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'high_value', 'tracking_failure', 'budget_anomaly'];
+    public const CATEGORIES = ['new_lead', 'hot_lead', 'interested_lead', 'visit_requested', 'reservation_intent', 'sla_breach', 'automation_failure', 'high_value', 'tracking_failure', 'budget_anomaly', 'appointment', 'task_due', 'reservation', 'sale', 'integration_failure'];
 
     /** How a person can hear about a category. */
     public const MODES = ['instant', 'daily', 'weekly', 'off'];
@@ -36,7 +36,41 @@ class AlertKinds
         'high_value_lead' => 'high_value',
         'tracking_failure' => 'tracking_failure',
         'budget_anomaly' => 'budget_anomaly',
+        'lead_reassigned' => 'new_lead',
+        'visit_no_show' => 'appointment',
+        'appointment_reminder' => 'appointment',
+        'appointment_changed' => 'appointment',
+        'appointment_cancelled' => 'appointment',
+        'visit_completed' => 'appointment',
+        'task_due' => 'task_due',
+        'task_overdue' => 'task_due',
+        'follow_up_due' => 'task_due',
+        'reservation_created' => 'reservation',
+        'reservation_expiring' => 'reservation',
+        'reservation_cancelled' => 'reservation',
+        'sale_completed' => 'sale',
+        'sheet_sync_failed' => 'integration_failure',
+        'sheet_mirror_failed' => 'integration_failure',
+        'provider_disconnected' => 'integration_failure',
+        'webhook_failed' => 'integration_failure',
     ];
+
+    /** What every alert must not be: all the same. Anything not named takes its priority from how serious the sender said it was. */
+    private const PRIORITY = [
+        'new_lead' => 'normal', 'lead_reassigned' => 'normal', 'interested_lead' => 'normal', 'task_due' => 'normal', 'follow_up_due' => 'normal',
+        'appointment_reminder' => 'normal', 'visit_completed' => 'normal', 'reservation_created' => 'normal', 'sale_completed' => 'normal',
+        'budget_anomaly' => 'low',
+    ];
+
+    /** low · normal · high · critical */
+    public static function priorityOf(?string $kind, ?string $severity = null): string
+    {
+        return self::PRIORITY[$kind] ?? match ($severity) {
+            'critical' => 'critical',
+            'warning' => 'high',
+            default => 'normal',
+        };
+    }
 
     /** The category a notification kind belongs to, or null for the ones that are not email-worthy. */
     public static function categoryOf(?string $kind): ?string

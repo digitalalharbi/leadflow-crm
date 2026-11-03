@@ -162,6 +162,7 @@ class AuthController extends Controller
         $token = $issued->plainTextToken;
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
+        $this->noticeNewDevice($user, $request, $action);
 
         $this->audit->log($action, $user, null, ['ip' => $request->ip()]);
 
@@ -263,6 +264,30 @@ class AuthController extends Controller
         $this->audit->log('auth.logout_all', $request->user(), null, ['ip' => $request->ip()]);
 
         return ApiResponse::success(null, 'Signed out of all devices.');
+    }
+
+    /**
+     * A sign-in from a device this account has not used is worth an email; one from a known device is not. Moving between
+     * companies is not a sign-in, and the very first sign-in has nothing to compare with.
+     */
+    private function noticeNewDevice(User $user, Request $request, string $action): void
+    {
+        if ($action === 'auth.workspace_switch') {
+            return;
+        }
+
+        $device = hash('sha256', (string) $request->userAgent());
+        $known = (array) ($user->known_devices ?? []);
+
+        if (in_array($device, $known, true)) {
+            return;
+        }
+
+        $user->forceFill(['known_devices' => array_slice([...$known, $device], -20)])->saveQuietly();
+
+        if ($known !== []) {
+            app(AccountEmail::class)->securityNotice($user, 'new_device');
+        }
     }
 
     /** This person's accounts in other companies: the same email, proven on both sides. */

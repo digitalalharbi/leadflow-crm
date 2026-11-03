@@ -19,6 +19,7 @@ use App\Models\LeadMessage;
 use App\Models\LostReason;
 use App\Models\MessageTemplate;
 use App\Models\ScheduledAction;
+use App\Models\Task;
 use App\Models\User;
 use App\Notifications\AutomationNotification;
 use App\Services\Email\EmailSender;
@@ -82,6 +83,9 @@ class ActionExecutor
                 'change_stage' => $this->changeStage($lead, $action),
                 'adjust_score' => $this->adjustScore($lead, $action),
                 'add_tag' => $this->addTag($lead, $action),
+                'remove_tag' => $this->removeTag($lead, $action),
+                'create_task' => $this->createTask($lead, $action),
+                'escalate_sla' => $this->escalateSla($lead, $action),
                 'schedule_follow_up' => $this->scheduleFollowUp($lead, $action),
                 'add_note' => $this->addNote($lead, $action),
                 'notify' => $this->notify($lead, $action),
@@ -99,6 +103,11 @@ class ActionExecutor
                 'request_appointment' => $this->sendWhatsapp($lead, ['purpose' => 'appointment'] + $action),
                 default => ['ok' => false, 'description' => "إجراء غير معروف '{$type}' — لم يُنفَّذ شيء."],
             };
+
+            // Someone who said no is not a failure: nothing is retried, and nobody is alerted about it.
+            if (! $result['ok'] && Recovery::isConsentRefusal((string) $result['description'])) {
+                return ['ok' => true, 'result' => 'skipped', 'description' => $result['description']];
+            }
 
             // A channel that failed is not the end: the other channel, then a person.
             return app(Recovery::class)->attempt($lead, $action, $result, fn (Lead $l, array $a) => $this->execute($l, $a)) ?? $result;
@@ -288,6 +297,46 @@ class ActionExecutor
         return ['ok' => true, 'description' => "التقييم {$before} ← {$after}.", 'before' => (string) $before, 'after' => (string) $after];
     }
 
+    private function removeTag(Lead $lead, array $action): array
+    {
+        $tag = LeadTags::clean($action['tag'] ?? '');
+
+        if ($tag === null) {
+            return ['ok' => false, 'description' => 'لم يُحدَّد وسم.'];
+        }
+
+        $this->tags->set($lead, array_values(array_diff((array) ($lead->tags ?? []), [$tag])), null, $this->signature($action));
+
+        return ['ok' => true, 'description' => "أُزيل الوسم «{$tag}»."];
+    }
+
+    /** A task, not a call: on the owner's list with a due time. */
+    private function createTask(Lead $lead, array $action): array
+    {
+        $title = trim((string) ($action['title'] ?? ''));
+
+        if ($title === '') {
+            return ['ok' => false, 'description' => 'لم يُحدَّد عنوان المهمة.'];
+        }
+
+        Task::create([
+            'lead_id' => $lead->id, 'project_id' => $lead->project_id, 'assigned_to' => $lead->assigned_to, 'title' => mb_substr($title, 0, 190),
+            'due_at' => now()->addHours(max(1, (int) ($action['in_hours'] ?? 24))),
+            'priority' => in_array($action['priority'] ?? null, Task::PRIORITIES, true) ? $action['priority'] : 'normal',
+            'status' => 'open',
+        ]);
+
+        return ['ok' => true, 'description' => 'أُنشئت مهمة.'];
+    }
+
+    /** The people above the owner hear, and an urgent task makes sure it does not stop there. */
+    private function escalateSla(Lead $lead, array $action): array
+    {
+        $this->createTask($lead, ['title' => 'تصعيد: '.$lead->full_name, 'in_hours' => 1, 'priority' => 'urgent']);
+
+        return $this->notify($lead, ['audience' => 'managers', 'message' => trim((string) ($action['message'] ?? '')) ?: "تصعيد: {$lead->full_name} تجاوز المهلة."] + $action);
+    }
+
     private function addTag(Lead $lead, array $action): array
     {
         $tag = LeadTags::clean($action['tag'] ?? '');
@@ -397,7 +446,8 @@ class ActionExecutor
             'managers' => User::where('tenant_id', $lead->tenant_id)
                 ->whereIn('role', [Role::Admin->value, Role::Manager->value])
                 ->where('is_active', true)
-                ->get(),
+                ->get()
+                ->filter(fn (User $user) => $user->reaches($lead->project_id)),
             default => $lead->assigned_to
                 ? User::where('id', $lead->assigned_to)->where('is_active', true)->get()
                 : collect(),

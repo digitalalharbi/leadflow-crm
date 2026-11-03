@@ -37,6 +37,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'known_devices' => 'array',
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'all_projects' => 'boolean',

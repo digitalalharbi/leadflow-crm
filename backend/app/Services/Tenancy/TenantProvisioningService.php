@@ -100,9 +100,8 @@ class TenantProvisioningService
                 /*
                  * The journey every lead starts on: welcome, brochure, the
                  * project's questions, reminders, and a hand-off to a person
-                 * when it is a person's turn. Installed on, because a workspace
-                 * whose leads wait for a rep to start the conversation is the
-                 * thing this product exists to end.
+                 * when it is a person's turn. Installed for review and off until
+                 * an admin turns it on, so no customer is written to by accident.
                  */
                 app(JourneyInstaller::class)->install($tenant);
 

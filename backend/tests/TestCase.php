@@ -57,7 +57,7 @@ abstract class TestCase extends BaseTestCase
     {
         $slug = str()->slug($company).'-'.str()->lower(str()->random(5));
 
-        return app(TenantProvisioningService::class)->provision(array_merge([
+        $provisioned = app(TenantProvisioningService::class)->provision(array_merge([
             'company_name' => $company,
             'system_name' => $company.' CRM',
             'subdomain' => $slug,
@@ -65,6 +65,11 @@ abstract class TestCase extends BaseTestCase
             'admin_email' => 'admin@'.$slug.'.test',
             'admin_password' => 'password123',
         ], $overrides));
+
+        // A new company starts with its journey off and reviews it first. These tests are about one that has turned it on.
+        $this->asTenant($provisioned['tenant'], fn () => AutomationRule::query()->whereNotNull('template_key')->update(['is_enabled' => true]));
+
+        return $provisioned;
     }
 
     protected function makeUser(Tenant $tenant, Role $role = Role::Sales, array $attributes = []): User

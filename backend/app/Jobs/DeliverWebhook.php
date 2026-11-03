@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Tracking\Destinations\SafeUrl;
 use App\Models\Tenant;
 use App\Models\WebhookDelivery;
@@ -143,6 +144,7 @@ class DeliverWebhook implements ShouldQueue
         ], fn ($v) => $v !== null))->saveQuietly();
 
         if ($pause) {
+            ImportantAlerts::integrationFailure((int) $subscription->tenant_id, 'webhook_failed', 'webhook:'.$subscription->id, ['webhook_name' => $subscription->name]);
             app(AuditLogger::class)->logForTenant($subscription->tenant_id, 'webhook.paused', null, $subscription, ['failures' => $failures]);
         }
     }

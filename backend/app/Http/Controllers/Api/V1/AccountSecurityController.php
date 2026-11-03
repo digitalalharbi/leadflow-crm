@@ -110,6 +110,8 @@ class AccountSecurityController extends Controller
         $token->delete();
         $this->audit->log('auth.session_ended', $user, $user, ['ip' => $token->ip]);
 
+        app(AccountEmail::class)->securityNotice($request->user(), 'session_revoked');
+
         return ApiResponse::success(null, 'Signed out of that device.');
     }
 
@@ -124,6 +126,8 @@ class AccountSecurityController extends Controller
             ->delete();
 
         $this->audit->log('auth.other_sessions_ended', $user, $user, ['ip' => $request->ip(), 'count' => $ended]);
+
+        app(AccountEmail::class)->securityNotice($request->user(), 'session_revoked');
 
         return ApiResponse::success(['ended' => $ended], 'Signed out of your other devices.');
     }

@@ -70,7 +70,7 @@ class ProductionReadinessTest extends TestCase
         );
 
         $this->assertSame(
-            ['vps', 'domain', 'google', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
+            ['vps', 'domain', 'google', 'mail', 'google_login', 'automation', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
             $items->pluck('key')->all(),
         );
 
@@ -79,7 +79,10 @@ class ProductionReadinessTest extends TestCase
         $this->assertSame(ProductionReadiness::READY, $calendar['status']);
         $this->assertSame('awaiting_first_event', $calendar['blocker']);
 
-        foreach ($items->where('key', '!=', 'calendar') as $item) {
+        // The engine needs nothing from outside either: it only reports its own failed jobs.
+        $this->assertSame(ProductionReadiness::READY, $items->firstWhere('key', 'automation')['status']);
+
+        foreach ($items->whereNotIn('key', ['calendar', 'automation']) as $item) {
             $this->assertSame(ProductionReadiness::EXTERNAL, $item['status'], "{$item['key']} claimed more than it had");
             $this->assertNotNull($item['blocker'], "{$item['key']} is waiting and does not say for what");
         }

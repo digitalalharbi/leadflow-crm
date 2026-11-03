@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Domain\Notifications\ImportantAlerts;
 use App\Domain\Sheets\GoogleTokens;
 use App\Enums\IntegrationProvider;
 use App\Models\Integration;
@@ -63,9 +64,15 @@ class MirrorLeadToSheet implements ShouldQueue
                 // The status, never the row: it is a customer's name and number.
                 Log::warning('lead_mirror.failed', ['lead' => $this->leadId, 'status' => $response->status()]);
 
-                if ($response->serverError()) {
-                    $this->release(120);
+                if ($response->serverError() && $this->attempts() < 4) {
+                    // 2, 4, then 8 minutes. The lead is safe either way: this is only its copy.
+                    $this->release(60 * 2 ** $this->attempts());
+
+                    return;
                 }
+
+                // The last attempt, or an answer that will not change.
+                ImportantAlerts::integrationFailure($this->tenantId, 'sheet_mirror_failed', 'mirror:'.$this->spreadsheetId);
             }
         });
     }

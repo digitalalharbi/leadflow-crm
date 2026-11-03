@@ -18,6 +18,7 @@ use App\Models\MessageTemplate;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Models\ScheduledAction;
+use App\Models\Task;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,9 @@ class AutomationRuleController extends Controller
         'lead.no_reply', 'lead.score_changed', 'lead.appointment_created', 'lead.call_completed',
         'lead.re_engaged', 'lead.sla_breached', 'lead.interest_changed', 'lead.reservation_created',
         'lead.form_submitted', 'lead.whatsapp_click', 'lead.call_click',
+        'lead.updated', 'lead.sla_warning', 'lead.appointment_updated', 'lead.visit_completed', 'lead.no_show',
+        'lead.reservation_updated', 'lead.reservation_expiring', 'lead.reservation_cancelled', 'lead.sale_completed',
+        'lead.task_due', 'lead.task_overdue',
     ];
 
     private const FIELDS = [
@@ -75,7 +79,7 @@ class AutomationRuleController extends Controller
     ];
 
     private const ACTIONS = [
-        'assign', 'change_stage', 'adjust_score', 'add_tag',
+        'assign', 'change_stage', 'adjust_score', 'add_tag', 'remove_tag', 'create_task', 'escalate_sla',
         'schedule_follow_up', 'add_note', 'notify', 'stop_follow_ups',
         'send_whatsapp', 'send_email', 'share_file',
         'ask_qualification', 'set_priority', 'hand_off',
@@ -101,10 +105,17 @@ class AutomationRuleController extends Controller
             ['{'.$rules->pluck('id')->implode(',').'}'],
         ))->keyBy('automation_rule_id');
 
+        // How each has done lately, at a glance: one query, not one per row.
+        $stats = AutomationRun::query()->where('created_at', '>=', now()->subDays(30))->whereIn('automation_rule_id', $rules->pluck('id'))
+            ->groupBy('automation_rule_id')
+            ->selectRaw("automation_rule_id, count(*) filter (where outcome = 'applied') as applied, count(*) filter (where outcome = 'failed') as failed")
+            ->get()->keyBy('automation_rule_id');
+
         $projectIds = $rules->flatMap(fn ($r) => collect($r->conditions ?? [])->where('field', 'project_id')->pluck('value'))->filter()->unique();
         $projects = Project::whereIn('uuid', $projectIds->all())->pluck('name', 'uuid');
 
         return ApiResponse::success(['rules' => $rules->map(fn ($r) => $this->present($r) + [
+            'stats' => ['applied' => (int) ($stats[$r->id]->applied ?? 0), 'failed' => (int) ($stats[$r->id]->failed ?? 0)],
             'last_run' => isset($lastRuns[$r->id]) ? ['outcome' => $lastRuns[$r->id]->outcome, 'at' => Carbon::parse($lastRuns[$r->id]->created_at)->toIso8601String()] : null,
             'project' => ($uuid = collect($r->conditions ?? [])->firstWhere('field', 'project_id')['value'] ?? null) ? ($projects[$uuid] ?? null) : null,
         ])]);
@@ -147,6 +158,7 @@ class AutomationRuleController extends Controller
         $this->refuseProjectLimited($request);
 
         $data = $this->validated($request);
+        $this->refuseUnsafe($data);
 
         $rule = AutomationRule::create($data + ['created_by' => $request->user()->id]);
         $this->audited('automation_rule.created', $request, $rule, ['after' => $this->trail($rule)]);
@@ -163,7 +175,9 @@ class AutomationRuleController extends Controller
         $this->refuseProjectLimited($request);
 
         $before = $this->trail($rule);
-        $rule->update($this->validated($request, partial: true));
+        $data = $this->validated($request, partial: true);
+        $this->refuseUnsafe($data, $rule);
+        $rule->update($data);
         $this->audited('automation_rule.updated', $request, $rule, ['before' => $before, 'after' => $this->trail($rule->fresh())]);
 
         return ApiResponse::success(['rule' => $this->present($rule->fresh())]);
@@ -214,6 +228,39 @@ class AutomationRuleController extends Controller
      * and two rules with the same name in one list is the thing that makes the
      * trace unreadable later.
      */
+    /**
+     * What cannot be saved as a working rule: one that sets off itself with nothing to stop it, or points at a project or
+     * template that no longer exists. Found here, not at two in the morning.
+     */
+    private function refuseUnsafe(array $data, ?AutomationRule $rule = null): void
+    {
+        $trigger = $data['trigger'] ?? $rule?->trigger;
+        $conditions = $data['conditions'] ?? $rule?->conditions ?? [];
+        $actions = [...($data['actions'] ?? $rule?->actions ?? []), ...($data['else_actions'] ?? $rule?->else_actions ?? [])];
+        $types = array_column($actions, 'type');
+        $selfTriggering = ['lead.stage_changed' => 'change_stage', 'lead.assigned' => 'assign', 'lead.score_changed' => 'adjust_score', 'lead.interest_changed' => 'set_temperature'];
+
+        if ($conditions === [] && isset($selfTriggering[$trigger]) && in_array($selfTriggering[$trigger], $types, true)) {
+            throw ValidationException::withMessages(['actions' => ['This rule would set itself off. Add a condition that stops it.']]);
+        }
+
+        foreach ($actions as $action) {
+            if ((int) ($action['delay_minutes'] ?? 0) < 0 || (int) ($action['delay_minutes'] ?? 0) > 129600) {
+                throw ValidationException::withMessages(['actions' => ['A wait must be between now and 90 days.']]);
+            }
+
+            if (filled($action['template_uuid'] ?? null) && ! MessageTemplate::where('uuid', $action['template_uuid'])->exists()) {
+                throw ValidationException::withMessages(['actions' => ['That message template no longer exists.']]);
+            }
+        }
+
+        $projects = collect($conditions)->where('field', 'project_id')->pluck('value')->flatten()->filter()->all();
+
+        if ($projects !== [] && Project::whereIn('uuid', $projects)->count() < count(array_unique($projects))) {
+            throw ValidationException::withMessages(['conditions' => ['That project no longer exists.']]);
+        }
+    }
+
     /** A rule runs over the whole company, so someone limited to some projects cannot write one. */
     private function refuseProjectLimited(Request $request): void
     {
@@ -261,6 +308,22 @@ class AutomationRuleController extends Controller
         $this->authorize('viewAny', AutomationRule::class);
 
         $rule = AutomationRule::where('uuid', $uuid)->firstOrFail();
+
+        // One lead by name: what would happen to them, and nothing is sent.
+        if ($one = $request->query('lead')) {
+            $lead = Lead::query()->visibleTo($request->user())->where('uuid', $one)->firstOrFail();
+            $verdict = $evaluator->evaluate($lead, $rule->conditions ?? [], [], $rule->condition_match ?? ConditionEvaluator::MATCH_ALL);
+
+            return ApiResponse::success([
+                'lead' => $lead->uuid,
+                'trigger' => $rule->trigger,
+                'matched' => $verdict['matched'],
+                'would_run' => collect($verdict['matched'] ? $rule->actions : ($rule->else_actions ?? []))->map(fn (array $action) => [
+                    'type' => $action['type'] ?? null, 'delay_minutes' => (int) ($action['delay_minutes'] ?? 0),
+                ])->values(),
+                'stopped_by' => $lead->status?->isClosed() ? 'lead_closed' : null,
+            ]);
+        }
 
         $sample = Lead::query()
             ->visibleTo($request->user())
@@ -442,7 +505,9 @@ class AutomationRuleController extends Controller
              */
             'actions.*.lost_reason_id' => ['required_if:actions.*.status,lost', 'uuid'],
             'actions.*.by' => ['required_if:actions.*.type,adjust_score', 'integer', 'not_in:0'],
-            'actions.*.tag' => ['required_if:actions.*.type,add_tag', 'string', 'max:60'],
+            'actions.*.tag' => ['required_if:actions.*.type,add_tag,remove_tag', 'string', 'max:60'],
+            'actions.*.title' => ['required_if:actions.*.type,create_task', 'string', 'max:190'],
+            'actions.*.priority' => ['sometimes', 'nullable', Rule::in(Task::PRIORITIES)],
             'actions.*.body' => ['required_if:actions.*.type,add_note', 'string', 'max:2000'],
             'actions.*.audience' => ['required_if:actions.*.type,notify', Rule::in(['owner', 'managers'])],
             'actions.*.in_hours' => ['required_if:actions.*.type,schedule_follow_up', 'integer', 'min:1', 'max:8760'],

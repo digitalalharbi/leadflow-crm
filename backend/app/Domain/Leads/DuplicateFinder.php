@@ -4,6 +4,7 @@ namespace App\Domain\Leads;
 
 use App\Models\Lead;
 use App\Models\LeadSourceEvent;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -18,12 +19,15 @@ use Illuminate\Support\Collection;
 class DuplicateFinder
 {
     /** @return Collection<int,array<string,mixed>> */
-    public function for(Lead $lead, int $limit = 5): Collection
+    public function for(Lead $lead, int $limit = 5, ?User $viewer = null): Collection
     {
         $found = [];
 
-        $add = function (Lead $other, string $reason) use (&$found, $lead) {
-            if ($other->id === $lead->id) {
+        // Asked for a person, only what that person may see: a match in another project is not theirs to read.
+        $reachable = $viewer === null ? null : fn (int $id) => Lead::query()->visibleTo($viewer)->whereKey($id)->exists();
+
+        $add = function (Lead $other, string $reason) use (&$found, $lead, $reachable) {
+            if ($other->id === $lead->id || ($reachable !== null && ! $reachable($other->id))) {
                 return;
             }
             $found[$other->id] ??= ['lead' => $other, 'reasons' => []];

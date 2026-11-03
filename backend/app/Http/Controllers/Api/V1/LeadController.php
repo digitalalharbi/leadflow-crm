@@ -262,7 +262,7 @@ class LeadController extends Controller
         $lead = $this->findLead($uuid);
         $this->authorize('merge', $lead);
 
-        return ApiResponse::success(['duplicates' => app(DuplicateFinder::class)->for($lead)]);
+        return ApiResponse::success(['duplicates' => app(DuplicateFinder::class)->for($lead, viewer: request()->user())]);
     }
 
     /** Folds a duplicate record into this one. A manager's call: it cannot be cleanly undone. */
@@ -310,6 +310,27 @@ class LeadController extends Controller
     }
 
     /**
+     * Typing a number somebody else's lead holds must not hand over that lead, reopen it or restore it. The person is told
+     * the number is taken, because it is, and nothing about whose it is.
+     */
+    private function refuseLeadOutOfReach(User $user, array $data): void
+    {
+        $phone = filled($data['phone'] ?? null) ? app(PhoneNormalizer::class)->normalize((string) $data['phone']) : null;
+        $email = filled($data['email'] ?? null) ? mb_strtolower(trim((string) $data['email'])) : null;
+
+        if ($phone === null && $email === null) {
+            return;
+        }
+
+        $match = fn ($query) => $phone !== null ? $query->where('phone_normalized', $phone) : $query->whereRaw('lower(email) = ?', [$email]);
+        $id = $match(Lead::withoutGlobalScopes()->withTrashed()->where('tenant_id', $user->tenant_id))->value('id');
+
+        if ($id !== null && ! Lead::query()->withTrashed()->visibleTo($user)->whereKey($id)->exists()) {
+            throw ValidationException::withMessages(['phone' => ['This number is already registered. Ask your manager about it.']]);
+        }
+    }
+
+    /**
      * Manual creation still goes through the ingestion pipeline, so duplicate
      * detection and assignment behave identically to a webhook lead.
      */
@@ -325,6 +346,8 @@ class LeadController extends Controller
         if ($data['assigned_to'] === null && $request->user()->isSales()) {
             $data['assigned_to'] = $request->user()->id;
         }
+
+        $this->refuseLeadOutOfReach($request->user(), $data);
 
         $result = $this->ingestion->ingest(
             $request->user()->tenant,

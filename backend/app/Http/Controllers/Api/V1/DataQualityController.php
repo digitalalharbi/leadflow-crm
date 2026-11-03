@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Access\Permissions;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ConversionExport;
@@ -195,6 +196,12 @@ class DataQualityController extends Controller
      */
     private function integrationHealth(): array
     {
+        $user = request()->user();
+
+        if ($user->isProjectScoped() || $user->isExternal() || ! ($user->isAdmin() || $user->isManager() || Permissions::has($user, 'integrations'))) {
+            return [];
+        }
+
         return Integration::query()
             ->get()
             ->map(fn (Integration $integration) => [

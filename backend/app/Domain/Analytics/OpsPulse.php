@@ -67,8 +67,12 @@ class OpsPulse
      */
     private function health(int $backlog, int $late): array
     {
-        $failed = AutomationActionLog::query()->where('result', AutomationActionLog::FAILED)->where('happened_at', '>=', now()->subDay())->count();
-        $stuck = AutomationActionLog::query()->where('result', AutomationActionLog::NEEDS_HUMAN)->where('happened_at', '>=', now()->subDay())->count();
+        // Limited to some projects: the failures of those, not a count of what happens elsewhere.
+        $user = request()->user();
+        $mine = fn ($query) => $user?->isProjectScoped() ? $query->whereIn('lead_id', Lead::query()->visibleTo($user)->select('leads.id')) : $query;
+
+        $failed = $mine(AutomationActionLog::query())->where('result', AutomationActionLog::FAILED)->where('happened_at', '>=', now()->subDay())->count();
+        $stuck = $mine(AutomationActionLog::query())->where('result', AutomationActionLog::NEEDS_HUMAN)->where('happened_at', '>=', now()->subDay())->count();
 
         $tracking = collect(app(TrackingHealth::class)->build(7)['platforms'])->filter(fn ($p) => $p['connected'] && $p['status'] === 'risk')->count();
 

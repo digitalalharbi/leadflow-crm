@@ -113,6 +113,7 @@ abstract class TestCase extends BaseTestCase
         $registry->shouldReceive('current')->andReturn($fake);
         $registry->shouldReceive('get')->andReturn($fake);
         $registry->shouldReceive('all')->andReturn([$fake]);
+        $registry->shouldReceive('delivers')->andReturn(true);
         $this->app->instance(MailerRegistry::class, $registry);
 
         return $fake;

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { apiGet, apiLogin, apiPlatformLogin, apiPost } from '../fixtures/api'
 import { PASSWORD } from '../fixtures/data'
 import { signIn, signInAs, signInPlatform } from '../fixtures/pages'
-import { artisan, linkFromEmail, resetFixtures } from '../fixtures/seed'
+import { linkFromEmail, resetFixtures, ensurePlatformOwner } from '../fixtures/seed'
 
 /**
  * The commercial promise: a new customer is onboarded without a code change, a
@@ -25,7 +25,7 @@ test.describe('Tenant onboarding', () => {
   test.beforeAll(() => {
     resetFixtures()
     // The platform owner is not part of the tenant fixtures.
-    artisan(['leadflow:create-super-admin', '--email=owner@e2e.test', '--password='.concat(PASSWORD)])
+    ensurePlatformOwner('owner@e2e.test', PASSWORD)
   })
 
   test('a platform owner creates a client that is immediately usable', async ({ page }) => {

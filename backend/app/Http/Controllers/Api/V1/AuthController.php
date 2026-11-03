@@ -6,6 +6,7 @@ use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
 use App\Domain\Auth\SecondFactor;
 use App\Domain\Billing\SubscriptionSummary;
+use App\Domain\Mail\AccountEmail;
 use App\Http\Controllers\Api\V1\Platform\ImpersonationController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
@@ -99,7 +100,8 @@ class AuthController extends Controller
             return $refused;
         }
 
-        return ApiResponse::success($this->issueSession($user, $request));
+        // Not remembered: this session lasts a working day, not the month.
+        return ApiResponse::success($this->issueSession($user, $request, expiresAt: $request->boolean('remember', true) ? null : now()->addHours(12)));
     }
 
     /**
@@ -149,12 +151,12 @@ class AuthController extends Controller
      * A new session for this account and the payload the SPA boots from. Used by the login, an accepted invitation, a
      * password link and a workspace switch — every way into a company ends the same way.
      */
-    public function issueSession(User $user, Request $request, string $action = 'auth.login'): array
+    public function issueSession(User $user, Request $request, string $action = 'auth.login', ?\DateTimeInterface $expiresAt = null): array
     {
         $user->loadMissing('tenant.branding', 'tenant.settings');
 
         // One token per device; logging in again elsewhere does not kill this session.
-        $issued = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8));
+        $issued = $user->createToken('spa-'.substr(md5($request->userAgent() ?? 'unknown'), 0, 8), ['*'], $expiresAt);
         // What the person sees in their list of signed-in devices.
         $issued->accessToken->forceFill(['ip' => $request->ip(), 'user_agent' => mb_substr((string) $request->userAgent(), 0, 255)])->save();
         $token = $issued->plainTextToken;
@@ -257,9 +259,20 @@ class AuthController extends Controller
     public function logoutAll(Request $request)
     {
         $request->user()->tokens()->delete();
+        $this->linkedAccounts($request->user())->each(fn (User $account) => $account->tokens()->delete());
         $this->audit->log('auth.logout_all', $request->user(), null, ['ip' => $request->ip()]);
 
         return ApiResponse::success(null, 'Signed out of all devices.');
+    }
+
+    /** This person's accounts in other companies: the same email, proven on both sides. */
+    private function linkedAccounts(User $user)
+    {
+        if ($user->tenant_id === null || $user->email_verified_at === null) {
+            return collect();
+        }
+
+        return User::query()->whereNotNull('tenant_id')->where('email', $user->email)->whereKeyNot($user->id)->whereNotNull('email_verified_at')->get();
     }
 
     public function changePassword(Request $request)
@@ -278,6 +291,14 @@ class AuthController extends Controller
         }
 
         $user->update(['password' => $data['password']]);
+        app(AccountEmail::class)->securityNotice($user, 'password_changed');
+
+        // One person, one password: an old one must not stay good in their other companies, or be a way back here by switching.
+        $this->linkedAccounts($user)->each(function (User $account) use ($data) {
+            $account->forceFill(['password' => $data['password']])->save();
+            $account->tokens()->delete();
+            $this->audit->logForTenant((int) $account->tenant_id, 'auth.password_changed', $account, $account, ['from_linked_account' => true]);
+        });
 
         // Invalidate every other session; keep the one making the change.
         $current = $user->currentAccessToken();

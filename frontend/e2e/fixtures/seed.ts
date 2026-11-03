@@ -41,15 +41,26 @@ export function artisan(args: string[], env: Record<string, string> = {}): strin
 }
 
 /**
+ * A platform owner for the console's specs. The password travels in the environment, never on a command line, the same
+ * rule the real bootstrap keeps. The command refuses to run in production.
+ */
+export function ensurePlatformOwner(email: string, password: string): void {
+  artisan(['leadflow:e2e-platform-owner', email], { E2E_PLATFORM_OWNER_PASSWORD: password })
+}
+
+/**
  * The link an account email carried (an invitation, a password setup or reset), read out of the email the app
  * queued — as the person would click it. Nothing in the API ever returns these tokens.
  */
 export function linkFromEmail(email: string, path: 'invite' | 'set-password'): string {
-  const php = `echo App\\Models\\EmailDelivery::withoutGlobalScopes()->where('to_email', ${JSON.stringify(email.toLowerCase()).replace(/"/g, "'")})->latest('id')->value('html');`
+  const address = JSON.stringify(email.toLowerCase()).replace(/"/g, "'")
+  // Tests run with no mail provider, which would mark an invitation as handed over by hand. Read from the email, it came through the inbox.
+  const delivered = path === 'invite' ? `App\\Models\\Invitation::withoutGlobalScopes()->where('email', ${address})->update(['manual_link_at' => null]);` : ''
+  const php = `${delivered} echo App\\Models\\EmailDelivery::withoutGlobalScopes()->where('to_email', ${address})->latest('id')->value('html');`
   const html = execFileSync('php', ['artisan', 'tinker', `--execute=${php}`], { cwd: backendDir, encoding: 'utf8', timeout: 60_000, input: '' })
   // An invitation is emailed as the short /i/ link; the long /invite/ form is still read for older mail.
-  const prefix = path === 'invite' ? '(?:invite|i)' : path
-  const match = html.match(new RegExp(`/${prefix}/([A-Za-z0-9]{48})`))
+  const prefix = path === 'invite' ? '(?:invite|i)/' : 'reset-password\\?token='
+  const match = html.match(new RegExp(`/${prefix}([A-Za-z0-9]{48})`))
 
   if (!match) throw new Error(`No ${path} link was emailed to ${email}`)
 

@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { useAuth } from '@/stores/auth'
-import { Button, Card, CardBody, Input, Skeleton } from '@/components/ui'
-import { Logo } from '@/components/brand'
+import { Button, Input, Skeleton } from '@/components/ui'
+import { AuthCard, AuthShell } from '@/components/auth/AuthShell'
 
 /*
  * The three doors into an account that do not start with a password the person already has: an invitation to a
@@ -16,15 +16,9 @@ import { Logo } from '@/components/brand'
 
 function Shell({ title, children, testId }: { title: string; children: ReactNode; testId: string }) {
   return (
-    <div className="grid min-h-dvh place-items-center bg-[var(--color-canvas)] p-4" data-testid={testId}>
-      <Card className="w-full max-w-md">
-        <CardBody className="space-y-4">
-          <Logo layout="horizontal" height={36} />
-          <h1 className="text-[1.25rem] font-semibold" data-testid="page-title">{title}</h1>
-          {children}
-        </CardBody>
-      </Card>
-    </div>
+    <AuthShell testId={testId}>
+      <AuthCard title={title}>{children}</AuthCard>
+    </AuthShell>
   )
 }
 
@@ -230,23 +224,33 @@ export function VerifyEmailPage() {
   const { t } = useTranslation()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
-  const [state, setState] = useState<'checking' | 'done' | 'invalid'>(token ? 'checking' : 'invalid')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [state, setState] = useState<'ask' | 'done' | 'invalid'>(token ? 'ask' : 'invalid')
 
-  useEffect(() => {
-    if (!token) return
+  // Nothing happens on opening the link: mail scanners open links too, and the password says this is the person's own account.
+  async function confirm(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
 
-    let active = true
-
-    apiPost('/auth/email/verify', { token })
-      .then(() => { if (active) setState('done') })
-      .catch(() => { if (active) setState('invalid') })
-
-    return () => { active = false }
-  }, [token])
+    try {
+      await apiPost('/auth/email/verify', { token, password })
+      setState('done')
+    } catch {
+      setState('invalid')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <Shell title={t('account.verifyTitle')} testId="verify-email">
-      {state === 'checking' && <Skeleton className="h-6 w-full" />}
+      {state === 'ask' && (
+        <form onSubmit={confirm} className="space-y-3">
+          <Input dir="ltr" type="password" autoComplete="current-password" label={t('auth.password')} value={password} onChange={(e) => setPassword(e.target.value)} data-testid="verify-password" />
+          <Button type="submit" className="w-full" loading={submitting} disabled={!password} data-testid="verify-submit">{t('account.verifyConfirm')}</Button>
+        </form>
+      )}
       {state === 'done' && <p data-testid="verify-done">{t('account.verifyDone')}</p>}
       {state === 'invalid' && <p data-testid="verify-invalid">{t('account.verifyInvalid')}</p>}
       <Link to="/login" className="t-caption underline">{t('account.backToLogin')}</Link>

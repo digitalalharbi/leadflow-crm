@@ -10,12 +10,19 @@
  */
 return [
     // log · smtp · ses · resend. MAIL_MAILER counts when it names a provider, so the runbook's one setting switches both.
-    'provider' => env('LEADFLOW_MAIL_PROVIDER', in_array(env('MAIL_MAILER'), ['resend', 'ses'], true) ? env('MAIL_MAILER') : 'log'),
+    // smtp counts only with a real server named: the framework's default is smtp to nowhere.
+    'provider' => env('LEADFLOW_MAIL_PROVIDER', match (true) {
+        in_array(env('MAIL_MAILER'), ['resend', 'ses'], true) => env('MAIL_MAILER'),
+        env('MAIL_MAILER') === 'smtp' && ! in_array((string) env('MAIL_HOST'), ['', '127.0.0.1', 'localhost', 'mailpit'], true) => 'smtp',
+        default => 'log',
+    }),
 
     'from' => [
-        'address' => env('LEADFLOW_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'reports@example.test')),
-        'name' => env('LEADFLOW_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'مهتم')),
+        'address' => env('LEADFLOW_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'info@mohtam.pro')),
+        'name' => env('LEADFLOW_MAIL_FROM_NAME', 'مهتم — Mohtam'),
     ],
+
+    'reply_to' => env('LEADFLOW_MAIL_REPLY_TO', 'info@mohtam.pro'),
 
     /*
      * Retries: the seconds to wait before attempt 2, 3, 4… A delivery that fails every time is

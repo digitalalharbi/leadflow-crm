@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Domain\Digest\DigestComposer;
+use App\Domain\Exports\ActingScope;
 use App\Domain\Mail\DigestEmail;
 use App\Domain\Mail\EmailDeliveries;
 use App\Domain\Mail\OutboundEmail;
@@ -75,6 +76,8 @@ class SendDigests extends Command
 
                 $context->withTenant($tenant, function () use ($tenant, $rhythms, $composer, $local, &$sent) {
                     User::query()->where('tenant_id', $tenant->id)->where('is_active', true)->whereNotNull('email')->get()
+                        // Somebody outside the company is not told about the company.
+                        ->reject(fn (User $user) => $user->isExternal())
                         ->each(function (User $user) use ($tenant, $rhythms, $composer, $local, &$sent) {
                             foreach ($rhythms as $rhythm) {
                                 $sent += $this->sendTo($user, $tenant, $rhythm, $composer, $local);
@@ -116,7 +119,8 @@ class SendDigests extends Command
 
             // The roll-up rides on the last summary of the rhythm — one email for it, not one each.
             $carry = $index === count($wanted) - 1 ? $rollup : [];
-            $this->mail($user, $tenant, $kind, $composer->compose($kind, $user), $carry, $local);
+            // The console has no person in it: the figures are composed with this person's own limits.
+            $this->mail($user, $tenant, $kind, app(ActingScope::class)->run($user, null, fn () => $composer->compose($kind, $user)), $carry, $local);
             $count++;
         }
 

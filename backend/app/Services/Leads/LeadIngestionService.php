@@ -67,6 +67,11 @@ class LeadIngestionService
                 // DuplicateMatcher for why the order of signals matters.
                 $existing = $this->duplicates->find($incoming, $normalizedPhone);
 
+                // The provider sent this same submission again: nothing new happened, so nothing changes and no rule fires.
+                if ($existing && $normalizedPhone === $existing->phone_normalized && $this->duplicates->byProviderLeadId($incoming)?->is($existing)) {
+                    return IngestionResult::reEngaged($existing, false);
+                }
+
                 if ($existing) {
                     return $this->reEngage($existing, $incoming, $normalizedPhone);
                 }

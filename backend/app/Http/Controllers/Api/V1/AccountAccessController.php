@@ -43,7 +43,7 @@ class AccountAccessController extends Controller
             'name' => $invitation->name,
             'role' => $invitation->role,
             // Someone already on Mohtam with this (proven) email confirms their own password instead of choosing one.
-            'has_account' => $this->verifiedAccounts($invitation->email)->isNotEmpty(),
+            'has_account' => $invitation->manual_link_at === null && $this->verifiedAccounts($invitation->email)->isNotEmpty(),
         ]);
     }
 
@@ -54,7 +54,9 @@ class AccountAccessController extends Controller
         $tenant = Tenant::findOrFail($invitation->tenant_id);
         abort_unless($tenant->is_active, 404, 'This invitation is not valid.');
 
-        $existing = $this->verifiedAccounts($invitation->email);
+        // A link the inviter passed on by hand did not come through this inbox: it joins to no other company and proves no address.
+        $handed = $invitation->manual_link_at !== null;
+        $existing = $handed ? collect() : $this->verifiedAccounts($invitation->email);
 
         if ($existing->isNotEmpty()) {
             $data = $request->validate(['password' => ['required', 'string']]);
@@ -74,8 +76,8 @@ class AccountAccessController extends Controller
             $name = $data['name'];
         }
 
-        $user = $this->context->withTenant($tenant, function () use ($invitation, $tenant, $data, $name) {
-            return DB::transaction(function () use ($invitation, $tenant, $data, $name) {
+        $user = $this->context->withTenant($tenant, function () use ($invitation, $tenant, $data, $name, $handed) {
+            return DB::transaction(function () use ($invitation, $tenant, $data, $name, $handed) {
                 if (User::where('tenant_id', $tenant->id)->where('email', $invitation->email)->exists()) {
                     throw ValidationException::withMessages(['email' => ['You are already on this team.']]);
                 }
@@ -95,7 +97,9 @@ class AccountAccessController extends Controller
                     'is_active' => true,
                 ]);
                 // The link reached this inbox: the address is proven.
-                $user->forceFill(['email_verified_at' => now()])->save();
+                if (! $handed) {
+                    $user->forceFill(['email_verified_at' => now()])->save();
+                }
 
                 if ($invitation->project_ids) {
                     $user->projects()->sync(Project::withoutGlobalScopes()->where('tenant_id', $tenant->id)->whereIn('uuid', $invitation->project_ids)->pluck('id')->all());
@@ -174,7 +178,7 @@ class AccountAccessController extends Controller
         }
 
         // The account the person actually uses. A row another company's admin added under this address stays unproven, so it links to nothing.
-        $user = $accounts->sortByDesc(fn (User $u) => $u->last_login_at?->timestamp ?? 0)->first();
+        $user = $accounts->sortByDesc(fn (User $u) => ($u->email_verified_at ? 10_000_000_000 : 0) + ($u->last_login_at?->timestamp ?? 0))->first();
 
         DB::transaction(function () use ($accounts, $data, $link, $request, $user) {
             $link->forceFill(['used_at' => now()])->save();
@@ -185,6 +189,10 @@ class AccountAccessController extends Controller
                 $this->audit->logForTenant($account->tenant_id, $link->purpose === 'setup' ? 'auth.password_set' : 'auth.password_reset', $account, $account, ['ip' => $request->ip()]);
             }
         });
+
+        if ($link->purpose !== 'setup') {
+            $this->email->securityNotice($user, 'password_changed');
+        }
 
         // A reset link proves the inbox, not the authenticator app: an account with a second factor signs in with it.
         if (app(SecondFactor::class)->enabled($user->fresh())) {
@@ -212,13 +220,17 @@ class AccountAccessController extends Controller
         return ApiResponse::success(['verified' => false], 'A link is on its way.');
     }
 
-    /** The link: this one account's address, as it is now. Opening it twice changes nothing. */
+    /**
+     * The link proves the inbox; the password proves this is that person's own account. Without it, somebody could put a
+     * stranger's address on their own row, have the stranger press the link, and be offered the stranger's other companies.
+     * A scanner opening the link does nothing either. Using it twice changes nothing.
+     */
     public function verifyEmail(Request $request)
     {
-        $data = $request->validate(['token' => ['required', 'string', 'max:512']]);
+        $data = $request->validate(['token' => ['required', 'string', 'max:512'], 'password' => ['required', 'string', 'max:255']]);
         $user = EmailVerification::accountFor($data['token']);
 
-        if ($user === null) {
+        if ($user === null || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages(['token' => ['This link has expired or is not valid.']]);
         }
 

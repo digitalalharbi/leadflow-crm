@@ -12,7 +12,7 @@ import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
 import { SheetSources } from '@/components/integrations/SheetSources'
 import { fetchProjects } from '@/features/leads'
-import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
+import { apiDelete, apiGet, apiPatch, apiPost, http } from '@/lib/api'
 import { can, useAuth, useEntitled } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { useApiError } from '@/hooks/useApiError'
@@ -141,6 +141,18 @@ export function IntegrationsPage() {
       void queryClient.invalidateQueries({ queryKey: ['integrations'] })
       void queryClient.invalidateQueries({ queryKey: ['ingestion', 30] })
     },
+  })
+
+  const rotateEndpoint = useMutation({
+    mutationFn: ({ id }: { id: string; url: string }) => apiPost<{ secret: string }>(`/webhook-endpoints/${id}/rotate`),
+    onSuccess: (result, { url }) => setSecret({ url, secret: result.secret }),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  const disableEndpoint = useMutation({
+    mutationFn: (id: string) => apiDelete(`/webhook-endpoints/${id}`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['integrations'] }),
+    onError: (caught) => toast(translateError(caught), 'error'),
   })
 
   const connect = useMutation({
@@ -408,7 +420,7 @@ export function IntegrationsPage() {
                   </p>
                 )}
 
-                {card.integration?.webhook_endpoints?.map((endpoint) => (
+                {card.integration?.webhook_endpoints?.filter((endpoint) => endpoint.is_active !== false).map((endpoint) => (
                   <div key={endpoint.id} className="mt-3 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-2.5">
                     <p className="text-[0.8125rem] font-medium text-[var(--color-ink-muted)]">
                       {t('integrations.webhookUrl')}
@@ -416,6 +428,10 @@ export function IntegrationsPage() {
                     <div className="mt-1 flex items-center gap-1.5">
                       <code className="min-w-0 flex-1 truncate text-[0.8125rem]" dir="ltr">{endpoint.url}</code>
                       <CopyButton value={endpoint.url} />
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => rotateEndpoint.mutate({ id: endpoint.id, url: endpoint.url })} data-testid={`endpoint-rotate-${endpoint.id}`}>{t('integrations.rotateSecret')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => disableEndpoint.mutate(endpoint.id)} data-testid={`endpoint-disable-${endpoint.id}`}>{t('integrations.disableEndpoint')}</Button>
                     </div>
                   </div>
                 ))}

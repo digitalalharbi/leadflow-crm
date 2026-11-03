@@ -152,6 +152,7 @@ class TenantProvisioningService
                     'tenant' => $tenant->fresh(['branding', 'settings']),
                     'admin' => $admin,
                     'setup_link_sent' => $setupLink !== null,
+                    'setup_token' => $setupLink,
                     'webhook_key' => $endpoint->key,
                     'webhook_secret' => $secret,
                 ];

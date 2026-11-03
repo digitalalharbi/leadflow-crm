@@ -18,7 +18,13 @@ class SweepNoReplyCommand extends Command
         $total = 0;
 
         Tenant::query()->where('is_active', true)->each(function (Tenant $tenant) use ($sweeper, $context, &$total) {
-            $total += $context->withTenant($tenant, fn () => $sweeper->sweep($tenant));
+            // One company's bad data must not cost the others their sweep.
+            try {
+                $total += $context->withTenant($tenant, fn () => $sweeper->sweep($tenant));
+            } catch (\Throwable $e) {
+                $this->error("Tenant {$tenant->slug}: {$e->getMessage()}");
+                report($e);
+            }
         });
 
         $this->info("{$total} no-reply moment(s) fired.");

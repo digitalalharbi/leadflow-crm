@@ -9,6 +9,7 @@ use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\AccessRole;
+use App\Models\Invitation;
 use App\Models\Partner;
 use App\Models\PasswordLink;
 use App\Models\Project;
@@ -19,6 +20,7 @@ use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -240,6 +242,16 @@ class UserController extends Controller
          */
         $emailChanged = isset($data['email']) && $data['email'] !== $user->email;
 
+        // The email is the way back in through a password link, so it is not somebody else's to change once they use it,
+        // and not a stolen session's to change on its own.
+        if ($emailChanged && $user->id !== $request->user()->id && ($user->last_login_at !== null || $user->id === app(TenantContext::class)->get()?->owner_user_id)) {
+            throw ValidationException::withMessages(['email' => ['Only this person can change their email now.']]);
+        }
+
+        if ($emailChanged && $user->id === $request->user()->id && ! Hash::check((string) $request->input('current_password'), $user->password)) {
+            throw ValidationException::withMessages(['current_password' => ['The current password is incorrect.']]);
+        }
+
         $projectIds = $data['project_ids'] ?? null;
         unset($data['project_ids']);
 
@@ -267,9 +279,12 @@ class UserController extends Controller
             PlanLimits::ensureSeatFor(app(TenantContext::class)->get(), $data['role'] ?? $user->role?->value);
         }
 
+        $previousEmail = $user->email;
         $user->update($data);
 
         if ($emailChanged) {
+            // To the address it was: that is the person who needs to hear about it.
+            app(AccountEmail::class)->securityNotice($user, 'email_changed', $previousEmail);
             $current = $request->user()->currentAccessToken();
             $user->forceFill(['email_verified_at' => null])->save();
             $user->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))->delete();
@@ -283,6 +298,7 @@ class UserController extends Controller
         // A deactivated account loses every live session immediately.
         if (array_key_exists('is_active', $data) && ! $data['is_active']) {
             $user->tokens()->delete();
+            $this->revokeTheirInvitations($user);
             $this->audit->log('user.deactivated', $request->user(), $user);
         }
 
@@ -306,6 +322,12 @@ class UserController extends Controller
         return ApiResponse::success(null, 'Link sent.');
     }
 
+    /** Someone who has left does not leave a way in behind them. */
+    private function revokeTheirInvitations(User $user): void
+    {
+        Invitation::where('invited_by', $user->id)->whereNull('accepted_at')->whereNull('revoked_at')->update(['revoked_at' => now()]);
+    }
+
     public function destroy(Request $request, string $uuid)
     {
         $user = User::where('tenant_id', $request->user()->tenant_id)->where('uuid', $uuid)->firstOrFail();
@@ -317,6 +339,7 @@ class UserController extends Controller
 
         DB::transaction(function () use ($user) {
             $user->tokens()->delete();
+            $this->revokeTheirInvitations($user);
             $user->update(['is_active' => false]);
             $user->delete();
         });

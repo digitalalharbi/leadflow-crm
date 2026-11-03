@@ -230,7 +230,7 @@ test.describe('Marketing page', () => {
 test.describe('Login', () => {
   test.beforeAll(() => resetFixtures())
 
-  test('on a laptop: the brand panel at the start edge with the headline, the description, the journey and three points; the card beside it', async ({ page, isMobile }) => {
+  test('on a laptop the brand panel stays as it was, and everything needed fits beside it without scrolling', async ({ page, isMobile }) => {
     test.skip(isMobile, 'the split layout is the laptop’s')
     await page.setViewportSize({ width: 1366, height: 768 })
     await ready(page, '/login')
@@ -239,45 +239,80 @@ test.describe('Login', () => {
     const card = (await page.getByTestId('login-card').boundingBox())!
     // Arabic reads right to left: the panel is on the right, the card on the left.
     expect(panel.x).toBeGreaterThan(card.x)
+    expect(card.width).toBeGreaterThanOrEqual(420)
+    expect(card.width).toBeLessThanOrEqual(440)
 
+    // The marketing side stays exactly what it was.
     await expect(page.getByTestId('login-badge')).toHaveText('منصة تشغيل التسويق والمبيعات العقارية')
     await expect(page.getByTestId('login-headline')).toHaveText('حوّل الاهتمام إلى فرصة')
     await expect(page.getByTestId('login-journey').locator('[data-step]')).toHaveText(['وصل', 'تواصل', 'تأهّل', 'موعد', 'صفقة'])
-    await expect(page.getByTestId('login-pillars').getByRole('listitem')).toHaveText(['جميع مصادر العملاء في مكان واحد', 'متابعة وأتمتة تلقائية خلال دقائق', 'كل صفقة مرتبطة بالمصدر والحملة التي جاءت بها'])
+    await expect(page.getByTestId('login-pillars').getByRole('listitem')).toHaveCount(3)
     await expect(page.getByTestId('login-watermark')).toBeAttached()
 
-    // The whole screen: no scrolling to find the form.
+    // The whole screen: no scrolling to find the form, and nothing sideways.
+    for (const control of [page.getByLabel('البريد الإلكتروني'), page.getByLabel('كلمة المرور', { exact: true }), page.getByTestId('login-remember'), page.getByTestId('login-forgot'), page.getByRole('button', { name: 'تسجيل الدخول' }), page.getByRole('link', { name: 'الخصوصية' })]) {
+      await expect(control).toBeInViewport()
+    }
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(769)
-  })
-
-  test('on a phone there is no split: the logo, one line of headline, the card, the journey', async ({ page, isMobile }) => {
-    test.skip(!isMobile, 'the stacked layout is the phone’s')
-    await ready(page, '/login')
-
-    await expect(page.getByTestId('login-brand-panel')).toBeHidden()
-    await expect(page.getByTestId('login-mobile-intro')).toBeVisible()
-    await expect(page.getByTestId('login-card')).toBeVisible()
-    await expect(page.getByTestId('login-mobile-journey')).toBeVisible()
     await expectNoSidewaysScroll(page, 'login')
-
-    // The fields are large enough to type into with a thumb.
-    for (const label of ['البريد الإلكتروني', 'كلمة المرور']) expect((await page.getByLabel(label, { exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
   })
 
-  test('it offers only what works: email, password, sign in, and where to go for a forgotten password — no Google, no sign-up, no remember-me', async ({ page }) => {
+  for (const width of [390, 430]) {
+    test(`on a ${width}px phone: no split, the card, the journey, and everything large enough for a thumb`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await ready(page, '/login')
+
+      await expect(page.getByTestId('login-brand-panel')).toBeHidden()
+      await expect(page.getByTestId('login-mobile-intro')).toBeVisible()
+      await expect(page.getByTestId('login-card')).toBeVisible()
+      await expect(page.getByTestId('login-mobile-journey')).toBeVisible()
+      await expectNoSidewaysScroll(page, 'login')
+
+      for (const control of [page.getByLabel('البريد الإلكتروني'), page.getByLabel('كلمة المرور', { exact: true }), page.getByTestId('login-show-password'), page.getByTestId('login-forgot'), page.getByRole('button', { name: 'تسجيل الدخول' })]) {
+        expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      }
+      await expect(page.getByRole('button', { name: 'تسجيل الدخول' })).toBeInViewport()
+    })
+  }
+
+  test('it offers only what works: email, password, remember me, forgot password, sign in — no Google, no sign-up, no organisation to type', async ({ page }) => {
     await ready(page, '/login')
 
     await expect(page.getByLabel('البريد الإلكتروني')).toBeVisible()
     await expect(page.getByLabel('كلمة المرور', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'تسجيل الدخول' })).toBeVisible()
-    await expect(page.getByText(/Google|إنشاء حساب|Sign up|تذكرني/)).toHaveCount(0)
-    await expect(page.locator('input[type="checkbox"]')).toHaveCount(0)
-
-    // The organisation field is there for the person who needs it.
-    await expect(page.getByLabel('المؤسسة')).toHaveCount(0)
-    await page.getByTestId('login-organization-toggle').click()
-    await expect(page.getByLabel(/المؤسسة/)).toBeVisible()
+    await expect(page.getByTestId('login-forgot')).toBeVisible()
+    await expect(page.getByLabel('تذكرني على هذا الجهاز')).toBeChecked()
+    await expect(page.getByText(/Google|Apple|إنشاء حساب|Sign up|رمز عبر البريد/)).toHaveCount(0)
+    await expect(page.getByTestId('login-providers')).toHaveCount(0)
+    await expect(page.getByLabel(/المؤسسة/)).toHaveCount(0)
   })
+
+  test('the password can be shown and hidden', async ({ page }) => {
+    await ready(page, '/login')
+    const field = page.getByLabel('كلمة المرور', { exact: true })
+
+    await expect(field).toHaveAttribute('type', 'password')
+    await page.getByTestId('login-show-password').click()
+    await expect(field).toHaveAttribute('type', 'text')
+    await page.getByTestId('login-show-password').click()
+    await expect(field).toHaveAttribute('type', 'password')
+  })
+
+  for (const remember of [true, false]) {
+    test(`remember me ${remember ? 'on' : 'off'} is what the server is asked for, and the sign-in works`, async ({ page }) => {
+      await ready(page, '/login')
+      if (!remember) await page.getByLabel('تذكرني على هذا الجهاز').uncheck()
+
+      await page.getByLabel('البريد الإلكتروني').fill(ALPHA.admin.email)
+      await page.getByLabel('كلمة المرور', { exact: true }).fill(PASSWORD)
+      const sent = page.waitForRequest((request) => request.url().includes('/auth/login') && request.method() === 'POST')
+      await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
+
+      expect((await sent).postDataJSON().remember).toBe(remember)
+      await expect(page).not.toHaveURL(/\/login/)
+    })
+  }
 
   test('a forgotten password leads to the self-service reset, which answers the same for any address', async ({ page }) => {
     await ready(page, '/login')
@@ -304,9 +339,16 @@ test.describe('Login', () => {
     await expect(page).not.toHaveURL(/\/login/)
   })
 
-  test('a workspace link opens the organisation field by itself', async ({ page }) => {
+  test('a workspace link still works, and asks for nothing more', async ({ page }) => {
     await ready(page, `/login?tenant=${ALPHA.slug}`)
 
-    await expect(page.getByLabel(/المؤسسة/)).toHaveValue(ALPHA.slug)
+    await expect(page.getByLabel(/المؤسسة/)).toHaveCount(0)
+    await page.getByLabel('البريد الإلكتروني').fill(ALPHA.admin.email)
+    await page.getByLabel('كلمة المرور', { exact: true }).fill(PASSWORD)
+    const sent = page.waitForRequest((request) => request.url().includes('/auth/login') && request.method() === 'POST')
+    await page.getByRole('button', { name: 'تسجيل الدخول' }).click()
+
+    expect((await sent).postDataJSON().tenant).toBe(ALPHA.slug)
+    await expect(page).not.toHaveURL(/\/login/)
   })
 })

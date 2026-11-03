@@ -45,7 +45,7 @@ interface AuthState {
   /** null until the first /me call settles, so the router can hold the redirect. */
   status: 'idle' | 'loading' | 'authenticated' | 'anonymous'
   /** Resolves `mfa` when the account has a second factor and no (valid) code was sent yet. */
-  login: (credentials: { email: string; password: string; tenant?: string; code?: string }) => Promise<'ok' | 'mfa'>
+  login: (credentials: { email: string; password: string; tenant?: string; code?: string; remember?: boolean }) => Promise<'ok' | 'mfa'>
   /** The platform owner's own door. Resolves `mfa` when a code is still needed. */
   loginPlatform: (credentials: { email: string; password: string; code?: string }) => Promise<'ok' | 'mfa'>
   logout: () => Promise<void>

@@ -1,7 +1,7 @@
 import { test, type Page } from '@playwright/test'
 import { ALPHA, PASSWORD } from '../fixtures/data'
 import { authenticateAs } from '../fixtures/pages'
-import { artisan } from '../fixtures/seed'
+import { ensurePlatformOwner } from '../fixtures/seed'
 
 /**
  * The visual review pass, as something that can be re-run.
@@ -76,7 +76,7 @@ for (const theme of ['light', 'dark'] as const) {
 
 test.describe('platform console', () => {
   test.beforeAll(() => {
-    artisan(['leadflow:create-super-admin', `--email=${OWNER}`, `--password=${PASSWORD}`])
+    ensurePlatformOwner(OWNER, PASSWORD)
   })
 
   for (const theme of ['light', 'dark'] as const) {

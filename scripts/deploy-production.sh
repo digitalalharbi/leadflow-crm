@@ -185,4 +185,14 @@ fi
 trap - ERR
 echo "$PREVIOUS_COMMIT" > .last-good-commit
 say "Production is live${PRODUCTION_DOMAIN:+ at https://$PRODUCTION_DOMAIN}"
+
+# Evidence for the release report. The release is already live, so none of these can fail it.
+say "Readiness (statuses only, no values)"
+compose exec -T backend php artisan leadflow:readiness || true
+
+say "First client's path on this server, rolled back"
+compose exec -T backend php artisan mohtam:production-smoke || echo "FIRST_CLIENT_SMOKE=FAIL"
+
+say "Restoring this deploy's backup into a throw-away database"
+"$DEPLOY_PATH/scripts/restore-check.sh" production "$BACKUP_PATH" || echo "RESTORE_CHECK=FAIL"
 exit 0

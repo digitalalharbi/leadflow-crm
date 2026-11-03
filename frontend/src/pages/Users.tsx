@@ -15,6 +15,7 @@ import {
   Select, SkeletonTable, Table, TableWrap, Td, Th, Tr,
 } from '@/components/ui'
 import { RolesMatrix } from '@/components/users/RolesMatrix'
+import { ManualLinkDialog } from '@/components/account/ManualLinkDialog'
 import { fetchRoles } from '@/features/roles'
 import { fetchPartners } from '@/features/partners'
 import type { User } from '@/types/api'
@@ -33,6 +34,7 @@ export function UsersPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'sales', phone: '' })
+  const [currentPassword, setCurrentPassword] = useState('')
   const [cities, setCities] = useState('')
   const [weight, setWeight] = useState('1')
   const [speaks, setSpeaks] = useState<string[]>([])
@@ -108,6 +110,8 @@ export function UsersPage() {
     handles,
   })
 
+  const [manualLink, setManualLink] = useState<string | null>(null)
+
   const mutation = useMutation({
     mutationFn: () => {
       if (editing && routingOnly) {
@@ -117,6 +121,7 @@ export function UsersPage() {
       const payload: Record<string, unknown> = {
         name: form.name,
         email: form.email,
+        ...(currentPassword ? { current_password: currentPassword } : {}),
         // A role the workspace built travels as its id; the server brings the built-in role it behaves like.
         ...(form.role.startsWith('custom:') ? { access_role_id: form.role.slice(7) } : { role: form.role }),
         phone: form.phone || null,
@@ -137,11 +142,13 @@ export function UsersPage() {
       // Nobody is given a password: a new person gets an invitation link and chooses their own.
       return editing ? apiPatch(`/users/${editing.id}`, payload) : apiPost('/invitations', payload)
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
       void queryClient.invalidateQueries({ queryKey: ['invitations'] })
       void queryClient.invalidateQueries({ queryKey: ['assignable-users'] })
-      toast(editing ? t('settings.saved') : t('account.invited'), 'success')
+      const link = (result as { link?: string } | undefined)?.link ?? null
+      setManualLink(link)
+      toast(editing ? t('settings.saved') : link ? t('account.inviteLinkReady') : t('account.invited'), 'success')
       close()
     },
     onError: (caught) => {
@@ -318,6 +325,8 @@ export function UsersPage() {
 
       <RolesMatrix open={matrixOpen} onClose={() => setMatrixOpen(false)} />
 
+      <ManualLinkDialog link={manualLink} onClose={() => setManualLink(null)} />
+
       <Modal
         open={open}
         onClose={close}
@@ -359,6 +368,9 @@ export function UsersPage() {
             error={fieldErrors.email}
             onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
           />
+          {editing?.id === currentUser?.id && form.email !== editing?.email && (
+            <Input dir="ltr" type="password" autoComplete="current-password" label={t('auth.currentPassword')} value={currentPassword} error={fieldErrors.current_password} onChange={(e) => setCurrentPassword(e.target.value)} data-testid="user-current-password" />
+          )}
           {!editing && <p className="t-caption" data-testid="invite-note">{t('account.inviteNote')}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
@@ -561,11 +573,15 @@ function PendingInvitations() {
   const translateError = useApiError()
   const { data } = useQuery({ queryKey: ['invitations'], queryFn: () => apiGet<{ invitations: Invitation[] }>('/invitations') })
 
+  const [manualLink, setManualLink] = useState<string | null>(null)
+
   const act = useMutation({
     mutationFn: ({ id, action }: { id: string; action: 'resend' | 'revoke' }) => (action === 'resend' ? apiPost(`/invitations/${id}/resend`) : apiDelete(`/invitations/${id}`)),
-    onSuccess: (_, { action }) => {
+    onSuccess: (result, { action }) => {
       void queryClient.invalidateQueries({ queryKey: ['invitations'] })
-      toast(action === 'resend' ? t('account.resent') : t('account.revoked'), 'success')
+      const link = (result as { link?: string } | undefined)?.link ?? null
+      setManualLink(link)
+      toast(action === 'resend' ? (link ? t('account.inviteLinkReady') : t('account.resent')) : t('account.revoked'), 'success')
     },
     onError: (caught) => toast(translateError(caught), 'error'),
   })
@@ -576,6 +592,7 @@ function PendingInvitations() {
 
   return (
     <Card className="mt-4" data-testid="pending-invitations">
+      <ManualLinkDialog link={manualLink} onClose={() => setManualLink(null)} />
       <div className="border-b border-[var(--color-line)] px-4 py-3 font-semibold">{t('account.pending')}</div>
       <ul className="divide-y divide-[var(--color-line)]">
         {rows.map((row) => (

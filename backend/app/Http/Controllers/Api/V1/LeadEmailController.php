@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Privacy\SuppressionList;
 use App\Enums\ActivityType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeadMessageResource;
 use App\Models\Lead;
 use App\Models\MessageTemplate;
+use App\Models\Suppression;
 use App\Services\AuditLogger;
 use App\Services\Email\EmailSender;
 use App\Services\Leads\ActivityLogger;
@@ -72,6 +74,13 @@ class LeadEmailController extends Controller
         }
 
         $lead->forceFill(['email_opt_out_at' => $data['opted_out'] ? now() : null])->saveQuietly();
+
+        // The address, not just this record: another lead with it must stop too, and an admin's yes must not be undone by the list.
+        if ($lead->email && $data['opted_out']) {
+            app(SuppressionList::class)->add($lead->tenant_id, 'email', $lead->email, 'opt_out', $request->user()->id, 'manual_toggle');
+        } elseif ($lead->email) {
+            Suppression::query()->where('channel', 'email')->where('value', mb_strtolower($lead->email))->delete();
+        }
 
         $this->activities->log(
             $lead,

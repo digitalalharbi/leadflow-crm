@@ -157,7 +157,7 @@ class TheEmailChannelTest extends TestCase
         $this->send()->assertCreated();
         $token = $this->message()->tracking_token;
 
-        $this->get("/e/u/$token")->assertOk()->assertSee('تم إلغاء اشتراكك');
+        $this->post("/e/u/$token", ['confirm' => 1])->assertOk()->assertSee('تم إلغاء اشتراكك');
 
         $this->assertNotNull($this->lead->fresh()->email_opt_out_at);
 
@@ -175,7 +175,7 @@ class TheEmailChannelTest extends TestCase
 
     public function test_an_unknown_token_gets_the_same_page_and_changes_nothing(): void
     {
-        $this->get('/e/u/not-a-real-token')->assertOk()->assertSee('تم إلغاء اشتراكك');
+        $this->post('/e/u/not-a-real-token', ['confirm' => 1])->assertOk()->assertSee('تم إلغاء اشتراكك');
 
         $this->assertNull($this->lead->fresh()->email_opt_out_at);
     }

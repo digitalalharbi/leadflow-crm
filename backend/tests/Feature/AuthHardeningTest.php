@@ -52,7 +52,7 @@ class AuthHardeningTest extends TestCase
         $token = $this->signIn($rep);
 
         $this->app['auth']->forgetGuards();
-        $this->withHeaders($this->bearer($token))->patchJson("/api/v1/users/{$rep->uuid}", ['email' => $victim->email])->assertOk();
+        $this->withHeaders($this->bearer($token))->patchJson("/api/v1/users/{$rep->uuid}", ['email' => $victim->email, 'current_password' => 'password123'])->assertOk();
 
         $this->assertNull($rep->fresh()->email_verified_at);
         $this->app['auth']->forgetGuards();
@@ -104,7 +104,7 @@ class AuthHardeningTest extends TestCase
         $planted = $this->makeUser($this->b['tenant'], Role::Sales, ['email' => $real->email]);
 
         $this->postJson('/api/v1/auth/password/forgot', ['email' => $real->email])->assertOk();
-        preg_match('#/set-password/([A-Za-z0-9]{48})#', (string) EmailDelivery::withoutGlobalScopes()->where('to_email', $real->email)->latest('id')->value('html'), $m);
+        preg_match('#/reset-password\?token=([A-Za-z0-9]{48})#', (string) EmailDelivery::withoutGlobalScopes()->where('to_email', $real->email)->latest('id')->value('html'), $m);
 
         $this->postJson('/api/v1/auth/password/reset', ['token' => $m[1], 'password' => 'a-new-password', 'password_confirmation' => 'a-new-password'])->assertOk();
 
@@ -208,15 +208,17 @@ class AuthHardeningTest extends TestCase
         // Not a password link, and a tampered one is nothing.
         $this->app['auth']->forgetGuards();
         $this->postJson('/api/v1/auth/password/reset', ['token' => $token, 'password' => 'a-new-password', 'password_confirmation' => 'a-new-password'])->assertUnprocessable();
-        $this->postJson('/api/v1/auth/email/verify', ['token' => $token.'x'])->assertUnprocessable();
+        $this->postJson('/api/v1/auth/email/verify', ['token' => $token.'x', 'password' => 'password123'])->assertUnprocessable();
         $this->assertNull($rep->fresh()->email_verified_at);
 
-        $this->postJson('/api/v1/auth/email/verify', ['token' => $token])->assertOk()->assertJsonPath('data.verified', true);
+        $this->postJson('/api/v1/auth/email/verify', ['token' => $token, 'password' => 'not-theirs'])->assertUnprocessable();
+        $this->assertNull($rep->fresh()->email_verified_at);
+        $this->postJson('/api/v1/auth/email/verify', ['token' => $token, 'password' => 'password123'])->assertOk()->assertJsonPath('data.verified', true);
         $at = $rep->fresh()->email_verified_at;
         $this->assertNotNull($at);
 
         // Using it again changes nothing.
-        $this->postJson('/api/v1/auth/email/verify', ['token' => $token])->assertOk();
+        $this->postJson('/api/v1/auth/email/verify', ['token' => $token, 'password' => 'password123'])->assertOk();
         $this->assertEquals($at, $rep->fresh()->email_verified_at);
     }
 
@@ -226,11 +228,11 @@ class AuthHardeningTest extends TestCase
         $token = EmailVerification::token($rep);
 
         $rep->forceFill(['email' => 'moved@example.test'])->save();
-        $this->postJson('/api/v1/auth/email/verify', ['token' => $token])->assertUnprocessable();
+        $this->postJson('/api/v1/auth/email/verify', ['token' => $token, 'password' => 'password123'])->assertUnprocessable();
 
         $fresh = EmailVerification::token($rep);
         $this->travel(EmailVerification::HOURS + 1)->hours();
-        $this->postJson('/api/v1/auth/email/verify', ['token' => $fresh])->assertUnprocessable();
+        $this->postJson('/api/v1/auth/email/verify', ['token' => $fresh, 'password' => 'password123'])->assertUnprocessable();
     }
 
     public function test_an_emails_body_is_not_readable_at_rest_and_old_rows_still_read(): void
@@ -239,8 +241,8 @@ class AuthHardeningTest extends TestCase
         $this->postJson('/api/v1/auth/password/forgot', ['email' => $email])->assertOk();
 
         $row = DB::table('email_deliveries')->where('to_email', $email)->latest('id')->first();
-        $this->assertStringNotContainsString('set-password', $row->html);
-        $this->assertStringContainsString('set-password', (string) EmailDelivery::withoutGlobalScopes()->whereKey($row->id)->value('html'));
+        $this->assertStringNotContainsString('reset-password', $row->html);
+        $this->assertStringContainsString('reset-password', (string) EmailDelivery::withoutGlobalScopes()->whereKey($row->id)->value('html'));
 
         DB::table('email_deliveries')->where('id', $row->id)->update(['html' => '<p>from before</p>']);
         $this->assertSame('<p>from before</p>', EmailDelivery::withoutGlobalScopes()->whereKey($row->id)->value('html'));

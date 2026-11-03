@@ -1,126 +1,91 @@
 import { NavLink } from 'react-router-dom'
 import { HOME } from '@/lib/routes'
-import { X } from 'lucide-react'
+import { LogOut, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/cn'
 import { BrandLockup } from '@/components/brand'
+import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { useNavigation } from './navigation'
 
 /**
- * The phone drawer: every destination, labelled.
- *
- * Below the desktop breakpoint there is no icon rail and no pill track — an
- * icon-only strip is the wrong tool on a thumb — so the same destinations, from
- * the same source, open as a list that slides in from the start edge.
+ * "More" on a phone: a whole screen, the way an app has one. Who and where you are at the top, every destination grouped
+ * with room for a thumb, settings and signing out at the foot. From the same list as the tabs and the laptop's rail.
  */
 export function Sidebar() {
   const { t } = useTranslation()
+  const user = useAuth((s) => s.user)
   const branding = useAuth((s) => s.branding)
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
+  const logout = useAuth((s) => s.logout)
   const sidebarOpen = useUi((s) => s.sidebarOpen)
   const setSidebarOpen = useUi((s) => s.setSidebarOpen)
-  const { all: items } = useNavigation()
+  const { groups, settings } = useNavigation()
+  const close = () => setSidebarOpen(false)
 
   return (
-    <>
-      {/* Mobile scrim */}
-      {sidebarOpen && (
-        <button
-          type="button"
-          aria-label={t('common.close')}
-          className="fixed inset-0 z-30 bg-[var(--color-neutral-900)]/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <aside
+      data-open={sidebarOpen}
+      aria-hidden={!sidebarOpen}
+      data-testid="more-menu"
+      className="app-sidebar fixed inset-0 z-40 flex w-full flex-col bg-[var(--color-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:hidden print:hidden"
+    >
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
+        <BrandLockup to={HOME} size="md" />
+        <button type="button" aria-label={t('common.close')} className="grid size-11 place-items-center rounded-lg hover:bg-[var(--color-surface-muted)]" onClick={close}>
+          <X className="size-5" aria-hidden />
+        </button>
+      </div>
 
-      <aside
-        data-open={sidebarOpen}
-        className={cn(
-          'app-sidebar fixed inset-y-0 start-0 z-40 flex w-[16rem] max-w-[85vw] flex-col lg:hidden print:hidden',
-          /*
-           * The canvas colour, not white.
-           *
-           * With a white rail against a white card there is nothing to see;
-           * the whole theme rests on cards being the only white things on the
-           * screen, so the chrome has to recede for them to read as objects.
-           */
-          'rounded-e-[var(--radius-panel)] bg-[var(--chrome-1)] text-[var(--chrome-ink)] shadow-[var(--shadow-pop)]',
-        )}
-      >
-        <div className="flex h-16 items-center justify-between gap-2 px-3">
-          {/* One component decides whose identity this is — see BrandLockup. The drawer is pine, so the reverse logo. */}
-          <BrandLockup to={HOME} size="md" variant="reverse" onDark />
-
-          <button
-            type="button"
-            aria-label={t('common.close')}
-            className="grid size-8 place-items-center rounded-[var(--radius-control)] text-[var(--chrome-muted)] hover:bg-[var(--chrome-2)] hover:text-[var(--chrome-ink)] lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="size-4" aria-hidden />
-          </button>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+        <div className="rounded-2xl bg-[var(--color-surface-muted)] px-4 py-3" data-testid="more-identity">
+          <p className="truncate text-[1rem] font-semibold">{user?.name}</p>
+          <p className="truncate text-[0.875rem] text-[var(--color-ink-muted)]">{isSuperAdmin ? t('nav.platformConsole') : (branding?.company_name ?? user?.email)}</p>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-          {/*
-           * The console says so in words as well as in colour. Colour alone is
-           * the kind of cue that stops working on the day it matters — a tired
-           * operator, a projector, a screenshot pasted into a ticket.
-           */}
-          {isSuperAdmin && (
-            <p className="label-caps px-3 pb-2 text-[var(--chrome-muted)]">
-              {t('nav.platformConsole')}
-            </p>
-          )}
+        {sidebarOpen && !isSuperAdmin && <div className="mt-2"><WorkspaceSwitcher onDone={close} /></div>}
 
-          {items
-            .map(({ to, labelKey, Icon, badge }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/dashboard'}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'relative flex items-center gap-2.5 px-3 py-2 text-[0.9375rem] font-medium',
-                    'rounded-[var(--radius-pill)] transition-colors duration-[var(--duration-fast)]',
-                    /*
-                     * The active item is a white pill, which is the same
-                     * relationship every card on the canvas has — so "where am
-                     * I" is answered by the one visual rule the whole theme is
-                     * built on rather than by a second one invented here.
-                     *
-                     * The brand marker stays: a tenant whose colour is close to
-                     * the ink would otherwise have an active state nobody can
-                     * see, and that is the one state that must never be subtle.
-                     */
-                    isActive
-                      ? 'bg-[var(--chrome-active)] font-semibold text-[var(--chrome-active-ink)]'
-                      : 'text-[var(--chrome-muted)] hover:bg-[var(--chrome-2)] hover:text-[var(--chrome-ink)]',
-                  )
-                }
-              >
-                <Icon className="size-[1.125rem] shrink-0" aria-hidden />
-                <span className="flex-1 truncate">{t(labelKey)}</span>
-                {badge !== undefined && badge > 0 && (
-                  <span className="tabular rounded-full bg-[var(--color-status-lost)] px-1.5 py-0.5 text-[0.8125rem] font-semibold text-white">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-              </NavLink>
-            ))}
+        <nav className="mt-3 space-y-4">
+          {groups.map((group, index) => (
+            <ul key={index} className="overflow-hidden rounded-2xl border border-[var(--color-line)]">
+              {group.map(({ to, labelKey, Icon, badge }) => (
+                <li key={to} className="border-b border-[var(--color-line)] last:border-0">
+                  <NavLink
+                    to={to}
+                    end={to === '/dashboard'}
+                    onClick={close}
+                    className={({ isActive }) => cn('flex min-h-[3.25rem] items-center gap-3 px-4 text-[1rem] font-medium', isActive ? 'bg-[var(--brand-soft)] font-semibold text-[var(--brand-text)]' : 'active:bg-[var(--color-surface-muted)]')}
+                  >
+                    <Icon className="size-5 shrink-0" aria-hidden />
+                    <span className="flex-1 truncate">{t(labelKey)}</span>
+                    {badge !== undefined && badge > 0 && <span className="tabular rounded-full bg-[var(--color-status-lost)] px-2 py-0.5 text-[0.8125rem] font-semibold text-white">{badge > 99 ? '99+' : badge}</span>}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          ))}
+
+          <ul className="overflow-hidden rounded-2xl border border-[var(--color-line)]">
+            {settings && (
+              <li className="border-b border-[var(--color-line)]">
+                <NavLink to={settings.to} onClick={close} className="flex min-h-[3.25rem] items-center gap-3 px-4 text-[1rem] font-medium">
+                  <settings.Icon className="size-5 shrink-0" aria-hidden />
+                  {t(settings.labelKey)}
+                </NavLink>
+              </li>
+            )}
+            <li>
+              <button type="button" onClick={() => { close(); void logout() }} data-testid="more-logout" className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-start text-[1rem] font-medium text-[var(--color-status-lost)]">
+                <LogOut className="size-5 shrink-0" aria-hidden />
+                {t('auth.signOut')}
+              </button>
+            </li>
+          </ul>
         </nav>
 
-        {branding?.support_email && (
-          <div className="border-t border-[var(--chrome-line)] p-3 text-[0.875rem] text-[var(--chrome-muted)]">
-            <a href={`mailto:${branding.support_email}`} className="hover:text-[var(--chrome-ink)]">
-              {branding.support_email}
-            </a>
-          </div>
-        )}
-      </aside>
-    </>
+        {branding?.support_email && <a href={`mailto:${branding.support_email}`} className="mt-3 block text-center text-[0.875rem] text-[var(--color-ink-muted)]">{branding.support_email}</a>}
+      </div>
+    </aside>
   )
 }

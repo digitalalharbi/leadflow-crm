@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Access\WorkspaceModules;
 use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\FeatureGate;
 use App\Support\TenantContext;
@@ -21,6 +22,15 @@ class EnforceEntitlements
     {
         $tenant = $this->context->get();
         $feature = FeatureGate::for($request);
+
+        if (($module = WorkspaceModules::blocking($request, $tenant)) !== null) {
+            return response()->json([
+                'success' => false,
+                'data' => ['code' => 'module_disabled'],
+                'message' => 'This is switched off for your workspace.',
+                'errors' => ['module' => [$module]],
+            ], 403);
+        }
 
         if ($tenant === null || $feature === null) {
             return $next($request);

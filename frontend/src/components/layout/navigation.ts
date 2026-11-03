@@ -24,8 +24,12 @@ export interface Navigation {
   settings: NavItem | null
   /** Flat, for the phone drawer. */
   all: NavItem[]
+  /** The phone's tab bar: this person's own day, from what they may open. */
+  tabs: NavItem[]
 }
 
+const SALES_TABS = ['/work', '/leads', '/follow-ups', '/visits']
+const MANAGER_TABS = ['/dashboard', '/work', '/projects', '/reports']
 const PRIMARY = ['/dashboard', '/work', '/leads', '/pipeline', '/campaigns', '/projects', '/reports']
 
 /**
@@ -56,7 +60,7 @@ export function useNavigation(): Navigation {
       { to: '/readiness', labelKey: 'nav.readiness', Icon: Rocket },
     ]
 
-    return { primary: items, groups: [items], settings: null, all: items }
+    return { primary: items, groups: [items], settings: null, all: items, tabs: items }
   }
 
   /*
@@ -108,7 +112,13 @@ export function useNavigation(): Navigation {
   const settings: NavItem | null = has('settings.view') ? { to: '/settings', labelKey: 'nav.settings', Icon: Settings } : null
   const all = settings ? [...groups.flat(), settings] : groups.flat()
 
+  const wanted = user?.role === 'sales' || !has('dashboard.view') ? SALES_TABS : MANAGER_TABS
+  const chosen = wanted.map((to) => all.find((row) => row.to === to)).filter((row): row is NavItem => Boolean(row))
+  // Whatever they cannot open leaves room for the next place they can.
+  const tabs = [...chosen, ...all.filter((row) => !chosen.includes(row) && row !== settings)].slice(0, 4)
+
   return {
+    tabs,
     primary: PRIMARY.map((to) => all.find((item) => item.to === to)).filter((item): item is NavItem => Boolean(item)),
     groups,
     settings,

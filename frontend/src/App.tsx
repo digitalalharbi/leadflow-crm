@@ -135,6 +135,8 @@ function RequirePermission({ any, children }: { any: string[]; children: React.R
 
 /** Where somebody lands who asked for a screen they do not have: the first one they do. */
 function firstHome(user: ReturnType<typeof useAuth.getState>['user']): string {
+  if (user?.home) return user.home
+
   const home = ([['dashboard.view', HOME], ['leads.view', '/leads'], ['visits.view', '/visits']] as const).find(([p, path]) => can.has(user, p) && seesPage(user, path))
 
   return home?.[1] ?? '/settings/profile'

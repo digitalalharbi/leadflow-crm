@@ -65,8 +65,10 @@ class Permissions
     {
         $hidden = $user->role ? AccessResolver::resolve($user, $projectId)->hiddenElements : [];
 
+        $hidden = [...$hidden, ...WorkspaceModules::hiddenPages($user->tenant)];
+
         // These read the whole company, and the API refuses them to someone limited to some projects.
-        return $user->isProjectScoped() ? array_values(array_unique([...$hidden, 'page.audit', 'page.agents', 'page.partners'])) : $hidden;
+        return $user->isProjectScoped() ? array_values(array_unique([...$hidden, 'page.audit', 'page.agents', 'page.partners'])) : array_values(array_unique($hidden));
     }
 
     /** @return list<string> */
@@ -132,14 +134,17 @@ class Permissions
             return [];
         }
 
+        // Revenue switched off for the company is off for everybody in it.
+        $companyOff = in_array('revenue', WorkspaceModules::disabled($user->tenant), true) ? ['revenue'] : [];
+
         // The specialised roles hold only what the table gives them. A long-standing role is held
         // back only from what the workspace has explicitly taken away.
         if ($user->usesMatrix()) {
-            return array_values(array_filter(['contacts', 'spend', 'revenue'], fn (string $kind) => ! self::has($user, "{$kind}.view")));
+            return array_values(array_unique([...$companyOff, ...array_filter(['contacts', 'spend', 'revenue'], fn (string $kind) => ! self::has($user, "{$kind}.view"))]));
         }
 
         $denied = AccessResolver::resolve($user)->denied;
 
-        return array_values(array_filter(['contacts', 'spend', 'revenue'], fn (string $kind) => in_array("{$kind}.view", $denied, true)));
+        return array_values(array_unique([...$companyOff, ...array_filter(['contacts', 'spend', 'revenue'], fn (string $kind) => in_array("{$kind}.view", $denied, true))]));
     }
 }

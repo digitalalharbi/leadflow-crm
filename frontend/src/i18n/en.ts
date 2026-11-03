@@ -3617,7 +3617,11 @@ export default {
       disabled: { title: 'Workspace disabled', body: 'The service provider has disabled this workspace.' },
     },
   },
+  projectSwitcher: { all: 'All projects', title: 'Choose a project', search: 'Search projects' },
   platformAdmin: {
+    modules: 'Modules this company can use',
+    modulesHint: 'What is off here the server refuses and the menus drop, and every change is recorded.',
+    module: { visits: 'Visits', reservations: 'Reservations', units: 'Units', automation: 'Automation', reports: 'Reports', public_sharing: 'Report sharing', landing: 'Landing pages', lead_sources: 'Lead sources', google_sheets: 'Google Sheets', integrations: 'Integrations', exports: 'Exports', api: 'API keys', webhooks: 'Webhooks', campaigns: 'Campaigns', tracking: 'Tracking', partners: 'Partners', revenue: 'Revenue and financial figures' },
     ownerSetupNote: 'The owner gets a link by email to choose their own password, valid for seven days.',
     sections: { companies: 'Companies', business: 'Business', plans: 'Plans', support: 'Support sessions', audit: 'Platform log', security: 'Security' },
     loginTitle: 'Platform sign-in',

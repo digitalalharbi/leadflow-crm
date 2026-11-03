@@ -10,6 +10,7 @@ until configured, the `log` mailer records mail as *logged*, never as *sent*.
    DKIM (TXT or CNAME under `<selector>._domainkey`), DMARC (`_dmarc` TXT, start with `p=none; rua=mailto:info@mohtam.pro`,
    move to `quarantine` after two clean weeks), and MX for replies.
 3. Set `MAIL_MAILER`, the provider key, `MAIL_DKIM_SELECTOR` in the server `.env`; `php artisan config:cache`.
+   `MAIL_MAILER=resend` or `ses` also switches the product's own mail; `LEADFLOW_MAIL_PROVIDER` overrides it (use it for `smtp`). Account emails (invitation, reset, email confirmation) follow the person's language and direction.
 4. `php artisan mohtam:email-dns` must print **READY** (exits 1 otherwise). Same data: `GET /api/v1/readiness/email-dns`.
 5. Send a test from Integrations → Email; check it lands in the inbox, not spam, at info@mohtam.pro.
 

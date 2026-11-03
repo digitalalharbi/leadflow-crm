@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { HOME } from '@/lib/routes'
+import { homeFor } from '@/lib/routes'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, Globe, Megaphone, Repeat2, Timer } from 'lucide-react'
@@ -28,6 +28,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams()
   const login = useAuth((s) => s.login)
   const status = useAuth((s) => s.status)
+  const user = useAuth((s) => s.user)
   const translateError = useApiError()
 
   const [branding, setBranding] = useState<Branding | null>(null)
@@ -48,7 +49,7 @@ export function LoginPage() {
    */
   const wanted = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
   const landing =
-    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' && wanted.pathname !== '/' ? `${wanted.pathname}${wanted.search ?? ''}` : HOME
+    wanted?.pathname && /^\/(?!\/)/.test(wanted.pathname) && wanted.pathname !== '/login' && wanted.pathname !== '/' ? `${wanted.pathname}${wanted.search ?? ''}` : homeFor(user)
 
   useBrandingTheme(branding)
 

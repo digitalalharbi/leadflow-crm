@@ -243,6 +243,8 @@ class AuthController extends Controller
             $token->delete();
         }
 
+        $this->audit->log('auth.logout', $request->user(), null, ['ip' => $request->ip()]);
+
         // A pure token request has no session store at all; asking for one throws.
         if ($request->hasSession()) {
             $request->session()->invalidate();
@@ -255,6 +257,7 @@ class AuthController extends Controller
     public function logoutAll(Request $request)
     {
         $request->user()->tokens()->delete();
+        $this->audit->log('auth.logout_all', $request->user(), null, ['ip' => $request->ip()]);
 
         return ApiResponse::success(null, 'Signed out of all devices.');
     }

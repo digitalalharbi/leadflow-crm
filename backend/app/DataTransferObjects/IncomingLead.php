@@ -2,6 +2,7 @@
 
 namespace App\DataTransferObjects;
 
+use App\Domain\Tracking\ClickIds;
 use App\Enums\IntegrationProvider;
 use Illuminate\Support\Arr;
 
@@ -138,14 +139,10 @@ class IncomingLead
             /*
              * Each platform names its click id differently, and a landing page
              * that forwards one usually forwards it under the platform's own
-             * name. Accepting all four costs nothing and is the difference
-             * between a sale that can be credited and one that cannot.
+             * name and spelling. Accepting them all costs nothing and is the
+             * difference between a sale that can be credited and one that cannot.
              */
-            clickId: Arr::get($data, 'click_id')
-                ?? Arr::get($data, 'gclid')
-                ?? Arr::get($data, 'fbclid')
-                ?? Arr::get($data, 'ttclid')
-                ?? Arr::get($data, 'sccid'),
+            clickId: Arr::get($data, 'click_id') ?? ClickIds::primary(ClickIds::from($data + $raw)),
             utmSource: Arr::get($data, 'utm_source'),
             utmMedium: Arr::get($data, 'utm_medium'),
             utmCampaign: Arr::get($data, 'utm_campaign'),

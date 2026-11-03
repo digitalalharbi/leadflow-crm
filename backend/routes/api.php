@@ -130,6 +130,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);
         Route::get('/auth/password/links/{token}', [AccountAccessController::class, 'link'])->where('token', '[A-Za-z0-9]{48}');
         Route::post('/auth/password/reset', [AccountAccessController::class, 'reset']);
+        Route::post('/auth/email/verify', [AccountAccessController::class, 'verifyEmail']);
         Route::get('/public/invitations/{token}', [AccountAccessController::class, 'invitation'])->where('token', '[A-Za-z0-9]{48}');
         Route::post('/public/invitations/{token}/accept', [AccountAccessController::class, 'accept'])->where('token', '[A-Za-z0-9]{48}');
     });
@@ -238,6 +239,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/security/mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:10,1');
         Route::get('/auth/security/sessions', [AccountSecurityController::class, 'sessions']);
         Route::delete('/auth/security/sessions/{id}', [AccountSecurityController::class, 'endSession'])->whereNumber('id');
+        Route::post('/auth/security/sessions/end-others', [AccountSecurityController::class, 'endOtherSessions'])->middleware('throttle:10,1');
+        Route::post('/auth/email/verification', [AccountAccessController::class, 'sendVerification'])->middleware('throttle:3,1');
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
         // One person in several companies: the server lists their memberships and moves the session.
         Route::get('/auth/workspaces', [WorkspaceController::class, 'index']);

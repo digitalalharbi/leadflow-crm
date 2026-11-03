@@ -19,6 +19,7 @@ export interface LeadSource {
   path?: string | null
   provider?: string
   clicks?: number
+  is_active?: boolean
 }
 
 export interface LeadFormMapping {

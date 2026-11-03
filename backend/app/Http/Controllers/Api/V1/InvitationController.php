@@ -81,7 +81,7 @@ class InvitationController extends Controller
         $token = $invitation->issueToken();
         $invitation->forceFill(['last_sent_at' => now(), 'send_count' => 1])->save();
 
-        $this->email->invitation($invitation, $token, $tenant, $request->user()->name);
+        $this->email->invitation($invitation, $token, $tenant, $request->user()->name, $request->user()->locale);
         $this->audit->log('invitation.sent', $request->user(), $invitation, ['email' => $email, 'role' => $invitation->role]);
 
         return ApiResponse::created(['invitation' => $this->present($invitation)]);
@@ -96,7 +96,7 @@ class InvitationController extends Controller
         $token = $invitation->issueToken();
         $invitation->forceFill(['last_sent_at' => now(), 'send_count' => $invitation->send_count + 1])->save();
 
-        $this->email->invitation($invitation, $token, $this->context->get(), $request->user()->name);
+        $this->email->invitation($invitation, $token, $this->context->get(), $request->user()->name, $request->user()->locale);
         $this->audit->log('invitation.resent', $request->user(), $invitation, ['email' => $invitation->email]);
 
         return ApiResponse::success(['invitation' => $this->present($invitation)]);

@@ -75,6 +75,12 @@ class PlatformAuthController extends Controller
     public function setupMfa(Request $request)
     {
         $user = $request->user();
+
+        // A session alone must not replace the authenticator that protects the console.
+        if ($user->mfa_enabled_at !== null) {
+            throw ValidationException::withMessages(['code' => ['A second factor is already on. Remove it first to set up a new one.']]);
+        }
+
         $secret = Totp::generateSecret();
         $user->forceFill(['mfa_secret' => $secret])->save();
 

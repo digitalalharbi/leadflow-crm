@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { HOME } from '@/lib/routes'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError, apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
@@ -221,6 +221,58 @@ export function InvitationPage() {
         {(errors.form || errors.token || errors.seats) && <p role="alert" className="text-[0.9375rem] text-[var(--color-status-lost)]">{errors.form ?? errors.token ?? errors.seats}</p>}
         <Button type="submit" className="w-full" loading={submitting} data-testid="invite-accept">{t('account.acceptInvite')}</Button>
       </form>
+    </Shell>
+  )
+}
+
+/** The address an email's link names. Opening it proves the inbox of this one account; it signs nobody in. */
+export function VerifyEmailPage() {
+  const { t } = useTranslation()
+  const [params] = useSearchParams()
+  const token = params.get('token') ?? ''
+  const [state, setState] = useState<'checking' | 'done' | 'invalid'>(token ? 'checking' : 'invalid')
+
+  useEffect(() => {
+    if (!token) return
+
+    let active = true
+
+    apiPost('/auth/email/verify', { token })
+      .then(() => { if (active) setState('done') })
+      .catch(() => { if (active) setState('invalid') })
+
+    return () => { active = false }
+  }, [token])
+
+  return (
+    <Shell title={t('account.verifyTitle')} testId="verify-email">
+      {state === 'checking' && <Skeleton className="h-6 w-full" />}
+      {state === 'done' && <p data-testid="verify-done">{t('account.verifyDone')}</p>}
+      {state === 'invalid' && <p data-testid="verify-invalid">{t('account.verifyInvalid')}</p>}
+      <Link to="/login" className="t-caption underline">{t('account.backToLogin')}</Link>
+    </Shell>
+  )
+}
+
+/** The plain names for the two link pages. A link's own token still decides; without one there is only one useful place to go. */
+export function ResetPasswordRedirect() {
+  const [params] = useSearchParams()
+  const token = params.get('token')
+
+  return <Navigate to={token ? `/set-password/${encodeURIComponent(token)}` : '/forgot-password'} replace />
+}
+
+export function AcceptInviteRedirect() {
+  const { t } = useTranslation()
+  const [params] = useSearchParams()
+  const token = params.get('token')
+
+  if (token) return <Navigate to={`/invite/${encodeURIComponent(token)}`} replace />
+
+  return (
+    <Shell title={t('account.inviteTitleGeneric')} testId="accept-invite">
+      <p>{t('account.inviteNeedsLink')}</p>
+      <Link to="/login" className="t-caption underline">{t('account.backToLogin')}</Link>
     </Shell>
   )
 }

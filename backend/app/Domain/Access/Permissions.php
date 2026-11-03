@@ -63,7 +63,10 @@ class Permissions
     /** @return list<string> the elements that are off for this person */
     public static function hiddenElements(User $user, ?int $projectId = null): array
     {
-        return $user->role ? AccessResolver::resolve($user, $projectId)->hiddenElements : [];
+        $hidden = $user->role ? AccessResolver::resolve($user, $projectId)->hiddenElements : [];
+
+        // These read the whole company, and the API refuses them to someone limited to some projects.
+        return $user->isProjectScoped() ? array_values(array_unique([...$hidden, 'page.audit', 'page.agents'])) : $hidden;
     }
 
     /** @return list<string> */

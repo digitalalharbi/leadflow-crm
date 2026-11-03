@@ -84,3 +84,19 @@ test.describe('Authentication', () => {
     }
   })
 })
+
+test.describe('the plain names of the account links', () => {
+  test('each one has somewhere useful to go, with or without a token', async ({ page }) => {
+    await page.goto('/verify-email')
+    await expect(page.getByTestId('verify-invalid')).toBeVisible()
+
+    await page.goto('/verify-email?token=not-a-real-link')
+    await expect(page.getByTestId('verify-invalid')).toBeVisible()
+
+    await page.goto('/reset-password')
+    await expect(page).toHaveURL(/\/forgot-password$/)
+
+    await page.goto('/accept-invite')
+    await expect(page.getByTestId('accept-invite')).toBeVisible()
+  })
+})

@@ -300,6 +300,7 @@ export default {
     reservationDone: { confirm: 'تم تأكيد الحجز', cancel: 'أُلغي الحجز وعادت الوحدة', convert: 'تم البيع وأُغلق العميل رابحًا' },
     empty: { requested: 'لا طلبات زيارة', upcoming: 'لا زيارات قادمة', needs_result: 'كل الزيارات لها نتيجة', no_show: 'لا أحد تغيّب', reservations: 'لا حجوزات مفتوحة' },
     confirm: 'تأكيد موعد', reschedule: 'تغيير الموعد', done: 'تمت الزيارة', recordResult: 'سجّل النتيجة', noShow: 'لم يحضر', cancel: 'إلغاء',
+    dealValue: 'قيمة الصفقة',
     reservationConfirm: 'تأكيد الحجز', reservationConvert: 'إتمام البيع',
     resultTitle: 'ماذا كانت نتيجة الزيارة؟',
     moved: 'تم التحديث.', resultSaved: 'سُجّلت النتيجة.',
@@ -1560,6 +1561,7 @@ export default {
   },
 
   tasks: {
+    dueNow: 'مهام مستحقة الآن',
     title: 'المهام', new: 'مهمة جديدة', due: 'الموعد', priority: 'الأولوية', add: 'إضافة', done: 'تمّت',
     overdue: 'متأخرة', unassigned: 'بلا مسؤول', empty: 'لا توجد مهام مفتوحة.',
     priorities: { urgent: 'عاجلة', high: 'مرتفعة', normal: 'عادية', low: 'منخفضة' },
@@ -1574,7 +1576,7 @@ export default {
     disabled: 'أُوقف التحقق بخطوتين',
     requiredNotice: 'تشترط مساحة العمل التحقق بخطوتين. فعّله لتكمل استخدام النظام.',
     requireForAll: 'اشتراط التحقق بخطوتين على جميع أعضاء مساحة العمل',
-    sessions: 'الأجهزة المسجّلة', thisDevice: 'هذا الجهاز', endSession: 'تسجيل الخروج منه', unknownDevice: 'جهاز غير معروف',
+    endOthers: 'تسجيل الخروج من أجهزتي الأخرى', sessions: 'الأجهزة المسجّلة', thisDevice: 'هذا الجهاز', endSession: 'تسجيل الخروج منه', unknownDevice: 'جهاز غير معروف',
   },
   webhooks: {
     title: 'إشعارات الأنظمة الأخرى (Webhooks)',
@@ -3013,7 +3015,8 @@ export default {
     sources: {
       title: 'مصادر الاهتمام', hint: 'كل طريق يصل منه عميل إلى هذا المشروع، وكلها تنتهي في مسار واحد.', add: 'إضافة مصدر اهتمام', addHint: 'من أين يأتي الاهتمام؟',
       logo: 'شعار المشروع', logoSaved: 'حُفظ الشعار', emptyTitle: 'لا مصادر بعد', emptyBody: 'أضف صفحة هبوط أو اربط منصة إعلانية.',
-      types: { landing_page: 'صفحة هبوط', platform_form: 'منصة إعلانية', google_sheet: 'جدول Google', whatsapp: 'واتساب', call: 'الاتصال', api: 'واجهة API / Webhook', import: 'استيراد CSV / Excel' },
+      pause: 'إيقاف مؤقت', resume: 'استئناف', remove: 'إزالة', removeConfirm: 'إزالة هذا النموذج من المشروع؟ العملاء الذين وصلوا يبقون.',
+      types: { landing_page: 'صفحة هبوط', platform_form: 'منصة إعلانية', google_sheet: 'جدول Google', whatsapp: 'واتساب', call: 'الاتصال', api: 'واجهة API / Webhook', import: 'استيراد CSV' },
       providers: { meta: 'Meta', tiktok: 'TikTok', snapchat: 'Snapchat', google_ads: 'Google Ads', linkedin: 'LinkedIn' },
       status: { connected: 'متصل', awaiting_setup: 'بانتظار الإعداد', error: 'خطأ' },
       metrics: { leads: 'عملاء', qualified: 'مؤهلون', appointments: 'مواعيد', sales: 'مبيعات' },
@@ -3415,6 +3418,7 @@ export default {
     simulated: 'وصل عميل جديد من {{campaign}}',
   },
   imports: {
+    project: 'المشروع الذي يتبعه هؤلاء العملاء', noProject: 'بدون مشروع',
     title: 'استيراد عملاء',
     upload: 'رفع ملف',
     uploadHint: 'ملف CSV بحجم أقصى ١٠ ميجابايت',
@@ -4075,6 +4079,7 @@ export default {
     recoveryCodes: 'رموز الاسترداد — احفظها الآن، فلن تظهر مرة أخرى. كل رمز يعمل مرة واحدة.',
   },
   account: {
+    verifyTitle: 'تأكيد بريدك الإلكتروني', verifyDone: 'تم تأكيد بريدك. يمكنك تسجيل الدخول.', verifyInvalid: 'انتهت صلاحية هذا الرابط أو أنه غير صالح. سجّل الدخول واطلب رابطاً جديداً من ملفك الشخصي.', inviteTitleGeneric: 'دعوتك', inviteNeedsLink: 'افتح الرابط الموجود في رسالة الدعوة لقبولها.', emailUnverified: 'هذا البريد غير مؤكد بعد.', sendVerification: 'إرسال رابط التأكيد', verificationSent: 'رابط التأكيد في طريقه إليك.',
     invited: 'أُرسلت الدعوة.',
     inviteNote: 'سيصله رابط دعوة على بريده ليختار كلمة مروره بنفسه. لا تُرسل كلمات مرور بالبريد.',
     allProjects: 'يرى كل المشاريع',
@@ -4113,6 +4118,7 @@ export default {
     setupLinkSent: 'أُرسل رابط تعيين كلمة المرور.',
   },
   titles: {
+    verifyEmail: 'تأكيد البريد',
     dashboard: 'لوحة التحكم', platform: 'إدارة المنصة', login: 'تسجيل الدخول', platformLogin: 'دخول إدارة المنصة',
     invitation: 'دعوة للانضمام', setPassword: 'تعيين كلمة المرور', forgotPassword: 'استعادة كلمة المرور', report: 'تقرير', form: 'نموذج',
     poweredBy: 'مدعوم بواسطة مهتم', notFound: 'الصفحة غير موجودة',

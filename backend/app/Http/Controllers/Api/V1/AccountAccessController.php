@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Auth\EmailVerification;
 use App\Domain\Auth\SecondFactor;
 use App\Domain\Billing\PlanLimits;
 use App\Domain\Mail\AccountEmail;
@@ -17,6 +18,7 @@ use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -58,6 +60,8 @@ class AccountAccessController extends Controller
             $data = $request->validate(['password' => ['required', 'string']]);
 
             if (! $existing->contains(fn (User $u) => Hash::check($data['password'], $u->password))) {
+                $this->audit->logForTenant($invitation->tenant_id, 'invitation.password_refused', null, $invitation, ['ip' => $request->ip()]);
+
                 throw ValidationException::withMessages(['password' => ['That is not the password of your account.']]);
             }
 
@@ -117,10 +121,22 @@ class AccountAccessController extends Controller
             ->whereHas('tenant', fn ($q) => $q->where('is_active', true))
             ->orderByRaw('last_login_at desc nulls last')->first();
 
-        if ($account) {
-            [, $token] = PasswordLink::issue($email, 'reset', $request->ip());
-            $this->email->passwordLink($email, $account->name, 'reset', $token, Tenant::with('branding')->find($account->tenant_id));
-            $this->audit->logForTenant($account->tenant_id, 'auth.password_reset_requested', $account, $account, ['ip' => $request->ip()]);
+        // After the answer has left, so how long it took says nothing either. Three a quarter hour per address: nobody's inbox is a target.
+        if ($account && RateLimiter::attempt('forgot:'.hash('sha256', $email), 3, fn () => true, 900)) {
+            $ip = $request->ip();
+
+            $sent = false;
+
+            app()->terminating(function () use ($account, $email, $ip, &$sent) {
+                if ($sent) {
+                    return;
+                }
+
+                $sent = true;
+                [, $token] = PasswordLink::issue($email, 'reset', $ip);
+                $this->email->passwordLink($email, $account->name, 'reset', $token, Tenant::with('branding')->find($account->tenant_id), $account->locale);
+                $this->audit->logForTenant($account->tenant_id, 'auth.password_reset_requested', $account, $account, ['ip' => $ip]);
+            });
         }
 
         return ApiResponse::success(null, 'If that email is registered, a link is on its way.');
@@ -157,17 +173,18 @@ class AccountAccessController extends Controller
             throw ValidationException::withMessages(['token' => ['This link has expired or was already used.']]);
         }
 
-        DB::transaction(function () use ($accounts, $data, $link, $request) {
+        // The account the person actually uses. A row another company's admin added under this address stays unproven, so it links to nothing.
+        $user = $accounts->sortByDesc(fn (User $u) => $u->last_login_at?->timestamp ?? 0)->first();
+
+        DB::transaction(function () use ($accounts, $data, $link, $request, $user) {
             $link->forceFill(['used_at' => now()])->save();
 
             foreach ($accounts as $account) {
-                $account->forceFill(['password' => $data['password'], 'email_verified_at' => $account->email_verified_at ?? now()])->save();
+                $account->forceFill(['password' => $data['password'], 'email_verified_at' => $account->email_verified_at ?? ($account->is($user) ? now() : null)])->save();
                 PersonalAccessToken::where('tokenable_type', User::class)->where('tokenable_id', $account->id)->delete();
                 $this->audit->logForTenant($account->tenant_id, $link->purpose === 'setup' ? 'auth.password_set' : 'auth.password_reset', $account, $account, ['ip' => $request->ip()]);
             }
         });
-
-        $user = $accounts->sortByDesc(fn (User $u) => $u->last_login_at?->timestamp ?? 0)->first();
 
         // A reset link proves the inbox, not the authenticator app: an account with a second factor signs in with it.
         if (app(SecondFactor::class)->enabled($user->fresh())) {
@@ -175,6 +192,42 @@ class AccountAccessController extends Controller
         }
 
         return ApiResponse::success(app(AuthController::class)->issueSession($user->fresh(), $request));
+    }
+
+    /** Signed-in: send this person a link that proves their own address. */
+    public function sendVerification(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->email_verified_at !== null) {
+            return ApiResponse::success(['verified' => true]);
+        }
+
+        $tenant = $user->tenant;
+        abort_if($tenant === null, 404);
+
+        $this->email->verification($user, EmailVerification::token($user), Tenant::with('branding')->find($tenant->id));
+        $this->audit->log('auth.email_verification_sent', $user, $user, ['ip' => $request->ip()]);
+
+        return ApiResponse::success(['verified' => false], 'A link is on its way.');
+    }
+
+    /** The link: this one account's address, as it is now. Opening it twice changes nothing. */
+    public function verifyEmail(Request $request)
+    {
+        $data = $request->validate(['token' => ['required', 'string', 'max:512']]);
+        $user = EmailVerification::accountFor($data['token']);
+
+        if ($user === null) {
+            throw ValidationException::withMessages(['token' => ['This link has expired or is not valid.']]);
+        }
+
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+            $this->audit->logForTenant($user->tenant_id, 'auth.email_verified', $user, $user, ['ip' => $request->ip()]);
+        }
+
+        return ApiResponse::success(['verified' => true]);
     }
 
     /** Accounts with this email whose address has been proven, in companies that are open. */

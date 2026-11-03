@@ -69,7 +69,7 @@ export function hasAny(user: User | null | undefined, permissions: string[]): bo
 /** The pages a workspace can switch off, by the first part of their address. */
 const PAGE_ELEMENTS: Record<string, string> = {
   '': 'page.dashboard', leads: 'page.leads', visits: 'page.visits', campaigns: 'page.campaigns', tracking: 'page.tracking',
-  partners: 'page.partners', reports: 'page.reports', automation: 'page.automation', audit: 'page.audit',
+  partners: 'page.partners', reports: 'page.reports', automation: 'page.automation', audit: 'page.audit', agents: 'page.agents',
 }
 
 /** May this person open the page at `path`? Pages nobody can switch off are always allowed here (permissions decide those). */

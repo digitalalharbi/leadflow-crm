@@ -11,6 +11,7 @@ import { CallSettingsCard } from '@/components/integrations/CallSettingsCard'
 import { AdConnectionsPanel } from '@/components/integrations/AdConnectionsPanel'
 import { IntegrationGrid } from '@/components/integrations/IntegrationGrid'
 import { SheetSources } from '@/components/integrations/SheetSources'
+import { fetchProjects } from '@/features/leads'
 import { apiGet, apiPatch, apiPost, http } from '@/lib/api'
 import { can, useAuth, useEntitled } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -46,7 +47,7 @@ export function IntegrationsPage() {
   const whatsappOn = useEntitled('whatsapp')
 
   const [secret, setSecret] = useState<{ url: string; secret: string } | null>(null)
-  const [importOpen, setImportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(() => new URLSearchParams(window.location.search).get('import') === '1')
   const [view, setView] = useState<'sources' | 'ads'>('sources')
   /** Detail starts closed: the grid above is the answer, this is the evidence. */
   const [detailOpen, setDetailOpen] = useState(false)
@@ -143,7 +144,8 @@ export function IntegrationsPage() {
   })
 
   const connect = useMutation({
-    mutationFn: (provider: string) => apiPost<{ integration: { id: string } }>('/integrations', { provider }),
+    // Opened from a project's sources, a webhook's leads belong to that project.
+    mutationFn: (provider: string) => apiPost<{ integration: { id: string } }>('/integrations', { provider, ...(projectFromLink() && provider === 'generic_webhook' ? { defaults: { project_id: projectFromLink() } } : {}) }),
     onSuccess: async (result, provider) => {
       // A webhook provider is useless without an endpoint, so issue one straight away.
       if (provider === 'generic_webhook' || provider === 'google_ads') {
@@ -598,7 +600,7 @@ export function IntegrationsPage() {
         </div>
       </Modal>
 
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} projectFromLink={projectFromLink()} />
     </>
   )
 }
@@ -807,7 +809,12 @@ function CopyButton({ value }: { value: string }) {
 }
 
 /** Upload -> preview -> map -> import, in one dialog. */
-function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** The project a person came from, when they opened this page from its sources. */
+function projectFromLink() {
+  return new URLSearchParams(window.location.search).get('project')
+}
+
+function ImportModal({ open, onClose, projectFromLink: fromLink }: { open: boolean; onClose: () => void; projectFromLink: string | null }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const toast = useUi((s) => s.toast)
@@ -815,6 +822,8 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<'upload' | 'map' | 'done'>('upload')
+  const [project, setProject] = useState(fromLink ?? '')
+  const { data: projects } = useQuery({ queryKey: ['projects-list'], queryFn: fetchProjects, enabled: open })
   const [importId, setImportId] = useState('')
   const [headers, setHeaders] = useState<string[]>([])
   const [targets, setTargets] = useState<string[]>([])
@@ -848,7 +857,7 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   })
 
   const process = useMutation({
-    mutationFn: () => apiPost(`/imports/${importId}/process`, { mapping }),
+    mutationFn: () => apiPost(`/imports/${importId}/process`, { mapping, ...(project ? { project_id: project } : {}) }),
     onSuccess: async () => {
       const detail = await apiGet<{
         import: { imported_rows: number; duplicate_rows: number; failed_rows: number }
@@ -926,6 +935,11 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
       {step === 'map' && (
         <div className="space-y-3">
           <p className="text-[0.9375rem] text-[var(--color-ink-muted)]">{t('imports.mappingHint')}</p>
+
+          <Select label={t('imports.project')} value={project} onChange={(event) => setProject(event.target.value)} data-testid="import-project">
+            <option value="">{t('imports.noProject')}</option>
+            {projects?.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+          </Select>
 
           {headers.map((header) => (
             <div key={header} className="flex items-center gap-3">

@@ -115,6 +115,9 @@ class TenantController extends Controller
             'assignment_mode' => ['nullable', 'in:manual,round_robin'],
         ]);
 
+        // A new company's leads get an owner from the first one; triaging by hand is a setting it can choose.
+        $data['assignment_mode'] ??= 'round_robin';
+
         $result = $this->provisioning->provision($data);
 
         app(PlatformAudit::class)->log('tenant.created', $request->user(), $result['tenant'], $result['tenant'], [

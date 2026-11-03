@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * `/api/v1/shared/reports/{token}` — the live report behind a link.
@@ -36,7 +37,18 @@ class SharedReportController extends Controller
         $tenant = $this->context->withoutScope(fn () => Tenant::with('branding', 'settings')->find($share->tenant_id));
         $brand = ['name' => $tenant?->branding?->company_name ?? $tenant?->name, 'color' => $tenant?->branding?->primary_color ?? '#2563eb', 'logo_url' => $tenant?->branding?->logo_url];
 
+        // Holding the link does not buy unlimited guesses at its password: five wrong tries a quarter hour, per link.
+        $guesses = 'share-password:'.$share->id;
+
+        if ($share->hasPassword() && $request->hasHeader('X-Share-Password') && RateLimiter::tooManyAttempts($guesses, 5)) {
+            return response()->json(['success' => false, 'message' => 'Too many tries. Wait a while and try again.', 'data' => null], 429);
+        }
+
         if (! $share->passwordMatches($request->header('X-Share-Password'))) {
+            if ($request->hasHeader('X-Share-Password')) {
+                RateLimiter::hit($guesses, 900);
+            }
+
             // Enough to draw the password screen, nothing about the numbers.
             return response()->json(['success' => false, 'message' => 'A password is required.', 'data' => ['password_required' => true, 'workspace' => $brand, 'name' => $share->name]], 401);
         }

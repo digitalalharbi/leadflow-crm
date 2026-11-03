@@ -59,6 +59,7 @@ export function SecurityCard() {
     onError,
   })
   const end = useMutation({ mutationFn: (id: number) => apiDelete(`/auth/security/sessions/${id}`), onSuccess: refresh, onError })
+  const endOthers = useMutation({ mutationFn: () => apiPost('/auth/security/sessions/end-others'), onSuccess: refresh, onError })
   const policy = useMutation({ mutationFn: (on: boolean) => apiPatch('/settings/security', { require_mfa: on }), onSuccess: refresh, onError })
 
   if (security.isLoading) return <Skeleton className="h-40" />
@@ -133,6 +134,9 @@ export function SecurityCard() {
               </li>
             ))}
           </ul>
+          {(sessions.data ?? []).some((s) => !s.current) && (
+            <Button className="mt-2" size="sm" variant="secondary" loading={endOthers.isPending} onClick={() => endOthers.mutate()} data-testid="end-other-sessions">{t('security.endOthers')}</Button>
+          )}
         </div>
       </CardBody>
     </Card>

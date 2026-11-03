@@ -5,7 +5,7 @@ import { FileSpreadsheet, Globe, Megaphone, MessageCircle, Phone, Plus, Upload, 
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState, Input, Modal, Select, Skeleton } from '@/components/ui'
 import { createForm, uploadFormAsset, type PageTemplate } from '@/features/hub'
-import { createLeadFormMapping, fetchLeadSources, fetchPageComparison, LEAD_FORM_PROVIDERS, MAPPING_TARGETS, setProjectLogo, type LeadSource, type SourceType } from '@/features/leadSources'
+import { createLeadFormMapping, deleteLeadFormMapping, fetchLeadSources, updateLeadFormMapping, fetchPageComparison, LEAD_FORM_PROVIDERS, MAPPING_TARGETS, setProjectLogo, type LeadSource, type SourceType } from '@/features/leadSources'
 import { useApiError } from '@/hooks/useApiError'
 import { formatLastSeen } from '@/lib/format'
 import { can, useAuth } from '@/stores/auth'
@@ -41,14 +41,21 @@ export function ProjectLeadSources({ projectId, projectName }: { projectId: stri
     onError: (caught) => toast(translateError(caught), 'error'),
   })
 
+  const mappingAct = useMutation({
+    mutationFn: ({ id, active, remove }: { id: string; active?: boolean; remove?: boolean }) => (remove ? deleteLeadFormMapping(projectId, id) : updateLeadFormMapping(projectId, id, { is_active: active })),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['lead-sources', projectId] }),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
   if (isLoading) return <Skeleton className="h-64" />
   if (isError || !data) return <Card><ErrorState message={translateError(error)} onRetry={() => void refetch()} /></Card>
 
   const open = (source: LeadSource) => {
     if (source.type === 'landing_page') return `/tracking/forms/${source.id}`
-    if (source.type === 'google_sheet' || source.type === 'whatsapp' || source.type === 'call' || source.type === 'api' || source.type === 'platform_form') return '/integrations'
+    if (source.type === 'import') return `/integrations?import=1&project=${projectId}`
+    if (source.type === 'google_sheet' || source.type === 'api') return `/integrations?project=${projectId}`
 
-    return '/leads'
+    return '/integrations'
   }
 
   return (
@@ -82,17 +89,23 @@ export function ProjectLeadSources({ projectId, projectName }: { projectId: stri
                         </div>
                         <Badge tone={TONE[source.status]}>{t(`hub.sources.status.${source.status}`)}</Badge>
                       </div>
-                      <dl className="mt-3 grid grid-cols-4 gap-1 text-center">
+                      {source.type !== 'call' && <dl className="mt-3 grid grid-cols-4 gap-1 text-center">
                         {(['leads', 'qualified', 'appointments', 'sales'] as const).map((k) => (
                           <div key={k}><dd className="tabular text-[1.0625rem] font-bold">{source[k]}</dd><dt className="t-caption">{t(`hub.sources.metrics.${k}`)}</dt></div>
                         ))}
-                      </dl>
+                      </dl>}
                       <p className="t-caption mt-2">
                         {source.conversion_rate !== null ? `${t('hub.sources.conversion', { rate: source.conversion_rate })} · ` : ''}
                         {source.last_lead_at ? t('hub.sources.last', { when: formatLastSeen(source.last_lead_at, i18n.language) }) : t('hub.sources.noneYet')}
                         {source.clicks ? ` · ${t('hub.sources.clicks', { n: source.clicks })}` : ''}
                         {source.tracking_health !== 'not_applicable' ? ` · ${t(`hub.sources.health.${source.tracking_health}`)}` : ''}
                       </p>
+                      {canEdit && source.type === 'platform_form' && (
+                        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="mapping-actions">
+                          <Button size="sm" variant="ghost" loading={mappingAct.isPending} onClick={() => mappingAct.mutate({ id: source.id, active: !source.is_active })} data-testid="mapping-toggle">{t(source.is_active ? 'hub.sources.pause' : 'hub.sources.resume')}</Button>
+                          <Button size="sm" variant="ghost" loading={mappingAct.isPending} onClick={() => { if (window.confirm(t('hub.sources.removeConfirm'))) mappingAct.mutate({ id: source.id, remove: true }) }} data-testid="mapping-remove">{t('hub.sources.remove')}</Button>
+                        </div>
+                      )}
                     </li>
                   )
                 })}
@@ -133,7 +146,7 @@ export function ProjectLeadSources({ projectId, projectName }: { projectId: stri
               return <li key={key}><button type="button" className={className} data-testid={`add-${key}`} onClick={() => { setAdding(false); setKind(key === 'landing_page' ? 'page' : 'platform') }}>{body}</button></li>
             }
 
-            return <li key={key}><Link to={key === 'import' ? '/leads' : '/integrations'} className={className} data-testid={`add-${key}`}>{body}</Link></li>
+            return <li key={key}><Link to={key === 'import' ? `/integrations?import=1&project=${projectId}` : `/integrations?project=${projectId}`} className={className} data-testid={`add-${key}`}>{body}</Link></li>
           })}
         </ul>
       </Modal>

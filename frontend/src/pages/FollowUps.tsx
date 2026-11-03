@@ -12,6 +12,7 @@ import {
   Badge, SkeletonTable, StatusBadge, Textarea, Modal, TemperatureBadge,
 } from '@/components/ui'
 import type { FollowUp, FollowUpOutcome, PaginationMeta } from '@/types/api'
+import { completeTask, fetchTasks } from '@/features/tasks'
 import { cn } from '@/lib/cn'
 
 type Bucket = 'overdue' | 'today' | 'upcoming' | 'missed' | 'completed'
@@ -120,6 +121,8 @@ export function FollowUpsPage() {
   return (
     <>
       <PageHeader title={t('followUps.title')} subtitle={t('followUps.subtitle')} />
+
+      <DueTasks />
 
       <Card className="overflow-hidden">
         {/* Buckets as tabs: a rep works overdue first, then today. */}
@@ -351,5 +354,41 @@ export function FollowUpsPage() {
         </div>
       </Modal>
     </>
+  )
+}
+
+/** Work with a due time that is not a call back: what is late or due today, wherever it was written. */
+function DueTasks() {
+  const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const { data: overdue } = useQuery({ queryKey: ['tasks', 'due', 'overdue'], queryFn: () => fetchTasks({ bucket: 'overdue', mine: true }) })
+  const { data: today } = useQuery({ queryKey: ['tasks', 'due', 'today'], queryFn: () => fetchTasks({ bucket: 'today', mine: true }) })
+  const done = useMutation({
+    mutationFn: completeTask,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+  const seen = new Set<string>()
+  const rows = [...(overdue ?? []), ...(today ?? [])].filter((task) => !seen.has(task.id) && seen.add(task.id))
+
+  if (rows.length === 0) return null
+
+  return (
+    <Card className="mb-4 p-4" data-testid="due-tasks">
+      <h2 className="t-section-title mb-2">{t('tasks.dueNow')}</h2>
+      <ul className="divide-y divide-[var(--color-line)]">
+        {rows.map((task) => (
+          <li key={task.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid="due-task">
+            <div className="min-w-0">
+              <p className="truncate font-medium">{task.lead ? <Link to={`/leads/${task.lead.id}`} className="hover:underline">{task.title}</Link> : task.title}</p>
+              <p className="t-caption">{[task.lead?.name, task.due_at ? formatDateTime(task.due_at, i18n.language) : null].filter(Boolean).join(' · ')}</p>
+            </div>
+            <Button size="sm" variant="ghost" loading={done.isPending && done.variables === task.id} onClick={() => done.mutate(task.id)} data-testid="due-task-done">{t('tasks.done')}</Button>
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }

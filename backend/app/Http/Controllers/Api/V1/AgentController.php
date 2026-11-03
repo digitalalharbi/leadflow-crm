@@ -138,7 +138,7 @@ class AgentController extends Controller
     public function ai(BrainFactory $brains)
     {
         $this->authorize('export', Lead::class);
-        $this->refuseProjectLimited($request);
+        $this->refuseProjectLimited(request());
         $settings = app(TenantContext::class)->get()?->settings;
 
         return ApiResponse::success([

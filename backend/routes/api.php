@@ -560,6 +560,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/email-deliveries', [EmailDeliveryController::class, 'index']);
             Route::post('/email-deliveries/{uuid}/retry', [EmailDeliveryController::class, 'retry']);
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);
+            Route::post('/report-shares/{uuid}/pause', [ReportShareController::class, 'pause']);
+            Route::post('/report-shares/{uuid}/resume', [ReportShareController::class, 'resume']);
+            Route::post('/report-shares/{uuid}/archive', [ReportShareController::class, 'archive']);
+            Route::post('/report-shares/{uuid}/duplicate', [ReportShareController::class, 'duplicate']);
+            Route::post('/report-shares/{uuid}/snapshot', [ReportShareController::class, 'snapshot']);
             Route::post('/report-shares/{uuid}/regenerate', [ReportShareController::class, 'regenerate']);
             Route::delete('/report-shares/{uuid}', [ReportShareController::class, 'destroy']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);

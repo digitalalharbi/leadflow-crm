@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\Access\AccessResolver;
 use App\Enums\Role;
 use App\Models\Concerns\HasUuid;
+use App\Support\CompanyContext;
 use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -287,6 +288,12 @@ class User extends Authenticatable
         $custom = AccessResolver::customRole($this);
 
         return $custom !== null ? $custom->external : ($this->role?->isExternal() ?? false);
+    }
+
+    /** Sees less than the whole workspace: some projects, or some of the holding's companies. */
+    public function isLimited(): bool
+    {
+        return $this->isProjectScoped() || app(CompanyContext::class)->ids() !== null;
     }
 
     /** Whether news of a lead in this project is this person's to hear. Limited to some projects: only about those. */

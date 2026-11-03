@@ -150,7 +150,7 @@ class ImportController extends Controller
     /** A file's raw rows belong to no project yet: only someone who sees the whole company reads what others uploaded. */
     private function seesEveryImport(User $user): bool
     {
-        return $user->seesAllLeads() && ! $user->isProjectScoped() && ! $user->isExternal();
+        return $user->seesAllLeads() && ! $user->isLimited() && ! $user->isExternal();
     }
 
     private function mustReach(User $user, Import $import): void

@@ -198,7 +198,7 @@ class DataQualityController extends Controller
     {
         $user = request()->user();
 
-        if ($user->isProjectScoped() || $user->isExternal() || ! ($user->isAdmin() || $user->isManager() || Permissions::has($user, 'integrations'))) {
+        if ($user->isLimited() || $user->isExternal() || ! ($user->isAdmin() || $user->isManager() || Permissions::has($user, 'integrations'))) {
             return [];
         }
 

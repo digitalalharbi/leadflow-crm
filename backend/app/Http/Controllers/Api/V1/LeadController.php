@@ -315,7 +315,7 @@ class LeadController extends Controller
      */
     private function refuseLeadOutOfReach(User $user, array $data): void
     {
-        $phone = filled($data['phone'] ?? null) ? app(PhoneNormalizer::class)->normalize((string) $data['phone']) : null;
+        $phone = filled($data['phone'] ?? null) ? $this->phones->normalize((string) $data['phone'], TenantSetting::query()->value('default_country_code')) : null;
         $email = filled($data['email'] ?? null) ? mb_strtolower(trim((string) $data['email'])) : null;
 
         if ($phone === null && $email === null) {

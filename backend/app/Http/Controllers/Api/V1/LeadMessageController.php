@@ -37,6 +37,8 @@ class LeadMessageController extends Controller
     {
         $lead = $this->lead($uuid);
         $this->authorize('view', $lead);
+        // A window for outsiders, not the conversations: those carry contact details the window does not show.
+        abort_if($request->user()->isExternal(), 403, 'Your role does not include this.');
 
         // Paginated from the newest end: a long conversation must not make the
         // lead screen slower to open than a short one.

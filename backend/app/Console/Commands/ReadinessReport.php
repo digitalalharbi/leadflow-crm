@@ -46,6 +46,7 @@ class ReadinessReport extends Command
 
         if (! $this->option('json')) {
             $this->failedJobs();
+            $this->evidence();
         }
 
         $platform = array_filter(
@@ -68,8 +69,25 @@ class ReadinessReport extends Command
             ->countBy(fn ($job) => sprintf(
                 '%s / %s',
                 json_decode((string) $job->payload, true)['displayName'] ?? 'unknown',
-                strtok((string) $job->exception, ':') ?: 'unknown',
+                preg_match('/No query results for model \[([^\]]+)\]/', (string) $job->exception, $model) ? $model[1].' not found' : (strtok((string) $job->exception, ':') ?: 'unknown'),
             ))
             ->each(fn (int $count, string $name) => $this->line(sprintf('failed job %dx %s', $count, mb_substr($name, 0, 160))));
+    }
+
+    /** What has really happened on this server, across every workspace: counts only, naming nobody. */
+    private function evidence(): void
+    {
+        $count = fn (string $table, callable $query) => rescue(fn () => $query(DB::table($table))->count(), 'n/a', false);
+        $emails = rescue(fn () => DB::table('email_deliveries')->where('created_at', '>=', now()->subDays(7))->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(), [], false);
+
+        $this->line(sprintf(
+            'evidence sheets sources=%s runs_completed=%s runs_failed=%s runs_with_rows=%s leads=%s',
+            $count('sheet_sources', fn ($q) => $q),
+            $count('sheet_sync_runs', fn ($q) => $q->where('status', 'completed')),
+            $count('sheet_sync_runs', fn ($q) => $q->where('status', 'failed')),
+            $count('sheet_sync_runs', fn ($q) => $q->where('status', 'completed')->where('rows_seen', '>', 0)),
+            $count('leads', fn ($q) => $q->where('provider', 'google_sheets')->whereNull('deleted_at')),
+        ));
+        $this->line('evidence email_7d '.(collect($emails)->map(fn ($total, $status) => "{$status}={$total}")->implode(' ') ?: 'none'));
     }
 }

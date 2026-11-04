@@ -178,4 +178,23 @@ class GoogleLoginTest extends TestCase
 
         $this->getJson('/api/v1/auth/providers')->assertOk()->assertJsonPath('data.providers.0.key', 'google');
     }
+
+    public function test_on_the_sheets_client_it_uses_the_address_that_client_registered_and_passes_the_sign_in_on(): void
+    {
+        config(['integrations.google_sheets.client_id' => 'client', 'app.url' => 'https://mohtam.test']);
+
+        $start = $this->get('/api/v1/auth/google/redirect')->assertRedirect();
+        parse_str((string) parse_url($start->headers->get('Location'), PHP_URL_QUERY), $query);
+        $this->assertSame('https://mohtam.test/oauth/google/callback', $query['redirect_uri']);
+
+        $this->get('/oauth/google/callback?code=abc&state='.$query['state'])
+            ->assertRedirect('/api/v1/auth/google/callback?code=abc&state='.$query['state']);
+    }
+
+    public function test_a_state_nobody_started_is_not_passed_on_as_a_sign_in(): void
+    {
+        $response = $this->get('/oauth/google/callback?code=abc&state=made-up');
+
+        $this->assertStringNotContainsString('/api/v1/auth/google/callback', (string) $response->headers->get('Location'));
+    }
 }

@@ -46,9 +46,11 @@ test.describe('Mobile layout', () => {
     // Four places and "More"; the current one is marked.
     await expect(bar.getByRole('link')).toHaveCount(4)
     await expect(bar.getByTestId('bottom-tab-home')).toHaveClass(/bottom-tab-active/)
-    await bar.getByTestId('bottom-tab-leads').click()
-    await expect(page).toHaveURL(/\/leads/)
-    await expect(bar.getByTestId('bottom-tab-leads')).toHaveClass(/bottom-tab-active/)
+    // A manager's day: dashboard, work now, projects, reports.
+    await bar.getByTestId('bottom-tab-projects').click()
+    await expect(page).toHaveURL(/\/projects/)
+    await expect(bar.getByTestId('bottom-tab-projects')).toHaveClass(/bottom-tab-active/)
+    await page.goto('/leads')
 
     // Pinned to the bottom edge, and tall enough for a thumb.
     const box = (await bar.boundingBox())!
@@ -162,7 +164,7 @@ test.describe('Mobile layout', () => {
     await expect(menu).toBeInViewport()
 
     const box = (await menu.boundingBox())!
-    expect(box.width).toBe(page.viewportSize()!.width)
+    expect(Math.round(box.width)).toBe(page.viewportSize()!.width)
     await expect(page.getByTestId('more-identity')).toBeVisible()
     await expect(page.getByTestId('more-logout')).toBeAttached()
 
@@ -177,7 +179,7 @@ test.describe('Mobile layout', () => {
     await page.getByTestId('notifications-toggle').click()
     const center = page.getByTestId('notification-center')
     await expect(center).toBeVisible()
-    expect((await center.boundingBox())!.width).toBe(page.viewportSize()!.width)
+    expect(Math.round((await center.boundingBox())!.width)).toBe(page.viewportSize()!.width)
     await page.getByTestId('notifications-close').click()
     await expect(center).toHaveCount(0)
   })

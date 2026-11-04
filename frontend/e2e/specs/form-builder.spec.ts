@@ -50,7 +50,17 @@ test.describe('Form builder', () => {
 
     // A field is dragged from the library into the empty column.
     const before = await page.locator('[data-testid^="canvas-field-"]').count()
-    await page.getByTestId('lib-select').dragTo(emailRow.locator('[data-testid^="canvas-col-"]').nth(1))
+    // The drag grabs what is under the pointer, so the page must have stopped moving: under load it was still scrolling and took the divider instead.
+    const libSelect = page.getByTestId('lib-select')
+    await libSelect.scrollIntoViewIfNeeded()
+    await expect.poll(async () => {
+      const first = await libSelect.boundingBox()
+      await page.waitForTimeout(150)
+      const second = await libSelect.boundingBox()
+
+      return first !== null && first.y === second?.y
+    }).toBe(true)
+    await libSelect.dragTo(emailRow.locator('[data-testid^="canvas-col-"]').nth(1))
     await expect(page.locator('[data-testid^="canvas-field-"]')).toHaveCount(before + 1)
     await expect(page.getByTestId('field-settings')).toBeVisible()
     await page.getByTestId('fs-label').fill('نوع العقار')

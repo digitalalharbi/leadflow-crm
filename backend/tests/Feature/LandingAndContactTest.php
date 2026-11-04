@@ -33,6 +33,29 @@ class LandingAndContactTest extends TestCase
         $this->assertStringNotContainsString('<script>', (string) $page['financing_note']);
     }
 
+    public function test_the_page_list_counts_only_the_leads_this_person_may_see(): void
+    {
+        [$form, $project] = $this->asTenant($this->a['tenant'], function () {
+            $project = Project::create(['name' => 'Counted']);
+            $elsewhere = Project::create(['name' => 'Elsewhere']);
+            $form = LandingForm::create(['name' => 'P', 'project_id' => $project->id, 'status' => 'draft', 'fields' => [], 'consent_required' => false]);
+            Lead::create(['full_name' => 'Here', 'phone' => '0551234567', 'project_id' => $project->id])->forceFill(['landing_form_id' => $form->id])->saveQuietly();
+            Lead::create(['full_name' => 'There', 'phone' => '0551234568', 'project_id' => $elsewhere->id])->forceFill(['landing_form_id' => $form->id])->saveQuietly();
+
+            return [$form, $project];
+        });
+
+        $rows = collect($this->actingAs($this->a['admin'])->getJson('/api/v1/tracking/forms')->assertOk()->json('data.forms'))->keyBy('id');
+        $this->assertSame(2, $rows[$form->uuid]['leads_count']);
+
+        $limited = $this->makeUser($this->a['tenant'], Role::Manager);
+        $limited->forceFill(['all_projects' => false])->save();
+        $limited->projects()->sync([$project->id]);
+        $this->app['auth']->forgetGuards();
+        $seen = collect($this->actingAs($limited)->getJson('/api/v1/tracking/forms')->assertOk()->json('data.forms'))->keyBy('id');
+        $this->assertSame(1, $seen[$form->uuid]['leads_count']);
+    }
+
     public function test_submissions_show_this_pages_leads_within_what_the_person_may_see(): void
     {
         [$mine, $form, $lead] = $this->asTenant($this->a['tenant'], function () {

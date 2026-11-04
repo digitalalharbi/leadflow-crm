@@ -188,6 +188,8 @@ export default {
     links_one: '1 link', links_other: '{{count}} links',
   },
   share: {
+    projectCreated: 'Report created',
+    projectTitle: 'This project’s reports', projectHint: 'A live report on one link, or a frozen copy that does not change. Choose a type to make one.',
     intro: 'Live reports that open with a link — no sign-in. The numbers are always current.',
     new: 'New report link', edit: 'Edit', copy: 'Copy link', copied: 'Link copied.',
     regenerate: 'New link', revoke: 'Revoke', protected: 'Password',
@@ -547,6 +549,7 @@ export default {
     },
   },
   automation: {
+    estimatedSaved: 'Estimate: {{n}} manual actions assisted by automation in {{days}} days, about {{minutes}} minutes. An estimate, not a measurement.',
     allTemplates: 'Show all templates ({{count}})',
     fewerTemplates: 'Show fewer',
     tabs: { rules: 'Rules', history: 'Action history', routines: 'Routines', agents: 'Agents' },
@@ -1525,6 +1528,7 @@ export default {
   },
 
   readiness: {
+    word: { live: 'Live', partial: 'Partial', awaiting_external: 'Awaiting external', error: 'Error' },
     deployment: {
       local: 'Local',
       staging: 'Staging',
@@ -1623,6 +1627,7 @@ export default {
       external_verification_required: 'External verification required',
     },
     item: {
+      mail: 'Outgoing email', google_login: 'Google sign-in', automation: 'Automation engine', landing: 'Landing pages', reports: 'Reports',
       calendar: 'Calendar',
       email: 'Email',
       claude: 'Claude for agents',
@@ -1634,6 +1639,9 @@ export default {
       ads: 'Ad platforms',
     },
     blocker: {
+      google_login_redirect_not_registered: 'Google refuses the callback: add https://mohtam.pro/api/v1/auth/google/callback to the OAuth client.',
+      no_mail_provider: 'No mail provider is set up yet.', mail_provider_not_configured: 'The mail provider has no credentials.', mail_dns_incomplete: 'SPF, DKIM or DMARC records are incomplete.', awaiting_google_login_credentials: 'Google sign-in credentials are not on the server.', failed_jobs_in_the_last_day: 'Jobs failed in the last day.',
+      awaiting_first_submission: 'A page is published, waiting for its first real submission.', awaiting_first_published_page: 'No page is published yet.', awaiting_first_report: 'No report has been created yet.',
       not_recorded_in_production: 'It works and the provider confirms it, but no live event has been recorded on the production deployment yet.',
       replies_not_routed: 'Email reaches people, but replies do not come back to the thread yet.',
       not_production: 'The environment is not production yet.',
@@ -2711,6 +2719,7 @@ export default {
   },
   hub: {
     builder: {
+      phoneNote: 'On a phone you edit the text and settings. Arranging fields and sections takes a larger screen.',
       back: 'Back', undo: 'Undo', redo: 'Redo', publish: 'Publish', unsaved: 'unsaved changes', unpublished: 'changes not published', fixProblems: 'Some things need fixing before this can be saved.',
       liveVersion: 'Live · version {{n}}', version: 'Version {{n}}', live: 'live', moveUp: 'Move up', moveDown: 'Move down', duplicate: 'Duplicate', duplicateForm: 'Copy',
       settings: 'Settings', settingsOf: 'Settings: {{name}}', rowSettings: 'Row', sectionSettings: 'Section', sectionTitle: 'Section title', stepTitle: 'Step title',
@@ -2824,6 +2833,7 @@ export default {
       landsOn: 'The visitor arrives at',
     },
     forms: {
+      leadCount: '{{n}} leads', copyLink: 'Copy link', viewLive: 'Open page',
       status: { draft: 'Draft', published: 'Published', archived: 'Archived' }, statusLabel: 'Status',
       intro: 'The questions a landing page asks, and where each answer lands on the lead.',
       new: 'New form', edit: 'Form', preview: 'Preview', design: 'Back to design',
@@ -3556,6 +3566,7 @@ export default {
     },
   },
   notifications: {
+    group: { urgent: 'Urgent', today: 'Today', earlier: 'Earlier' },
     title: 'Notifications', markAllRead: 'Mark all read', empty: 'No notifications.',
     lead_assigned: 'A new lead was assigned to you',
     follow_up_due: 'A follow-up is due today',
@@ -3632,6 +3643,7 @@ export default {
   },
   projectSwitcher: { all: 'All projects', title: 'Choose a project', search: 'Search projects' },
   platformAdmin: {
+    userModules: 'This person’s modules',
     auditDetail: 'What changed',
     matrix: 'Who can reach what',
     matrixHint: 'As the server decides for each role. Project limits narrow it further for each person.',

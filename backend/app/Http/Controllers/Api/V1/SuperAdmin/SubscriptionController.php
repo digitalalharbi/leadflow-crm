@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\SuperAdmin;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Permissions;
 use App\Domain\Access\WorkspaceModules;
 use App\Domain\Billing\BillingProvider;
@@ -10,9 +11,12 @@ use App\Domain\Billing\SubscriptionSummary;
 use App\Domain\Platform\PlatformAudit;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Models\AccessRole;
 use App\Models\Invoice;
+use App\Models\PermissionRule;
 use App\Models\Plan;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
@@ -179,14 +183,59 @@ class SubscriptionController extends Controller
         $off = WorkspaceModules::disabled($tenant);
         $roles = array_values(array_filter(Role::cases(), fn (Role $role) => $role !== Role::SuperAdmin));
 
+        $custom = AccessRole::withoutGlobalScopes()->where('tenant_id', $tenant->id)->get()
+            ->mapWithKeys(fn (AccessRole $role) => [$role->key => AccessResolver::flatten($role->grants ?? [])]);
+
         return ApiResponse::success([
-            'roles' => array_map(fn (Role $role) => $role->value, $roles),
+            'roles' => [...array_map(fn (Role $role) => $role->value, $roles), ...$custom->keys()->all()],
+            'custom_labels' => AccessRole::withoutGlobalScopes()->where('tenant_id', $tenant->id)->pluck('name', 'key'),
             'rows' => collect(WorkspaceModules::MODULES)->map(fn (array $module, string $key) => [
                 'module' => $key,
                 'enabled' => ! in_array($key, $off, true),
-                'roles' => collect($roles)->mapWithKeys(fn (Role $role) => [$role->value => ! in_array($key, $off, true) && in_array($module['permission'], Permissions::forRole($role), true)])->all(),
+                'roles' => collect($roles)->mapWithKeys(fn (Role $role) => [$role->value => ! in_array($key, $off, true) && in_array($module['permission'], Permissions::forRole($role), true)])->all()
+                    + $custom->map(fn (array $held) => ! in_array($key, $off, true) && in_array($module['permission'], $held, true))->all(),
             ])->values(),
         ]);
+    }
+
+    /** One person: what they hold, and which modules have been taken from them alone. */
+    public function userAccess(string $uuid, string $userUuid)
+    {
+        $tenant = $this->tenant($uuid);
+        $user = User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('uuid', $userUuid)->firstOrFail();
+        $held = $this->context->withTenant($tenant, fn () => Permissions::forUser($user));
+
+        return ApiResponse::success([
+            'modules' => collect(WorkspaceModules::personal())->map(fn (array $module, string $key) => ['module' => $key, 'allowed' => in_array($module['permission'], $held, true)])->values(),
+        ]);
+    }
+
+    /**
+     * Take a module from one person, or give it back: their own rule layer, the same one the company's admin sets, so the
+     * API refuses it for them from then on. An admin cannot be narrowed. Recorded with who, which company and what.
+     */
+    public function updateUserAccess(Request $request, string $uuid, string $userUuid)
+    {
+        $tenant = $this->tenant($uuid);
+        $data = $request->validate([
+            'module' => ['required', Rule::in(array_keys(WorkspaceModules::personal()))],
+            'allowed' => ['required', 'boolean'],
+        ]);
+        $user = User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('uuid', $userUuid)->firstOrFail();
+        abort_if($user->isAdmin(), 422, 'An admin cannot be narrowed.');
+        $permission = WorkspaceModules::MODULES[$data['module']]['permission'];
+
+        $this->context->withTenant($tenant, function () use ($user, $permission, $data) {
+            PermissionRule::updateOrCreate(
+                ['layer' => 'user', 'role_key' => null, 'project_id' => null, 'user_id' => $user->id, 'permission' => $permission],
+                ['effect' => $data['allowed'] ? 'allow' : 'deny'],
+            );
+            AccessResolver::flush();
+        });
+
+        $this->audit->log('user.access_changed', $request->user(), $tenant, $user, ['module' => $data['module'], 'permission' => $permission, 'allowed' => $data['allowed']]);
+
+        return $this->userAccess($uuid, $userUuid);
     }
 
     private function payload(Tenant $tenant): array

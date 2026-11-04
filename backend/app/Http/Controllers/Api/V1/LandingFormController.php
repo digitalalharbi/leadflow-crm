@@ -50,7 +50,7 @@ class LandingFormController extends Controller
 
         $f = $request->validate(['status' => ['nullable', Rule::in(LandingForm::STATUSES)], 'project_id' => ['nullable', 'uuid']]);
 
-        $forms = LandingForm::query()->with(['project:id,uuid,name', 'publishedVersion'])->withCount('links')
+        $forms = LandingForm::query()->with(['project:id,uuid,name', 'publishedVersion'])->withCount(['links', 'leads' => fn ($q) => $q->visibleTo($request->user())])
             ->when($f['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($f['project_id'] ?? null, fn ($q, $uuid) => $q->whereIn('project_id', Project::where('uuid', $uuid)->select('id')))
             ->latest('id')->limit(200)->get();
@@ -486,6 +486,7 @@ class LandingFormController extends Controller
             'published_version' => $live ? ['id' => $live->uuid, 'version' => $live->version, 'published_at' => $live->published_at->toIso8601String()] : null,
             'has_unpublished_changes' => $live !== null && $live->checksum !== FormDefinition::checksum($snapshot),
             'links_count' => $form->links_count ?? null,
+            'leads_count' => $form->leads_count ?? null,
             'created_at' => $form->created_at?->toIso8601String(),
             'updated_at' => $form->updated_at?->toIso8601String(),
         ];

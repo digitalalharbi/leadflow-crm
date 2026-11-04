@@ -34,6 +34,21 @@ const TONE: Record<ReadinessStatus, 'success' | 'warning' | 'neutral'> = {
   external_verification_required: 'neutral',
 }
 
+/**
+ * The four words the owner reads first, drawn from the ladder and never above it: nothing says LIVE until a real
+ * counterpart has been observed, and something failing says so whatever else was once proven.
+ */
+const FAILING = ['commissioning_failed', 'failed_jobs_in_the_last_day', 'backup_failed']
+type ReadinessWord = 'live' | 'partial' | 'awaiting_external' | 'error'
+const WORD_TONE: Record<ReadinessWord, 'success' | 'warning' | 'neutral' | 'danger'> = { live: 'success', partial: 'warning', awaiting_external: 'neutral', error: 'danger' }
+
+export function readinessWord(state: string, blocker: string | null | undefined): ReadinessWord {
+  if (blocker && FAILING.includes(blocker)) return 'error'
+  if (state === 'live_verified' || state === 'production_verified') return 'live'
+
+  return state === 'ready' || state === 'sandbox_verified' ? 'partial' : 'awaiting_external'
+}
+
 export function ReadinessPage() {
   const { t } = useTranslation()
   const isSuperAdmin = useAuth((s) => s.isSuperAdmin)
@@ -244,9 +259,12 @@ function ItemCard({ item }: { item: ReadinessItem }) {
         title={t(`readiness.item.${item.key}`)}
         description={item.blocker ? t(`readiness.blocker.${item.blocker}`, { defaultValue: item.blocker }) : t('readiness.nothingWaiting')}
         action={
-          <Badge tone={STATE_TONE[item.state]} testId={`readiness-${item.key}-status`}>
-            {t(`integrationState.${item.state}`)}
-          </Badge>
+          <span className="flex flex-wrap items-center justify-end gap-1.5">
+            <Badge tone={WORD_TONE[readinessWord(item.state, item.blocker)]} testId={`readiness-${item.key}-word`}>{t(`readiness.word.${readinessWord(item.state, item.blocker)}`)}</Badge>
+            <Badge tone={STATE_TONE[item.state]} testId={`readiness-${item.key}-status`}>
+              {t(`integrationState.${item.state}`)}
+            </Badge>
+          </span>
         }
       />
       <CardBody className="space-y-3">
@@ -362,6 +380,7 @@ function InfraRow({ item }: { item: InfraItem }) {
       <h3 className="flex items-center gap-2 text-[1rem] font-semibold md:col-span-3">
         <Icon className="size-4 shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
         {t(`readiness.infra.item.${item.key}`)}
+        <Badge tone={WORD_TONE[readinessWord(item.ladder, null)]} testId={`infra-${item.key}-word`}>{t(`readiness.word.${readinessWord(item.ladder, null)}`)}</Badge>
         <Badge tone={STATE_TONE[item.ladder]} testId={`infra-${item.key}-state`}>
           {t(`integrationState.${item.ladder}`)}
         </Badge>

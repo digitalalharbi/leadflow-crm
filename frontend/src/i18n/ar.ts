@@ -257,6 +257,8 @@ export default {
     links_zero: 'بلا روابط', links_one: 'رابط واحد', links_two: 'رابطان', links_few: '{{count}} روابط', links_many: '{{count}} رابطًا', links_other: '{{count}} رابط',
   },
   share: {
+    projectCreated: 'أُنشئ التقرير',
+    projectTitle: 'تقارير هذا المشروع', projectHint: 'تقرير حي برابط ثابت، أو نسخة مجمّدة لا تتغير. اختر نوعًا لإنشائه.',
     intro: 'تقارير حية تفتح برابط — دون تسجيل دخول. الأرقام دائمًا محدّثة.',
     new: 'رابط تقرير جديد', edit: 'تعديل', copy: 'نسخ الرابط', copied: 'نُسخ الرابط.',
     regenerate: 'رابط جديد', revoke: 'إيقاف', protected: 'بكلمة مرور',
@@ -638,6 +640,7 @@ export default {
     },
   },
   automation: {
+    estimatedSaved: 'تقدير: {{n}} إجراء يدوي بمساعدة الأتمتة خلال {{days}} يومًا، نحو {{minutes}} دقيقة. رقم تقديري وليس قياسًا.',
     allTemplates: 'عرض كل القوالب ({{count}})',
     fewerTemplates: 'عرض أقل',
     tabs: { rules: 'القواعد', history: 'سجل الإجراءات', routines: 'الروتين', agents: 'الوكلاء' },
@@ -1695,6 +1698,7 @@ export default {
   },
 
   readiness: {
+    word: { live: 'يعمل فعليًا', partial: 'جزئي', awaiting_external: 'بانتظار طرف خارجي', error: 'خطأ' },
     deployment: {
       local: 'محلي (Local)',
       staging: 'تجريبي (Staging)',
@@ -1793,6 +1797,7 @@ export default {
       external_verification_required: 'بانتظار التحقق الخارجي',
     },
     item: {
+      mail: 'البريد الصادر', google_login: 'الدخول بجوجل', automation: 'محرك الأتمتة', landing: 'صفحات الهبوط', reports: 'التقارير',
       calendar: 'التقويم',
       email: 'البريد الإلكتروني',
       claude: 'Claude للوكلاء',
@@ -1804,6 +1809,9 @@ export default {
       ads: 'منصات الإعلانات',
     },
     blocker: {
+      google_login_redirect_not_registered: 'جوجل لا يقبل رابط الرجوع: أضف https://mohtam.pro/api/v1/auth/google/callback إلى عميل OAuth.',
+      no_mail_provider: 'لم يُربط مزود بريد بعد.', mail_provider_not_configured: 'مزود البريد بلا بيانات اعتماد.', mail_dns_incomplete: 'سجلات SPF أو DKIM أو DMARC غير مكتملة.', awaiting_google_login_credentials: 'بيانات الدخول بجوجل غير موجودة على الخادم.', failed_jobs_in_the_last_day: 'مهام فشلت خلال آخر يوم.',
+      awaiting_first_submission: 'الصفحة منشورة، وبانتظار أول طلب حقيقي.', awaiting_first_published_page: 'لا توجد صفحة منشورة بعد.', awaiting_first_report: 'لم يُنشأ تقرير بعد.',
       not_recorded_in_production: 'يعمل ويثبت المزوّد ذلك، لكن لم يُسجَّل حدث حي في نسخة الإنتاج بعد.',
       replies_not_routed: 'يصل البريد، لكن الردود لا تعود إلى المحادثة بعد.',
       not_production: 'البيئة ليست production بعد.',
@@ -2985,6 +2993,7 @@ export default {
   },
   hub: {
     builder: {
+      phoneNote: 'على الهاتف تعدّل النصوص والإعدادات. ترتيب الحقول والأقسام من شاشة أكبر.',
       back: 'رجوع', undo: 'تراجع', redo: 'إعادة', publish: 'نشر', unsaved: 'تعديلات غير محفوظة', unpublished: 'تعديلات غير منشورة', fixProblems: 'هناك ما يحتاج تصحيحًا قبل الحفظ.',
       liveVersion: 'منشور · الإصدار {{n}}', version: 'الإصدار {{n}}', live: 'منشور', moveUp: 'تحريك للأعلى', moveDown: 'تحريك للأسفل', duplicate: 'تكرار', duplicateForm: 'نسخ',
       settings: 'الإعدادات', settingsOf: 'إعدادات: {{name}}', rowSettings: 'الصف', sectionSettings: 'القسم', sectionTitle: 'عنوان القسم', stepTitle: 'عنوان الخطوة',
@@ -3098,6 +3107,7 @@ export default {
       landsOn: 'يصل الزائر إلى',
     },
     forms: {
+      leadCount: '{{n}} عميل', copyLink: 'نسخ الرابط', viewLive: 'فتح الصفحة',
       status: { draft: 'مسودة', published: 'منشور', archived: 'مؤرشف' }, statusLabel: 'الحالة',
       intro: 'الأسئلة التي تطرحها صفحة الهبوط، وأين تذهب كل إجابة في بيانات العميل.',
       new: 'نموذج جديد', edit: 'النموذج', preview: 'معاينة', design: 'العودة للتصميم',
@@ -3944,6 +3954,7 @@ export default {
     },
   },
   notifications: {
+    group: { urgent: 'عاجل', today: 'اليوم', earlier: 'أقدم' },
     title: 'الإشعارات',
     markAllRead: 'تعليم الكل كمقروء',
     empty: 'لا توجد إشعارات.',
@@ -4028,6 +4039,7 @@ export default {
   },
   projectSwitcher: { all: 'كل المشاريع', title: 'اختر مشروعًا', search: 'ابحث عن مشروع' },
   platformAdmin: {
+    userModules: 'وحدات هذا الشخص',
     auditDetail: 'ما تغيّر',
     matrix: 'من يصل إلى ماذا',
     matrixHint: 'كما يقرره الخادم فعليًا لكل دور. حدود المشاريع تضيّقه لكل شخص.',

@@ -146,7 +146,7 @@ export interface AutomationRun {
 }
 
 export interface AutomationInsights {
-  summary: { runs: number; applied: number; failed: number; actions: number; days: number }
+  summary: { runs: number; applied: number; failed: number; actions: number; days: number; estimated_manual?: { actions: number; minutes: number } }
   daily: { date: string; applied: number; skipped: number; failed: number }[]
   by_rule: { rule: string; applied: number; skipped: number; failed: number }[]
 }

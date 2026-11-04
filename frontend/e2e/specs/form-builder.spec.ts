@@ -50,7 +50,17 @@ test.describe('Form builder', () => {
 
     // A field is dragged from the library into the empty column.
     const before = await page.locator('[data-testid^="canvas-field-"]').count()
-    await page.getByTestId('lib-select').dragTo(emailRow.locator('[data-testid^="canvas-col-"]').nth(1))
+    // The drag grabs what is under the pointer, so the page must have stopped moving: under load it was still scrolling and took the divider instead.
+    const libSelect = page.getByTestId('lib-select')
+    await libSelect.scrollIntoViewIfNeeded()
+    await expect.poll(async () => {
+      const first = await libSelect.boundingBox()
+      await page.waitForTimeout(150)
+      const second = await libSelect.boundingBox()
+
+      return first !== null && first.y === second?.y
+    }).toBe(true)
+    await libSelect.dragTo(emailRow.locator('[data-testid^="canvas-col-"]').nth(1))
     await expect(page.locator('[data-testid^="canvas-field-"]')).toHaveCount(before + 1)
     await expect(page.getByTestId('field-settings')).toBeVisible()
     await page.getByTestId('fs-label').fill('نوع العقار')
@@ -227,8 +237,15 @@ test.describe('Form builder', () => {
     for (const size of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size)
       await page.goto(`/tracking/forms/${made.formId}`)
-      await expect(page.getByTestId('canvas')).toBeVisible()
-      await expect(page.getByTestId('library')).toBeVisible()
+      if (size.width >= 768) {
+        await expect(page.getByTestId('canvas')).toBeVisible()
+        await expect(page.getByTestId('library')).toBeVisible()
+      } else {
+        // A phone edits text and settings; arranging the layout is not forced onto 390px.
+        await expect(page.getByTestId('canvas')).toBeHidden()
+        await expect(page.getByTestId('builder-phone-note')).toBeVisible()
+        await expect(page.getByTestId('form-settings-tabs')).toBeVisible()
+      }
       await expectNoSidewaysScroll(page, `builder ${size.width}`)
       await page.getByRole('tab', { name: 'المعاينة' }).click()
       await expect(page.getByTestId('preview-frame')).toBeVisible()

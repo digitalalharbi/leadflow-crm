@@ -51,6 +51,11 @@ class LandingForm extends Model
         return $this->belongsTo(TrackingLink::class, 'default_link_id');
     }
 
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
+    }
+
     public function versions(): HasMany
     {
         return $this->hasMany(LandingFormVersion::class, 'landing_form_id');

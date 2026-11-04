@@ -710,6 +710,7 @@ function TenantPanel({ tenant, onClose }: { tenant: TenantSummary | null; onClos
                       <p className="t-caption truncate"><bdi dir="ltr">{user.email}</bdi></p>
                     </div>
                     <span className="t-caption shrink-0">{user.role ? t(`roles.${user.role}`) : '—'}</span>
+                    {user.role !== 'admin' && tenant && <UserModules tenantId={tenant.id} userId={user.id} />}
                     {user.is_owner ? (
                       <>
                         <Badge tone="info" testId="owner-badge">{t('platformAdmin.owner')}</Badge>
@@ -794,5 +795,37 @@ function CopyField({ label, value }: { label: string; value: string }) {
         </button>
       </div>
     </div>
+  )
+}
+
+/** One person's modules, from the console: taken away here, the API refuses them for that person. */
+function UserModules({ tenantId, userId }: { tenantId: string; userId: string }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const toast = useUi((s) => s.toast)
+  const translateError = useApiError()
+  const [open, setOpen] = useState(false)
+  const key = ['platform-user-access', tenantId, userId]
+  const { data } = useQuery({ queryKey: key, queryFn: () => apiGet<{ modules: Array<{ module: string; allowed: boolean }> }>(`/super-admin/tenants/${tenantId}/users/${userId}/access`), enabled: open })
+  const change = useMutation({
+    mutationFn: (body: { module: string; allowed: boolean }) => apiPatch(`/super-admin/tenants/${tenantId}/users/${userId}/access`, body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: key }),
+    onError: (caught) => toast(translateError(caught), 'error'),
+  })
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)} data-testid={`user-modules-${userId}`}>{t('platformAdmin.userModules')}</Button>
+      <Modal open={open} onClose={() => setOpen(false)} title={t('platformAdmin.userModules')} description={t('platformAdmin.modulesHint')} footer={<Button onClick={() => setOpen(false)}>{t('common.close')}</Button>}>
+        <div className="grid gap-1 sm:grid-cols-2">
+          {(data?.modules ?? []).map((row) => (
+            <label key={row.module} className="flex min-h-9 items-center gap-2 text-[0.9375rem]">
+              <input type="checkbox" className="size-4 accent-[var(--brand)]" checked={row.allowed} onChange={(e) => change.mutate({ module: row.module, allowed: e.target.checked })} />
+              {t(`platformAdmin.module.${row.module}`)}
+            </label>
+          ))}
+        </div>
+      </Modal>
+    </>
   )
 }

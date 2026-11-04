@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class MeasurePerformance extends Command
 {
-    protected $signature = 'leadflow:measure {--tenant=loadtest}';
+    protected $signature = 'leadflow:measure {--tenant=loadtest} {--runs=20 : Times to call each endpoint, for p50 and p95}';
 
     protected $description = 'Measure query counts and response times for the main endpoints';
 
@@ -49,6 +49,9 @@ class MeasurePerformance extends Command
             'Leads, malformed filter' => '/api/v1/leads?project_id=not-a-uuid',
             'Dashboard' => '/api/v1/dashboard',
             'Pipeline' => '/api/v1/pipeline',
+            'Work Now' => '/api/v1/work/next',
+            'Notifications' => '/api/v1/notifications',
+            'Automation summary' => '/api/v1/automation/insights',
             'Follow-ups, overdue' => '/api/v1/follow-ups?bucket=overdue',
             'Follow-ups, today' => '/api/v1/follow-ups?bucket=today',
             'Report, by platform' => '/api/v1/reports?type=platform',
@@ -87,16 +90,25 @@ class MeasurePerformance extends Command
 
         $this->line(sprintf('Tenant [%s] — %s leads', $tenant->slug, number_format($leads)));
         $this->newLine();
-        $this->line(sprintf('| %-28s | %7s | %8s | %8s | %4s |', 'Endpoint', 'Queries', 'Time', 'Payload', 'Code'));
-        $this->line('| '.str_repeat('-', 28).' | '.str_repeat('-', 7).' | '.str_repeat('-', 8).' | '.str_repeat('-', 8).' | '.str_repeat('-', 4).' |');
+        $this->line(sprintf('| %-28s | %7s | %8s | %8s | %8s | %4s |', 'Endpoint', 'Queries', 'p50', 'p95', 'Payload', 'Code'));
+        $this->line('| '.str_repeat('-', 28).' | '.str_repeat('-', 7).' | '.str_repeat('-', 8).' | '.str_repeat('-', 8).' | '.str_repeat('-', 8).' | ---- |');
+
+        $runs = max(1, (int) $this->option('runs'));
 
         foreach ($cases as $label => $uri) {
             $this->dispatchOnce($uri, $token);                 // warm caches
-            [$queries, $ms, $bytes, $status] = $this->dispatchOnce($uri, $token);
+            $times = [];
+
+            for ($run = 0; $run < $runs; $run++) {
+                [$queries, $ms, $bytes, $status] = $this->dispatchOnce($uri, $token);
+                $times[] = $ms;
+            }
+
+            sort($times);
 
             $this->line(sprintf(
-                '| %-28s | %7d | %5.0f ms | %5.0f KB | %4d |',
-                $label, $queries, $ms, $bytes / 1024, $status,
+                '| %-28s | %7d | %5.0f ms | %5.0f ms | %5.0f KB | %4d |',
+                $label, $queries, $times[(int) floor(($runs - 1) * 0.5)], $times[(int) ceil(($runs - 1) * 0.95)], $bytes / 1024, $status,
             ));
         }
 

@@ -1,9 +1,11 @@
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDocumentTitle } from '@/lib/brand'
 import { ExternalLink, GitBranch, GitMerge, GitPullRequest, Rocket, Tag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ProjectLiveReports } from '@/components/projects/ProjectLiveReports'
 import { ApiError, apiGet } from '@/lib/api'
 import { can, useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
@@ -66,7 +68,7 @@ export function ProjectDetailPage() {
   const tabs = TABS.filter((key) => (key !== 'acquisition' && key !== 'sources') || can.has(user, 'tracking.view'))
   const [tab, setTab] = useState<ProjectTab>(linked && (tabs as readonly string[]).includes(linked) ? linked : 'overview')
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ['project', id],
     queryFn: () => apiGet<{ project: Project }>(`/projects/${id}`).then((r) => r.project),
   })
@@ -75,6 +77,7 @@ export function ProjectDetailPage() {
 
   return (
     <>
+      <LastUpdated at={dataUpdatedAt || undefined} />
       <PageHeader
         title={project?.name ?? t('projects.title')}
         subtitle={project?.location ?? undefined}
@@ -120,7 +123,7 @@ export function ProjectDetailPage() {
       {tab === 'acquisition' && <ProjectAcquisition projectId={id} />}
       {tab === 'automations' && <ProjectAutomations projectId={id} />}
       {tab === 'activities' && <ProjectActivities projectId={id} />}
-      {tab === 'reports' && <ProjectReports projectId={id} />}
+      {tab === 'reports' && <div className="space-y-3"><ProjectLiveReports projectId={id} projectName={project?.name ?? ''} /><ProjectReports projectId={id} /></div>}
       {tab === 'integrations' && <ProjectIntegrations projectId={id} />}
       {tab === 'development' && <Development projectId={id} />}
     </>

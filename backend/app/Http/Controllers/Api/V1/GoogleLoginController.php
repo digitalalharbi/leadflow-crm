@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Auth\GoogleLoginProbe;
 use App\Domain\Mail\AccountEmail;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -35,7 +36,7 @@ class GoogleLoginController extends Controller
     /** The other ways in that really work right now. */
     public function providers()
     {
-        return ApiResponse::success(['providers' => $this->configured()
+        return ApiResponse::success(['providers' => $this->configured() && app(GoogleLoginProbe::class)->accepted() !== false
             ? [['key' => 'google', 'label' => 'Google', 'url' => '/api/v1/auth/google/redirect']]
             : []]);
     }

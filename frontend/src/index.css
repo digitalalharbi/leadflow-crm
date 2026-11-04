@@ -378,6 +378,14 @@
     transition: border-color var(--duration-fast), box-shadow var(--duration-fast), background-color var(--duration-fast);
   }
 
+  /* A thumb, not a pointer: taller, and 16px text so iOS does not zoom the page on focus. */
+  @media (max-width: 47.99rem) {
+    .field {
+      height: 3.25rem;
+      font-size: 1rem;
+    }
+  }
+
   .field::placeholder {
     color: var(--color-ink-subtle);
     font-weight: 400;

@@ -20,8 +20,9 @@ ENV_FILE=".env.${ENVIRONMENT}"
 [ -f "$BACKUP_FILE" ] || { echo "No such backup: ${BACKUP_FILE}" >&2; exit 1; }
 gzip -t "$BACKUP_FILE" || { echo "Backup is corrupt." >&2; exit 1; }
 
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+# shellcheck source=lib/env-file.sh
+. "scripts/lib/env-file.sh"
+load_env_file "$ENV_FILE"
 
 cat >&2 <<EOF
 

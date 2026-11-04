@@ -17,10 +17,10 @@ Updated 2026-11-04.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — `f64a749`, Merge pull request #234: isolation, governance, one login, mobile, reports, landing, marketing |
-| Full sha | `f64a749d2258dd17fa4eedd054723704e9a42561` |
-| Committed | 2026-11-04 06:33:48 +0300 |
-| Release branch | `main` — `7a53806`, Release v0.9.0 (#235) |
+| Integration branch | `develop` — same tree as `main` at v0.9.4 |
+| Full sha | `60bebc21015838379f804ee99c86c9f2345e5868` |
+| Committed | 2026-11-04 |
+| Release branch | `main` — `60bebc2`, Release v0.9.4 (#244), live on production |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -33,8 +33,6 @@ git fetch origin && git log --oneline -10 origin/develop && git status
 
 | PR | Branch | Title |
 |---|---|---|
-| [#237](https://github.com/digitalalharbi/leadflow-crm/pull/237) | `feat/p0-remaining-gaps` → `develop` | Close the remaining P0 gaps: governance, phones, readiness, N+1 |
-| [#236](https://github.com/digitalalharbi/leadflow-crm/pull/236) | `fix/env-file-as-data` → `develop` | Read env files as data, so one value cannot stop a deploy |
 
 ```bash
 gh pr list --repo digitalalharbi/leadflow-crm --state open

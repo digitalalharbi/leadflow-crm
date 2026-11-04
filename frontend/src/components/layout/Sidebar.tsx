@@ -31,6 +31,7 @@ export function Sidebar() {
       data-testid="more-menu"
       className="app-sidebar fixed inset-0 z-40 flex w-full flex-col bg-[var(--color-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:hidden print:hidden"
     >
+      {sidebarOpen && <>
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
         <BrandLockup to={HOME} size="md" />
         <button type="button" aria-label={t('common.close')} className="grid size-11 place-items-center rounded-lg hover:bg-[var(--color-surface-muted)]" onClick={close}>
@@ -44,7 +45,7 @@ export function Sidebar() {
           <p className="truncate text-[0.875rem] text-[var(--color-ink-muted)]">{isSuperAdmin ? t('nav.platformConsole') : (branding?.company_name ?? user?.email)}</p>
         </div>
 
-        {sidebarOpen && !isSuperAdmin && <div className="mt-2"><WorkspaceSwitcher onDone={close} /></div>}
+        {!isSuperAdmin && <div className="mt-2"><WorkspaceSwitcher onDone={close} /></div>}
 
         <nav className="mt-3 space-y-4">
           {groups.map((group, index) => (
@@ -86,6 +87,7 @@ export function Sidebar() {
 
         {branding?.support_email && <a href={`mailto:${branding.support_email}`} className="mt-3 block text-center text-[0.875rem] text-[var(--color-ink-muted)]">{branding.support_email}</a>}
       </div>
+      </>}
     </aside>
   )
 }

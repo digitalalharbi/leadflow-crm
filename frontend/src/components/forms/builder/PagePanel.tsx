@@ -3,9 +3,10 @@ import { useMutation } from '@tanstack/react-query'
 import { Copy, QrCode } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Select, Textarea } from '@/components/ui'
-import { PAGE_SECTIONS, addPageLink, checkPageSlug, uploadFormAsset, type LandingPageConfig, type PageCtaKind, type PageFactKey, type PageTemplate } from '@/features/hub'
+import { addPageLink, checkPageSlug, uploadFormAsset, type LandingPageConfig, type PageCtaKind, type PageFactKey, type PageTemplate } from '@/features/hub'
 import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
+import { PAGE_SECTIONS } from '@/lib/landingSections'
 
 const TEMPLATES: PageTemplate[] = ['real_estate_lead', 'project_showcase', 'minimal_lead']
 const FACTS: PageFactKey[] = ['location', 'project_type', 'price_from', 'unit_types', 'delivery']

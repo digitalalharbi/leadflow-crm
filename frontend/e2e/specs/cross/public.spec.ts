@@ -89,7 +89,7 @@ test.describe('Public pages', () => {
     }
   })
 
-  test('the footer reaches the six pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
+  test('the footer reaches the public pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
     test.skip(isMobile, 'keyboard order is a desktop concern')
     await ready(page, '/')
 
@@ -106,7 +106,7 @@ test.describe('Public pages', () => {
     await expect(skip).toBeInViewport()
 
     const hrefs = await page.getByTestId('public-footer').getByRole('navigation').getByRole('link').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
-    expect(hrefs).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
+    expect(hrefs).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/insights', '/about'])
   })
 
   test('anchor links glide unless the visitor asked for less motion', async ({ page }) => {

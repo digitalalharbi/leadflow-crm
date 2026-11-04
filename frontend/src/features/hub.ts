@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api'
 import type { TrackingLink } from '@/features/tracking'
+import type { PageSectionKey } from '@/lib/landingSections'
 
 /* ------------------------------------------------------------------ smart forms */
 
@@ -146,10 +147,6 @@ export type PageCtaKind = 'form' | 'whatsapp' | 'phone'
 export type PageFactKey = 'location' | 'project_type' | 'price_from' | 'unit_types' | 'delivery'
 
 /** What makes a form a campaign page: a closed list, so a manager chooses within a page that stays good. */
-export type PageSectionKey = 'benefits' | 'gallery' | 'location' | 'financing'
-
-export const PAGE_SECTIONS: PageSectionKey[] = ['benefits', 'gallery', 'location', 'financing']
-
 export interface LandingPageConfig {
   template: PageTemplate
   developer_name: string | null

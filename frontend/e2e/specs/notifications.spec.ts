@@ -117,8 +117,9 @@ test.describe('Notifications', () => {
       const notice = await noticeFor(admin, (n) => n.type === 'sla' && n.data.lead_id === lead.id)
       expect(notice.data.stage).toBe('escalate')
 
-      const item = await inTheBell(page, lead.name)
-      await expect(item).toHaveAttribute('data-type', 'sla')
+      // Another alert about the same lead may sit beside it: this one must be there.
+      await inTheBell(page, lead.name)
+      await expect(page.locator('[data-testid="notification-item"][data-type="sla"]').filter({ hasText: lead.name })).toBeVisible()
     } finally {
       await admin.dispose()
     }

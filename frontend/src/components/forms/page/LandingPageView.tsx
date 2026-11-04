@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react'
 import { MapPin, MessageCircle, Phone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { PAGE_SECTIONS, type FormDesign, type LandingPageConfig, type PageCtaKind } from '@/features/hub'
+import type { FormDesign, LandingPageConfig, PageCtaKind } from '@/features/hub'
+import { PAGE_SECTIONS } from '@/lib/landingSections'
 import { cn } from '@/lib/cn'
 import { designVars } from '@/lib/formDesign'
 

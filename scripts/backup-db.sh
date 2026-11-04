@@ -17,8 +17,9 @@ ENV_FILE=".env.${ENVIRONMENT}"
 [ -f "$COMPOSE_FILE" ] || { echo "No compose file for '${ENVIRONMENT}'." >&2; exit 1; }
 [ -f "$ENV_FILE" ] || { echo "Missing ${ENV_FILE}." >&2; exit 1; }
 
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+# shellcheck source=lib/env-file.sh
+. "scripts/lib/env-file.sh"
+load_env_file "$ENV_FILE"
 
 # Tells the application how this run ended, so the readiness screen can say a
 # backup was verified at a time rather than that a cron line exists. Best effort:

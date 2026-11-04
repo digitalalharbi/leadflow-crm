@@ -20,8 +20,9 @@ COMPOSE_FILE="docker-compose.${ENVIRONMENT}.yml"
 ENV_FILE=".env.${ENVIRONMENT}"
 [ -f "$ENV_FILE" ] || { echo "Missing ${ENV_FILE}." >&2; exit 1; }
 
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+# shellcheck source=lib/env-file.sh
+. "scripts/lib/env-file.sh"
+load_env_file "$ENV_FILE"
 
 [ -n "$BACKUP" ] || BACKUP="$(ls -1t "./backups/${ENVIRONMENT}/"*.sql.gz 2>/dev/null | head -1 || true)"
 [ -n "$BACKUP" ] && [ -f "$BACKUP" ] || { echo "No backup found in ./backups/${ENVIRONMENT}." >&2; exit 1; }

@@ -26,6 +26,8 @@ done in code is done. Each item says what to do and how to check it.
 | 19 | **`go.mohtam.pro`** (optional): a separate address for campaign pages. Pages work on `mohtam.pro/l/<page>` without it | Hostinger DNS | `dig +short go.mohtam.pro` |
 | 15 | **Named list of data processors** for the privacy page (hosting, mail, WhatsApp, AI) — the page says "available on request" until you publish one | Tell Claude the names | `/privacy#processors` lists them |
 
+**Security: rotate one credential.** The failed v0.9.0 deploy log printed part of the value on line 131 of `/opt/leadflow-crm/.env.production`, in a private GitHub Actions log. Replace that credential at its provider. Deploys no longer run this file as code, so the value's format no longer matters.
+
 Deploy access is proven (read-only audit green, Nov 3, 2026) and needs nothing from you.
 
 Public sign-up does not exist: there is no route for it, and a test keeps it that way. Companies are created in the platform console, people by invitation, the first owner by the command above.

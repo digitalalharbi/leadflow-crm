@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { BarChart3, CalendarCheck, Download, Flame, PhoneCall, ShieldAlert, Target, Trophy, Users } from 'lucide-react'
 import { KpiCard, RingProgress } from '@/components/visual'
 import { useTranslation } from 'react-i18next'
@@ -131,6 +132,7 @@ export function ReportsPage() {
 
   return (
     <>
+      <LastUpdated at={overview.dataUpdatedAt || undefined} />
       <PageHeader
         title={t('reports.title')}
         subtitle={t('reports.subtitle')}

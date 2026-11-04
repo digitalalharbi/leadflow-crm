@@ -2,6 +2,8 @@
 
 namespace App\Domain\Automation;
 
+use App\Models\AutomationActionLog;
+use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use Illuminate\Support\Facades\DB;
 
@@ -93,6 +95,29 @@ class AutomationInsights
     }
 
     /**
+     * What a person would otherwise have done: an estimate, called one, from weights anybody can read in
+     * config('platform.manual_action_minutes'). Read from the action log, so only what was really carried
+     * out counts: not a rule watching in monitor mode, a recommendation or a skipped step.
+     *
+     * @return array{actions:int, minutes:int}
+     */
+    private function estimatedManual($from): array
+    {
+        $weights = (array) config('platform.manual_action_minutes');
+        $done = AutomationActionLog::query()
+            ->where('happened_at', '>=', $from)
+            ->where('mode', AutomationRule::MODE_AUTO)
+            ->whereIn('result', [AutomationActionLog::COMPLETED, AutomationActionLog::RECOVERED])
+            ->whereIn('action_type', array_keys($weights))
+            ->toBase()->selectRaw('action_type, count(*) as total')->groupBy('action_type')->pluck('total', 'action_type');
+
+        return [
+            'actions' => (int) $done->sum(),
+            'minutes' => (int) $done->map(fn ($total, $type) => $total * $weights[$type])->sum(),
+        ];
+    }
+
+    /**
      * The headline: how much work the rules took off the team.
      *
      * Counted as actions carried out, not runs — a run that considered a rule
@@ -112,6 +137,7 @@ class AutomationInsights
             'applied' => $applied->count(),
             'failed' => $runs->where('outcome', 'failed')->count(),
             'actions' => $applied->sum(fn ($run) => count($run->applied_actions ?? [])),
+            'estimated_manual' => $this->estimatedManual($from),
             'days' => $days,
         ];
     }

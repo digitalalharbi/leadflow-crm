@@ -92,7 +92,8 @@ export function fetchShares() {
 export interface ShareInput {
   name: string
   preset?: ReportPresetKey
-  template: ReportTemplate
+  /** A preset brings its own. */
+  template?: ReportTemplate
   sections?: Partial<Record<ReportSection, boolean>>
   layout?: LayoutItem[]
   compare?: boolean

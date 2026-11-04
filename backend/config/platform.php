@@ -5,6 +5,9 @@ return [
      * The platform owner's sign-in is its own door (/api/v1/platform/auth/login), never a company's. With this on, an
      * owner account without a second factor can sign in only to enrol one; nothing else in the console answers it.
      */
+    // Minutes a person would spend on each automated action. Only ever shown as an estimate.
+    'manual_action_minutes' => ['assign' => 2, 'schedule_follow_up' => 2, 'create_call_task' => 2, 'create_task' => 2, 'notify' => 1, 'escalate_sla' => 3, 'add_tag' => 1, 'change_stage' => 1, 'stop_follow_ups' => 2, 'send_whatsapp' => 2, 'send_email' => 2, 'add_note' => 1],
+
     // The workspace (slug) the marketing site's enquiries become leads in. Unset: the site offers email and phone instead.
     'marketing_workspace' => env('MOHTAM_MARKETING_WORKSPACE'),
 

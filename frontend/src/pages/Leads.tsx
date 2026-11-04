@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { Download, MessageCircle, Phone, Plug, Plus, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { InterestBadge, RingProgress } from '@/components/visual'
@@ -81,7 +82,7 @@ export function LeadsPage() {
     [filters, debouncedSearch],
   )
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['leads', query],
     queryFn: () => fetchLeads(query),
     placeholderData: (previous) => previous,
@@ -121,6 +122,7 @@ export function LeadsPage() {
 
   return (
     <>
+      <LastUpdated at={dataUpdatedAt} />
       <PageHeader
         title={t('leads.title')}
         subtitle={t('leads.subtitle')}

@@ -65,7 +65,7 @@ class WorkQueueController extends Controller
             ->orderByRaw('first_contact_at is not null')  // never-contacted first
             ->orderBy('next_follow_up_at')
             ->orderByDesc('score')
-            ->with(['campaignRef:id,quality_score', 'project:id,name,location'])
+            ->with(['campaignRef:id,quality_score', 'project:id,name,location,automation_settings'])
             ->limit(50 + count($skipped))
             ->get();
 

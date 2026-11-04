@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, FilePlus2, Link2 } from 'lucide-react'
+import { Copy, ExternalLink, FilePlus2, Link2, Users2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, EmptyState, ErrorState, Skeleton } from '@/components/ui'
 import { NewFormDialog } from '@/components/forms/builder/NewFormDialog'
@@ -19,6 +19,10 @@ export function FormsPanel({ canEdit }: { canEdit: boolean }) {
   const translateError = useApiError()
   const [creating, setCreating] = useState(false)
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['landing-forms'], queryFn: fetchForms })
+  const copyLink = async (path: string) => {
+    const url = `${window.location.origin}${path}`
+    try { await navigator.clipboard.writeText(url); toast(t('tracking.copied'), 'success') } catch { toast(url, 'info') }
+  }
 
   const copy = useMutation({
     mutationFn: (id: string) => duplicateForm(id),
@@ -48,9 +52,16 @@ export function FormsPanel({ canEdit }: { canEdit: boolean }) {
                 <span className="mt-1 block truncate text-[0.875rem] text-[var(--color-ink-subtle)]">{[f.project?.name, t('hub.forms.fieldCount', { n: f.fields.filter((x) => !x.hidden && !['heading', 'paragraph', 'divider'].includes(x.type)).length }), f.steps > 1 ? t('hub.forms.stepCount', { n: f.steps }) : null].filter(Boolean).join(' · ')}</span>
                 <span className="mt-2 flex items-center gap-3 text-[0.8125rem] font-semibold text-[var(--color-ink-muted)]">
                   <span className="inline-flex items-center gap-1"><Link2 className="size-3.5" aria-hidden />{t('hub.forms.linkCount', { n: f.links_count ?? 0 })}</span>
+                  {f.leads_count != null && <span className="inline-flex items-center gap-1" data-testid={`form-leads-${f.id}`}><Users2 className="size-3.5" aria-hidden />{t('hub.forms.leadCount', { n: f.leads_count })}</span>}
                   {f.has_unpublished_changes && <span className="text-[var(--color-warning)]" data-testid={`form-unpublished-${f.id}`}>{t('hub.builder.unpublished')}</span>}
                 </span>
               </button>
+              {f.status === 'published' && f.public_path && (
+                <span className="mt-1 flex flex-wrap gap-1">
+                  <Button size="sm" variant="ghost" icon={<Link2 className="size-4" />} onClick={() => void copyLink(f.public_path as string)} data-testid={`copy-form-link-${f.id}`}>{t('hub.forms.copyLink')}</Button>
+                  <a href={f.public_path} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-[0.875rem] font-semibold text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-muted)]" data-testid={`view-form-${f.id}`}><ExternalLink className="size-4" aria-hidden />{t('hub.forms.viewLive')}</a>
+                </span>
+              )}
               {canEdit && <Button size="sm" variant="ghost" className="mt-1" icon={<Copy className="size-4" />} loading={copy.isPending && copy.variables === f.id} onClick={() => copy.mutate(f.id)} data-testid={`duplicate-form-${f.id}`}>{t('hub.builder.duplicateForm')}</Button>}
             </li>
           ))}

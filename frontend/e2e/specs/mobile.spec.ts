@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { apiGet, apiLogin, apiPost } from '../fixtures/api'
 import { ALPHA, LEADS } from '../fixtures/data'
 import { signInAs } from '../fixtures/pages'
 import { resetFixtures } from '../fixtures/seed'
@@ -182,5 +183,42 @@ test.describe('Mobile layout', () => {
     expect(Math.round((await center.boundingBox())!.width)).toBe(page.viewportSize()!.width)
     await page.getByTestId('notifications-close').click()
     await expect(center).toHaveCount(0)
+  })
+
+  test('a landing page is managed from a phone: status, link, text; the layout waits for a larger screen', async ({ page }) => {
+    const admin = await apiLogin(ALPHA.admin.email)
+    const projects = await apiGet<{ id: string }[] | { projects: { id: string }[] }>(admin, '/api/v1/projects')
+    const projectId = (Array.isArray(projects) ? projects : projects.projects)[0].id
+    const slug = `phone-${Date.now()}`
+    const made = await apiPost(admin, '/api/v1/tracking/forms', {
+      name: 'صفحة الهاتف', project_id: projectId, template: 'real_estate_interest', slug, consent_required: false, headline: 'عنوان',
+      page: { template: 'real_estate_lead', tags: [], facts: [], cta: { form: { enabled: true }, whatsapp: { enabled: false }, phone: { enabled: false }, primary: 'form' } },
+    })
+    expect(made.ok(), await made.text()).toBeTruthy()
+    const id = (await made.json()).data.form.id
+    const published = await apiPost(admin, `/api/v1/tracking/forms/${id}/publish`)
+    expect(published.ok(), await published.text()).toBeTruthy()
+
+    await page.goto('/tracking')
+    await page.getByTestId('tracking-tabs').getByRole('tab', { name: 'النماذج' }).click()
+    await page.getByTestId(`form-${id}`).scrollIntoViewIfNeeded()
+    await expect(page.getByTestId(`copy-form-link-${id}`)).toBeVisible()
+    await expect(page.getByTestId(`form-leads-${id}`)).toBeVisible()
+    await expect(page.getByTestId(`view-form-${id}`)).toHaveAttribute('href', `/l/${slug}`)
+
+    await page.goto(`/tracking/forms/${id}`)
+    await expect(page.getByTestId('builder-phone-note')).toBeVisible()
+    await expect(page.getByTestId('add-section')).toBeHidden()
+    await expect(page.getByTestId('form-settings-tabs')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+  })
+
+  test('fields are thumb-sized on a phone and do not make iOS zoom', async ({ page }) => {
+    await page.goto('/leads')
+    const field = page.locator('input.field').first()
+    await expect(field).toBeVisible()
+    const box = await field.evaluate((el) => { const s = getComputedStyle(el); return { height: parseFloat(s.height), font: parseFloat(s.fontSize) } })
+    expect(box.height).toBeGreaterThanOrEqual(48)
+    expect(box.font).toBeGreaterThanOrEqual(16)
   })
 })

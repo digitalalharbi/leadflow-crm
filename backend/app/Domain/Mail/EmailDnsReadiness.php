@@ -28,9 +28,7 @@ class EmailDnsReadiness
 
         $spf = $this->txt($domain, 'v=spf1');
         $dmarc = $this->txt('_dmarc.'.$domain, 'v=DMARC1');
-        $dkim = $selector === null
-            ? ['status' => 'unknown', 'detail' => 'Set MAIL_DKIM_SELECTOR to the selector your mail provider gives you.']
-            : $this->dkim($selector.'._domainkey.'.$domain);
+        $dkim = $selector === null ? $this->anyKnownDkim($domain) : $this->dkim($selector.'._domainkey.'.$domain);
         $mx = ($this->lookup)($domain, DNS_MX);
 
         $mxStatus = $mx !== []
@@ -57,6 +55,20 @@ class EmailDnsReadiness
             $records->count() > 1 => ['status' => 'error', 'detail' => "More than one {$prefix} record at {$host}; receivers reject that."],
             default => ['status' => 'ok', 'detail' => $records->first()],
         };
+    }
+
+    /** With no selector named, a key found at a selector a provider really uses is a key. Finding none is unknown, not missing. */
+    private function anyKnownDkim(string $domain): array
+    {
+        foreach ((array) config('mail.dkim_selectors') as $candidate) {
+            $found = $this->dkim($candidate.'._domainkey.'.$domain);
+
+            if ($found['status'] === 'ok') {
+                return $found;
+            }
+        }
+
+        return ['status' => 'unknown', 'detail' => 'Set MAIL_DKIM_SELECTOR to the selector your mail provider gives you.'];
     }
 
     private function dkim(string $host): array

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Access\AccessResolver;
 use App\Domain\Access\Destination;
 use App\Enums\Role;
+use App\Models\AccessRole;
 use App\Models\Lead;
 use App\Models\PlatformAuditLog;
 use App\Models\Project;
@@ -115,5 +117,74 @@ class WorkspaceGovernanceTest extends TestCase
         $limited->forceFill(['all_projects' => false])->save();
         $limited->projects()->sync([$mine->id]);
         $this->assertSame(['In mine'], $names($limited, $other), 'Naming a project one was not given changes nothing.');
+    }
+
+    public function test_one_person_can_lose_a_module_from_the_console_and_the_api_refuses_them_alone(): void
+    {
+        $tenant = $this->a['tenant'];
+        $rep = $this->makeUser($tenant, Role::Sales);
+        $other = $this->makeUser($tenant, Role::Sales);
+        $url = "/api/v1/super-admin/tenants/{$tenant->uuid}/users/{$rep->uuid}/access";
+
+        $this->actingAs($this->makePlatformOwner())->patchJson($url, ['module' => 'visits', 'allowed' => false])->assertOk();
+        $log = PlatformAuditLog::where('action', 'user.access_changed')->latest('id')->firstOrFail();
+        $this->assertSame('visits', $log->changes['module'] ?? null);
+
+        $this->app['auth']->forgetGuards();
+        AccessResolver::flush();
+        $this->actingAs($rep->fresh())->getJson('/api/v1/appointments')->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        AccessResolver::flush();
+        $this->actingAs($other->fresh())->getJson('/api/v1/appointments')->assertOk();
+
+        $this->app['auth']->forgetGuards();
+        AccessResolver::flush();
+        $this->actingAs($this->makePlatformOwner('second@platform.test'))->patchJson($url, ['module' => 'visits', 'allowed' => true])->assertOk();
+        $this->app['auth']->forgetGuards();
+        AccessResolver::flush();
+        $this->actingAs($rep->fresh())->getJson('/api/v1/appointments')->assertOk();
+    }
+
+    public function test_an_admin_cannot_be_narrowed_and_a_company_admin_cannot_reach_the_console_route(): void
+    {
+        $tenant = $this->a['tenant'];
+        $url = "/api/v1/super-admin/tenants/{$tenant->uuid}/users/{$this->a['admin']->uuid}/access";
+
+        $this->actingAs($this->makePlatformOwner())->patchJson($url, ['module' => 'visits', 'allowed' => false])->assertUnprocessable();
+
+        $this->app['auth']->forgetGuards();
+        AccessResolver::flush();
+        $this->actingAs($this->a['admin'])->patchJson($url, ['module' => 'visits', 'allowed' => false])->assertNotFound();
+    }
+
+    public function test_a_module_that_borrows_another_screen_s_permission_cannot_be_taken_from_one_person(): void
+    {
+        $rep = $this->makeUser($this->a['tenant'], Role::Sales);
+        $url = "/api/v1/super-admin/tenants/{$this->a['tenant']->uuid}/users/{$rep->uuid}/access";
+
+        // Exports reads with leads.view: refusing it per person would have taken the whole lead list.
+        $this->actingAs($this->makePlatformOwner())->patchJson($url, ['module' => 'exports', 'allowed' => false])->assertUnprocessable();
+        $this->assertNotContains('exports', array_column($this->getJson($url)->assertOk()->json('data.modules'), 'module'));
+    }
+
+    public function test_a_person_of_another_company_is_not_found_through_this_one(): void
+    {
+        $other = $this->provisionTenant('Beta');
+        $url = "/api/v1/super-admin/tenants/{$this->a['tenant']->uuid}/users/{$other['admin']->uuid}/access";
+
+        $this->actingAs($this->makePlatformOwner())->getJson($url)->assertNotFound();
+    }
+
+    public function test_the_matrix_includes_this_company_s_own_roles_only(): void
+    {
+        $other = $this->provisionTenant('Beta');
+        $grants = ['leads' => ['view']];
+        AccessRole::withoutGlobalScopes()->forceCreate(['tenant_id' => $this->a['tenant']->id, 'key' => 'site_agent', 'name' => 'Site agent', 'base_role' => 'sales', 'grants' => $grants]);
+        AccessRole::withoutGlobalScopes()->forceCreate(['tenant_id' => $other['tenant']->id, 'key' => 'theirs', 'name' => 'Theirs', 'base_role' => 'sales', 'grants' => $grants]);
+
+        $data = $this->actingAs($this->makePlatformOwner())->getJson("/api/v1/super-admin/tenants/{$this->a['tenant']->uuid}/access-matrix")->assertOk()->json('data');
+
+        $this->assertContains('site_agent', $data['roles']);
+        $this->assertNotContains('theirs', $data['roles']);
     }
 }

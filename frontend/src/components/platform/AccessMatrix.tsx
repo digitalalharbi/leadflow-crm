@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui'
 
 interface Matrix {
   roles: string[]
+  custom_labels?: Record<string, string>
   rows: Array<{ module: string; enabled: boolean; roles: Record<string, boolean> }>
 }
 
@@ -28,7 +29,7 @@ export function AccessMatrix({ tenantId }: { tenantId: string }) {
           <thead>
             <tr className="border-b border-[var(--color-line)]">
               <th className="sticky start-0 bg-[var(--color-surface)] p-2 text-start font-semibold">{t('platformAdmin.modules')}</th>
-              {data.roles.map((role) => <th key={role} className="p-2 font-semibold">{t(`roles.${role}`, { defaultValue: role })}</th>)}
+              {data.roles.map((role) => <th key={role} className="p-2 font-semibold">{data.custom_labels?.[role] ?? t(`roles.${role}`, { defaultValue: role })}</th>)}
             </tr>
           </thead>
           <tbody>

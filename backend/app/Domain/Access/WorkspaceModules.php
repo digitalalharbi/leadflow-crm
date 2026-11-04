@@ -50,6 +50,15 @@ class WorkspaceModules
         return array_values(array_intersect(array_keys(self::MODULES), (array) ($tenant?->disabled_modules ?? [])));
     }
 
+    /**
+     * What can be taken from one person: the modules that are a whole screen. The others borrow a permission
+     * another screen needs (exports is leads.view), so denying one for a person would take that screen too.
+     */
+    public static function personal(): array
+    {
+        return array_filter(self::MODULES, fn (array $module) => isset($module['page']));
+    }
+
     /** The module that closes this request for this company, or null. */
     public static function blocking(Request $request, ?Tenant $tenant): ?string
     {

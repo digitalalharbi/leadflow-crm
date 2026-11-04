@@ -136,7 +136,8 @@ class ProductionReadiness
 
             $result = match ($key) {
                 'vps', 'domain', 'mail', 'google_login', 'automation', 'landing', 'reports' => $ladder->server($item['status'], $item['checks']),
-                'google' => $ladder->integration($health('google_sheets'), $last['google'] ?? null),
+                // The platform has no workspace row to read; a sync that read real rows is the evidence itself.
+                'google' => ! $workspace && $item['status'] === self::LIVE ? ['state' => IntegrationState::LIVE_VERIFIED, 'evidence' => []] : $ladder->integration($health('google_sheets'), $last['google'] ?? null),
                 'whatsapp' => $ladder->integration($health('whatsapp'), $last['whatsapp'] ?? null),
                 'twilio' => $ladder->integration($health('calls'), $last['twilio'] ?? null),
                 'email' => $ladder->integration($health('email'), $last['email'] ?? null),

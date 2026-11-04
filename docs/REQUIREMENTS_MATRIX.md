@@ -35,5 +35,16 @@ Live commit `84e4c32`, from the deploy log and read-only checks on `https://moht
 | No public sign-up | `/api/v1/auth/register` 404; anonymous `/api/v1/leads` 401 |
 | Mail DNS | SPF, DKIM (`hostingermail-a`), DMARC `p=none` and MX all published |
 
+## Production evidence — v0.9.3, Nov 4, 2026
+
+Live commit `c2441b4`, from the deploy log and read-only checks.
+
+| Check | Result |
+| --- | --- |
+| Queue | No failed job in the last 24 hours; `automation` reads ready. The 21 seen earlier aged out of that window, so this does not prove the commit-timing diagnosis: it was inferred from the error and the code. Watch the deploy log |
+| Google sign-in | Offered. Google accepts the callback with no sign-in; the pass-through answers 302 to the login handler. A real sign-in is still unproven |
+| Sheets | 2 sources, 51 completed runs with rows, 430 leads from sheets, counted on the server |
+| Email | 21 sent, 24 failed and 820 logged in 7 days. Sending happens, and the failures are not yet explained |
+
 What these do not prove: a signed-in session, a delivered email in an inbox, a real sheet row becoming a lead, or a real published page taking a submission.
 

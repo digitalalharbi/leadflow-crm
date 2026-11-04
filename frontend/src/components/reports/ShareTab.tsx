@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, BarChart3, CalendarClock, Copy, Mail, Eye, EyeOff, 
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui'
 import {
-  createShare, deleteShare, fetchShareAnalytics, fetchSharePreview, fetchShares, MONEY_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, updateShare,
+  createShare, deleteShare, fetchShareAnalytics, fetchSharePreview, fetchShares, MONEY_SECTIONS, REPORT_TEMPLATES, regenerateShare, revokeShare, shareAction, updateShare,
   type LayoutItem, type ReportPreset, type ReportPresetKey, type ReportSection, type ReportShare, type ReportTemplate, type SectionVisibility, type ShareStatus,
 } from '@/features/reportShares'
 import { createSchedule, deleteSchedule, fetchSchedules, updateSchedule, type ScheduleFrequency } from '@/features/reportSchedules'
@@ -18,7 +18,7 @@ import { useUi } from '@/stores/ui'
 import { formatLastSeen, formatDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
-const STATUS_TONE: Record<ShareStatus, 'success' | 'warning' | 'danger'> = { active: 'success', expired: 'warning', revoked: 'danger' }
+const STATUS_TONE: Record<ShareStatus, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', paused: 'warning', archived: 'neutral', expired: 'warning', revoked: 'danger' }
 
 /**
  * Live reports behind a link: the links a workspace has handed out, who has opened them, and the
@@ -49,8 +49,9 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
   }
 
   const act = useMutation({
-    mutationFn: async ({ kind, id }: { kind: 'revoke' | 'regenerate' | 'delete'; id: string }) => {
-      if (kind === 'revoke') await revokeShare(id)
+    mutationFn: async ({ kind, id }: { kind: 'revoke' | 'regenerate' | 'delete' | 'pause' | 'resume' | 'archive' | 'duplicate' | 'snapshot'; id: string }) => {
+      if (kind === 'pause' || kind === 'resume' || kind === 'archive' || kind === 'duplicate' || kind === 'snapshot') await shareAction(id, kind)
+      else if (kind === 'revoke') await revokeShare(id)
       else if (kind === 'regenerate') await regenerateShare(id)
       else await deleteShare(id)
     },
@@ -81,6 +82,7 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge tone={STATUS_TONE[share.status]} testId="share-status">{t(`share.status.${share.status}`)}</Badge>
+                  {share.kind === 'snapshot' && <Badge tone="info" testId="share-kind-snapshot">{t('share.frozen', { date: formatDate(share.snapshot?.generated_at ?? share.created_at, i18n.language) })}</Badge>}
                   {share.has_password && <Badge tone="neutral"><KeyRound className="size-3" aria-hidden />{t('share.protected')}</Badge>}
                 </div>
               </div>
@@ -106,6 +108,11 @@ export function ShareTab({ startOpen = false }: { startOpen?: boolean }) {
                 <Button size="sm" variant="outline" icon={<CalendarClock className="size-3.5" aria-hidden />} onClick={() => setScheduling(share)} data-testid="share-schedule">{t('schedule.action')}</Button>
                 <Button size="sm" variant="outline" icon={<BarChart3 className="size-3.5" aria-hidden />} onClick={() => setAnalytics(share)} data-testid="share-analytics">{t('share.analytics')}</Button>
                 <Button size="sm" variant="outline" icon={<RefreshCw className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'regenerate', id: share.id })} data-testid="share-regenerate">{t('share.regenerate')}</Button>
+                {share.status === 'active' && <Button size="sm" variant="outline" loading={act.isPending} onClick={() => act.mutate({ kind: 'pause', id: share.id })} data-testid="share-pause">{t('share.pause')}</Button>}
+                {(share.status === 'paused' || share.status === 'archived') && <Button size="sm" variant="outline" loading={act.isPending} onClick={() => act.mutate({ kind: 'resume', id: share.id })} data-testid="share-resume">{t('share.resume')}</Button>}
+                <Button size="sm" variant="outline" loading={act.isPending} onClick={() => act.mutate({ kind: 'duplicate', id: share.id })} data-testid="share-duplicate">{t('share.duplicate')}</Button>
+                {share.kind !== 'snapshot' && <Button size="sm" variant="outline" loading={act.isPending} onClick={() => act.mutate({ kind: 'snapshot', id: share.id })} data-testid="share-snapshot">{t('share.snapshot')}</Button>}
+                {share.status !== 'archived' && share.status !== 'revoked' && <Button size="sm" variant="ghost" loading={act.isPending} onClick={() => act.mutate({ kind: 'archive', id: share.id })} data-testid="share-archive">{t('share.archive')}</Button>}
                 {share.status !== 'revoked' && (
                   <Button size="sm" variant="outline" icon={<ShieldOff className="size-3.5" aria-hidden />} loading={act.isPending} onClick={() => act.mutate({ kind: 'revoke', id: share.id })} data-testid="share-revoke">{t('share.revoke')}</Button>
                 )}

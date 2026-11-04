@@ -27,6 +27,7 @@ class Tenant extends Model
     protected function casts(): array
     {
         return [
+            'disabled_modules' => 'array',
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
             'suspended_at' => 'datetime',

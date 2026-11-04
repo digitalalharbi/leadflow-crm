@@ -5,6 +5,7 @@ Allow: /features
 Allow: /journey
 Allow: /vision
 Allow: /about
+Allow: /insights
 Allow: /contact
 Allow: /privacy
 Allow: /terms

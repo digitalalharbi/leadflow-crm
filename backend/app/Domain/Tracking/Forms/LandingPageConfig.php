@@ -23,6 +23,9 @@ final class LandingPageConfig
      */
     public const WHATSAPP_MODES = ['track', 'inbound'];
 
+    /** The sections below the first screen, shown or hidden and in the order the manager chose. Nothing outside this list. */
+    public const SECTIONS = ['benefits', 'gallery', 'location', 'financing'];
+
     /** @return array<string,mixed> */
     public static function defaults(): array
     {
@@ -40,6 +43,10 @@ final class LandingPageConfig
                 'floating_whatsapp' => false,
                 'floating_call' => false,
             ],
+            'sections' => array_map(fn (string $key) => ['key' => $key, 'visible' => true], self::SECTIONS),
+            'gallery' => [],
+            'location_note' => null,
+            'financing_note' => null,
             'tags' => [],
             'auto_steps' => true,
             'seo' => ['title' => null, 'description' => null, 'og_image' => null, 'index' => false],
@@ -82,6 +89,10 @@ final class LandingPageConfig
             'developer_name' => $text($raw['developer_name'] ?? null, 120),
             'developer_logo_url' => FormDesign::imageOk($raw['developer_logo_url'] ?? null) ? ($raw['developer_logo_url'] ?? null) : null,
             'facts' => array_values($facts),
+            'sections' => self::sections($raw['sections'] ?? null),
+            'gallery' => array_values(array_slice(array_filter((array) ($raw['gallery'] ?? []), fn ($url) => is_string($url) && FormDesign::imageOk($url)), 0, 6)),
+            'location_note' => $text($raw['location_note'] ?? null, 300),
+            'financing_note' => $text($raw['financing_note'] ?? null, 300),
             'cta' => [
                 'form' => ['enabled' => $on['form']],
                 'whatsapp' => [
@@ -127,6 +138,26 @@ final class LandingPageConfig
         }
 
         return $errors;
+    }
+
+    /** @return list<array{key:string,visible:bool}> the chosen order, with anything left out at the end, shown */
+    private static function sections(mixed $raw): array
+    {
+        $out = [];
+
+        foreach (is_array($raw) ? $raw : [] as $row) {
+            $key = is_array($row) ? ($row['key'] ?? null) : null;
+
+            if (in_array($key, self::SECTIONS, true) && ! isset($out[$key])) {
+                $out[$key] = ['key' => $key, 'visible' => (bool) ($row['visible'] ?? true)];
+            }
+        }
+
+        foreach (self::SECTIONS as $key) {
+            $out[$key] ??= ['key' => $key, 'visible' => true];
+        }
+
+        return array_values($out);
     }
 
     /** What the public page needs. Never the mirror's spreadsheet. @return array<string,mixed> */

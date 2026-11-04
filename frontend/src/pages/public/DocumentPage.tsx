@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PublicLayout } from '@/components/public/PublicLayout'
+import { ContactForm } from '@/components/public/ContactForm'
 import { Rich } from '@/components/public/Rich'
 import { LANDING } from '@/content/landing'
 import { LEGAL, type LegalKey } from '@/content/legal'
@@ -65,6 +66,7 @@ export function DocumentPage({ page }: { page: LegalKey }) {
             </div>
 
             <RelatedLinks page={page} lang={lang} />
+          {page === 'contact' && <ContactForm kind="demo" />}
           </article>
 
           <aside className="hidden lg:block" aria-label={lang === 'ar' ? 'في هذه الصفحة' : 'On this page'}>

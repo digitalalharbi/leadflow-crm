@@ -10,7 +10,7 @@ import { formatLastSeen } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useUi } from '@/stores/ui'
 
-const PILL: Record<DeliveryStatus, StatusKey> = { queued: 'pending', sending: 'pending', sent: 'completed', logged: 'attention', failed: 'risk' }
+const PILL: Record<DeliveryStatus, StatusKey> = { queued: 'pending', sending: 'pending', sent: 'pending', delivered: 'completed', bounced: 'risk', logged: 'attention', failed: 'risk' }
 
 /**
  * The product's own email — reports sent to people — and how each went: which provider is in force
@@ -47,7 +47,7 @@ export function EmailDeliveryPanel() {
             </p>
           </div>
           <ul className="ms-auto flex flex-wrap gap-1.5" data-testid="mail-counts">
-            {(['queued', 'sent', 'logged', 'failed'] as const).map((s) => (
+            {(['queued', 'sent', 'delivered', 'bounced', 'logged', 'failed'] as const).map((s) => (
               <li key={s}><Badge tone={s === 'failed' && (data.counts.failed ?? 0) > 0 ? 'danger' : 'neutral'}>{t(`emailDelivery.status.${s}`)} · {data.counts[s] ?? 0}</Badge></li>
             ))}
           </ul>

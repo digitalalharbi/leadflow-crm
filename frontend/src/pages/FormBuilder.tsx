@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { apiDelete, apiGet } from '@/lib/api'
+import { formatRelative } from '@/lib/format'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Copy, Rocket, Redo2, Save, Undo2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -57,7 +59,7 @@ const toDoc = (f: LandingForm): Doc => ({
   slug: f.slug ?? '',
 })
 
-const PANES = ['build', 'preview', 'analytics'] as const
+const PANES = ['build', 'preview', 'analytics', 'submissions'] as const
 type Pane = (typeof PANES)[number]
 const FORM_TABS = ['basics', 'design', 'thanks', 'tracking', 'intent'] as const
 type FormTab = (typeof FORM_TABS)[number] | 'page'
@@ -311,6 +313,8 @@ export function FormBuilderPage() {
         {canEdit && doc.page && form.status === 'published' && <Button size="sm" variant="outline" loading={setStatus.isPending} onClick={() => setStatus.mutate('paused')} data-testid="page-pause">{t('hub.page.builder.pause')}</Button>}
         {canEdit && doc.page && form.status === 'paused' && <Button size="sm" variant="outline" loading={setStatus.isPending} onClick={() => setStatus.mutate('published')} data-testid="page-resume">{t('hub.page.builder.resume')}</Button>}
         {canEdit && doc.page && form.status !== 'archived' && form.status !== 'draft' && <Button size="sm" variant="ghost" loading={setStatus.isPending} onClick={() => { if (window.confirm(t('hub.page.builder.archiveConfirm'))) setStatus.mutate('archived') }} data-testid="page-archive">{t('hub.page.builder.archive')}</Button>}
+        {canEdit && doc.page && form.status === 'archived' && <Button size="sm" variant="outline" loading={setStatus.isPending} onClick={() => setStatus.mutate('paused')} data-testid="page-restore">{t('hub.page.builder.restore')}</Button>}
+        {canEdit && doc.page && form.status !== 'published' && <Button size="sm" variant="ghost" onClick={() => { if (window.confirm(t('hub.page.builder.deleteConfirm'))) void apiDelete(`/tracking/forms/${id}`).then(() => navigate('/tracking')) }} data-testid="page-delete">{t('common.delete')}</Button>}
         {canEdit && doc.page && <Button size="sm" variant="ghost" loading={duplicate.isPending} onClick={() => duplicate.mutate()} data-testid="page-duplicate">{t('hub.page.builder.duplicate')}</Button>}
         {doc.page && form.public_path && form.status === 'published' && <a href={form.public_path} target="_blank" rel="noopener noreferrer" className="t-small underline" dir="ltr" data-testid="page-public-link">{form.public_path}</a>}
         {canEdit && <Button size="sm" icon={<Rocket className="size-4" />} loading={publish.isPending} disabled={!dirty && !form.has_unpublished_changes && form.published_version !== null} onClick={() => publish.mutate()} data-testid="publish-form">{t('hub.builder.publish')}</Button>}
@@ -342,6 +346,7 @@ export function FormBuilderPage() {
 
       {pane === 'preview' && renderForm && <PreviewPane page={doc.page ? { page: doc.page, design: doc.design, headline: doc.basics.headline, description: doc.basics.description, benefits: doc.basics.benefits ?? [], logo: doc.logo_url, image: doc.image_url, project: form?.project?.name ?? null, cta_label: doc.basics.cta_label } : undefined} form={renderForm} thanks={{ title: doc.thank_title || null, message: doc.thank_message || null }} device={device} onDevice={setDevice} />}
       {pane === 'analytics' && <FormAnalyticsPanel formId={id} />}
+      {pane === 'submissions' && <SubmissionsPane formId={id} />}
 
       <LinkWizard open={wizard} preset={{ project_id: doc.basics.project_id || undefined, landing_form_id: id }} onClose={() => setWizard(false)} onAnalytics={(l) => { setWizard(false); navigate(`/tracking?link=${l.id}`) }} onQr={setQr} />
       <QrDialog link={qr} onClose={() => setQr(null)} />
@@ -369,5 +374,33 @@ export function FormBuilderPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/** The people this page brought, as far as this person may see them. */
+function SubmissionsPane({ formId }: { formId: string }) {
+  const { t, i18n } = useTranslation()
+  const { data, isLoading } = useQuery({
+    queryKey: ['form-submissions', formId],
+    queryFn: () => apiGet<{ submissions: Array<{ id: string; name: string; status: string; source: string | null; campaign: string | null; created_at: string }> }>(`/tracking/forms/${formId}/submissions`),
+  })
+
+  if (isLoading) return <p className="t-caption">{t('common.loading')}</p>
+
+  const rows = data?.submissions ?? []
+
+  if (rows.length === 0) return <p className="t-caption py-8 text-center" data-testid="submissions-empty">{t('hub.page.builder.noSubmissions')}</p>
+
+  return (
+    <ul className="divide-y divide-[var(--color-line)] rounded-2xl bg-[var(--color-surface)] shadow-[var(--shadow-card)]" data-testid="submissions">
+      {rows.map((row) => (
+        <li key={row.id}>
+          <Link to={`/leads/${row.id}`} className="flex min-h-14 flex-wrap items-center justify-between gap-2 px-4 py-2">
+            <span className="min-w-0 truncate font-medium">{row.name}</span>
+            <span className="t-caption">{[row.source, row.campaign, formatRelative(row.created_at, i18n.language)].filter(Boolean).join(' · ')}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

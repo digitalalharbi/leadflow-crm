@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight, ChevronLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { apiGet, apiPost, ApiError, tokenStorage } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
+import { useProject } from '@/stores/project'
 import { useApiError } from '@/hooks/useApiError'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { applyLocale } from '@/i18n'
@@ -32,6 +33,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams()
   const login = useAuth((s) => s.login)
   const loginGoogle = useAuth((s) => s.loginGoogle)
+  const loginPlatform = useAuth((s) => s.loginPlatform)
   const restore = useAuth((s) => s.restore)
   const status = useAuth((s) => s.status)
   const user = useAuth((s) => s.user)
@@ -55,6 +57,8 @@ export function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   // While this sign-in is still deciding where to go, being signed in is not yet a reason to leave.
   const deciding = useRef(false)
+  // The platform's own account, found by signing in: the same card, its own stricter path behind it.
+  const [platform, setPlatform] = useState(false)
 
   // Kept for deep links and for a person with the same password in two unlinked companies; never something to type.
   const tenant = searchParams.get('tenant') ?? undefined
@@ -190,7 +194,17 @@ export function LoginPage() {
     deciding.current = true
 
     try {
-      const result = await login({ email, password, tenant, code: step === 'code' ? code.trim() : undefined, remember })
+      const first = platform ? 'platform' : await login({ email, password, tenant, code: step === 'code' ? code.trim() : undefined, remember })
+      const onPlatform = first === 'platform'
+      const result = onPlatform ? await loginPlatform({ email, password, code: step === 'code' ? code.trim() : undefined }) : first
+
+      if (onPlatform) setPlatform(true)
+
+      if (onPlatform && result === 'ok') {
+        navigate('/platform', { replace: true })
+
+        return
+      }
 
       // The password was right and the account has a second factor: ask for the code, keep what was typed.
       if (result === 'mfa') {
@@ -230,6 +244,7 @@ export function LoginPage() {
       }
 
       tokenStorage.set(result.token)
+      useProject.getState().select(null)
       await restore()
       navigate(HOME, { replace: true })
     } catch (caught) {
@@ -263,7 +278,7 @@ export function LoginPage() {
               error={fieldErrors.email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              className="h-12 px-11 text-[1rem]"
+              className="h-[3.25rem] px-11 text-[1rem]"
               startSlot={<Mail className="size-4" aria-hidden />}
             />
 
@@ -277,7 +292,7 @@ export function LoginPage() {
               value={password}
               error={fieldErrors.password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 px-11 text-[1rem]"
+              className="h-[3.25rem] px-11 text-[1rem]"
               startSlot={<Lock className="size-4" aria-hidden />}
               endSlot={
                 <button
@@ -306,7 +321,7 @@ export function LoginPage() {
 
             {errorBox}
 
-            <Button type="submit" size="lg" loading={submitting} className="h-12 w-full !rounded-lg text-[1rem] font-semibold">
+            <Button type="submit" size="lg" loading={submitting} className="h-[3.25rem] w-full !rounded-lg text-[1rem] font-semibold">
               {submitting ? t('auth.signingIn') : t('auth.signIn')}
               {!submitting && <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />}
             </Button>
@@ -327,12 +342,12 @@ export function LoginPage() {
               value={code}
               error={fieldErrors.code}
               onChange={(e) => setCode(e.target.value)}
-              className="h-12"
+              className="h-[3.25rem]"
               data-testid="login-mfa-code"
             />
             {errorBox}
-            <Button type="submit" size="lg" loading={submitting} className="h-12 w-full !rounded-lg text-[1rem] font-semibold" data-testid="login-mfa-submit">{t('auth.verify')}</Button>
-            <Button type="button" variant="ghost" className="min-h-11 w-full" onClick={() => { setStep('credentials'); setCode(''); setGoogleTicket(null); setError(null); setFieldErrors({}) }} data-testid="login-mfa-back">
+            <Button type="submit" size="lg" loading={submitting} className="h-[3.25rem] w-full !rounded-lg text-[1rem] font-semibold" data-testid="login-mfa-submit">{t('auth.verify')}</Button>
+            <Button type="button" variant="ghost" className="min-h-11 w-full" onClick={() => { setStep('credentials'); setCode(''); setGoogleTicket(null); setPlatform(false); setError(null); setFieldErrors({}) }} data-testid="login-mfa-back">
               <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden />
               {t('common.back')}
             </Button>

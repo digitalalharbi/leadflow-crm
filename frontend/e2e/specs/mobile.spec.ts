@@ -46,9 +46,11 @@ test.describe('Mobile layout', () => {
     // Four places and "More"; the current one is marked.
     await expect(bar.getByRole('link')).toHaveCount(4)
     await expect(bar.getByTestId('bottom-tab-home')).toHaveClass(/bottom-tab-active/)
-    await bar.getByTestId('bottom-tab-leads').click()
-    await expect(page).toHaveURL(/\/leads/)
-    await expect(bar.getByTestId('bottom-tab-leads')).toHaveClass(/bottom-tab-active/)
+    // A manager's day: dashboard, work now, projects, reports.
+    await bar.getByTestId('bottom-tab-projects').click()
+    await expect(page).toHaveURL(/\/projects/)
+    await expect(bar.getByTestId('bottom-tab-projects')).toHaveClass(/bottom-tab-active/)
+    await page.goto('/leads')
 
     // Pinned to the bottom edge, and tall enough for a thumb.
     const box = (await bar.boundingBox())!
@@ -154,5 +156,31 @@ test.describe('Mobile layout', () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )
     expect(overflow).toBeLessThanOrEqual(1)
+  })
+
+  test('More is a full screen, grouped for a thumb, with who you are and signing out', async ({ page }) => {
+    await page.getByTestId('bottom-nav-more').click()
+    const menu = page.getByTestId('more-menu')
+    await expect(menu).toBeInViewport()
+
+    const box = (await menu.boundingBox())!
+    expect(Math.round(box.width)).toBe(page.viewportSize()!.width)
+    await expect(page.getByTestId('more-identity')).toBeVisible()
+    await expect(page.getByTestId('more-logout')).toBeAttached()
+
+    for (const row of await menu.getByRole('navigation').getByRole('link').all()) {
+      const height = (await row.boundingBox())?.height
+      if (height) expect(height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+  })
+
+  test('notifications open as a whole screen, and close again', async ({ page }) => {
+    await page.getByTestId('notifications-toggle').click()
+    const center = page.getByTestId('notification-center')
+    await expect(center).toBeVisible()
+    expect(Math.round((await center.boundingBox())!.width)).toBe(page.viewportSize()!.width)
+    await page.getByTestId('notifications-close').click()
+    await expect(center).toHaveCount(0)
   })
 })

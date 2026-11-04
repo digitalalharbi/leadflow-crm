@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Mail\EmailDnsReadiness;
+use App\Http\Controllers\Api\PublicContactController;
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\AccountAccessController;
@@ -164,6 +165,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9-]{3,64}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
+    Route::get('/public/contact', [PublicContactController::class, 'show']);
+    Route::post('/public/contact', [PublicContactController::class, 'store'])->middleware('throttle:5,1');
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
 
     // A person's calendar feed, read by their calendar app. The secret in the address is the credential.
@@ -482,6 +485,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
             Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/analytics', [LandingFormController::class, 'analytics'])->whereUuid('uuid');
+            Route::get('/tracking/forms/{uuid}/submissions', [LandingFormController::class, 'submissions'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/links', [LandingFormController::class, 'addLink'])->whereUuid('uuid');
@@ -560,6 +564,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/email-deliveries', [EmailDeliveryController::class, 'index']);
             Route::post('/email-deliveries/{uuid}/retry', [EmailDeliveryController::class, 'retry']);
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);
+            Route::post('/report-shares/{uuid}/pause', [ReportShareController::class, 'pause']);
+            Route::post('/report-shares/{uuid}/resume', [ReportShareController::class, 'resume']);
+            Route::post('/report-shares/{uuid}/archive', [ReportShareController::class, 'archive']);
+            Route::post('/report-shares/{uuid}/duplicate', [ReportShareController::class, 'duplicate']);
+            Route::post('/report-shares/{uuid}/snapshot', [ReportShareController::class, 'snapshot']);
             Route::post('/report-shares/{uuid}/regenerate', [ReportShareController::class, 'regenerate']);
             Route::delete('/report-shares/{uuid}', [ReportShareController::class, 'destroy']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
@@ -768,6 +777,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/plans/{uuid}', [PlanController::class, 'update']);
             Route::get('/tenants/{uuid}/subscription', [SubscriptionController::class, 'show']);
             Route::patch('/tenants/{uuid}/subscription', [SubscriptionController::class, 'update']);
+            Route::get('/tenants/{uuid}/access-matrix', [SubscriptionController::class, 'accessMatrix']);
             Route::post('/tenants/{uuid}/subscription/{action}', [SubscriptionController::class, 'transition'])
                 ->whereIn('action', ['activate', 'extend', 'past_due', 'suspend', 'reactivate', 'cancel']);
             Route::post('/tenants/{uuid}/invoices', [InvoiceController::class, 'store']);

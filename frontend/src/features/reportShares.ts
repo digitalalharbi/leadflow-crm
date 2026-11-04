@@ -33,7 +33,7 @@ export interface ReportPreset {
 /** How a report sends itself, at a glance; the schedules are managed on their own. */
 export interface ScheduleSummary { id: string; frequency: 'daily' | 'weekly' | 'monthly'; enabled: boolean; next_run_at: string | null; recipients: number }
 
-export type ShareStatus = 'active' | 'expired' | 'revoked'
+export type ShareStatus = 'active' | 'paused' | 'archived' | 'expired' | 'revoked'
 
 /** Who sees a section: anyone with the link, or only the team (in the preview, never on the shared page). */
 export type SectionVisibility = 'public' | 'team'
@@ -64,6 +64,8 @@ export interface ReportShare {
   partner?: { id: string; name: string; show_revenue: boolean } | null
   url: string
   status: ShareStatus
+  kind?: 'live' | 'snapshot'
+  snapshot?: { generated_at: string; days: number; project: string | null; generated_by: string } | null
   has_password: boolean
   expires_at: string | null
   revoked_at: string | null
@@ -109,6 +111,8 @@ export function createShare(payload: ShareInput) {
 export function updateShare(id: string, payload: Partial<ShareInput>) {
   return apiPatch<{ share: ReportShare }>(`/report-shares/${id}`, payload)
 }
+
+export const shareAction = (id: string, action: 'pause' | 'resume' | 'archive' | 'duplicate' | 'snapshot') => apiPost<{ share: ReportShare }>(`/report-shares/${id}/${action}`)
 
 export function revokeShare(id: string) {
   return apiPost<{ share: ReportShare }>(`/report-shares/${id}/revoke`)

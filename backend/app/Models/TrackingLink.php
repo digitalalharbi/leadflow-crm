@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasUuid;
+use App\Models\Scopes\CompanyScope;
 use App\Models\Scopes\ProjectScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,6 +24,7 @@ class TrackingLink extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(new ProjectScope);
+        static::addGlobalScope(new CompanyScope);
 
         // A page's own links are made by the page, not the wizard: they still need an address of their own.
         static::creating(function (self $link) {

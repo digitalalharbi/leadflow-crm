@@ -3,6 +3,7 @@
 namespace App\Models\Scopes;
 
 use App\Models\Project;
+use App\Models\Property;
 use App\Support\ProjectContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +44,11 @@ class ProjectScope implements Scope
         // A rep opens the projects they work on — the ones given to them and the ones their leads belong to — and no other.
         if ($model instanceof Project && $context->listed() !== null) {
             $builder->whereIn("{$table}.id", $context->listed() ?: [-1]);
+        }
+
+        // And the units of those projects only.
+        if ($model instanceof Property && $context->listed() !== null) {
+            $builder->whereIn("{$table}.project_id", $context->listed() ?: [-1]);
         }
 
         if ($ids === null) {

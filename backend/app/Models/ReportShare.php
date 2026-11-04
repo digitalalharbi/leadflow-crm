@@ -18,7 +18,7 @@ class ReportShare extends Model
 
     protected $fillable = ['name', 'template', 'sections', 'layout', 'compare', 'refresh_seconds', 'days', 'project_id', 'partner_id', 'expires_at', 'created_by'];
 
-    protected $hidden = ['token_hash', 'token_enc', 'password_hash'];
+    protected $hidden = ['token_hash', 'token_enc', 'password_hash', 'frozen_payload'];
 
     protected function casts(): array
     {
@@ -30,6 +30,10 @@ class ReportShare extends Model
             'days' => 'integer',
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'paused_at' => 'datetime',
+            'archived_at' => 'datetime',
+            'frozen_payload' => 'encrypted:array',
+            'frozen_meta' => 'array',
             'last_viewed_at' => 'datetime',
             'view_count' => 'integer',
         ];
@@ -95,6 +99,12 @@ class ReportShare extends Model
         return ! $this->hasPassword() || (filled($password) && Hash::check($password, $this->password_hash));
     }
 
+    /** A frozen report: it says what it said the day it was made, for good. */
+    public function isSnapshot(): bool
+    {
+        return $this->frozen_meta !== null;
+    }
+
     public function isRevoked(): bool
     {
         return $this->revoked_at !== null;
@@ -109,7 +119,9 @@ class ReportShare extends Model
     {
         return match (true) {
             $this->isRevoked() => 'revoked',
+            $this->archived_at !== null => 'archived',
             $this->isExpired() => 'expired',
+            $this->paused_at !== null => 'paused',
             default => 'active',
         };
     }

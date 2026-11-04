@@ -2,6 +2,7 @@
 
 namespace App\Services\Leads;
 
+use App\Domain\Access\Permissions;
 use App\Domain\Leads\LeadClassification;
 use App\Domain\Leads\LeadTags;
 use App\Domain\Leads\LeadViews;
@@ -58,7 +59,17 @@ class LeadQueryBuilder
          * (tenant_id, phone_normalized) — about 200ms to under 1ms at 10k rows,
          * and the gap widens with volume.
          */
+        // Searching by a number or an address one may not read would spell it out one match at a time.
+        $viewer = request()->user();
+        $seesContacts = $viewer === null || Permissions::has($viewer, 'contacts.view');
+
         if ($this->looksLikePhone($term)) {
+            if (! $seesContacts) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+
             $normalized = $this->phones->normalize($term);
             // Via the normaliser, so ٠٥١٢٣٤٥٦٧٨ yields digits like 0512345678 does.
             $digits = $this->phones->digits($term);
@@ -75,9 +86,9 @@ class LeadQueryBuilder
             return;
         }
 
-        $query->where(function (Builder $q) use ($term) {
+        $query->where(function (Builder $q) use ($term, $seesContacts) {
             $q->where('full_name', 'ilike', '%'.$term.'%')
-                ->orWhere('email', 'ilike', '%'.$term.'%');
+                ->when($seesContacts, fn ($contact) => $contact->orWhere('email', 'ilike', '%'.$term.'%'));
         });
     }
 

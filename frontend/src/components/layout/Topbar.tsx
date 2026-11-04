@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { HOME } from '@/lib/routes'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, ChevronDown, LogOut, User as UserIcon } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, User as UserIcon, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher'
 import { CompanySwitcher } from '@/components/company/CompanySwitcher'
+import { ProjectSwitcher } from '@/components/project/ProjectSwitcher'
 import { BrandLockup } from '@/components/brand'
 import { useNavigation } from '@/components/layout/navigation'
 import { apiGet, apiPost } from '@/lib/api'
@@ -102,6 +103,7 @@ export function Topbar() {
 
       {/* Holding → company: what every screen below is about. */}
       <CompanySwitcher />
+      <ProjectSwitcher />
 
       {/* The one control used more than once a day; it answers to ⌘K anyway. */}
       <CommandPalette />
@@ -129,9 +131,9 @@ export function Topbar() {
               className="fixed inset-0 z-30 cursor-default"
               onClick={() => setNotificationsOpen(false)}
             />
-            <div className="absolute end-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)]">
+            <div data-testid="notification-center" className="absolute end-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-pop)] max-lg:fixed max-lg:inset-0 max-lg:mt-0 max-lg:flex max-lg:w-full max-lg:flex-col max-lg:rounded-none max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]">
               <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
-                <h3 className="text-[0.9375rem] font-semibold">{t('notifications.title')}</h3>
+                <h3 className="text-[0.9375rem] font-semibold max-lg:text-[1.125rem]">{t('notifications.title')}</h3>
                 {unread > 0 && (
                   <button
                     type="button"
@@ -141,15 +143,18 @@ export function Topbar() {
                     {t('notifications.markAllRead')}
                   </button>
                 )}
+                <button type="button" aria-label={t('common.close')} onClick={() => setNotificationsOpen(false)} className="grid size-11 place-items-center lg:hidden" data-testid="notifications-close">
+                  <X className="size-5" aria-hidden />
+                </button>
               </div>
 
-              <div className="max-h-[22rem] overflow-y-auto">
+              <div className="max-h-[22rem] overflow-y-auto max-lg:max-h-none max-lg:min-h-0 max-lg:flex-1">
                 {(data?.notifications ?? []).length === 0 ? (
                   <p className="px-4 py-8 text-center text-[0.9375rem] text-[var(--color-ink-muted)]">
                     {t('notifications.empty')}
                   </p>
                 ) : (
-                  data?.notifications.map((notification) => (
+                  [...(data?.notifications ?? [])].sort((a, b) => Number(b.data.severity === 'critical') - Number(a.data.severity === 'critical')).map((notification) => (
                     <button
                       key={notification.id}
                       type="button"
@@ -175,7 +180,7 @@ export function Topbar() {
                         {notification.data.title ?? t(`notifications.${notification.type}`, { defaultValue: '' })}
                       </p>
                       {notification.data.body && (
-                        <p className="mt-0.5 truncate text-[0.875rem] text-[var(--color-ink-muted)]">
+                        <p className="mt-0.5 truncate text-[0.875rem] text-[var(--color-ink-muted)] max-lg:whitespace-normal">
                           {notification.data.body}
                         </p>
                       )}

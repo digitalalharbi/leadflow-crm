@@ -1,3 +1,4 @@
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -247,6 +248,7 @@ export function WorkPage() {
 
   return (
     <div className="space-y-2.5">
+      <LastUpdated at={summary.dataUpdatedAt || undefined} />
       <PageHeader
         title={t('work.title')}
         subtitle={

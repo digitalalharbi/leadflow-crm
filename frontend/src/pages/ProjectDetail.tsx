@@ -1,3 +1,4 @@
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -67,7 +68,7 @@ export function ProjectDetailPage() {
   const tabs = TABS.filter((key) => (key !== 'acquisition' && key !== 'sources') || can.has(user, 'tracking.view'))
   const [tab, setTab] = useState<ProjectTab>(linked && (tabs as readonly string[]).includes(linked) ? linked : 'overview')
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ['project', id],
     queryFn: () => apiGet<{ project: Project }>(`/projects/${id}`).then((r) => r.project),
   })
@@ -76,6 +77,7 @@ export function ProjectDetailPage() {
 
   return (
     <>
+      <LastUpdated at={dataUpdatedAt || undefined} />
       <PageHeader
         title={project?.name ?? t('projects.title')}
         subtitle={project?.location ?? undefined}

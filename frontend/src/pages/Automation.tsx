@@ -1,3 +1,4 @@
+import { LastUpdated } from '@/components/ui/LastUpdated'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Sparkles, Zap } from 'lucide-react'
@@ -153,6 +154,7 @@ export function AutomationPage() {
 
   return (
     <div className="space-y-5">
+      <LastUpdated at={summary.dataUpdatedAt || undefined} />
       <PageHeader
         title={t('automation.title')}
         subtitle={t('automation.subtitle')}

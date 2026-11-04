@@ -10,8 +10,10 @@ use App\Enums\MessageStatus;
 use App\Enums\Role;
 use App\Models\CommissioningRun;
 use App\Models\Integration;
+use App\Models\LandingForm;
 use App\Models\Lead;
 use App\Models\LeadMessage;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -70,7 +72,7 @@ class ProductionReadinessTest extends TestCase
         );
 
         $this->assertSame(
-            ['vps', 'domain', 'google', 'mail', 'google_login', 'automation', 'landing_reports', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
+            ['vps', 'domain', 'google', 'mail', 'google_login', 'automation', 'landing', 'reports', 'whatsapp', 'twilio', 'ads', 'email', 'claude', 'calendar'],
             $items->pluck('key')->all(),
         );
 
@@ -463,5 +465,22 @@ class ProductionReadinessTest extends TestCase
 
         config(['services.anthropic.key' => 'sk-test']);
         $this->assertSame(ProductionReadiness::READY, $row()['status']);
+    }
+
+    public function test_landing_and_reports_are_only_ready_on_real_evidence(): void
+    {
+        $this->assertSame('awaiting_first_published_page', $this->row('landing')['blocker']);
+        $this->assertSame('awaiting_first_report', $this->row('reports')['blocker']);
+
+        $this->asTenant($this->t['tenant'], function () {
+            $project = Project::create(['name' => 'Real']);
+            $form = LandingForm::create(['name' => 'P', 'project_id' => $project->id, 'status' => 'published', 'fields' => [], 'consent_required' => false]);
+            $this->assertSame('awaiting_first_submission', $this->row('landing')['blocker']);
+
+            Lead::create(['full_name' => 'A person', 'phone' => '0551234567', 'project_id' => $project->id])->forceFill(['landing_form_id' => $form->id])->saveQuietly();
+        });
+
+        $this->assertNull($this->row('landing')['blocker']);
+        $this->assertSame('ready', $this->row('landing')['status']);
     }
 }

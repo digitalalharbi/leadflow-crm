@@ -75,7 +75,8 @@ class ProductionReadiness
             $this->mailProvider(),
             $this->googleLogin(),
             $this->automationEngine(),
-            $this->landingAndReports(),
+            $this->landing(),
+            $this->reports(),
             $workspace ? $this->whatsapp($rows, $last) : $this->perWorkspace('whatsapp'),
             $workspace ? $this->twilio($rows, $last) : $this->perWorkspace('twilio'),
             $workspace ? $this->ads($rows, $last) : $this->perWorkspace('ads'),
@@ -133,7 +134,7 @@ class ProductionReadiness
             $key = $item['key'];
 
             $result = match ($key) {
-                'vps', 'domain', 'mail', 'google_login', 'automation', 'landing_reports' => $ladder->server($item['status'], $item['checks']),
+                'vps', 'domain', 'mail', 'google_login', 'automation', 'landing', 'reports' => $ladder->server($item['status'], $item['checks']),
                 'google' => $ladder->integration($health('google_sheets'), $last['google'] ?? null),
                 'whatsapp' => $ladder->integration($health('whatsapp'), $last['whatsapp'] ?? null),
                 'twilio' => $ladder->integration($health('calls'), $last['twilio'] ?? null),
@@ -511,13 +512,23 @@ class ProductionReadiness
         return $this->item('automation', $failed === 0 ? self::READY : self::EXTERNAL, $failed === 0 ? null : 'failed_jobs_in_the_last_day', ['no_recent_failed_jobs' => $failed === 0], false);
     }
 
-    /** Whether a real page and a real report exist, counted across the platform and naming nobody. Evidence, not capability. */
-    private function landingAndReports(): array
+    /** Whether a real page exists and has taken a real submission, counted across the platform and naming nobody. Evidence, not capability. */
+    private function landing(): array
     {
         $published = rescue(fn () => DB::table('landing_forms')->where('status', 'published')->whereNull('deleted_at')->count(), 0, false);
-        $reports = rescue(fn () => DB::table('report_shares')->whereNull('revoked_at')->count(), 0, false);
+        $submitted = rescue(fn () => DB::table('leads')->whereNotNull('landing_form_id')->whereNull('deleted_at')->exists(), false, false);
+        $proven = $published > 0 && $submitted;
 
-        return $this->item('landing_reports', $published > 0 && $reports > 0 ? self::READY : self::EXTERNAL, $published > 0 && $reports > 0 ? null : 'awaiting_first_published_page_and_report', ['published_page' => $published > 0, 'report' => $reports > 0], false);
+        return $this->item('landing', $proven ? self::READY : self::EXTERNAL, $proven ? null : ($published > 0 ? 'awaiting_first_submission' : 'awaiting_first_published_page'), ['published_page' => $published > 0, 'submission' => $submitted], false);
+    }
+
+    /** Whether a real report exists, live or frozen, and whether anything is sent on a schedule. */
+    private function reports(): array
+    {
+        $shares = rescue(fn () => DB::table('report_shares')->whereNull('revoked_at')->count(), 0, false);
+        $schedules = rescue(fn () => DB::table('report_schedules')->count(), 0, false);
+
+        return $this->item('reports', $shares > 0 ? self::READY : self::EXTERNAL, $shares > 0 ? null : 'awaiting_first_report', ['report' => $shares > 0, 'scheduled_delivery' => $schedules > 0], false);
     }
 
     private function item(string $key, string $status, ?string $blocker, array $checks, bool $commissionable, ?array $last = null): array

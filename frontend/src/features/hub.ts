@@ -111,12 +111,14 @@ export interface LandingForm {
   published_version: { id: string; version: number; published_at: string } | null
   has_unpublished_changes: boolean
   links_count: number | null
+  /** The leads this page brought, as far as this person may see. */
+  leads_count?: number | null
   slug?: string | null
   page?: LandingPageConfig | null
   public_path?: string | null
 }
 
-export type FormInput = Partial<Omit<LandingForm, 'id' | 'project' | 'steps' | 'links_count' | 'published_version' | 'has_unpublished_changes'>> & { project_id?: string | null; template?: string }
+export type FormInput = Partial<Omit<LandingForm, 'id' | 'project' | 'steps' | 'links_count' | 'leads_count' | 'published_version' | 'has_unpublished_changes'>> & { project_id?: string | null; template?: string }
 
 export interface FormPresets {
   presets: FormField[]

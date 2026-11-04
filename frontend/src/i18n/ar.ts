@@ -1698,6 +1698,7 @@ export default {
   },
 
   readiness: {
+    word: { live: 'يعمل فعليًا', partial: 'جزئي', awaiting_external: 'بانتظار طرف خارجي', error: 'خطأ' },
     deployment: {
       local: 'محلي (Local)',
       staging: 'تجريبي (Staging)',
@@ -1796,6 +1797,7 @@ export default {
       external_verification_required: 'بانتظار التحقق الخارجي',
     },
     item: {
+      mail: 'البريد الصادر', google_login: 'الدخول بجوجل', automation: 'محرك الأتمتة', landing: 'صفحات الهبوط', reports: 'التقارير',
       calendar: 'التقويم',
       email: 'البريد الإلكتروني',
       claude: 'Claude للوكلاء',
@@ -1807,6 +1809,8 @@ export default {
       ads: 'منصات الإعلانات',
     },
     blocker: {
+      no_mail_provider: 'لم يُربط مزود بريد بعد.', mail_provider_not_configured: 'مزود البريد بلا بيانات اعتماد.', mail_dns_incomplete: 'سجلات SPF أو DKIM أو DMARC غير مكتملة.', awaiting_google_login_credentials: 'بيانات الدخول بجوجل غير موجودة على الخادم.', failed_jobs_in_the_last_day: 'مهام فشلت خلال آخر يوم.',
+      awaiting_first_submission: 'الصفحة منشورة، وبانتظار أول طلب حقيقي.', awaiting_first_published_page: 'لا توجد صفحة منشورة بعد.', awaiting_first_report: 'لم يُنشأ تقرير بعد.',
       not_recorded_in_production: 'يعمل ويثبت المزوّد ذلك، لكن لم يُسجَّل حدث حي في نسخة الإنتاج بعد.',
       replies_not_routed: 'يصل البريد، لكن الردود لا تعود إلى المحادثة بعد.',
       not_production: 'البيئة ليست production بعد.',
@@ -2988,6 +2992,7 @@ export default {
   },
   hub: {
     builder: {
+      phoneNote: 'على الهاتف تعدّل النصوص والإعدادات. ترتيب الحقول والأقسام من شاشة أكبر.',
       back: 'رجوع', undo: 'تراجع', redo: 'إعادة', publish: 'نشر', unsaved: 'تعديلات غير محفوظة', unpublished: 'تعديلات غير منشورة', fixProblems: 'هناك ما يحتاج تصحيحًا قبل الحفظ.',
       liveVersion: 'منشور · الإصدار {{n}}', version: 'الإصدار {{n}}', live: 'منشور', moveUp: 'تحريك للأعلى', moveDown: 'تحريك للأسفل', duplicate: 'تكرار', duplicateForm: 'نسخ',
       settings: 'الإعدادات', settingsOf: 'إعدادات: {{name}}', rowSettings: 'الصف', sectionSettings: 'القسم', sectionTitle: 'عنوان القسم', stepTitle: 'عنوان الخطوة',
@@ -3101,6 +3106,7 @@ export default {
       landsOn: 'يصل الزائر إلى',
     },
     forms: {
+      leadCount: '{{n}} عميل', copyLink: 'نسخ الرابط', viewLive: 'فتح الصفحة',
       status: { draft: 'مسودة', published: 'منشور', archived: 'مؤرشف' }, statusLabel: 'الحالة',
       intro: 'الأسئلة التي تطرحها صفحة الهبوط، وأين تذهب كل إجابة في بيانات العميل.',
       new: 'نموذج جديد', edit: 'النموذج', preview: 'معاينة', design: 'العودة للتصميم',

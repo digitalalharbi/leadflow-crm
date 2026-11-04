@@ -25,7 +25,7 @@ class SyncSheetSource implements ShouldBeUnique, ShouldQueue
      * arrive at any time; two syncs of one sheet would read the same rows
      * twice and race on its cursor.
      */
-    public int $uniqueFor = 600;
+    public int $uniqueFor = 1000;
 
     public function uniqueId(): string
     {
@@ -39,7 +39,10 @@ class SyncSheetSource implements ShouldBeUnique, ShouldQueue
     public function __construct(
         private readonly int $sourceId,
         private readonly string $trigger = 'scheduled',
-    ) {}
+    ) {
+        // A big sheet must not hold up the worker everyday requests rely on.
+        $this->onQueue('heavy');
+    }
 
     public function handle(SheetImporter $importer, TenantContext $context): void
     {

@@ -19,3 +19,21 @@ The one list. Status is honest: VERIFIED means implemented, deployed and confirm
 | §57–59 | Performance | Heavy worker for imports; `leadflow:measure` reports p50 and p95 | Last updated on Dashboard, Work Now, Leads, Automation, Reports and Project | `docs/PERFORMANCE.md` | PARTIAL | p50 and p95 measured on 10,043 leads on a laptop (`docs/PERFORMANCE.md`), not on the production host |
 | §60 | Readiness center | Mail, Google login, engine, Landing and Reports rows on real evidence; Backups under infrastructure | Live, Partial, Awaiting external or Error, never above the ladder | `ProductionReadinessTest`, `readiness.spec.ts` | IMPLEMENTED_NOT_VERIFIED | Needs the owner's console session on production |
 | §70–73 | Analytics and automation impact | Estimated manual actions from the action log, auto mode and carried out only, weights in `platform.manual_action_minutes` | Labelled an estimate on Automation | `EstimatedManualActionsTest` | IMPLEMENTED_NOT_VERIFIED | Weights are a stated assumption, not a measurement |
+
+## Production evidence — v0.9.2, Nov 4, 2026
+
+Live commit `84e4c32`, from the deploy log and read-only checks on `https://mohtam.pro`.
+
+| Check | Result |
+| --- | --- |
+| Backup | Taken before the deploy; `RESTORE CHECK: PASS`, 132 of 132 migrations in a throw-away database |
+| Migrations | v0.9.1 applied 4 additive ones; v0.9.2 had none |
+| Smoke | 9 of 9 over HTTPS; `FIRST_CLIENT_SMOKE=PASS`, 16 steps, rolled back |
+| Health | Healthy, realtime ok |
+| Public pages | `/`, `/login`, `/about`, `/contact`, `/security`, `/privacy`, `/terms`, `/data-deletion`, `/insights`, `/features` answer 200 |
+| Phones | Login at 390px: fields 52px with 16px text, no sideways scroll. `/` and `/insights` at 430px: no sideways scroll |
+| No public sign-up | `/api/v1/auth/register` 404; anonymous `/api/v1/leads` 401 |
+| Mail DNS | SPF, DKIM (`hostingermail-a`), DMARC `p=none` and MX all published |
+
+What these do not prove: a signed-in session, a delivered email in an inbox, a real sheet row becoming a lead, or a real published page taking a submission.
+

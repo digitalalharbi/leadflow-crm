@@ -27,6 +27,7 @@ return [
 
     'waits' => [
         'redis:default' => 60,
+        'redis-heavy:heavy' => 300,
     ],
 
     'trim' => [
@@ -83,10 +84,10 @@ return [
             ],
             // Imports and sheet syncs on their own worker: a big file does not hold up an alert.
             'supervisor-heavy' => [
-                'connection' => 'redis',
+                'connection' => 'redis-heavy',
                 'queue' => ['heavy'],
                 'balance' => 'simple',
-                'maxProcesses' => 1,
+                'maxProcesses' => 2,
                 'memory' => 256,
                 'timeout' => 900,
             ],

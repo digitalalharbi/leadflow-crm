@@ -324,11 +324,11 @@ export function FormBuilderPage() {
 
       {pane === 'build' && (
         <div className="grid gap-3 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_22rem]">
-          <aside className="order-2 max-lg:hidden lg:order-none lg:max-h-[calc(100dvh-12rem)] lg:overflow-y-auto" aria-label={t('hub.builder.library.title')}>
+          <aside className="order-2 max-md:hidden lg:order-none lg:max-h-[calc(100dvh-12rem)] lg:overflow-y-auto" aria-label={t('hub.builder.library.title')}>
             {canEdit && <Library presets={presets?.presets ?? []} used={doc.fields.map((f) => f.key)} onAddType={(ty) => addTyped(ty)} onAddPreset={(k) => addPreset(k)} />}
           </aside>
-          <p className="t-caption lg:hidden" data-testid="builder-phone-note">{t('hub.builder.phoneNote')}</p>
-          <section className="order-1 min-w-0 max-lg:hidden lg:order-none" aria-label={t('hub.builder.canvas.title')}>
+          <p className="t-caption md:hidden" data-testid="builder-phone-note">{t('hub.builder.phoneNote')}</p>
+          <section className="order-1 min-w-0 max-md:hidden lg:order-none" aria-label={t('hub.builder.canvas.title')}>
             <Canvas draft={doc} selection={selection} onSelect={setSelection} multi={multi} onDrop={drop}
               onFieldOp={(op, key) => draftOp((d) => (op === 'delete' ? removeField(d, key) : op === 'duplicate' ? duplicateField(d, key) : nudgeField(d, key, op === 'up' ? -1 : 1)))}
               onRowOp={(op, rowId, sectionId) => draftOp((d) => {

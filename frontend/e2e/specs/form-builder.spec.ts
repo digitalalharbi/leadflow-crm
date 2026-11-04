@@ -227,8 +227,15 @@ test.describe('Form builder', () => {
     for (const size of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size)
       await page.goto(`/tracking/forms/${made.formId}`)
-      await expect(page.getByTestId('canvas')).toBeVisible()
-      await expect(page.getByTestId('library')).toBeVisible()
+      if (size.width >= 768) {
+        await expect(page.getByTestId('canvas')).toBeVisible()
+        await expect(page.getByTestId('library')).toBeVisible()
+      } else {
+        // A phone edits text and settings; arranging the layout is not forced onto 390px.
+        await expect(page.getByTestId('canvas')).toBeHidden()
+        await expect(page.getByTestId('builder-phone-note')).toBeVisible()
+        await expect(page.getByTestId('form-settings-tabs')).toBeVisible()
+      }
       await expectNoSidewaysScroll(page, `builder ${size.width}`)
       await page.getByRole('tab', { name: 'المعاينة' }).click()
       await expect(page.getByTestId('preview-frame')).toBeVisible()

@@ -9,6 +9,7 @@ use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
 use App\Enums\Role;
 use App\Models\CommissioningRun;
+use App\Models\EmailDelivery;
 use App\Models\Integration;
 use App\Models\LandingForm;
 use App\Models\Lead;
@@ -482,5 +483,19 @@ class ProductionReadinessTest extends TestCase
 
         $this->assertNull($this->row('landing')['blocker']);
         $this->assertSame('ready', $this->row('landing')['status']);
+    }
+
+    public function test_the_readiness_command_shows_why_mail_failed_without_the_address(): void
+    {
+        $this->asTenant($this->t['tenant'], fn () => EmailDelivery::create([
+            'kind' => 'test', 'to_email' => 'someone@customer.test', 'subject' => 'x', 'html' => 'x', 'provider' => 'smtp',
+            'status' => EmailDelivery::FAILED, 'last_error' => '550 rejected for someone@customer.test', 'attempts' => 1, 'max_attempts' => 1,
+        ]));
+
+        Artisan::call('leadflow:readiness');
+        $output = Artisan::output();
+
+        $this->assertStringContainsString('email_failure 1x 550 rejected for [address]', $output);
+        $this->assertStringNotContainsString('someone@customer.test', $output);
     }
 }

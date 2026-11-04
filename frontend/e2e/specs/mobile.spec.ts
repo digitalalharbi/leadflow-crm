@@ -168,7 +168,7 @@ test.describe('Mobile layout', () => {
     await expect(page.getByTestId('more-identity')).toBeVisible()
     await expect(page.getByTestId('more-logout')).toBeAttached()
 
-    for (const row of await menu.getByRole('link').all()) {
+    for (const row of await menu.getByRole('navigation').getByRole('link').all()) {
       const height = (await row.boundingBox())?.height
       if (height) expect(height).toBeGreaterThanOrEqual(44)
     }

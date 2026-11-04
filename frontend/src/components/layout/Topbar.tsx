@@ -154,7 +154,9 @@ export function Topbar() {
                     {t('notifications.empty')}
                   </p>
                 ) : (
-                  [...(data?.notifications ?? [])].sort((a, b) => Number(b.data.severity === 'critical') - Number(a.data.severity === 'critical')).map((notification) => (
+                  notificationGroups(data?.notifications ?? []).flatMap((group) => [
+                    <p key={group.key} className="label-caps bg-[var(--color-surface-muted)] px-4 py-1.5" data-testid={`notifications-group-${group.key}`}>{t(`notifications.group.${group.key}`)}</p>,
+                    ...group.rows.map((notification) => (
                     <button
                       key={notification.id}
                       type="button"
@@ -188,7 +190,8 @@ export function Topbar() {
                         {formatRelative(notification.created_at, i18n.language)}
                       </p>
                     </button>
-                  ))
+                  )),
+                  ])
                 )}
               </div>
             </div>
@@ -287,4 +290,17 @@ export function Topbar() {
       </Dropdown>
     </header>
   )
+}
+
+/** The few that matter first, then today, then the rest; an empty group is not drawn. */
+function notificationGroups(rows: AppNotification[]) {
+  const today = new Date().toDateString()
+  const urgent = rows.filter((row) => row.data.severity === 'critical' || (!row.read_at && row.data.severity === 'warning'))
+  const rest = rows.filter((row) => !urgent.includes(row))
+
+  return [
+    { key: 'urgent', rows: urgent },
+    { key: 'today', rows: rest.filter((row) => new Date(row.created_at).toDateString() === today) },
+    { key: 'earlier', rows: rest.filter((row) => new Date(row.created_at).toDateString() !== today) },
+  ].filter((group) => group.rows.length > 0)
 }

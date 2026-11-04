@@ -202,6 +202,11 @@ export function AutomationPage() {
             day: a workspace with twelve rules and a flat line has a problem
             the cards alone would not show.
           */}
+          {(insights.data?.summary.estimated_manual?.actions ?? 0) > 0 && (
+            <p className="t-caption mb-3" data-testid="automation-estimated">
+              {t('automation.estimatedSaved', { n: insights.data?.summary.estimated_manual?.actions, minutes: insights.data?.summary.estimated_manual?.minutes, days: insights.data?.summary.days })}
+            </p>
+          )}
           {insights.data && insights.data.summary.runs > 0 && (
             <ChartCard
               title={t('charts.automation.title')}

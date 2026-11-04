@@ -257,6 +257,8 @@ export default {
     links_zero: 'بلا روابط', links_one: 'رابط واحد', links_two: 'رابطان', links_few: '{{count}} روابط', links_many: '{{count}} رابطًا', links_other: '{{count}} رابط',
   },
   share: {
+    projectCreated: 'أُنشئ التقرير',
+    projectTitle: 'تقارير هذا المشروع', projectHint: 'تقرير حي برابط ثابت، أو نسخة مجمّدة لا تتغير. اختر نوعًا لإنشائه.',
     intro: 'تقارير حية تفتح برابط — دون تسجيل دخول. الأرقام دائمًا محدّثة.',
     new: 'رابط تقرير جديد', edit: 'تعديل', copy: 'نسخ الرابط', copied: 'نُسخ الرابط.',
     regenerate: 'رابط جديد', revoke: 'إيقاف', protected: 'بكلمة مرور',
@@ -638,6 +640,7 @@ export default {
     },
   },
   automation: {
+    estimatedSaved: 'تقدير: {{n}} إجراء يدوي بمساعدة الأتمتة خلال {{days}} يومًا، نحو {{minutes}} دقيقة. رقم تقديري وليس قياسًا.',
     allTemplates: 'عرض كل القوالب ({{count}})',
     fewerTemplates: 'عرض أقل',
     tabs: { rules: 'القواعد', history: 'سجل الإجراءات', routines: 'الروتين', agents: 'الوكلاء' },
@@ -3944,6 +3947,7 @@ export default {
     },
   },
   notifications: {
+    group: { urgent: 'عاجل', today: 'اليوم', earlier: 'أقدم' },
     title: 'الإشعارات',
     markAllRead: 'تعليم الكل كمقروء',
     empty: 'لا توجد إشعارات.',
@@ -4028,6 +4032,7 @@ export default {
   },
   projectSwitcher: { all: 'كل المشاريع', title: 'اختر مشروعًا', search: 'ابحث عن مشروع' },
   platformAdmin: {
+    userModules: 'وحدات هذا الشخص',
     auditDetail: 'ما تغيّر',
     matrix: 'من يصل إلى ماذا',
     matrixHint: 'كما يقرره الخادم فعليًا لكل دور. حدود المشاريع تضيّقه لكل شخص.',

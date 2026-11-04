@@ -188,6 +188,8 @@ export default {
     links_one: '1 link', links_other: '{{count}} links',
   },
   share: {
+    projectCreated: 'Report created',
+    projectTitle: 'This project’s reports', projectHint: 'A live report on one link, or a frozen copy that does not change. Choose a type to make one.',
     intro: 'Live reports that open with a link — no sign-in. The numbers are always current.',
     new: 'New report link', edit: 'Edit', copy: 'Copy link', copied: 'Link copied.',
     regenerate: 'New link', revoke: 'Revoke', protected: 'Password',
@@ -547,6 +549,7 @@ export default {
     },
   },
   automation: {
+    estimatedSaved: 'Estimate: {{n}} manual actions assisted by automation in {{days}} days, about {{minutes}} minutes. An estimate, not a measurement.',
     allTemplates: 'Show all templates ({{count}})',
     fewerTemplates: 'Show fewer',
     tabs: { rules: 'Rules', history: 'Action history', routines: 'Routines', agents: 'Agents' },
@@ -3556,6 +3559,7 @@ export default {
     },
   },
   notifications: {
+    group: { urgent: 'Urgent', today: 'Today', earlier: 'Earlier' },
     title: 'Notifications', markAllRead: 'Mark all read', empty: 'No notifications.',
     lead_assigned: 'A new lead was assigned to you',
     follow_up_due: 'A follow-up is due today',
@@ -3632,6 +3636,7 @@ export default {
   },
   projectSwitcher: { all: 'All projects', title: 'Choose a project', search: 'Search projects' },
   platformAdmin: {
+    userModules: 'This person’s modules',
     auditDetail: 'What changed',
     matrix: 'Who can reach what',
     matrixHint: 'As the server decides for each role. Project limits narrow it further for each person.',

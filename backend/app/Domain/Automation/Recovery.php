@@ -37,6 +37,14 @@ class Recovery
     /** Actions whose delivery can be recovered. */
     private const CONTACT = ['send_whatsapp', 'send_email', 'share_file', 'ask_qualification', 'request_appointment', 'start_nurture'];
 
+    /** The person asked not to be written to: a refusal to respect, not a fault. */
+    public static function isConsentRefusal(string $why): bool
+    {
+        $why = mb_strtolower($why);
+
+        return str_contains($why, 'asked not to receive') || str_contains($why, 'opted out') || str_contains($why, 'unsubscribed') || str_contains($why, 'suppress');
+    }
+
     /**
      * Why a delivery failed, in a word — or null when it is not a channel fault
      * and so is not ours to route around.
@@ -231,7 +239,7 @@ class Recovery
 
         $owner = $lead->assigned_to ? User::query()->where('tenant_id', $lead->tenant_id)->where('is_active', true)->find($lead->assigned_to) : null;
         $notification = new ImportantNotification('delivery_failed', 'تعذّر الوصول إلى عميل آليًا', "{$lead->full_name}: فشل واتساب والبريد — اتصل به مباشرة.", $lead->uuid, null, 'critical');
-        ($owner ? collect([$owner]) : User::query()->inWorkspace($lead->tenant_id)->managers()->get())
+        ($owner ? collect([$owner]) : User::query()->inWorkspace($lead->tenant_id)->managers()->get()->filter(fn (User $user) => $user->reaches($lead->project_id)))
             ->each(fn ($user) => $user->notify(clone $notification));
     }
 

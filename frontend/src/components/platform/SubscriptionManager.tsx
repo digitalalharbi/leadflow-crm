@@ -8,6 +8,7 @@ import { useApiError } from '@/hooks/useApiError'
 import { useUi } from '@/stores/ui'
 import type { Feature } from '@/types/api'
 import { ALL_FEATURES, LIMIT_KEYS, type PlatformInvoice, type PlatformPlan, type PlatformSubscription } from './types'
+import { AccessMatrix } from './AccessMatrix'
 
 type Action = 'activate' | 'extend' | 'past_due' | 'suspend' | 'reactivate' | 'cancel'
 
@@ -99,6 +100,7 @@ export function SubscriptionManager({ tenantId }: { tenantId: string }) {
       )}
 
       <Entitlements sub={sub} pending={update.isPending} onSave={(body) => update.mutate(body)} />
+      <AccessMatrix tenantId={tenantId} />
 
       <section>
         <h4 className="label-caps mb-2">{t('billing.invoices')}</h4>
@@ -166,6 +168,7 @@ function Entitlements({ sub, pending, onSave }: { sub: PlatformSubscription; pen
   const [extraSeats, setExtraSeats] = useState(String(sub.extra_seats))
   const [seatOverride, setSeatOverride] = useState(sub.seat_limit_override === null ? '' : String(sub.seat_limit_override))
   const [addons, setAddons] = useState<Feature[]>(sub.addons)
+  const [disabledModules, setDisabledModules] = useState<string[]>(sub.disabled_modules ?? [])
   const [limits, setLimits] = useState<Record<string, string>>(
     Object.fromEntries(LIMIT_KEYS.map((key) => [key, sub.limit_overrides && key in sub.limit_overrides ? String(sub.limit_overrides[key] ?? '') : ''])),
   )
@@ -183,6 +186,7 @@ function Entitlements({ sub, pending, onSave }: { sub: PlatformSubscription; pen
           extra_seats: Number(extraSeats || 0),
           seat_limit_override: seatOverride === '' ? null : Number(seatOverride),
           addons,
+          disabled_modules: disabledModules,
           limit_overrides: Object.keys(overrides).length ? overrides : null,
         })
       }}
@@ -205,6 +209,18 @@ function Entitlements({ sub, pending, onSave }: { sub: PlatformSubscription; pen
               <input type="checkbox" checked={addons.includes(feature)} disabled={sub.features.includes(feature) && !addons.includes(feature)} onChange={() => toggle(feature)} data-testid={`addon-${feature}`} />
               {t(`billing.features.${feature}`)}
               {sub.features.includes(feature) && !addons.includes(feature) && <span className="t-caption">({t('platformAdmin.inPlan')})</span>}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset data-testid="workspace-modules">
+        <legend className="mb-1 text-[0.9375rem] font-medium">{t('platformAdmin.modules')}</legend>
+        <p className="t-caption mb-1">{t('platformAdmin.modulesHint')}</p>
+        <div className="grid gap-1 sm:grid-cols-2">
+          {(sub.modules ?? []).map((module) => (
+            <label key={module} className="flex min-h-9 items-center gap-2 text-[0.9375rem]">
+              <input type="checkbox" className="size-4 accent-[var(--brand)]" checked={!disabledModules.includes(module)} data-testid={`module-${module}`} onChange={(e) => setDisabledModules((current) => (e.target.checked ? current.filter((m) => m !== module) : [...current, module]))} />
+              {t(`platformAdmin.module.${module}`)}
             </label>
           ))}
         </div>

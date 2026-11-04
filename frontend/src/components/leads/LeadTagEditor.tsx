@@ -83,7 +83,7 @@ export function LeadTagEditor({ leadId, tags, editable }: { leadId: string; tags
             list="lead-tag-suggestions"
             placeholder={t('tags.placeholder')}
             aria-label={t('tags.add')}
-            className="h-7 w-36 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-3 text-[0.8125rem]"
+            className="field !h-9 w-40"
             data-testid="lead-tag-input"
             onChange={(event) => setDraft(event.target.value)}
             onBlur={() => {

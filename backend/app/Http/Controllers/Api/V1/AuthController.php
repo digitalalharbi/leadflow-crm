@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\AccessResolver;
+use App\Domain\Access\Destination;
 use App\Domain\Access\Permissions;
 use App\Domain\Auth\SecondFactor;
 use App\Domain\Billing\SubscriptionSummary;
@@ -61,6 +62,11 @@ class AuthController extends Controller
         $user = $matching->first(fn (User $u) => $u->is_active && $u->tenant?->is_active)
             ?? $matching->first(fn (User $u) => $u->is_active)
             ?? $matching->first();
+
+        // One door for everybody. The platform's own account continues on its stricter path, password and second factor.
+        if (! $user && User::query()->whereNull('tenant_id')->where('email', $email)->get()->contains(fn (User $owner) => Hash::check($password, $owner->password))) {
+            return ApiResponse::success(['platform' => true]);
+        }
 
         if (! $user) {
             /*
@@ -162,6 +168,7 @@ class AuthController extends Controller
         $token = $issued->plainTextToken;
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
+        $this->noticeNewDevice($user, $request, $action);
 
         $this->audit->log($action, $user, null, ['ip' => $request->ip()]);
 
@@ -171,6 +178,7 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            'home' => Destination::for($user),
             // What this person may do (the interface hides the rest; the API refuses it), and which
             // projects they are limited to (null: all of them).
             'permissions' => Permissions::forUser($user),
@@ -201,6 +209,7 @@ class AuthController extends Controller
             'user' => new UserResource($user),
             'branding' => $user->tenant ? new BrandingResource($user->tenant) : null,
             'is_super_admin' => $user->isSuperAdmin(),
+            'home' => Destination::for($user),
             // What this person may do (the interface hides the rest; the API refuses it), and which
             // projects they are limited to (null: all of them).
             'permissions' => Permissions::forUser($user),
@@ -263,6 +272,30 @@ class AuthController extends Controller
         $this->audit->log('auth.logout_all', $request->user(), null, ['ip' => $request->ip()]);
 
         return ApiResponse::success(null, 'Signed out of all devices.');
+    }
+
+    /**
+     * A sign-in from a device this account has not used is worth an email; one from a known device is not. Moving between
+     * companies is not a sign-in, and the very first sign-in has nothing to compare with.
+     */
+    private function noticeNewDevice(User $user, Request $request, string $action): void
+    {
+        if ($action === 'auth.workspace_switch') {
+            return;
+        }
+
+        $device = hash('sha256', (string) $request->userAgent());
+        $known = (array) ($user->known_devices ?? []);
+
+        if (in_array($device, $known, true)) {
+            return;
+        }
+
+        $user->forceFill(['known_devices' => array_slice([...$known, $device], -20)])->saveQuietly();
+
+        if ($known !== []) {
+            app(AccountEmail::class)->securityNotice($user, 'new_device');
+        }
     }
 
     /** This person's accounts in other companies: the same email, proven on both sides. */

@@ -7,6 +7,7 @@ import { apiGet, apiPost, tokenStorage } from '@/lib/api'
 import { useApiError } from '@/hooks/useApiError'
 import { useAuth } from '@/stores/auth'
 import { useUi } from '@/stores/ui'
+import { useProject } from '@/stores/project'
 import { Button } from '@/components/ui'
 
 interface Workspace {
@@ -49,6 +50,7 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
       }
 
       tokenStorage.set(result.token)
+      useProject.getState().select(null)
       onDone()
       await restore()
       window.location.assign(HOME)
@@ -101,7 +103,7 @@ export function WorkspaceSwitcher({ onDone }: { onDone: () => void }) {
             placeholder={t('auth.mfaCode')}
             data-testid="workspace-code"
             dir="ltr"
-            className="min-h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2 text-[0.9375rem]"
+            className="field field-otp min-w-0 flex-1"
           />
           <Button type="submit" size="sm" loading={switchTo.isPending} disabled={code.trim() === ''}>{t('common.confirm')}</Button>
         </form>

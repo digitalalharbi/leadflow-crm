@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Mail\EmailDnsReadiness;
+use App\Http\Controllers\Api\PublicContactController;
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\AccountAccessController;
@@ -37,6 +38,7 @@ use App\Http\Controllers\Api\V1\FollowUpPlanController;
 use App\Http\Controllers\Api\V1\FormAssetController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
+use App\Http\Controllers\Api\V1\GoogleLoginController;
 use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
@@ -126,7 +128,13 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('/branding', [BrandingController::class, 'show']);
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
-    Route::get('/auth/providers', fn () => ApiResponse::success(['providers' => config('platform.login_providers')]));
+    Route::get('/auth/providers', [GoogleLoginController::class, 'providers']);
+    // A round trip is three requests, and an office shares one address: its own limit, not the password form's.
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::get('/auth/google/redirect', [GoogleLoginController::class, 'redirect']);
+        Route::get('/auth/google/callback', [GoogleLoginController::class, 'callback']);
+        Route::post('/auth/google/complete', [GoogleLoginController::class, 'complete']);
+    });
     // Into an account without a password in hand. Every answer is the same whether or not an email is registered.
     Route::middleware('throttle:login')->group(function () {
         Route::post('/auth/password/forgot', [AccountAccessController::class, 'forgot']);
@@ -157,6 +165,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/public/landing/{token}/submit', [PublicLandingController::class, 'submit'])->middleware('throttle:landing-submit')->where('token', '[A-Za-z0-9-]{3,64}');
 
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
+    Route::get('/public/contact', [PublicContactController::class, 'show']);
+    Route::post('/public/contact', [PublicContactController::class, 'store'])->middleware('throttle:5,1');
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
 
     // A person's calendar feed, read by their calendar app. The secret in the address is the credential.
@@ -241,6 +251,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/security/mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:10,1');
         Route::get('/auth/security/sessions', [AccountSecurityController::class, 'sessions']);
         Route::delete('/auth/security/sessions/{id}', [AccountSecurityController::class, 'endSession'])->whereNumber('id');
+        Route::delete('/auth/security/google', [GoogleLoginController::class, 'unlink'])->middleware('throttle:10,1');
         Route::post('/auth/security/sessions/end-others', [AccountSecurityController::class, 'endOtherSessions'])->middleware('throttle:10,1');
         Route::post('/auth/email/verification', [AccountAccessController::class, 'sendVerification'])->middleware('throttle:3,1');
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
@@ -474,6 +485,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/tracking/forms/assets', [FormAssetController::class, 'store']);
             Route::post('/tracking/forms/{uuid}/publish', [LandingFormController::class, 'publish'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/analytics', [LandingFormController::class, 'analytics'])->whereUuid('uuid');
+            Route::get('/tracking/forms/{uuid}/submissions', [LandingFormController::class, 'submissions'])->whereUuid('uuid');
             Route::get('/tracking/forms/{uuid}/versions', [LandingFormController::class, 'versions'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/duplicate', [LandingFormController::class, 'duplicate'])->whereUuid('uuid');
             Route::post('/tracking/forms/{uuid}/links', [LandingFormController::class, 'addLink'])->whereUuid('uuid');
@@ -552,6 +564,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/email-deliveries', [EmailDeliveryController::class, 'index']);
             Route::post('/email-deliveries/{uuid}/retry', [EmailDeliveryController::class, 'retry']);
             Route::post('/report-shares/{uuid}/revoke', [ReportShareController::class, 'revoke']);
+            Route::post('/report-shares/{uuid}/pause', [ReportShareController::class, 'pause']);
+            Route::post('/report-shares/{uuid}/resume', [ReportShareController::class, 'resume']);
+            Route::post('/report-shares/{uuid}/archive', [ReportShareController::class, 'archive']);
+            Route::post('/report-shares/{uuid}/duplicate', [ReportShareController::class, 'duplicate']);
+            Route::post('/report-shares/{uuid}/snapshot', [ReportShareController::class, 'snapshot']);
             Route::post('/report-shares/{uuid}/regenerate', [ReportShareController::class, 'regenerate']);
             Route::delete('/report-shares/{uuid}', [ReportShareController::class, 'destroy']);
             Route::get('/reports/drivers', [ReportController::class, 'drivers']);
@@ -760,6 +777,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/plans/{uuid}', [PlanController::class, 'update']);
             Route::get('/tenants/{uuid}/subscription', [SubscriptionController::class, 'show']);
             Route::patch('/tenants/{uuid}/subscription', [SubscriptionController::class, 'update']);
+            Route::get('/tenants/{uuid}/access-matrix', [SubscriptionController::class, 'accessMatrix']);
             Route::post('/tenants/{uuid}/subscription/{action}', [SubscriptionController::class, 'transition'])
                 ->whereIn('action', ['activate', 'extend', 'past_due', 'suspend', 'reactivate', 'cancel']);
             Route::post('/tenants/{uuid}/invoices', [InvoiceController::class, 'store']);

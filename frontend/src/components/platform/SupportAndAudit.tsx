@@ -94,6 +94,7 @@ export function PlatformAuditList() {
               {data.data.map((row) => (
                 <li key={row.id} className="flex flex-wrap items-baseline gap-2 py-2 text-[0.9375rem]" data-testid="platform-audit-row">
                   <code dir="ltr" className="text-[0.8125rem]">{row.action}</code>
+                  {row.changes && <details className="mt-1 text-[0.8125rem]"><summary className="cursor-pointer text-[var(--color-ink-muted)]">{t('platformAdmin.auditDetail')}</summary><pre dir="ltr" className="mt-1 overflow-x-auto rounded bg-[var(--color-surface-muted)] p-2 text-start" data-testid="audit-diff">{JSON.stringify(row.changes, null, 2)}</pre></details>}
                   {row.tenant && <span className="font-medium">{row.tenant.name}</span>}
                   <span className="t-caption">{row.actor?.name ?? t('platformAdmin.system')}</span>
                   <span className="t-caption ms-auto">{formatDateTime(row.created_at, i18n.language)}</span>

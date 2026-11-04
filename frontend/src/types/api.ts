@@ -61,6 +61,8 @@ export interface User {
   email: string
   /** The inbox answered. An unproven address links to no other company. */
   email_verified?: boolean
+  google_linked?: boolean
+  home?: string
   role: UserRole
   phone: string | null
   avatar_url: string | null

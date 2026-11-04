@@ -2,6 +2,7 @@
 
 namespace App\Domain\Sheets;
 
+use App\Domain\Notifications\ImportantAlerts;
 use App\Models\Integration;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -127,5 +128,7 @@ class GoogleTokens
             'status' => Integration::ERROR,
             'last_error' => $reason,
         ])->save();
+
+        ImportantAlerts::integrationFailure((int) $connection->tenant_id, 'provider_disconnected', 'google:'.$connection->id, ['provider_name' => 'Google']);
     }
 }

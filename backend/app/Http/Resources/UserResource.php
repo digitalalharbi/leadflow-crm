@@ -39,6 +39,7 @@ class UserResource extends JsonResource
             'speaks' => $this->speaks ?? [],
             'locale' => $this->locale,
             'email_verified' => $this->email_verified_at !== null,
+            'google_linked' => $this->google_id !== null,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             // When they last used any session — Sanctum stamps it on every request, so this costs nothing extra.
             'last_active_at' => isset($this->tokens_max_last_used_at) ? Carbon::parse($this->tokens_max_last_used_at)->toIso8601String() : null,

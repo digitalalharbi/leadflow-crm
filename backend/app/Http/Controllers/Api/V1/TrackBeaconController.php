@@ -94,7 +94,7 @@ class TrackBeaconController extends Controller
                     'platform' => Attribution::platformOf($link->channel),
                     'consent' => $session->consent,
                     // The page may say which project or unit was viewed; the link's own is the fallback.
-                    'project_id' => isset($data['project']) ? Project::where('uuid', $data['project'])->value('id') : $link->project_id,
+                    'project_id' => isset($data['project']) && $link->project_id === null ? Project::where('uuid', $data['project'])->value('id') : $link->project_id,
                     'property_id' => isset($data['property']) ? Property::where('uuid', $data['property'])->value('id') : $link->property_id,
                     'url' => $data['url'] ?? null,
                     'referrer' => $data['referrer'] ?? $request->headers->get('referer'),

@@ -5,10 +5,11 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight, ChevronLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { apiGet, apiPost, ApiError, tokenStorage } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
+import { useProject } from '@/stores/project'
 import { useApiError } from '@/hooks/useApiError'
 import { useBrandingTheme } from '@/hooks/useBrandingTheme'
 import { applyLocale } from '@/i18n'
-import { Button, Input } from '@/components/ui'
+import { Button, Input, OtpInput } from '@/components/ui'
 import type { Branding } from '@/types/api'
 import { AuthCard, AuthShell, type AuthProvider } from '@/components/auth/AuthShell'
 
@@ -31,6 +32,8 @@ export function LoginPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const login = useAuth((s) => s.login)
+  const loginGoogle = useAuth((s) => s.loginGoogle)
+  const loginPlatform = useAuth((s) => s.loginPlatform)
   const restore = useAuth((s) => s.restore)
   const status = useAuth((s) => s.status)
   const user = useAuth((s) => s.user)
@@ -44,6 +47,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
   const [code, setCode] = useState('')
+  // Back from Google: the one-time ticket that stands in for the password in this card's steps.
+  const [googleTicket, setGoogleTicket] = useState<string | null>(null)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [workspaceNeedingCode, setWorkspaceNeedingCode] = useState<string | null>(null)
   const notice = (location.state as { notice?: string } | null)?.notice === 'mfaAfterReset' ? t('auth.mfaAfterReset') : null
@@ -52,6 +57,8 @@ export function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   // While this sign-in is still deciding where to go, being signed in is not yet a reason to leave.
   const deciding = useRef(false)
+  // The platform's own account, found by signing in: the same card, its own stricter path behind it.
+  const [platform, setPlatform] = useState(false)
 
   // Kept for deep links and for a person with the same password in two unlinked companies; never something to type.
   const tenant = searchParams.get('tenant') ?? undefined
@@ -91,6 +98,74 @@ export function LoginPage() {
       .catch(() => setProviders([]))
   }, [searchParams])
 
+  // The server's answer from Google arrives in the address: read it once, then take it out of the address and the history.
+  useEffect(() => {
+    const ticket = new URLSearchParams(window.location.hash.slice(1)).get('google')
+    const refused = searchParams.get('google_error')
+
+    if (refused) setError(t(`auth.google.${refused}`, { defaultValue: t('auth.google.failed') }))
+    if (!ticket && !refused) return
+
+    window.history.replaceState(window.history.state, '', window.location.pathname)
+    if (ticket) void finishSignIn(ticket)
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function rememberForGoogle() {
+    try {
+      sessionStorage.setItem('mohtam.google.remember', remember ? '1' : '0')
+    } catch {
+      /* Private browsing: the default stands. */
+    }
+  }
+
+  /** The same steps as a password: a second factor if the account has one, then where they belong. */
+  async function finishSignIn(ticket: string, enteredCode?: string) {
+    setGoogleTicket(ticket)
+    setSubmitting(true)
+    setError(null)
+    setFieldErrors({})
+    deciding.current = true
+
+    try {
+      let keep = true
+      try {
+        keep = sessionStorage.getItem('mohtam.google.remember') !== '0'
+      } catch {
+        /* Private browsing: the default stands. */
+      }
+
+      const result = await loginGoogle({ ticket, code: enteredCode, remember: keep })
+
+      if (result === 'mfa') {
+        setStep('code')
+
+        return
+      }
+
+      await afterSignIn()
+    } catch (caught) {
+      if (step !== 'code') setGoogleTicket(null)
+      catchErrors(caught)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function afterSignIn() {
+    const memberships = await apiGet<{ workspaces: Workspace[] }>('/auth/workspaces').then((data) => data.workspaces).catch(() => [])
+
+    if (memberships.length > 1) {
+      setWorkspaces(memberships)
+      setStep('workspace')
+
+      return
+    }
+
+    navigate(landing, { replace: true })
+  }
+
   function catchErrors(caught: unknown) {
     if (caught instanceof ApiError && caught.status === 422 && caught.errors) {
       const next: Record<string, string> = {}
@@ -106,13 +181,30 @@ export function LoginPage() {
 
   async function signIn(event: FormEvent) {
     event.preventDefault()
+
+    if (googleTicket) {
+      await finishSignIn(googleTicket, code.trim())
+
+      return
+    }
+
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
     deciding.current = true
 
     try {
-      const result = await login({ email, password, tenant, code: step === 'code' ? code.trim() : undefined, remember })
+      const first = platform ? 'platform' : await login({ email, password, tenant, code: step === 'code' ? code.trim() : undefined, remember })
+      const onPlatform = first === 'platform'
+      const result = onPlatform ? await loginPlatform({ email, password, code: step === 'code' ? code.trim() : undefined }) : first
+
+      if (onPlatform) setPlatform(true)
+
+      if (onPlatform && result === 'ok') {
+        navigate('/platform', { replace: true })
+
+        return
+      }
 
       // The password was right and the account has a second factor: ask for the code, keep what was typed.
       if (result === 'mfa') {
@@ -121,16 +213,7 @@ export function LoginPage() {
         return
       }
 
-      const memberships = await apiGet<{ workspaces: Workspace[] }>('/auth/workspaces').then((data) => data.workspaces).catch(() => [])
-
-      if (memberships.length > 1) {
-        setWorkspaces(memberships)
-        setStep('workspace')
-
-        return
-      }
-
-      navigate(landing, { replace: true })
+      await afterSignIn()
     } catch (caught) {
       catchErrors(caught)
     } finally {
@@ -161,6 +244,7 @@ export function LoginPage() {
       }
 
       tokenStorage.set(result.token)
+      useProject.getState().select(null)
       await restore()
       navigate(HOME, { replace: true })
     } catch (caught) {
@@ -179,7 +263,7 @@ export function LoginPage() {
   return (
     <AuthShell branding={branding} intro>
       {step === 'credentials' && (
-        <AuthCard title={t('auth.welcome')} subtitle={t('auth.welcomeSubtitle')} providers={providers} help testId="login-card">
+        <AuthCard title={t('auth.welcome')} subtitle={t('auth.welcomeSubtitle')} providers={providers} onProvider={rememberForGoogle} help testId="login-card">
           {notice && <p role="status" className="notice notice-info" data-testid="login-notice">{notice}</p>}
 
           <form onSubmit={signIn} className="space-y-3" noValidate>
@@ -194,7 +278,7 @@ export function LoginPage() {
               error={fieldErrors.email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              className="h-12 px-11 text-[1rem]"
+              className="h-[3.25rem] px-11 text-[1rem]"
               startSlot={<Mail className="size-4" aria-hidden />}
             />
 
@@ -208,7 +292,7 @@ export function LoginPage() {
               value={password}
               error={fieldErrors.password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 px-11 text-[1rem]"
+              className="h-[3.25rem] px-11 text-[1rem]"
               startSlot={<Lock className="size-4" aria-hidden />}
               endSlot={
                 <button
@@ -225,19 +309,19 @@ export function LoginPage() {
             />
 
             <div className="flex flex-wrap items-center justify-between gap-x-3">
-              <label className="flex min-h-11 items-center gap-2 text-[0.875rem]">
-                <input type="checkbox" className="size-4" checked={remember} onChange={(e) => setRemember(e.target.checked)} data-testid="login-remember" />
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[0.9375rem] font-medium">
+                <input type="checkbox" className="size-[1.125rem] accent-[var(--brand)]" checked={remember} onChange={(e) => setRemember(e.target.checked)} data-testid="login-remember" />
                 {t('auth.remember')}
               </label>
               {/* Self-service: a one-hour link by email, never a password. */}
-              <Link to="/forgot-password" className="inline-flex min-h-11 items-center text-[0.875rem] font-medium text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
+              <Link to="/forgot-password" className="inline-flex min-h-11 items-center text-[0.9375rem] font-semibold text-[var(--brand-text)] underline-offset-4 hover:underline" data-testid="login-forgot">
                 {t('auth.forgot')}
               </Link>
             </div>
 
             {errorBox}
 
-            <Button type="submit" size="lg" loading={submitting} className="h-12 w-full text-[1rem]">
+            <Button type="submit" size="lg" loading={submitting} className="h-[3.25rem] w-full !rounded-lg text-[1rem] font-semibold">
               {submitting ? t('auth.signingIn') : t('auth.signIn')}
               {!submitting && <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />}
             </Button>
@@ -250,23 +334,20 @@ export function LoginPage() {
       {step === 'code' && (
         <AuthCard title={t('auth.mfaTitle')} subtitle={t('auth.mfaCodeHint')} testId="login-card">
           <form onSubmit={signIn} className="space-y-3" noValidate>
-            <Input
+            <OtpInput
               name="one-time-code"
-              autoComplete="one-time-code"
               inputMode="text"
               autoFocus
-              dir="ltr"
               label={t('auth.mfaCode')}
               value={code}
               error={fieldErrors.code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="123456"
-              className="h-11 text-[1rem] tracking-widest"
+              className="h-[3.25rem]"
               data-testid="login-mfa-code"
             />
             {errorBox}
-            <Button type="submit" size="lg" loading={submitting} className="h-12 w-full text-[1rem]" data-testid="login-mfa-submit">{t('auth.verify')}</Button>
-            <Button type="button" variant="ghost" className="min-h-11 w-full" onClick={() => { setStep('credentials'); setCode(''); setError(null); setFieldErrors({}) }} data-testid="login-mfa-back">
+            <Button type="submit" size="lg" loading={submitting} className="h-[3.25rem] w-full !rounded-lg text-[1rem] font-semibold" data-testid="login-mfa-submit">{t('auth.verify')}</Button>
+            <Button type="button" variant="ghost" className="min-h-11 w-full" onClick={() => { setStep('credentials'); setCode(''); setGoogleTicket(null); setPlatform(false); setError(null); setFieldErrors({}) }} data-testid="login-mfa-back">
               <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden />
               {t('common.back')}
             </Button>
@@ -304,7 +385,7 @@ export function LoginPage() {
                 if (target) void enter(target, code.trim())
               }}
             >
-              <Input dir="ltr" autoFocus autoComplete="one-time-code" label={t('auth.mfaCode')} value={code} error={fieldErrors.code} onChange={(e) => setCode(e.target.value)} className="h-11 tracking-widest" />
+              <OtpInput autoFocus label={t('auth.mfaCode')} value={code} error={fieldErrors.code} onChange={(e) => setCode(e.target.value)} />
               <Button type="submit" className="h-11 w-full" loading={submitting}>{t('auth.verify')}</Button>
             </form>
           )}

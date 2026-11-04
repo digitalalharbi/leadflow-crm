@@ -89,7 +89,7 @@ test.describe('Public pages', () => {
     }
   })
 
-  test('the footer reaches the six pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
+  test('the footer reaches the public pages, and a keyboard lands on the skip link first', async ({ page, isMobile, browserName }) => {
     test.skip(isMobile, 'keyboard order is a desktop concern')
     await ready(page, '/')
 
@@ -106,7 +106,7 @@ test.describe('Public pages', () => {
     await expect(skip).toBeInViewport()
 
     const hrefs = await page.getByTestId('public-footer').getByRole('navigation').getByRole('link').evaluateAll((links) => links.map((a) => a.getAttribute('href')))
-    expect(hrefs).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/about'])
+    expect(hrefs).toEqual(['/privacy', '/terms', '/data-deletion', '/security', '/contact', '/insights', '/about'])
   })
 
   test('anchor links glide unless the visitor asked for less motion', async ({ page }) => {
@@ -286,6 +286,24 @@ test.describe('Login', () => {
     await expect(page.getByText(/Google|Apple|إنشاء حساب|Sign up|رمز عبر البريد/)).toHaveCount(0)
     await expect(page.getByTestId('login-providers')).toHaveCount(0)
     await expect(page.getByLabel(/المؤسسة/)).toHaveCount(0)
+  })
+
+  test('Google comes after the form, and only when the server offers it', async ({ page }) => {
+    await page.route('**/api/v1/auth/providers', (route) => route.fulfill({ json: { success: true, data: { providers: [{ key: 'google', label: 'Google', url: '/api/v1/auth/google/redirect' }] }, message: null, errors: null } }))
+    await ready(page, '/login')
+
+    const google = page.getByTestId('login-provider-google')
+    await expect(google).toHaveText('المتابعة باستخدام Google')
+    expect((await google.boundingBox())!.y).toBeGreaterThan((await page.getByRole('button', { name: 'تسجيل الدخول' }).boundingBox())!.y)
+    expect((await google.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await expectNoSidewaysScroll(page, 'login')
+  })
+
+  test('a refusal from Google is said in words, and leaves the address clean', async ({ page }) => {
+    await ready(page, '/login?google_error=no_account')
+
+    await expect(page.getByRole('alert')).toContainText('لا يوجد حساب بهذا البريد')
+    await expect(page).toHaveURL(/\/login$/)
   })
 
   test('the password can be shown and hidden', async ({ page }) => {

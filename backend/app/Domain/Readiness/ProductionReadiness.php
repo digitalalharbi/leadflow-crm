@@ -5,6 +5,8 @@ namespace App\Domain\Readiness;
 use App\Console\Commands\Heartbeat;
 use App\Domain\Integrations\IntegrationHealthReport;
 use App\Domain\Integrations\IntegrationState;
+use App\Domain\Mail\EmailDnsReadiness;
+use App\Domain\Mail\MailerRegistry;
 use App\Domain\Sheets\GoogleOAuth;
 use App\Jobs\QueueHeartbeat;
 use App\Models\AgentMessage;
@@ -18,6 +20,7 @@ use App\Support\Deployment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * What stands between this deployment and being live, said once.
@@ -69,6 +72,10 @@ class ProductionReadiness
             $this->vps(),
             $this->domain($request),
             $this->googleOAuth($rows, $workspace, $last),
+            $this->mailProvider(),
+            $this->googleLogin(),
+            $this->automationEngine(),
+            $this->landingAndReports(),
             $workspace ? $this->whatsapp($rows, $last) : $this->perWorkspace('whatsapp'),
             $workspace ? $this->twilio($rows, $last) : $this->perWorkspace('twilio'),
             $workspace ? $this->ads($rows, $last) : $this->perWorkspace('ads'),
@@ -126,7 +133,7 @@ class ProductionReadiness
             $key = $item['key'];
 
             $result = match ($key) {
-                'vps', 'domain' => $ladder->server($item['status'], $item['checks']),
+                'vps', 'domain', 'mail', 'google_login', 'automation', 'landing_reports' => $ladder->server($item['status'], $item['checks']),
                 'google' => $ladder->integration($health('google_sheets'), $last['google'] ?? null),
                 'whatsapp' => $ladder->integration($health('whatsapp'), $last['whatsapp'] ?? null),
                 'twilio' => $ladder->integration($health('calls'), $last['twilio'] ?? null),
@@ -471,6 +478,46 @@ class ProductionReadiness
         }
 
         return $status;
+    }
+
+    /** Whether the product's own email really leaves the building. The provider's name, never its key. */
+    private function mailProvider(): array
+    {
+        $delivers = app(MailerRegistry::class)->delivers();
+        $configured = $delivers && app(MailerRegistry::class)->current()->isConfigured();
+        $dns = rescue(fn () => app(EmailDnsReadiness::class)->check(), null, false);
+        $dnsOk = is_array($dns) && ($dns['ready'] ?? false) === true;
+
+        return $this->item('mail', $configured && $dnsOk ? self::READY : self::EXTERNAL, match (true) {
+            ! $delivers => 'no_mail_provider',
+            ! $configured => 'mail_provider_not_configured',
+            ! $dnsOk => 'mail_dns_incomplete',
+            default => null,
+        }, ['provider' => $delivers, 'credentials' => $configured, 'dns' => $dnsOk], false);
+    }
+
+    private function googleLogin(): array
+    {
+        $on = filled(config('services.google_login.client_id')) && filled(config('services.google_login.client_secret'));
+
+        return $this->item('google_login', $on ? self::READY : self::EXTERNAL, $on ? null : 'awaiting_google_login_credentials', ['credentials' => $on], false);
+    }
+
+    /** Whether rules can run at all: a worker's queue, and the sweeps' last pulse. */
+    private function automationEngine(): array
+    {
+        $failed = rescue(fn () => DB::table('failed_jobs')->where('failed_at', '>=', now()->subDay())->count(), 0, false);
+
+        return $this->item('automation', $failed === 0 ? self::READY : self::EXTERNAL, $failed === 0 ? null : 'failed_jobs_in_the_last_day', ['no_recent_failed_jobs' => $failed === 0], false);
+    }
+
+    /** Whether a real page and a real report exist, counted across the platform and naming nobody. Evidence, not capability. */
+    private function landingAndReports(): array
+    {
+        $published = rescue(fn () => DB::table('landing_forms')->where('status', 'published')->whereNull('deleted_at')->count(), 0, false);
+        $reports = rescue(fn () => DB::table('report_shares')->whereNull('revoked_at')->count(), 0, false);
+
+        return $this->item('landing_reports', $published > 0 && $reports > 0 ? self::READY : self::EXTERNAL, $published > 0 && $reports > 0 ? null : 'awaiting_first_published_page_and_report', ['published_page' => $published > 0, 'report' => $reports > 0], false);
     }
 
     private function item(string $key, string $status, ?string $blocker, array $checks, bool $commissionable, ?array $last = null): array

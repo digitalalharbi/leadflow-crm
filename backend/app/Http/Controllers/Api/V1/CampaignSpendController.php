@@ -29,6 +29,8 @@ class CampaignSpendController extends Controller
 
     public function index(Request $request)
     {
+        // Spend has no project of its own: it is the whole company's.
+        abort_if($request->user()->isLimited(), 403, 'Your role does not include this.');
         $this->authorize('export', Lead::class);
 
         $rows = CampaignSpend::query()
@@ -61,6 +63,8 @@ class CampaignSpendController extends Controller
      */
     public function store(Request $request)
     {
+        // Spend has no project of its own: it is the whole company's.
+        abort_if($request->user()->isLimited(), 403, 'Your role does not include this.');
         $this->authorize('export', Lead::class);
 
         $data = $request->validate([
@@ -102,6 +106,8 @@ class CampaignSpendController extends Controller
 
     public function destroy(Request $request, int $id)
     {
+        // Spend has no project of its own: it is the whole company's.
+        abort_if($request->user()->isLimited(), 403, 'Your role does not include this.');
         $this->authorize('export', Lead::class);
 
         $spend = CampaignSpend::whereKey($id)->firstOrFail();

@@ -234,7 +234,7 @@ export function AutomationPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('automation.searchRules')}
-                className="h-9 w-64 max-w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-[0.9375rem]"
+                className="field !h-10 w-64 max-w-full"
                 data-testid="rules-search"
               />
             </div>

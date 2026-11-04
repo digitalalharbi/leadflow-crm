@@ -187,7 +187,7 @@ export function CommandPalette() {
             onKeyDown={onInputKey}
             placeholder={t('search.placeholder')}
             data-testid="command-palette-input"
-            className="h-11 w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 text-[1.0625rem] outline-none focus:border-[var(--brand)]"
+            className="field"
           />
 
           {debounced.trim().length >= 2 && rows.length === 0 && (

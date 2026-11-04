@@ -140,7 +140,7 @@ class AutomationRecoveryTest extends TestCase
 
         $result = $this->act($lead, ['type' => 'send_whatsapp', 'purpose' => 'reminder']);
 
-        $this->assertFalse($result['ok'], 'reported as it always was');
+        $this->assertSame('skipped', $result['result'] ?? null, 'a refusal, not a failure');
         $this->assertCount(0, $this->messages($lead), 'nothing went by email');
         $this->assertNull($this->asTenant($this->t['tenant'], fn () => $lead->fresh()->needs_human_reason), 'and nobody was called in: it is the customer\'s decision, not a fault');
     }

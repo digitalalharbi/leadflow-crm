@@ -1,27 +1,16 @@
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { useId } from 'react'
+import { AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-/*
- * A field is a recess, so it sits a half-step below the card it is on and
- * carries a faint inner shadow. On focus it comes up to the surface colour and
- * takes the brand ring — the control moving toward you, rather than just
- * changing its border.
- */
-const fieldBase = [
-  'w-full rounded-[var(--radius-control)] border px-3 text-sm',
-  'bg-[var(--color-surface-muted)] shadow-[inset_0_1px_1px_0_color-mix(in_srgb,var(--color-neutral-900)_4%,transparent)]',
-  'transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)]',
-  'placeholder:text-[var(--color-ink-subtle)]',
-  'focus:bg-[var(--color-surface)] focus:shadow-[0_0_0_3px_var(--brand-ring)] focus:outline-none',
-  'disabled:bg-[var(--color-surface-sunken)] disabled:opacity-60',
-].join(' ')
+/* Every state of a field lives in one place: `.field` in index.css. */
+const fieldBase = 'field'
 
 function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.ReactNode; hint?: string }) {
   return (
     // `flex-wrap`: a long hint beside a long label squeezed the label onto two
     // lines on a phone and left the pair looking collided. It drops below instead.
-    <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-2 text-[0.9375rem] font-medium text-[var(--color-ink)]">
+    <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-2 text-[0.9375rem] font-semibold text-[var(--color-ink)]">
       <span>{children}</span>
       {hint && <span className="text-[0.875rem] font-normal text-[var(--color-ink-subtle)]">{hint}</span>}
     </label>
@@ -30,8 +19,9 @@ function Label({ htmlFor, children, hint }: { htmlFor: string; children: React.R
 
 function ErrorText({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <p id={id} role="alert" className="mt-1.5 text-[0.875rem] text-[var(--color-status-lost)]">
-      {children}
+    <p id={id} role="alert" className="mt-1.5 flex items-start gap-1.5 text-[0.875rem] font-medium text-[var(--color-status-lost)]">
+      <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{children}</span>
     </p>
   )
 }
@@ -80,14 +70,11 @@ export function Input({
       id={fieldId}
       dir={props.dir ?? (isDateLike ? 'ltr' : undefined)}
       data-empty={showDateHint ? '' : undefined}
+      data-filled={props.value ? '' : undefined}
       aria-invalid={error ? true : undefined}
       aria-describedby={error ? errorId : undefined}
       className={cn(
         fieldBase,
-        'h-10',
-        error
-          ? 'border-[var(--color-status-lost)]'
-          : 'border-[var(--color-border)] focus:border-[var(--brand)]',
         className,
       )}
       {...props}
@@ -149,14 +136,12 @@ export function Textarea({
       <textarea
         id={fieldId}
         rows={3}
+        data-filled={props.value ? '' : undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className={cn(
           fieldBase,
-          'py-2 leading-relaxed',
-          error
-            ? 'border-[var(--color-status-lost)]'
-            : 'border-[var(--color-border)] focus:border-[var(--brand)]',
+          'h-auto py-2.5 leading-relaxed',
           className,
         )}
         {...props}
@@ -189,16 +174,14 @@ export function Select({
       )}
       <select
         id={fieldId}
+        data-filled={props.value ? '' : undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className={cn(
           fieldBase,
-          'h-10 cursor-pointer appearance-none bg-no-repeat pe-9',
+          'cursor-pointer appearance-none bg-no-repeat pe-9',
           "bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath d='M5.2 7.5 10 12.3l4.8-4.8'  stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")]",
           '[background-position:left_0.65rem_center] [background-size:1.1rem] rtl:[background-position:left_0.65rem_center] ltr:[background-position:right_0.65rem_center]',
-          error
-            ? 'border-[var(--color-status-lost)]'
-            : 'border-[var(--color-border)] focus:border-[var(--brand)]',
           className,
         )}
         {...props}
@@ -208,4 +191,9 @@ export function Select({
       {error && <ErrorText id={errorId}>{error}</ErrorText>}
     </div>
   )
+}
+
+/** A code from an authenticator app or a recovery code: the same field, read digit by digit. */
+export function OtpInput({ className, ...props }: FieldProps & { endSlot?: React.ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
+  return <Input dir="ltr" autoComplete="one-time-code" spellCheck={false} placeholder="123456" {...props} className={cn('field-otp', className)} />
 }

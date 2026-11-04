@@ -774,7 +774,7 @@ function CredentialsModal({
                 placeholder={stored ? t('integrations.credentialStored') : ''}
                 value={values[key] ?? ''}
                 onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
-                className="w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[1rem]"
+                className="field"
               />
             </label>
           )

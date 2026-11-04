@@ -17,6 +17,7 @@ use App\Models\ReportShareView;
 use App\Services\AuditLogger;
 use App\Support\ApiResponse;
 use App\Support\ProjectContext;
+use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -89,6 +90,9 @@ class ReportShareController extends Controller
         $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('update', $share);
 
+        // A snapshot can be renamed, and that is all: what it shows is what it showed.
+        abort_if($share->isSnapshot() && array_diff(array_keys($request->all()), ['name']) !== [], 422, 'A snapshot cannot be changed.');
+
         $data = $this->validated($request, partial: true);
         $before = $this->trail($share);
 
@@ -144,6 +148,90 @@ class ReportShareController extends Controller
         $this->audit->log('report_share.revoked', $request->user(), $share, ['after' => ['name' => $share->name]]);
 
         return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
+    }
+
+    public function pause(Request $request, string $uuid)
+    {
+        return $this->mark($request, $uuid, 'report_share.paused', ['paused_at' => now()]);
+    }
+
+    /** Back on the same address: the people who have the link did not have to be told anything. */
+    public function resume(Request $request, string $uuid)
+    {
+        return $this->mark($request, $uuid, 'report_share.resumed', ['paused_at' => null, 'archived_at' => null]);
+    }
+
+    public function archive(Request $request, string $uuid)
+    {
+        return $this->mark($request, $uuid, 'report_share.archived', ['archived_at' => now()]);
+    }
+
+    private function mark(Request $request, string $uuid, string $action, array $change)
+    {
+        $share = $this->shares()->where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $share);
+
+        $share->forceFill($change)->save();
+        $this->audit->log($action, $request->user(), $share, ['after' => ['name' => $share->name, 'status' => $share->status()]]);
+
+        return ApiResponse::success(['share' => $this->present($share->load('project', 'partner'))]);
+    }
+
+    /** The same report on its own new link; the original and its schedules are untouched. */
+    public function duplicate(Request $request, string $uuid)
+    {
+        $source = $this->shares()->where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $source);
+        $this->authorize('create', ReportShare::class);
+
+        $copy = $this->copyOf($request, $source, $source->name.' — نسخة');
+        $copy->save();
+        $this->audit->log('report_share.duplicated', $request->user(), $copy, ['after' => $this->trail($copy), 'from' => $source->uuid]);
+
+        return ApiResponse::created(['share' => $this->present($copy->load('project', 'partner'))]);
+    }
+
+    /**
+     * A frozen copy: the report as it stands now, on its own link, with what it covered and how it was made. Later sales do
+     * not change it, and neither does editing the live report it came from.
+     */
+    public function snapshot(Request $request, string $uuid, LiveReport $report)
+    {
+        $source = $this->shares()->where('uuid', $uuid)->firstOrFail();
+        $this->authorize('update', $source);
+        abort_if($source->isSnapshot(), 422, 'This report is already a snapshot.');
+
+        $tenant = app(TenantContext::class)->get();
+        $payload = $report->build($source->setRelation('tenant', $tenant));
+        $at = now();
+
+        $snapshot = $this->copyOf($request, $source, $source->name.' — '.$at->toDateString());
+        $snapshot->forceFill([
+            'frozen_payload' => $payload,
+            'frozen_meta' => [
+                'generated_at' => $at->toIso8601String(),
+                'days' => (int) $source->days,
+                'project' => $source->project?->name,
+                'currency' => $tenant?->settings?->currency,
+                'timezone' => $tenant?->settings?->timezone,
+                'generated_by' => $request->user()->name,
+                'definitions' => 1,
+            ],
+        ])->save();
+
+        $this->audit->log('report_share.snapshot', $request->user(), $snapshot, ['after' => $this->trail($snapshot), 'from' => $source->uuid]);
+
+        return ApiResponse::created(['share' => $this->present($snapshot->load('project', 'partner'))]);
+    }
+
+    private function copyOf(Request $request, ReportShare $source, string $name): ReportShare
+    {
+        $copy = new ReportShare($source->only(['template', 'sections', 'layout', 'compare', 'refresh_seconds', 'days', 'project_id', 'partner_id']) + [
+            'name' => mb_substr($name, 0, 190), 'created_by' => $request->user()->id,
+        ]);
+        $copy->rotateToken();
+
+        return $copy;
     }
 
     /** A new link in place of the old: whoever has the old one is locked out, and a revoked report is open again. */
@@ -349,6 +437,8 @@ class ReportShareController extends Controller
             'project' => $share->relationLoaded('project') && $share->project ? ['id' => $share->project->uuid, 'name' => $share->project->name] : null,
             'url' => $share->url(),
             'status' => $share->status(),
+            'kind' => $share->isSnapshot() ? 'snapshot' : 'live',
+            'snapshot' => $share->frozen_meta,
             'has_password' => $share->hasPassword(),
             'expires_at' => $share->expires_at?->toIso8601String(),
             'revoked_at' => $share->revoked_at?->toIso8601String(),

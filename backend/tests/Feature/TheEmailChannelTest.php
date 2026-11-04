@@ -391,7 +391,7 @@ class TheEmailChannelTest extends TestCase
         $result = $this->asTenant($this->t['tenant'], fn () => app(ActionExecutor::class)
             ->execute($this->lead->fresh(), ['type' => 'send_email', 'template_uuid' => $template->uuid]));
 
-        $this->assertFalse($result['ok']);
+        $this->assertSame('skipped', $result['result'] ?? null);
         $this->assertSame([], $this->mailer->sent);
     }
 

@@ -49,7 +49,10 @@ class PlatformConsoleSecurityTest extends TestCase
 
     public function test_a_companys_login_never_signs_in_the_platform_owner(): void
     {
+        // The one door sends them on to the platform's stricter path, and opens no session itself.
         $this->postJson('/api/v1/auth/login', ['email' => 'owner@platform.test', 'password' => 'password123'])
+            ->assertOk()->assertJsonPath('data.platform', true)->assertJsonMissingPath('data.token');
+        $this->postJson('/api/v1/auth/login', ['email' => 'owner@platform.test', 'password' => 'not-the-password'])
             ->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 

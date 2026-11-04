@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios'
 import type { ApiEnvelope } from '@/types/api'
 import { useCompany } from '@/stores/company'
+import { useProject } from '@/stores/project'
 import { ApiError, errorKeyForStatus } from '@/lib/apiError'
 
 export { ApiError, errorKeyForStatus }
@@ -66,6 +67,13 @@ http.interceptors.request.use((config) => {
 
   if (company && !isCompanyList) {
     config.headers['X-Company-Id'] = company
+  }
+
+  // The project being looked at, except on the list it is chosen from.
+  const project = useProject.getState().selected
+
+  if (project && !(config.method === 'get' && config.url === '/projects')) {
+    config.headers['X-Project-Id'] = project
   }
 
   return config
@@ -160,8 +168,8 @@ export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
   return data.data
 }
 
-export async function apiDelete<T>(url: string): Promise<T> {
-  const { data } = await http.delete<ApiEnvelope<T>>(url)
+export async function apiDelete<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.delete<ApiEnvelope<T>>(url, body === undefined ? undefined : { data: body })
   return data.data
 }
 

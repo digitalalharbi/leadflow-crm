@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/stores/auth'
 import { useApiError } from '@/hooks/useApiError'
-import { Button, Input } from '@/components/ui'
+import { Button, Input, OtpInput } from '@/components/ui'
 import { AuthCard, AuthShell } from '@/components/auth/AuthShell'
 
 /**
@@ -62,7 +62,7 @@ export function PlatformLoginPage() {
             <Input dir="ltr" type="email" autoComplete="username" label={t('auth.email')} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <Input dir="ltr" type="password" autoComplete="current-password" label={t('auth.password')} value={password} onChange={(e) => setPassword(e.target.value)} required />
             {needsCode && (
-              <Input dir="ltr" inputMode="numeric" autoComplete="one-time-code" label={t('platformAdmin.code')} hint={t('platformAdmin.codeHint')} value={code} onChange={(e) => setCode(e.target.value)} data-testid="platform-code" autoFocus />
+              <OtpInput inputMode="numeric" label={t('platformAdmin.code')} hint={t('platformAdmin.codeHint')} value={code} onChange={(e) => setCode(e.target.value)} data-testid="platform-code" autoFocus />
             )}
             {error && <p role="alert" className="text-[0.9375rem] text-[var(--color-status-lost)]" data-testid="platform-login-error">{error}</p>}
             <Button type="submit" className="w-full" loading={submitting}>{t('auth.signIn')}</Button>

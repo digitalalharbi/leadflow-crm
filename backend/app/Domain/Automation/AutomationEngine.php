@@ -8,6 +8,7 @@ use App\Models\AutomationRule;
 use App\Models\AutomationRun;
 use App\Models\Lead;
 use App\Models\ScheduledAction;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -149,7 +150,7 @@ class AutomationEngine
             return $branch === 'then' && (bool) $rule->stops_processing;
         }
 
-        foreach ($actions as $action) {
+        foreach ($actions as $index => $action) {
             /*
              * The rule's name, put on the action here rather than stored on it.
              *
@@ -176,6 +177,16 @@ class AutomationEngine
              * visible in the trace, cancellable when the lead closes, and
              * durable across a worker that dies.
              */
+            /*
+             * The same event reaching the same step of the same rule again, as a retried job does, does nothing the
+             * second time: no second email, task or assignment. A step that failed stays free to be tried again.
+             */
+            $step = 'auto-step:'.hash('sha256', implode(':', [$rule->id, $event->id(), $index]));
+
+            if (! Cache::add($step, true, now()->addDays(2))) {
+                continue;
+            }
+
             $delay = (int) ($action['delay_minutes'] ?? 0);
 
             if ($delay > 0) {
@@ -185,6 +196,11 @@ class AutomationEngine
             }
 
             $result = $this->actions->execute($lead->fresh() ?? $lead, $action);
+
+            if (! $result['ok']) {
+                Cache::forget($step);
+            }
+
             $this->logs->fromResult($lead, $rule, $event->name(), $action, $result);
             $applied[] = [
                 'type' => $action['type'] ?? 'unknown',

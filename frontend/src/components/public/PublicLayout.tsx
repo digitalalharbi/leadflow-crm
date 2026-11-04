@@ -96,7 +96,7 @@ export function PublicFooter({ compact = false }: { compact?: boolean }) {
   const copy = LANDING[language(i18n.language)].footer
   const links: Array<[string, string]> = [
     ['/privacy', copy.links.privacy], ['/terms', copy.links.terms], ['/data-deletion', copy.links.deletion],
-    ['/security', copy.links.security], ['/contact', copy.links.contact], ['/about', copy.links.about],
+    ['/security', copy.links.security], ['/contact', copy.links.contact], ['/insights', language(i18n.language) === 'ar' ? 'رؤى' : 'Insights'], ['/about', copy.links.about],
   ]
 
   return (

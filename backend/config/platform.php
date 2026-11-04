@@ -5,8 +5,8 @@ return [
      * The platform owner's sign-in is its own door (/api/v1/platform/auth/login), never a company's. With this on, an
      * owner account without a second factor can sign in only to enrol one; nothing else in the console answers it.
      */
-    // Other ways to sign in, shown only when listed here with a working flow behind them: [key, label, url]. None yet.
-    'login_providers' => [],
+    // The workspace (slug) the marketing site's enquiries become leads in. Unset: the site offers email and phone instead.
+    'marketing_workspace' => env('MOHTAM_MARKETING_WORKSPACE'),
 
     // What reaches outside a company waits for a proven address, once mail really goes out.
     'require_verified_email' => (bool) env('PLATFORM_REQUIRE_VERIFIED_EMAIL', true),

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessLeadImport;
 use App\Models\Import;
 use App\Models\Project;
+use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class ImportController extends Controller
         // A rep sees only their own imports; managers and admins see them all.
         $imports = Import::with('user:id,uuid,name')
             ->when(
-                ! $request->user()->seesAllLeads(),
+                ! $this->seesEveryImport($request->user()),
                 fn ($q) => $q->where('user_id', $request->user()->id),
             )
             ->latest()->limit(25)->get();
@@ -93,6 +94,7 @@ class ImportController extends Controller
     {
         $import = Import::where('uuid', $uuid)->firstOrFail();
         $this->authorize('process', $import);
+        $this->mustReach($request->user(), $import);
 
         if ($import->status === Import::PROCESSING || $import->status === Import::COMPLETED) {
             return ApiResponse::error('This import has already been processed.', null, 409);
@@ -127,21 +129,33 @@ class ImportController extends Controller
             'status' => Import::PROCESSING,
         ]);
 
-        ProcessLeadImport::dispatch($import->id, $import->tenant_id);
+        ProcessLeadImport::dispatch($import->id, $import->tenant_id)->onQueue('heavy');
 
         return ApiResponse::success(['import' => $this->present($import->fresh())], 'Import started.');
     }
 
-    public function show(string $uuid)
+    public function show(Request $request, string $uuid)
     {
         $import = Import::with('user:id,uuid,name')->where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $import);
+        $this->mustReach($request->user(), $import);
 
         return ApiResponse::success([
             'import' => $this->present($import),
             'failed_rows' => $import->rows()->where('status', 'failed')->limit(50)->get()
                 ->map(fn ($r) => ['row' => $r->row_number, 'error' => $r->error, 'data' => $r->data]),
         ]);
+    }
+
+    /** A file's raw rows belong to no project yet: only someone who sees the whole company reads what others uploaded. */
+    private function seesEveryImport(User $user): bool
+    {
+        return $user->seesAllLeads() && ! $user->isLimited() && ! $user->isExternal();
+    }
+
+    private function mustReach(User $user, Import $import): void
+    {
+        abort_unless($import->user_id === $user->id || $this->seesEveryImport($user), 404);
     }
 
     private function present(Import $import): array

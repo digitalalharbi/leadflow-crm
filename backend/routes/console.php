@@ -113,6 +113,7 @@ Schedule::command('leadflow:watch-tracking')->hourly()->withoutOverlapping();
 
 // A hold nobody confirmed lapses, and the unit goes back on the market.
 Schedule::command('leadflow:expire-reservations')->hourly()->withoutOverlapping();
+Schedule::command('leadflow:sweep-reminders')->everyTenMinutes()->withoutOverlapping();
 
 Schedule::command('leadflow:sweep-no-reply')->everyFiveMinutes()->withoutOverlapping()
     ->after(fn () => RoutineClock::stamp('no_reply_review'));

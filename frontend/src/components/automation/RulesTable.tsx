@@ -109,6 +109,12 @@ export function RulesTable({
               ) : (
                 <span className="text-[var(--color-ink-subtle)]">{t('automation.table.neverRan')}</span>
               )}
+              {rule.stats && rule.stats.applied + rule.stats.failed > 0 && (
+                <span className="block text-[var(--color-ink-subtle)]" data-testid={`rule-stats-${rule.id}`}>
+                  {t('automation.table.success', { rate: Math.round((rule.stats.applied / (rule.stats.applied + rule.stats.failed)) * 100) })}
+                  {rule.stats.failed > 0 && <span className="text-[var(--color-danger)]"> · {t('automation.table.failures', { n: rule.stats.failed })}</span>}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-0.5 lg:justify-end">

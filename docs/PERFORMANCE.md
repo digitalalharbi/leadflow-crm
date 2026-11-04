@@ -129,3 +129,18 @@ PostgreSQL is comfortably sufficient at this scale and well beyond it. No search
 engine, no read replica, no caching layer — each would add an operational burden
 the numbers above do not justify. Revisit when a single tenant passes roughly
 100k leads or the dashboard moves past ~200 ms.
+
+## Latency, Nov 4, 2026
+
+`php artisan leadflow:measure --tenant=e2e-alpha --runs=20`: 10,043 leads, a developer laptop, in-process. This is our code on this machine, not the production host or a network round trip.
+
+| Endpoint | Queries | p50 | p95 | Payload |
+| --- | --- | --- | --- | --- |
+| Leads, page 1 | 13 | 40 ms | 43 ms | 31 KB |
+| Leads, search by name | 13 | 40 ms | 42 ms | 35 KB |
+| Work Now | 14 | 81 ms | 85 ms | 6 KB |
+| Dashboard | 29 | 116 ms | 122 ms | 23 KB |
+| Pipeline | 7 | 61 ms | 68 ms | 163 KB |
+
+Measuring found one N+1: each lead read its project's settings on its own, 50 queries on Work Now. Work Now went from 64 queries to 14 and the lead list from 38 to 13. `ProjectSettingsQueriesTest` keeps it that way.
+

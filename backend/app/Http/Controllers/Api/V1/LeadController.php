@@ -141,7 +141,7 @@ class LeadController extends Controller
         $perPage = min((int) $request->input('per_page', 25), 100);
 
         $leads = $this->queries->build($request, $request->user())
-            ->with(['assignee:id,uuid,name', 'project:id,uuid,name'])
+            ->with(['assignee:id,uuid,name', 'project:id,uuid,name,automation_settings'])
             ->paginate($perPage)
             ->withQueryString();
 

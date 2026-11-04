@@ -99,6 +99,8 @@ class SeedLoadTest extends Command
                         'purchase_timeline' => DemoContent::TIMELINES[$i % count(DemoContent::TIMELINES)],
                         'next_follow_up_at' => $i % 4 === 0 ? $now->copy()->subDays($i % 7) : null,
                         'lost_reason_id' => $status === 'lost' && $reasonIds !== [] ? $reasonIds[$i % count($reasonIds)] : null,
+                        // The database refuses a worked lead with no contact time.
+                        'first_contact_at' => $status === 'new' ? null : $createdAt,
                         'lost_at' => $status === 'lost' ? $createdAt : null,
                         'won_at' => $status === 'won' ? $createdAt : null,
                         'provider' => 'generic_webhook',

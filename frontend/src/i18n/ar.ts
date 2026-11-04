@@ -1809,6 +1809,7 @@ export default {
       ads: 'منصات الإعلانات',
     },
     blocker: {
+      google_login_redirect_not_registered: 'جوجل لا يقبل رابط الرجوع: أضف https://mohtam.pro/api/v1/auth/google/callback إلى عميل OAuth.',
       no_mail_provider: 'لم يُربط مزود بريد بعد.', mail_provider_not_configured: 'مزود البريد بلا بيانات اعتماد.', mail_dns_incomplete: 'سجلات SPF أو DKIM أو DMARC غير مكتملة.', awaiting_google_login_credentials: 'بيانات الدخول بجوجل غير موجودة على الخادم.', failed_jobs_in_the_last_day: 'مهام فشلت خلال آخر يوم.',
       awaiting_first_submission: 'الصفحة منشورة، وبانتظار أول طلب حقيقي.', awaiting_first_published_page: 'لا توجد صفحة منشورة بعد.', awaiting_first_report: 'لم يُنشأ تقرير بعد.',
       not_recorded_in_production: 'يعمل ويثبت المزوّد ذلك، لكن لم يُسجَّل حدث حي في نسخة الإنتاج بعد.',

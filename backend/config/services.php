@@ -4,8 +4,8 @@ return [
 
     // Signing in with Google. Offered only when both are set. Redirect URI to register: <domain>/api/v1/auth/google/callback
     'google_login' => [
-        'client_id' => env('GOOGLE_LOGIN_CLIENT_ID') ?: env('GOOGLE_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_LOGIN_CLIENT_SECRET') ?: env('GOOGLE_CLIENT_SECRET'),
+        'client_id' => env('GOOGLE_LOGIN_CLIENT_ID') ?: env('GOOGLE_CLIENT_ID') ?: env('GOOGLE_SHEETS_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_LOGIN_CLIENT_SECRET') ?: env('GOOGLE_CLIENT_SECRET') ?: env('GOOGLE_SHEETS_CLIENT_SECRET'),
     ],
 
     /*

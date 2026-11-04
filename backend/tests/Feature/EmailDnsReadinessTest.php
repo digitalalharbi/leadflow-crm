@@ -45,4 +45,21 @@ class EmailDnsReadinessTest extends TestCase
         $this->assertSame('unknown', $result['dkim']['status']);
         $this->assertFalse($result['ready']);
     }
+
+    public function test_with_no_selector_named_a_key_at_a_providers_own_selector_is_found(): void
+    {
+        config(['mail.dkim_selector' => null]);
+
+        $result = (new EmailDnsReadiness(function (string $host, int $type) {
+            return match (true) {
+                $type === DNS_TXT && $host === 'mohtam.pro' => [['txt' => 'v=spf1 include:_spf.mail.hostinger.com ~all']],
+                $type === DNS_TXT && $host === '_dmarc.mohtam.pro' => [['txt' => 'v=DMARC1; p=none']],
+                $type === DNS_CNAME && $host === 'hostingermail-a._domainkey.mohtam.pro' => [['target' => 'hostingermail-a.dkim.mail.hostinger.com']],
+                default => [],
+            };
+        }))->check('mohtam.pro');
+
+        $this->assertSame('ok', $result['dkim']['status']);
+        $this->assertTrue($result['ready']);
+    }
 }

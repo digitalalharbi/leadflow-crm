@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\Totp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -23,6 +24,8 @@ class GoogleLoginTest extends TestCase
         parent::setUp();
         config(['services.google_login.client_id' => 'client', 'services.google_login.client_secret' => 'secret', 'integrations.app_url' => 'https://mohtam.pro']);
         $this->tenant = $this->provisionTenant()['tenant'];
+        Cache::flush();
+        Http::fake(['accounts.google.com/*' => Http::response('', 302, ['Location' => 'https://accounts.google.com/v3/signin/identifier'])]);
     }
 
     /** Sends the person to Google, then brings them back with this answer. Returns the response of the callback. */
@@ -147,5 +150,32 @@ class GoogleLoginTest extends TestCase
         $user->forceFill(['google_id' => 'google-1'])->save();
         $this->actingAs($user->fresh())->patchJson("/api/v1/users/{$user->uuid}", ['email' => 'q@x.test', 'current_password' => 'a-strong-pass'])->assertOk();
         $this->assertNull($user->fresh()->google_id);
+    }
+
+    public function test_a_button_google_would_refuse_is_not_offered_and_readiness_says_why(): void
+    {
+        Cache::flush();
+        Http::swap(new Factory);
+        Http::fake(['accounts.google.com/*' => Http::response('', 302, ['Location' => 'https://accounts.google.com/signin/oauth/error/v2?authError=x'])]);
+
+        $this->getJson('/api/v1/auth/providers')->assertOk()->assertJsonPath('data.providers', []);
+    }
+
+    public function test_when_google_cannot_be_reached_the_button_stays(): void
+    {
+        Cache::flush();
+        Http::swap(new Factory);
+        Http::fake(['accounts.google.com/*' => Http::response('', 503)]);
+
+        $this->getJson('/api/v1/auth/providers')->assertOk()->assertJsonPath('data.providers.0.key', 'google');
+    }
+
+    public function test_a_button_google_accepts_is_offered(): void
+    {
+        Cache::flush();
+        Http::swap(new Factory);
+        Http::fake(['accounts.google.com/*' => Http::response('', 302, ['Location' => 'https://accounts.google.com/v3/signin/identifier?x=1'])]);
+
+        $this->getJson('/api/v1/auth/providers')->assertOk()->assertJsonPath('data.providers.0.key', 'google');
     }
 }

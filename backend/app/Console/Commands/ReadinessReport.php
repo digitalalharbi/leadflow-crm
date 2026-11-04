@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\Readiness\ProductionReadiness;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The platform's readiness, from a shell.
@@ -43,6 +44,10 @@ class ReadinessReport extends Command
             }
         }
 
+        if (! $this->option('json')) {
+            $this->failedJobs();
+        }
+
         $platform = array_filter(
             $report['items'],
             fn (array $item) => in_array($item['key'], ['vps', 'domain', 'google'], true),
@@ -54,5 +59,17 @@ class ReadinessReport extends Command
         );
 
         return $waiting === [] ? self::SUCCESS : self::FAILURE;
+    }
+
+    /** Which jobs failed in the last day: class names and counts only. A payload or a message can hold a customer's data. */
+    private function failedJobs(): void
+    {
+        DB::table('failed_jobs')->where('failed_at', '>=', now()->subDay())->get(['payload', 'exception'])
+            ->countBy(fn ($job) => sprintf(
+                '%s / %s',
+                json_decode((string) $job->payload, true)['displayName'] ?? 'unknown',
+                strtok((string) $job->exception, ':') ?: 'unknown',
+            ))
+            ->each(fn (int $count, string $name) => $this->line(sprintf('failed job %dx %s', $count, mb_substr($name, 0, 160))));
     }
 }

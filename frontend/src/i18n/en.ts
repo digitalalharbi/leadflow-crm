@@ -1639,6 +1639,7 @@ export default {
       ads: 'Ad platforms',
     },
     blocker: {
+      google_login_redirect_not_registered: 'Google refuses the callback: add https://mohtam.pro/api/v1/auth/google/callback to the OAuth client.',
       no_mail_provider: 'No mail provider is set up yet.', mail_provider_not_configured: 'The mail provider has no credentials.', mail_dns_incomplete: 'SPF, DKIM or DMARC records are incomplete.', awaiting_google_login_credentials: 'Google sign-in credentials are not on the server.', failed_jobs_in_the_last_day: 'Jobs failed in the last day.',
       awaiting_first_submission: 'A page is published, waiting for its first real submission.', awaiting_first_published_page: 'No page is published yet.', awaiting_first_report: 'No report has been created yet.',
       not_recorded_in_production: 'It works and the provider confirms it, but no live event has been recorded on the production deployment yet.',

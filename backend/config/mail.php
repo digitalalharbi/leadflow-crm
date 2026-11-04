@@ -112,6 +112,8 @@ return [
 
     // The DKIM selector the mail provider publishes the signing key under (Resend: resend, Google: google).
     'dkim_selector' => env('MAIL_DKIM_SELECTOR'),
+    // Looked for when no selector is named: the ones common providers publish.
+    'dkim_selectors' => ['hostingermail-a', 'resend', 'google', 'default', 'selector1', 'k1', 's1', 'mail'],
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'info@mohtam.pro'),

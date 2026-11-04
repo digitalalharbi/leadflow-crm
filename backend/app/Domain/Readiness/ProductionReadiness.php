@@ -3,6 +3,7 @@
 namespace App\Domain\Readiness;
 
 use App\Console\Commands\Heartbeat;
+use App\Domain\Auth\GoogleLoginProbe;
 use App\Domain\Integrations\IntegrationHealthReport;
 use App\Domain\Integrations\IntegrationState;
 use App\Domain\Mail\EmailDnsReadiness;
@@ -500,6 +501,12 @@ class ProductionReadiness
     private function googleLogin(): array
     {
         $on = filled(config('services.google_login.client_id')) && filled(config('services.google_login.client_secret'));
+
+        $accepted = $on ? app(GoogleLoginProbe::class)->accepted() : null;
+
+        if ($accepted === false) {
+            return $this->item('google_login', self::EXTERNAL, 'google_login_redirect_not_registered', ['credentials' => true, 'redirect_uri' => false], false);
+        }
 
         return $this->item('google_login', $on ? self::READY : self::EXTERNAL, $on ? null : 'awaiting_google_login_credentials', ['credentials' => $on], false);
     }

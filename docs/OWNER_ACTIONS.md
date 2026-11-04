@@ -9,12 +9,12 @@ done in code is done. Each item says what to do and how to check it.
 | 2 | **`api.mohtam.pro` (optional, not a blocker: the app and its API answer on `https://mohtam.pro/api`).** TYPE: A / HOST: api / VALUE: 187.55.224.77 / TTL: 3600 / PURPOSE: a separate API address | Hostinger DNS | `dig +short api.mohtam.pro` returns the IP; TLS is then issued on the server |
 | 2a | **Google sign-in: no setup to repeat.** It runs on the Google client already on the server, through the callback that client has registered. Needed once: press Google on the login page with the address of an existing account | `https://mohtam.pro/login` | You land in your workspace |
 | 3 | **Resolved: email DNS for `mohtam.pro`.** Checked Nov 4, 2026: SPF includes Hostinger, DKIM `hostingermail-a/b/c` delegated to Hostinger, DMARC published with `p=none`, MX on Hostinger. Nothing to repeat. Later, once delivery is steady, tighten DMARC to `p=quarantine` | Hostinger DNS | `dig +short TXT _dmarc.mohtam.pro` |
-| 4 | **BLOCKED_EXTERNAL: MAIL PROVIDER.** Needed: a provider account (Resend, AWS SES or any SMTP service), `mohtam.pro` verified as the sender, and its key. On the server, in `/opt/leadflow-crm/.env.production`: `MAIL_MAILER=resend` with `RESEND_API_KEY=...` (or `MAIL_MAILER=ses` with the `AWS_*` keys, or `MAIL_MAILER=smtp` with `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`), plus `MAIL_FROM_ADDRESS=info@mohtam.pro` and `MAIL_DKIM_SELECTOR`. Then restart: `docker compose -f docker-compose.production.yml --env-file .env.production up -d`. Until then invitations and owner links are handed to the person who asked, and forgot-password reaches nobody | Provider dashboard + VPS console | The next deploy's log shows it in Readiness; a test email arrives at info@mohtam.pro |
-| 5 | **A mailbox for `info@mohtam.pro`** that someone reads (support, privacy, security reports go there) | Mail host | Send a message to it |
-| 6 | **GitHub billing** — Actions jobs are refused: "recent account payments have failed or your spending limit needs to be increased" | github.com → Settings → Billing & plans | A CI run starts on the next push |
+| 4 | **Resolved: mail provider.** Production sends through Hostinger SMTP; 21 messages accepted in 7 days. Nothing to repeat | — | Deploy log, `evidence email` lines |
+| 5 | **Resolved: `info@mohtam.pro` exists** and sends. Check once that someone reads it | Mail host | Send a message to it |
+| 6 | **Resolved: GitHub billing.** Actions run and deploys pass | — | Actions tab |
 | 7 | **Meta app** (WhatsApp Cloud API + Lead Ads): business verification, app review for `whatsapp_business_messaging`, `leads_retrieval`, `pages_manage_metadata`; then `META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN` | developers.facebook.com | Integrations → WhatsApp → Test connection |
 | 8 | **WhatsApp message templates** approved by Meta (welcome, follow-up, appointment reminder, brochure) | WhatsApp Manager | Templates show "approved" in Integrations → WhatsApp |
-| 9 | **Google Cloud project** with OAuth consent screen verified; `GOOGLE_SHEETS_CLIENT_ID/SECRET`, `GOOGLE_PICKER_API_KEY`, `GOOGLE_PROJECT_NUMBER` (and Google Ads developer token if used) | console.cloud.google.com | Integrations → Google Sheets → Connect |
+| 9 | **Resolved: Google project for Sheets and sign-in.** 2 sheets sync, 430 leads, and the client is accepted. Add `GOOGLE_ADS_*` only if you want Google Ads | — | Deploy log, `google live_verified` |
 | 10 | **TikTok / Snapchat / LinkedIn developer apps** (only those you will use): `TIKTOK_APP_ID/SECRET`, `SNAPCHAT_CLIENT_ID/SECRET`, `LINKEDIN_CLIENT_ID/SECRET` | Each platform's developer portal | Integrations → the platform card leaves "Awaiting credentials" |
 | 11 | **Payment provider** for subscriptions (a Saudi-capable one: e.g. Moyasar, Tap, HyperPay) — choose and open the merchant account | Provider | Until then billing stays manual (the platform console records invoices) |
 | 12 | **SMS / telephony provider** (optional): only if you want click-to-call or SMS OTP | Provider | Integrations → Calls → Test connection |
@@ -27,6 +27,10 @@ done in code is done. Each item says what to do and how to check it.
 | 15 | **Named list of data processors** for the privacy page (hosting, mail, WhatsApp, AI) — the page says "available on request" until you publish one | Tell Claude the names | `/privacy#processors` lists them |
 
 **Security: rotate one credential.** The failed v0.9.0 deploy log printed part of the value on line 131 of `/opt/leadflow-crm/.env.production`, in a private GitHub Actions log. Replace that credential at its provider. Deploys no longer run this file as code, so the value's format no longer matters.
+
+**Mail rejected by the recipient's domain.** Hostinger refused 23 messages with `554 5.7.1`, 17 of them on Nov 4. Open the delivery panel to see which addresses: they may be mistyped or test addresses on real accounts.
+
+**A first real landing page.** Publish one from a project and send one test submission. Nothing else can prove that path in production.
 
 **Marketing form.** To let the site's contact form create leads, add one line to `/opt/leadflow-crm/.env.production`: `MOHTAM_MARKETING_WORKSPACE=<your workspace slug>`. Until then the page offers email and phone. Check: `https://mohtam.pro/api/v1/public/contact` says `form: true`.
 

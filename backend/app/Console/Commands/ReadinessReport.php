@@ -89,5 +89,14 @@ class ReadinessReport extends Command
             $count('leads', fn ($q) => $q->where('provider', 'google_sheets')->whereNull('deleted_at')),
         ));
         $this->line('evidence email_7d '.(collect($emails)->map(fn ($total, $status) => "{$status}={$total}")->implode(' ') ?: 'none'));
+
+        rescue(fn () => DB::table('email_deliveries')->where('created_at', '>=', now()->subDays(7))
+            ->selectRaw("to_char(created_at, 'YYYY-MM-DD') as day, provider, status, count(*) as total")->groupBy('day', 'provider', 'status')->orderBy('day')->get()
+            ->each(fn ($row) => $this->line("evidence email {$row->day} {$row->provider} {$row->status}={$row->total}")), null, false);
+
+        // Why, with any address taken out: a provider's error can quote the recipient.
+        rescue(fn () => DB::table('email_deliveries')->where('status', 'failed')->where('created_at', '>=', now()->subDays(7))->pluck('last_error')
+            ->countBy(fn ($error) => mb_substr((string) preg_replace('/[^\s<>"\']+@[^\s<>"\']+/', '[address]', (string) $error), 0, 90))
+            ->each(fn (int $total, string $reason) => $this->line("evidence email_failure {$total}x {$reason}")), null, false);
     }
 }

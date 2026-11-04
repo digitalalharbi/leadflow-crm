@@ -248,9 +248,10 @@ export function WorkPage() {
 
   return (
     <div className="space-y-2.5">
-      <LastUpdated at={summary.dataUpdatedAt || undefined} />
       <PageHeader
         title={t('work.title')}
+        // Beside the title, not above it: this screen has to fit a laptop without scrolling.
+        actions={<LastUpdated at={summary.dataUpdatedAt || undefined} />}
         subtitle={
           data && data.remaining > 0
             ? t('work.remaining', { count: data.remaining })

@@ -68,9 +68,21 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            // Longer than the worker's 300 second timeout, or a slow job is handed out twice while it still runs.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 330),
             'block_for' => null,
-            'after_commit' => false,
+            // A job for a row still inside a transaction reaches a worker before the row exists, and fails with the row not found.
+            'after_commit' => true,
+        ],
+
+        // The same queues, read by the worker that takes long jobs: its timeout is 900 seconds.
+        'redis-heavy' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'heavy',
+            'retry_after' => (int) env('REDIS_HEAVY_RETRY_AFTER', 960),
+            'block_for' => null,
+            'after_commit' => true,
         ],
 
         'deferred' => [

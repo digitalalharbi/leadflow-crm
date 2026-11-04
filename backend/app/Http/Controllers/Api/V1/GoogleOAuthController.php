@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Auth\GoogleLoginCallback;
 use App\Domain\Sheets\GoogleOAuth;
 use App\Domain\Sheets\GoogleTokens;
 use App\Http\Controllers\Controller;
@@ -78,6 +79,11 @@ class GoogleOAuthController extends Controller
      */
     public function callback(Request $request)
     {
+        // A sign-in that came back through the address this client has registered.
+        if (GoogleLoginController::ownsState($request->string('state')->toString())) {
+            return redirect()->to(GoogleLoginCallback::PATH.'?'.http_build_query($request->query()));
+        }
+
         $payload = $this->readState($request->string('state')->toString());
 
         if ($payload === null) {

@@ -20,7 +20,7 @@ class GoogleLoginProbe
     public function accepted(): ?bool
     {
         $clientId = (string) config('services.google_login.client_id');
-        $redirect = rtrim((string) config('integrations.app_url'), '/').'/api/v1/auth/google/callback';
+        $redirect = GoogleLoginCallback::uri();
 
         $answer = Cache::remember('google-login-probe:'.hash('sha256', $clientId.$redirect), now()->addMinutes(15), fn () => $this->ask($clientId, $redirect));
 

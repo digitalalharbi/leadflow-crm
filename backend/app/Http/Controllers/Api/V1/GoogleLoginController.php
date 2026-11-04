@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Auth\GoogleLoginCallback;
 use App\Domain\Auth\GoogleLoginProbe;
 use App\Domain\Mail\AccountEmail;
 use App\Http\Controllers\Controller;
@@ -224,10 +225,21 @@ class GoogleLoginController extends Controller
 
     private function redirectUri(): string
     {
-        return $this->appUrl().'/api/v1/auth/google/callback';
+        return GoogleLoginCallback::uri();
+    }
+
+    /** Whether this state belongs to a sign-in in progress. It says nothing about who started it; the callback checks that. */
+    public static function ownsState(string $state): bool
+    {
+        return $state !== '' && Cache::has(self::keyFor($state));
     }
 
     private function stateKey(string $state): string
+    {
+        return self::keyFor($state);
+    }
+
+    private static function keyFor(string $state): string
     {
         return 'google-login-state:'.hash('sha256', $state);
     }

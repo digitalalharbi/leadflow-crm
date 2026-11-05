@@ -86,7 +86,8 @@ class SendEmailMessage implements ShouldQueue
                 $message->body."\n\n".$unsubscribe,
                 $from['address'], $from['name'],
                 $messageId, ['kind' => 'lead_message'],
-                replyTo: $this->replyAddress($token) ?? ($integration?->config['from_address'] ?? null),
+                // With nowhere of its own to answer to, a reply goes to the mailbox the product reads, never to a dead address.
+                replyTo: $this->replyAddress($token) ?? ($integration?->config['from_address'] ?? (config('leadflow_mail.reply_to') ?: null)),
                 headers: array_filter([
                     'Message-ID' => $messageId,
                     // The thread: the customer's client shows this under the email it answers.

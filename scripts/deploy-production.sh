@@ -53,6 +53,9 @@ require_clean_worktree || exit 1
 # carrying this compose project's label. Other projects on this shared server are not touched.
 docker image prune -f --filter "label=com.docker.compose.project=leadflow-production" >/dev/null 2>&1 || true
 
+# What holds the disk, by kind and never by name, so a refusal below can be acted on from the log alone.
+docker system df 2>/dev/null | sed 's/^/disk  /' || true
+
 FILE_MIN_FREE_GB="$(sed -n 's/^MIN_DEPLOY_FREE_GB=//p' "$ENV_FILE" 2>/dev/null | tail -1 | tr -d "'\"" || true)"
 MIN_DEPLOY_FREE_GB="${MIN_DEPLOY_FREE_GB:-${FILE_MIN_FREE_GB:-18}}"
 case "$MIN_DEPLOY_FREE_GB" in

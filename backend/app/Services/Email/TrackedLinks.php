@@ -61,6 +61,7 @@ class TrackedLinks
             $escaped,
         );
 
-        return nl2br($linked ?? $escaped, false);
+        // The reader's mail client picks the direction from the text: an Arabic message must not sit left to right.
+        return '<div dir="auto">'.nl2br($linked ?? $escaped, false).'</div>';
     }
 }

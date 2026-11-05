@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\Integrations\IntegrationState;
+use App\Domain\Mail\EmailDeliveries;
 use App\Domain\Readiness\ProductionReadiness;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
@@ -20,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -499,5 +501,24 @@ class ProductionReadinessTest extends TestCase
         $this->assertStringContainsString('email_failed_recipient 1x reserved_test_domain not_an_account kind=test distinct=1', $output);
         $this->assertStringContainsString('evidence workspaces active=', $output);
         $this->assertStringNotContainsString('someone@customer.test', $output);
+    }
+
+    public function test_a_test_address_is_written_down_and_never_handed_to_the_provider(): void
+    {
+        config(['leadflow_mail.skip_reserved_domains' => true, 'leadflow_mail.provider' => 'smtp']);
+        Mail::fake();
+
+        $delivery = $this->asTenant($this->t['tenant'], fn () => EmailDelivery::create([
+            'kind' => 'digest.daily_sales', 'to_email' => 'rep@leadflow-demo.test', 'subject' => 'x', 'html' => 'x', 'provider' => 'smtp',
+            'status' => EmailDelivery::QUEUED, 'attempts' => 0, 'max_attempts' => 3,
+        ]));
+
+        $after = $this->asTenant($this->t['tenant'], fn () => app(EmailDeliveries::class)->attempt($delivery->id));
+
+        $this->assertSame(EmailDelivery::LOGGED, $after->status);
+        $this->assertSame(0, $after->attempts);
+        Mail::assertNothingSent();
+        $this->assertFalse(EmailDeliveries::isReserved('someone@mohtam.pro'));
+        $this->assertFalse(EmailDeliveries::isReserved('someone@contest.com'));
     }
 }

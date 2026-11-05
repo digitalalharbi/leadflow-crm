@@ -22,6 +22,9 @@ return [
         'name' => env('LEADFLOW_MAIL_FROM_NAME', 'مهتم — Mohtam'),
     ],
 
+    // Test addresses are written down and not sent, where real mail goes out. Tests send to them on purpose.
+    'skip_reserved_domains' => env('LEADFLOW_MAIL_SKIP_RESERVED', env('APP_ENV') === 'production'),
+
     'reply_to' => env('LEADFLOW_MAIL_REPLY_TO', 'info@mohtam.pro'),
 
     /*

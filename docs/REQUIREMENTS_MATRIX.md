@@ -8,13 +8,13 @@ The one list. Status is honest: VERIFIED means implemented, deployed and confirm
 | §8–10 | One login, server-decided destination | `Destination`, `/auth/login` platform handoff | `Login.tsx`, `homeFor` | `WorkspaceGovernanceTest` | IMPLEMENTED_NOT_VERIFIED | `/platform/login` stays as a technical route |
 | §11 | Google login | `GoogleLoginController`, `GoogleLoginProbe`, the client's registered callback | Login button | `GoogleLoginTest` | IMPLEMENTED_NOT_VERIFIED | Offered on production and Google accepts the callback. No real person has signed in yet |
 | §12–16 | Owner governance | `WorkspaceModules`, `disabled_modules`, per-person module control on the user rule layer, custom roles in the matrix, all audited | Modules, matrix with custom roles, per-person dialog, audit diff | `WorkspaceGovernanceTest` | IMPLEMENTED_NOT_VERIFIED | Needs the owner's console session on production. Only whole-screen modules can be taken from one person: the others borrow a permission another screen needs (exports is `leads.view`) |
-| §17–23 | Mobile navigation | | Tabs by role, full-screen More, project sheet, full-screen notifications grouped urgent, today, earlier | `mobile.spec.ts`, `notifications.spec.ts` | IMPLEMENTED_NOT_VERIFIED | Needs a signed-in session on production |
+| §17–23 | Mobile navigation | | Tabs by role, full-screen More, project sheet, full-screen notifications grouped urgent, today, earlier | `mobile.spec.ts`, `notifications.spec.ts` | PARTIAL | VERIFIED in production: notification grouping, signed in on desktop. Not verified: the phone layout signed in |
 | §24–25 | Inputs and login | | `.field`, AuthShell, login 52px, every field 52px with 16px text on phones | Vitest, `public.spec.ts`, `mobile.spec.ts` | IMPLEMENTED_NOT_VERIFIED | Dense desktop screens stay at 44px on purpose: filters and table tools sit beside 44px buttons |
 | §26–31 | Marketing | `PublicContactController` | `/insights`, contact form | `LandingAndContactTest` | BLOCKED_EXTERNAL | Pages live and fit 430px. The form stays hidden until `MOHTAM_MARKETING_WORKSPACE` is set on the server. No prerender |
-| §32–39 | Landing pages | Sections, gallery, submissions, lead count per person | Builder panel, restore, delete; list shows status, leads, copy link, open page; §66 phone edits text and settings only | `LandingAndContactTest`, `mobile.spec.ts`, `form-builder.spec.ts` | BLOCKED_OPERATIONAL_EVIDENCE | Needs a real published page and a real submission in production |
-| §40–48 | Live and snapshot reports | Pause, resume, duplicate, archive, snapshot, full funnel | Share tab, project tab makes a report from a preset | `ReportLifecycleTest` | BLOCKED_OPERATIONAL_EVIDENCE | Needs a real report in production |
+| §32–39 | Landing pages | Sections, gallery, submissions, lead count per person | Builder panel, restore, delete; list shows status, leads, copy link, open page; §66 phone edits text and settings only | `LandingAndContactTest`, `mobile.spec.ts`, `form-builder.spec.ts` | VERIFIED, one sub-path open | VERIFIED in production Nov 5: a page published, a visitor's submission, the right project, the lead, UTM source and campaign, the same phone written two ways joining one lead, the manager alert. Open: automatic assignment, because that workspace assigns by hand |
+| §40–48 | Live and snapshot reports | Pause, resume, duplicate, archive, snapshot, full funnel | Share tab, project tab makes a report from a preset | `ReportLifecycleTest` | PARTIAL | VERIFIED in production: a live report read through its public link. Not verified: snapshot, pause, resume, duplicate, which need an account with a confirmed email |
 | §49–56 | Notifications, email, automation | Templates, priorities, triggers, actions, idempotency | Prefs, rule stats | `NotificationsAutomationLiveTest` | IMPLEMENTED_NOT_VERIFIED | Master asks for neither a template editor nor web push as P0; left out. Webhook and sheet actions: not built, re-evaluate on demand |
-| §52 | Delivery truth | Accepted, delivered, bounced from provider events; failure reasons in the deploy log | Delivery panel | `LandingAndContactTest`, `ProductionReadinessTest` | BLOCKED_OPERATIONAL_EVIDENCE | SMTP accepted 21 in 7 days; no message checked in an inbox. Hostinger SMTP has no delivery webhook, so accepted is as far as the app can see. 23 of 24 failures are `554 5.7.1` on the recipient domain, and which addresses is not yet known |
+| §52 | Delivery truth | Accepted, delivered, bounced from provider events; failure reasons in the deploy log; reserved test addresses written down, not sent | Delivery panel | `LandingAndContactTest`, `ProductionReadinessTest` | PARTIAL | EMAIL INBOX DELIVERY: VERIFIED for `info@mohtam.pro`, with SPF, DKIM and DMARC passing. Not verified: Gmail and Outlook inboxes. No real-domain recipient was rejected by the reserved-domain rule; one real-domain send was affected by the isolated SMTP authentication failure of Nov 3 |
 | §56 | Sheets production flow | Existing pipeline, on the heavy worker | | `ASheetRowBecomesRevenueTest` | IMPLEMENTED_NOT_VERIFIED | Sheet to lead proven in production: 2 sources, 51 runs with rows, 430 leads. Assignment, notification, Work Now and SLA on a real row need a signed-in look |
 | §57–59 | Performance | Heavy worker for imports; `leadflow:measure` reports p50 and p95 | Last updated on Dashboard, Work Now, Leads, Automation, Reports and Project | `docs/PERFORMANCE.md` | PARTIAL | p50 and p95 measured on 10,043 leads on a laptop (`docs/PERFORMANCE.md`), not on the production host |
 | §60 | Readiness center | Mail, Google login, engine, Landing and Reports rows on real evidence; Backups under infrastructure | Live, Partial, Awaiting external or Error, never above the ladder | `ProductionReadinessTest`, `readiness.spec.ts` | IMPLEMENTED_NOT_VERIFIED | Needs the owner's console session on production |
@@ -55,4 +55,27 @@ Live commit `60bebc2`. Backup taken, `RESTORE CHECK: PASS`, 9 of 9 over HTTPS, `
 Readiness: `vps` and `google` live verified; `mail`, `google_login`, `automation`, `reports` ready; `domain` ready, waiting for a request in the console; `landing` waiting for a first published page.
 
 Nothing in this file is marked VERIFIED for a screen behind sign-in: no session was available, and none was asked for.
+
+## Production acceptance — v0.9.5, Nov 5, 2026
+
+Live commit `63b7e41`. Done in a signed-in production session as the admin of the demo workspace `mohtam-demo`, with test records labelled as tests. That account's address is on a reserved `.test` domain and cannot be confirmed.
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Signed-in portal | PASS on desktop | Dashboard, Work Now, Leads, Automation, Reports, Readiness, Audit and Project open with no error; `/platform` sends a company admin home; notifications show urgent, today, earlier |
+| Landing live | PASS | Published `/l/acceptance-test-20261105`, opened it as a visitor, then paused it: the address answers 404 again |
+| Landing to lead | PASS | One submission became one lead in the right project, platform `landing_page`, source and campaign from the UTM tags, a "new lead with no owner" alert, journey entries, and an audit entry. A second submission with the phone written differently joined the same lead |
+| Assignment | By configuration | The workspace assigns by hand, so the lead stayed unassigned and managers were alerted. Automatic assignment was not exercised |
+| Live report | PASS, read only | An existing live link answers with a funnel of 216 leads |
+| Snapshot and report lifecycle | NOT VERIFIED | The server refused with "Confirm your email first": correct for an unproven address, so it needs an account with a confirmed one |
+| Email provider acceptance | PASS | 65 sent in 7 days |
+| Email inbox delivery | PASS for `info@mohtam.pro` | A sales email from the product arrived in the inbox with SPF, DKIM and DMARC all passing. Gmail and Outlook were not tested |
+| Email failures | Classified | 74 of 75 went to demo accounts on a reserved test domain, refused with "reserved for documentation". The other one is a single login failure on Nov 3 during setup, with 65 sent since. No real recipient was refused |
+| Phones, signed in | NOT VERIFIED | Chrome would not narrow below desktop width, and the session could not be moved to an emulator |
+| Google sign-in | NOT VERIFIED | Needs the owner's own Google account |
+| Sheet row to sales flow | NOT VERIFIED | Sheets keep importing (475 leads, 68 runs with rows), but the sheets belong to the other workspace |
+| Marketing form | OWNER DECISION | Two active workspaces; the one named like Mohtam is the demo |
+| Off-server backup | NOT CONFIGURED | The deploy log has no off-server copy step |
+
+Defects this found, fixed in v0.9.5: a sales email had no text direction, a project tab showed `projects.tabs.sources`, and mail to reserved test domains was sent and counted as failed.
 

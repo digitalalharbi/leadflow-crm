@@ -17,10 +17,10 @@ Updated 2026-11-04.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — same code as `main` at v0.9.5; acceptance results in `docs/REQUIREMENTS_MATRIX.md` |
-| Full sha | `63b7e41625132bd4161b145609e09e109092c067` |
+| Integration branch | `develop` — v0.9.6 plus the deploy disk fix |
+| Full sha | `cd8c3a510be18480ae4b724ef2a95d7069131d99` |
 | Committed | 2026-11-05 |
-| Release branch | `main` — `63b7e41`, Release v0.9.5 (#247), live on production |
+| Release branch | `main` — `cd8c3a5`, Release v0.9.6 (#250). **Not live:** production serves v0.9.5 `63b7e41` |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -28,6 +28,14 @@ development. Verify, do not trust:
 ```bash
 git fetch origin && git log --oneline -10 origin/develop && git status
 ```
+
+## Standing blocker — Nov 5, 2026
+
+The v0.9.6 deploy was refused before it changed anything: `ABORT DEPLOY — less than 18 GiB is free on the deployment filesystem`. Production is healthy on v0.9.5. The refusal comes from the script already on the server, which runs before the new one is checked out, so no release can fix it from here, and the deploy identity has no shell.
+
+To clear it, on the VPS as an administrator: `docker image prune -f` and `docker builder prune -f`, then `df -h /opt/leadflow-crm` should show more than 18G free. Then re-run: `gh workflow run deploy-production.yml --ref main -f confirm=deploy`.
+
+Waiting on that deploy: mail From and Reply-To as `info@mohtam.pro`, and the env audit that names the variable on line 131.
 
 ## Active pull requests
 

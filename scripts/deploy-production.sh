@@ -48,6 +48,11 @@ BACKUP_PATH=""
 
 require_clean_worktree || exit 1
 
+# Every deploy rebuilds five images and leaves the old ones behind, untagged. Five releases in two days filled the
+# disk until this script refused to run. Only this project's own leftovers are removed: images nothing uses any more,
+# carrying this compose project's label. Other projects on this shared server are not touched.
+docker image prune -f --filter "label=com.docker.compose.project=leadflow-production" >/dev/null 2>&1 || true
+
 FILE_MIN_FREE_GB="$(sed -n 's/^MIN_DEPLOY_FREE_GB=//p' "$ENV_FILE" 2>/dev/null | tail -1 | tr -d "'\"" || true)"
 MIN_DEPLOY_FREE_GB="${MIN_DEPLOY_FREE_GB:-${FILE_MIN_FREE_GB:-18}}"
 case "$MIN_DEPLOY_FREE_GB" in
@@ -56,7 +61,7 @@ esac
 FREE_KB="$(df -Pk "$DEPLOY_PATH" | awk 'NR==2 {print $4}')"
 REQUIRED_KB="$((MIN_DEPLOY_FREE_GB * 1024 * 1024))"
 [ "$FREE_KB" -ge "$REQUIRED_KB" ] || {
-  echo "ABORT DEPLOY — less than ${MIN_DEPLOY_FREE_GB} GiB is free on the deployment filesystem." >&2
+  echo "ABORT DEPLOY — less than ${MIN_DEPLOY_FREE_GB} GiB is free on the deployment filesystem ($((FREE_KB / 1024 / 1024)) GiB free)." >&2
   exit 1
 }
 

@@ -32,6 +32,8 @@ done in code is done. Each item says what to do and how to check it.
 
 **Landing pages proven in production** (Nov 5, on a labelled test page in the demo workspace, since paused). Publish your first real one when ready.
 
+**First: free disk on the VPS.** The v0.9.6 deploy was refused with less than 18 GiB free; production stayed on v0.9.5. As an administrator on the server: `docker image prune -f`, then `docker builder prune -f`. Nothing else can run until then.
+
 **Still yours, in order.** (1) Rotate the credential on line 131 of `.env.production`: what the failed deploy printed has the look of a whole password, and no credential-named variable in the app holds a space, so check that line yourself. (2) Sign in once with Google. (3) Decide which workspace receives marketing enquiries: there are two, and the one named like Mohtam is the demo. (4) Off-server backups: set `BACKUP_UPLOAD_COMMAND`. (5) On your phone, open Work Now, More and Notifications once. (6) From an account with a confirmed email, make one snapshot of a report.
 
 **Marketing form.** To let the site's contact form create leads, add one line to `/opt/leadflow-crm/.env.production`: `MOHTAM_MARKETING_WORKSPACE=<your workspace slug>`. Until then the page offers email and phone. Check: `https://mohtam.pro/api/v1/public/contact` says `form: true`.

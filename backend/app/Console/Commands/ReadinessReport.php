@@ -98,5 +98,54 @@ class ReadinessReport extends Command
         rescue(fn () => DB::table('email_deliveries')->where('status', 'failed')->where('created_at', '>=', now()->subDays(7))->pluck('last_error')
             ->countBy(fn ($error) => mb_substr((string) preg_replace('/[^\s<>"\']+@[^\s<>"\']+/', '[address]', (string) $error), 0, 90))
             ->each(fn (int $total, string $reason) => $this->line("evidence email_failure {$total}x {$reason}")), null, false);
+
+        $this->failedRecipients();
+        $this->acceptanceFacts();
+    }
+
+    /**
+     * What kind of address each failed email went to, never the address: a rejection by a made-up domain is not a
+     * provider fault, and one by a real customer's domain is.
+     */
+    private function failedRecipients(): void
+    {
+        $failed = rescue(fn () => DB::table('email_deliveries')->where('status', 'failed')->where('created_at', '>=', now()->subDays(7))->get(['to_email', 'kind', 'last_error', 'created_at']), collect(), false);
+        $users = rescue(fn () => DB::table('users')->whereIn('email', $failed->pluck('to_email')->unique()->all())->pluck('email')->map(fn ($email) => strtolower($email))->flip(), collect(), false);
+        $mx = [];
+
+        $failed->groupBy(function ($row) use ($users, &$mx) {
+            $domain = strtolower((string) substr(strrchr((string) $row->to_email, '@') ?: '', 1));
+            $class = match (true) {
+                $domain === '' => 'malformed',
+                (bool) preg_match('/(^|\.)(example\.(com|org|net)|test|invalid|example|localhost|local)$/', $domain) => 'reserved_test_domain',
+                ! ($mx[$domain] ??= (checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A'))) => 'domain_does_not_exist',
+                default => 'real_domain',
+            };
+
+            return $class.' '.($users->has(strtolower((string) $row->to_email)) ? 'account_holder' : 'not_an_account').' kind='.$row->kind;
+        })->each(fn ($rows, string $class) => $this->line(sprintf('evidence email_failed_recipient %dx %s distinct=%d', $rows->count(), $class, $rows->pluck('to_email')->unique()->count())));
+
+        $auth = $failed->filter(fn ($row) => str_contains((string) $row->last_error, 'authenticate'));
+
+        if ($auth->isNotEmpty()) {
+            $last = (string) $auth->max('created_at');
+            $after = rescue(fn () => DB::table('email_deliveries')->where('status', 'sent')->where('created_at', '>', $last)->count(), 'n/a', false);
+            $this->line("evidence email_auth_failure count={$auth->count()} last=".substr($last, 0, 16)." sent_after={$after}");
+        }
+    }
+
+    /** Facts an acceptance decision needs, as names and counts: never a value. */
+    private function acceptanceFacts(): void
+    {
+        // A value holding a space is what the v0.9.0 deploy ran as a command. The name says which credential to rotate.
+        $spaced = collect(getenv())->filter(fn ($value, $key) => preg_match('/PASSWORD|SECRET|KEY|TOKEN|DSN/', (string) $key) && preg_match('/\s/', trim((string) $value)))->keys()->sort()->implode(',');
+        $this->line('evidence credentials_holding_a_space '.($spaced ?: 'none'));
+
+        $this->line(sprintf(
+            'evidence workspaces active=%s named_like_mohtam=%s marketing_workspace_set=%s',
+            rescue(fn () => DB::table('tenants')->where('is_active', true)->whereNull('deleted_at')->count(), 'n/a', false),
+            rescue(fn () => DB::table('tenants')->where('is_active', true)->whereNull('deleted_at')->where(fn ($q) => $q->where('slug', 'like', '%mohtam%')->orWhere('name', 'like', '%مهتم%'))->count(), 'n/a', false),
+            filled(config('platform.marketing_workspace')) ? 'yes' : 'no',
+        ));
     }
 }

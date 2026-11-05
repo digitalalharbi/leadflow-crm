@@ -496,6 +496,8 @@ class ProductionReadinessTest extends TestCase
         $output = Artisan::output();
 
         $this->assertStringContainsString('email_failure 1x 550 rejected for [address]', $output);
+        $this->assertStringContainsString('email_failed_recipient 1x reserved_test_domain not_an_account kind=test distinct=1', $output);
+        $this->assertStringContainsString('evidence workspaces active=', $output);
         $this->assertStringNotContainsString('someone@customer.test', $output);
     }
 }

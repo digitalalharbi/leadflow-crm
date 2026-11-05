@@ -17,10 +17,10 @@ Updated 2026-11-04.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — same tree as `main` at v0.9.4 |
-| Full sha | `60bebc21015838379f804ee99c86c9f2345e5868` |
-| Committed | 2026-11-04 |
-| Release branch | `main` — `60bebc2`, Release v0.9.4 (#244), live on production |
+| Integration branch | `develop` — same code as `main` at v0.9.5; acceptance results in `docs/REQUIREMENTS_MATRIX.md` |
+| Full sha | `63b7e41625132bd4161b145609e09e109092c067` |
+| Committed | 2026-11-05 |
+| Release branch | `main` — `63b7e41`, Release v0.9.5 (#247), live on production |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:

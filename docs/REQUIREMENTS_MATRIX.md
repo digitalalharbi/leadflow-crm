@@ -56,3 +56,26 @@ Readiness: `vps` and `google` live verified; `mail`, `google_login`, `automation
 
 Nothing in this file is marked VERIFIED for a screen behind sign-in: no session was available, and none was asked for.
 
+## Production acceptance — v0.9.5, Nov 5, 2026
+
+Live commit `63b7e41`. Done in a signed-in production session as the admin of the demo workspace `mohtam-demo`, with test records labelled as tests. That account's address is on a reserved `.test` domain and cannot be confirmed.
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Signed-in portal | PASS on desktop | Dashboard, Work Now, Leads, Automation, Reports, Readiness, Audit and Project open with no error; `/platform` sends a company admin home; notifications show urgent, today, earlier |
+| Landing live | PASS | Published `/l/acceptance-test-20261105`, opened it as a visitor, then paused it: the address answers 404 again |
+| Landing to lead | PASS | One submission became one lead in the right project, platform `landing_page`, source and campaign from the UTM tags, a "new lead with no owner" alert, journey entries, and an audit entry. A second submission with the phone written differently joined the same lead |
+| Assignment | By configuration | The workspace assigns by hand, so the lead stayed unassigned and managers were alerted. Automatic assignment was not exercised |
+| Live report | PASS, read only | An existing live link answers with a funnel of 216 leads |
+| Snapshot and report lifecycle | NOT VERIFIED | The server refused with "Confirm your email first": correct for an unproven address, so it needs an account with a confirmed one |
+| Email provider acceptance | PASS | 65 sent in 7 days |
+| Email inbox delivery | PASS for `info@mohtam.pro` | A sales email from the product arrived in the inbox with SPF, DKIM and DMARC all passing. Gmail and Outlook were not tested |
+| Email failures | Classified | 74 of 75 went to demo accounts on a reserved test domain, refused with "reserved for documentation". The other one is a single login failure on Nov 3 during setup, with 65 sent since. No real recipient was refused |
+| Phones, signed in | NOT VERIFIED | Chrome would not narrow below desktop width, and the session could not be moved to an emulator |
+| Google sign-in | NOT VERIFIED | Needs the owner's own Google account |
+| Sheet row to sales flow | NOT VERIFIED | Sheets keep importing (475 leads, 68 runs with rows), but the sheets belong to the other workspace |
+| Marketing form | OWNER DECISION | Two active workspaces; the one named like Mohtam is the demo |
+| Off-server backup | NOT CONFIGURED | The deploy log has no off-server copy step |
+
+Defects this found, fixed in v0.9.5: a sales email had no text direction, a project tab showed `projects.tabs.sources`, and mail to reserved test domains was sent and counted as failed.
+

@@ -2541,6 +2541,7 @@ export default {
       none: 'Nothing waiting on anybody here.',
     },
     tabs: {
+      sources: 'Lead sources',
       overview: 'Overview',
       leads: 'Leads',
       units: 'Units',

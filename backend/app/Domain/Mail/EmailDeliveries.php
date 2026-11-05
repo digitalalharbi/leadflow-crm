@@ -48,6 +48,14 @@ class EmailDeliveries
         return $delivery;
     }
 
+    /** RFC 2606 and 6761: names that are never anybody's mailbox. */
+    public static function isReserved(string $address): bool
+    {
+        $domain = strtolower((string) substr(strrchr($address, '@') ?: '', 1));
+
+        return (bool) preg_match('/(^|\.)(example\.(com|org|net)|test|invalid|example|localhost)$/', $domain);
+    }
+
     /** One try. Safe to call twice: only a waiting delivery is attempted. */
     public function attempt(int $deliveryId): ?EmailDelivery
     {
@@ -65,6 +73,14 @@ class EmailDeliveries
 
         if ($delivery === null) {
             return null;
+        }
+
+        // An address on a domain reserved for testing can never receive mail: the provider refuses it every time,
+        // and each refusal reads as a failure of ours. Written down, not sent.
+        if (config('leadflow_mail.skip_reserved_domains') && self::isReserved($delivery->to_email)) {
+            $delivery->update(['status' => EmailDelivery::LOGGED, 'last_error' => 'Not sent: the address is on a domain reserved for testing.', 'next_attempt_at' => null]);
+
+            return $delivery->fresh();
         }
 
         // The provider that was chosen when it was queued; a delivery does not change door halfway.

@@ -2780,6 +2780,7 @@ export default {
       none: 'لا شيء ينتظر أحدًا هنا.',
     },
     tabs: {
+      sources: 'مصادر العملاء',
       overview: 'نظرة عامة',
       leads: 'العملاء',
       units: 'الوحدات',

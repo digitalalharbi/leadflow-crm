@@ -190,6 +190,9 @@ say "Production is live${PRODUCTION_DOMAIN:+ at https://$PRODUCTION_DOMAIN}"
 say "Readiness (statuses only, no values)"
 compose exec -T backend php artisan leadflow:readiness || true
 
+say "Env file audit (names only, never a value)"
+"$DEPLOY_PATH/scripts/env-audit.sh" production 131 || true
+
 say "First client's path on this server, rolled back"
 compose exec -T backend php artisan mohtam:production-smoke || echo "FIRST_CLIENT_SMOKE=FAIL"
 

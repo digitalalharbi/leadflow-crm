@@ -28,9 +28,11 @@ done in code is done. Each item says what to do and how to check it.
 
 **Security: rotate one credential.** The failed v0.9.0 deploy log printed part of the value on line 131 of `/opt/leadflow-crm/.env.production`, in a private GitHub Actions log. Replace that credential at its provider. Deploys no longer run this file as code, so the value's format no longer matters.
 
-**Mail rejected by the recipient's domain.** Hostinger refused 23 messages with `554 5.7.1`, 17 of them on Nov 4. Open the delivery panel to see which addresses: they may be mistyped or test addresses on real accounts.
+**Mail failures explained, nothing to do.** 74 of 75 failures in 7 days went to demo accounts on a reserved test domain; from v0.9.5 those are written down and not sent.
 
-**A first real landing page.** Publish one from a project and send one test submission. Nothing else can prove that path in production.
+**Landing pages proven in production** (Nov 5, on a labelled test page in the demo workspace, since paused). Publish your first real one when ready.
+
+**Still yours, in order.** (1) Rotate the credential on line 131 of `.env.production`: what the failed deploy printed has the look of a whole password, and no credential-named variable in the app holds a space, so check that line yourself. (2) Sign in once with Google. (3) Decide which workspace receives marketing enquiries: there are two, and the one named like Mohtam is the demo. (4) Off-server backups: set `BACKUP_UPLOAD_COMMAND`. (5) On your phone, open Work Now, More and Notifications once. (6) From an account with a confirmed email, make one snapshot of a report.
 
 **Marketing form.** To let the site's contact form create leads, add one line to `/opt/leadflow-crm/.env.production`: `MOHTAM_MARKETING_WORKSPACE=<your workspace slug>`. Until then the page offers email and phone. Check: `https://mohtam.pro/api/v1/public/contact` says `form: true`.
 

@@ -10,17 +10,17 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-04.
+Updated 2026-11-06.
 
 ## Last verified commit
 
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — same code as `main` at v0.9.5; acceptance results in `docs/REQUIREMENTS_MATRIX.md` |
-| Full sha | `63b7e41625132bd4161b145609e09e109092c067` |
+| Integration branch | `develop` — v0.9.6 plus #251 (deploy disk step) and the stalled-email recovery |
+| Full sha | `cd8c3a510be18480ae4b724ef2a95d7069131d99` |
 | Committed | 2026-11-05 |
-| Release branch | `main` — `63b7e41`, Release v0.9.5 (#247), live on production |
+| Release branch | `main` — `cd8c3a5`, Release v0.9.6 (#250). **Live:** production serves `cd8c3a5` (deploy runs 42117383654 and 42120414586, Nov 5) |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -28,6 +28,21 @@ development. Verify, do not trust:
 ```bash
 git fetch origin && git log --oneline -10 origin/develop && git status
 ```
+
+## Standing risk — disk on the VPS
+
+The server has 48G shared by three projects and sat at exactly 18G free on Nov 5, which is the
+deploy guard's floor (`MIN_DEPLOY_FREE_GB`). The v0.9.6 deploy was refused four times until the
+owner pruned on the server. The label-filtered prune added in #251 reclaimed 0B there, so it does
+not solve this; the deploy log now prints `disk` lines (`docker system df`) so the next refusal
+says what holds the space. The deploy identity has no shell: freeing disk is the owner's, as root.
+
+## Unreleased on develop
+
+- #251: deploy-script prune and the free-space figure in the refusal.
+- Stalled-email recovery: `leadflow:recover-emails` every ten minutes, SMTP timeout of 30s. Found
+  in the v0.9.6 deploy log: `SendQueuedEmail / MaxAttemptsExceededException` three times and three
+  deliveries left as `sending`. The cause (a worker restarted mid-send by a deploy) is inferred.
 
 ## Active pull requests
 

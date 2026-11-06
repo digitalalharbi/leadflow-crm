@@ -214,6 +214,37 @@ class ReportEmailDeliveryTest extends TestCase
         $this->assertSame([true], $this->asTenant($this->t['tenant'], fn () => EmailDeliveryAttempt::pluck('ok')->all()));
     }
 
+    public function test_a_send_interrupted_by_a_stopped_worker_is_counted_and_sent_again(): void
+    {
+        Bus::fake();
+        $provider = $this->scripted([DeliveryResult::sent('msg-after')]);
+        $this->app->instance(MailerRegistry::class, tap(\Mockery::mock(MailerRegistry::class), fn ($m) => $m->shouldReceive('current')->andReturn($provider)->shouldReceive('get')->andReturn($provider)));
+        $service = app(EmailDeliveries::class);
+
+        $stalled = $this->asTenant($this->t['tenant'], fn () => $service->queue($this->email('one@mohtam.test')));
+        $recent = $this->asTenant($this->t['tenant'], fn () => $service->queue($this->email('two@mohtam.test')));
+        $spent = $this->asTenant($this->t['tenant'], fn () => $service->queue($this->email('three@mohtam.test')));
+        EmailDelivery::withoutGlobalScopes()->whereKey($stalled->id)->update(['status' => 'sending', 'updated_at' => now()->subMinutes(40)]);
+        EmailDelivery::withoutGlobalScopes()->whereKey($recent->id)->update(['status' => 'sending', 'updated_at' => now()->subMinutes(2)]);
+        EmailDelivery::withoutGlobalScopes()->whereKey($spent->id)->update(['status' => 'sending', 'attempts' => 3, 'updated_at' => now()->subMinutes(40)]);
+
+        $this->artisan('leadflow:recover-emails')->expectsOutput('recovered=2')->assertSuccessful();
+
+        $one = EmailDelivery::withoutGlobalScopes()->find($stalled->id);
+        $this->assertSame('queued', $one->status, 'it is back in line');
+        $this->assertSame(1, $one->attempts, 'and the interrupted try is counted');
+        $this->assertSame('The worker stopped during the send.', $one->last_error);
+        $this->assertSame('sending', EmailDelivery::withoutGlobalScopes()->find($recent->id)->status, 'a send still in flight is left alone');
+        $this->assertSame('failed', EmailDelivery::withoutGlobalScopes()->find($spent->id)->status, 'one with no tries left is failed where a person can see it');
+        Bus::assertDispatched(SendQueuedEmail::class, fn ($job) => $job->deliveryId === $stalled->id);
+
+        $sent = $this->asTenant($this->t['tenant'], fn () => $service->attempt($stalled->id));
+        $this->assertSame('sent', $sent->status);
+        $this->assertSame(2, $sent->attempts);
+
+        $this->artisan('leadflow:recover-emails')->expectsOutput('recovered=0')->assertSuccessful();
+    }
+
     public function test_a_failure_worth_retrying_waits_on_the_backoff_and_then_succeeds(): void
     {
         Bus::fake();

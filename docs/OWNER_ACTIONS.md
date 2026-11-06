@@ -26,13 +26,17 @@ done in code is done. Each item says what to do and how to check it.
 | 19 | **`go.mohtam.pro`** (optional): a separate address for campaign pages. Pages work on `mohtam.pro/l/<page>` without it | Hostinger DNS | `dig +short go.mohtam.pro` |
 | 15 | **Named list of data processors** for the privacy page (hosting, mail, WhatsApp, AI) — the page says "available on request" until you publish one | Tell Claude the names | `/privacy#processors` lists them |
 
-**Security: rotate one credential.** The failed v0.9.0 deploy log printed part of the value on line 131 of `/opt/leadflow-crm/.env.production`, in a private GitHub Actions log. Replace that credential at its provider. Deploys no longer run this file as code, so the value's format no longer matters.
+**Security: rotate `MAIL_PASSWORD` at Hostinger Email.** Line 131 of `/opt/leadflow-crm/.env.production` is `MAIL_PASSWORD`, the password of the mailbox `info@mohtam.pro` (named by the v0.9.6 deploy log, which prints names and never values). The failed v0.9.0 deploy printed part of it in a private GitHub Actions log, and the file has not changed since Nov 3, so that password is still the one in use. In hPanel: Emails, `info@mohtam.pro`, change password. Then put the new one on line 131 inside single quotes and re-run the deploy. Until both are done, mail keeps working on the old password.
 
 **Mail failures explained, nothing to do.** 74 of 75 failures in 7 days went to demo accounts on a reserved test domain; from v0.9.5 those are written down and not sent.
 
 **Landing pages proven in production** (Nov 5, on a labelled test page in the demo workspace, since paused). Publish your first real one when ready.
 
-**Still yours, in order.** (1) Rotate the credential on line 131 of `.env.production`: what the failed deploy printed has the look of a whole password, and no credential-named variable in the app holds a space, so check that line yourself. (2) Sign in once with Google. (3) Decide which workspace receives marketing enquiries: there are two, and the one named like Mohtam is the demo. (4) Off-server backups: set `BACKUP_UPLOAD_COMMAND`. (5) On your phone, open Work Now, More and Notifications once. (6) From an account with a confirmed email, make one snapshot of a report.
+**Disk on the VPS.** v0.9.6 is live after you pruned on the server, but the disk sits at exactly the 18 GiB the deploy needs, so the next release may be refused again. Before the next deploy, as root: `docker image prune -f`, then `df -h /`. The deploy log now prints what holds the space.
+
+**Still yours, in order.** (1) Rotate `MAIL_PASSWORD` as above. (2) Sign in once with Google. (3) Decide which workspace receives marketing enquiries: there are two, and the one named like Mohtam is the demo. (4) Off-server backups: set `BACKUP_UPLOAD_COMMAND`. (5) On your phone, signed in, open Work Now, More and Notifications once: this could not be emulated from here. (6) From an account with a confirmed email, make one snapshot of a report.
+
+**Worth knowing, yours to decide.** In the demo workspace `mohtam-demo`: the sheet source has no default project and assignment is by hand, so a new sheet row becomes a lead with no project and no owner; and all nine users have addresses on a reserved test domain, so no alert email reaches anyone. In the other workspace, one user's address does not exist at its mail host: Gmail returns every message to it as "Address not found" (they collect in the Junk folder of `info@mohtam.pro`). Correct or remove that user.
 
 **Marketing form.** To let the site's contact form create leads, add one line to `/opt/leadflow-crm/.env.production`: `MOHTAM_MARKETING_WORKSPACE=<your workspace slug>`. Until then the page offers email and phone. Check: `https://mohtam.pro/api/v1/public/contact` says `form: true`.
 

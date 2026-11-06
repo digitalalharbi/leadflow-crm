@@ -38,6 +38,8 @@ done in code is done. Each item says what to do and how to check it.
 
 **Worth knowing, yours to decide.** In the demo workspace `mohtam-demo`: the sheet source has no default project and assignment is by hand, so a new sheet row becomes a lead with no project and no owner; and all nine users have addresses on a reserved test domain, so no alert email reaches anyone. In the other workspace, one user's address does not exist at its mail host: Gmail returns every message to it as "Address not found" (they collect in the Junk folder of `info@mohtam.pro`). Correct or remove that user.
 
+**A clean company workspace from the server (v0.9.10).** `mohtam:create-workspace` creates what the platform console creates (branding, settings, message templates, the lead journey installed and off, lost reasons, the owner, a webhook endpoint) and emails the owner a link to choose a password: no password is typed, printed or logged. Run it twice and nothing changes. It refuses an address on a reserved test domain. On the VPS, in `/opt/leadflow-crm`: `docker compose -f docker-compose.production.yml --env-file .env.production exec backend php artisan mohtam:create-workspace --company="..." --slug=... --admin-name="..." --admin-email=owner@mohtam.pro`. The owner's address must be a real mailbox.
+
 **Marketing form.** To let the site's contact form create leads, add one line to `/opt/leadflow-crm/.env.production`: `MOHTAM_MARKETING_WORKSPACE=<your workspace slug>`. Until then the page offers email and phone. Check: `https://mohtam.pro/api/v1/public/contact` says `form: true`.
 
 Deploy access is proven (read-only audit green, Nov 3, 2026) and needs nothing from you.

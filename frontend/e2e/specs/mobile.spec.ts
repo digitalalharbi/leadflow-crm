@@ -108,7 +108,9 @@ test.describe('Mobile layout', () => {
     // is aimed at where the row was mid-glide.
     const row = page.getByRole('link', { name: LEADS.activity })
     await expect(row).toHaveCount(1)
-    await row.scrollIntoViewIfNeeded()
+    // Centred, not merely inside the viewport: a row at the very bottom edge sits behind the fixed tab bar, and the tap
+    // lands on the bar (seen in CI at y=825 of 839) and opens nothing.
+    await row.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
     await expect(row).toBeInViewport({ ratio: 1 })
     // The figures above the list are re-read for the search and arrive after the rows: when they land the row moves,
     // and a tap aimed at where it was opens nothing. Wait until it has stopped moving.
@@ -119,7 +121,7 @@ test.describe('Mobile layout', () => {
 
       return first !== null && first.y === second?.y
     }).toBe(true)
-    await row.scrollIntoViewIfNeeded()
+    await row.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
     await row.click()
 
     // The phone's own lead screen: the four ways to reach them at the top, the same four in a bar that

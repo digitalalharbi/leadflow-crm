@@ -17,10 +17,10 @@ Updated 2026-11-06.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — `0c1e8bd`, same content as v0.9.7 |
-| Full sha | `3f494db` on `main` (Release v0.9.7, #253, tag `v0.9.7`) |
+| Integration branch | `develop` — same content as v0.9.9 plus this docs change |
+| Full sha | `c3b99e8c16ad3a7022f1721e617cca961caf4e14` on `main` (Release v0.9.9, #258) |
 | Committed | 2026-11-06 |
-| Release branch | `main` — v0.9.7. **Live:** production serves `3f494db` (deploy runs 42180460227, 42182038986, 42183709096 on Nov 6: backup, restore check, first-client smoke and 9 of 9 smoke checks passed) |
+| Release branch | `main` — v0.9.9. **Live:** production serves `c3b99e8` (deploy run 42256745787: backup, restore check, first-client smoke, 9 of 9 smoke checks; automation readiness `ready`) |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -33,12 +33,19 @@ git fetch origin && git log --oneline -10 origin/develop && git status
 
 The v0.9.7 deploy was refused twice at 15G free. Every image was in use, so pruning images gave
 back 0B; the space was the build cache (9.4G). The owner ran `docker builder prune -af` as root:
-23G free, and the deploy passed. The deploy script now empties the build cache itself when it is
-short of room (effective from the deploy after the next one, because the server runs the script
-it already has before checking out the new one). Never `docker volume prune` on that server:
-thirteen volumes are unattached and may hold another project's data.
+23G free. From v0.9.8 the deploy script empties the build cache itself when short of room (in
+effect since the v0.9.9 deploy). Never `docker volume prune` on that server: thirteen volumes are
+unattached and may hold another project's data.
 
-## Proven by the v0.9.7 deploy
+## Release notes for the record
+
+- v0.9.8 (`902dea8`) merged but its deploy never ran: CI on main failed on one e2e spec (a tap
+  behind the fixed tab bar). Fixed in #257 and shipped as v0.9.9 with the same content.
+- **Tag `v0.9.9` on GitHub points at `902dea8` (v0.9.8), not `c3b99e8`.** Made in error from a stale
+  fetch; nothing deploys from tags. Moving a pushed tag is a rewrite, so it is left for the owner:
+  `git tag -f -a v0.9.9 c3b99e8 -m "Release v0.9.9" && git push -f origin v0.9.9`.
+
+## Proven live since v0.9.7
 
 Stalled-email recovery: before the first scheduler tick the log read `sending=3 sent=99`; after it,
 `sent=102` and no `sending`. The three `SendQueuedEmail / MaxAttemptsExceededException` entries

@@ -17,10 +17,10 @@ Updated 2026-11-06.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — v0.9.6 plus #251 (deploy disk step) and the stalled-email recovery |
-| Full sha | `cd8c3a510be18480ae4b724ef2a95d7069131d99` |
-| Committed | 2026-11-05 |
-| Release branch | `main` — `cd8c3a5`, Release v0.9.6 (#250). **Live:** production serves `cd8c3a5` (deploy runs 42117383654 and 42120414586, Nov 5) |
+| Integration branch | `develop` — `0c1e8bd`, same content as v0.9.7 |
+| Full sha | `3f494db` on `main` (Release v0.9.7, #253, tag `v0.9.7`) |
+| Committed | 2026-11-06 |
+| Release branch | `main` — v0.9.7. **Live:** production serves `3f494db` (deploy runs 42180460227, 42182038986, 42183709096 on Nov 6: backup, restore check, first-client smoke and 9 of 9 smoke checks passed) |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -29,20 +29,20 @@ development. Verify, do not trust:
 git fetch origin && git log --oneline -10 origin/develop && git status
 ```
 
-## Standing risk — disk on the VPS
+## Disk on the VPS — cleared Nov 6, 2026
 
-The server has 48G shared by three projects and sat at exactly 18G free on Nov 5, which is the
-deploy guard's floor (`MIN_DEPLOY_FREE_GB`). The v0.9.6 deploy was refused four times until the
-owner pruned on the server. The label-filtered prune added in #251 reclaimed 0B there, so it does
-not solve this; the deploy log now prints `disk` lines (`docker system df`) so the next refusal
-says what holds the space. The deploy identity has no shell: freeing disk is the owner's, as root.
+The v0.9.7 deploy was refused twice at 15G free. Every image was in use, so pruning images gave
+back 0B; the space was the build cache (9.4G). The owner ran `docker builder prune -af` as root:
+23G free, and the deploy passed. The deploy script now empties the build cache itself when it is
+short of room (effective from the deploy after the next one, because the server runs the script
+it already has before checking out the new one). Never `docker volume prune` on that server:
+thirteen volumes are unattached and may hold another project's data.
 
-## Unreleased on develop
+## Proven by the v0.9.7 deploy
 
-- #251: deploy-script prune and the free-space figure in the refusal.
-- Stalled-email recovery: `leadflow:recover-emails` every ten minutes, SMTP timeout of 30s. Found
-  in the v0.9.6 deploy log: `SendQueuedEmail / MaxAttemptsExceededException` three times and three
-  deliveries left as `sending`. The cause (a worker restarted mid-send by a deploy) is inferred.
+Stalled-email recovery: before the first scheduler tick the log read `sending=3 sent=99`; after it,
+`sent=102` and no `sending`. The three `SendQueuedEmail / MaxAttemptsExceededException` entries
+are the old ones and leave the 24-hour window on their own.
 
 ## Active pull requests
 

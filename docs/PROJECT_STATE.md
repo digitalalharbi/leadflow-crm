@@ -20,7 +20,7 @@ Updated 2026-11-06.
 | Integration branch | `develop` — `0c1e8bd`, same content as v0.9.7 |
 | Full sha | `3f494db` on `main` (Release v0.9.7, #253, tag `v0.9.7`) |
 | Committed | 2026-11-06 |
-| Release branch | `main` — v0.9.7, CI green. **Not live:** the deploy (run 42156864332) was refused for disk before it changed anything. Production serves v0.9.6 `cd8c3a5` and is healthy |
+| Release branch | `main` — v0.9.7. **Live:** production serves `3f494db` (deploy runs 42180460227, 42182038986, 42183709096 on Nov 6: backup, restore check, first-client smoke and 9 of 9 smoke checks passed) |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -29,26 +29,20 @@ development. Verify, do not trust:
 git fetch origin && git log --oneline -10 origin/develop && git status
 ```
 
-## Standing blocker — disk on the VPS (Nov 6, 2026)
+## Disk on the VPS — cleared Nov 6, 2026
 
-`ABORT DEPLOY — less than 18 GiB is free on the deployment filesystem.` The server has 48G shared
-by three projects. The refusal comes from the script already on the server, which runs before the
-new one is checked out, and the deploy identity has no shell: only the owner, as root, can clear
-it. On the VPS: `docker image prune -f`, then `df -h /` must show more than 18G available. Then:
+The v0.9.7 deploy was refused twice at 15G free. Every image was in use, so pruning images gave
+back 0B; the space was the build cache (9.4G). The owner ran `docker builder prune -af` as root:
+23G free, and the deploy passed. The deploy script now empties the build cache itself when it is
+short of room (effective from the deploy after the next one, because the server runs the script
+it already has before checking out the new one). Never `docker volume prune` on that server:
+thirteen volumes are unattached and may hold another project's data.
 
-```bash
-gh workflow run deploy-production.yml --ref main -f confirm=deploy
-```
+## Proven by the v0.9.7 deploy
 
-The label-filtered prune from #251 reclaimed 0B on the server, so it does not solve this. From
-v0.9.7 the deploy log prints `disk` lines (`docker system df`) and the free figure in the refusal.
-
-## Waiting on that deploy (v0.9.7)
-
-- `leadflow:recover-emails` every ten minutes and an SMTP timeout of 30s. Production still has
-  three deliveries left as `sending` and `SendQueuedEmail / MaxAttemptsExceededException` three
-  times in its last deploy log. The cause (a worker restarted mid-send) is inferred.
-- After it deploys, read the log for `evidence email_7d … sending=` going to 0.
+Stalled-email recovery: before the first scheduler tick the log read `sending=3 sent=99`; after it,
+`sent=102` and no `sending`. The three `SendQueuedEmail / MaxAttemptsExceededException` entries
+are the old ones and leave the 24-hour window on their own.
 
 ## Active pull requests
 

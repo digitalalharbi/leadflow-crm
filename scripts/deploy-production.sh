@@ -63,6 +63,14 @@ case "$MIN_DEPLOY_FREE_GB" in
 esac
 FREE_KB="$(df -Pk "$DEPLOY_PATH" | awk 'NR==2 {print $4}')"
 REQUIRED_KB="$((MIN_DEPLOY_FREE_GB * 1024 * 1024))"
+# Short of room: the build cache is what filled this disk (9.4G on Nov 6, when every image was in use and pruning
+# images gave back nothing). It holds no data and no running thing reads it; emptying it only makes the next build
+# slower, here and for the other projects on this server. Done only when the deploy would otherwise be refused.
+if [ "$FREE_KB" -lt "$REQUIRED_KB" ]; then
+  echo "disk  below ${MIN_DEPLOY_FREE_GB} GiB free: emptying the build cache"
+  docker builder prune -af >/dev/null 2>&1 || true
+  FREE_KB="$(df -Pk "$DEPLOY_PATH" | awk 'NR==2 {print $4}')"
+fi
 [ "$FREE_KB" -ge "$REQUIRED_KB" ] || {
   echo "ABORT DEPLOY — less than ${MIN_DEPLOY_FREE_GB} GiB is free on the deployment filesystem ($((FREE_KB / 1024 / 1024)) GiB free)." >&2
   exit 1

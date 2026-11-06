@@ -17,10 +17,10 @@ Updated 2026-11-06.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — v0.9.6 plus #251 (deploy disk step) and the stalled-email recovery |
-| Full sha | `cd8c3a510be18480ae4b724ef2a95d7069131d99` |
-| Committed | 2026-11-05 |
-| Release branch | `main` — `cd8c3a5`, Release v0.9.6 (#250). **Live:** production serves `cd8c3a5` (deploy runs 42117383654 and 42120414586, Nov 5) |
+| Integration branch | `develop` — `0c1e8bd`, same content as v0.9.7 |
+| Full sha | `3f494db` on `main` (Release v0.9.7, #253, tag `v0.9.7`) |
+| Committed | 2026-11-06 |
+| Release branch | `main` — v0.9.7, CI green. **Not live:** the deploy (run 42156864332) was refused for disk before it changed anything. Production serves v0.9.6 `cd8c3a5` and is healthy |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -29,20 +29,26 @@ development. Verify, do not trust:
 git fetch origin && git log --oneline -10 origin/develop && git status
 ```
 
-## Standing risk — disk on the VPS
+## Standing blocker — disk on the VPS (Nov 6, 2026)
 
-The server has 48G shared by three projects and sat at exactly 18G free on Nov 5, which is the
-deploy guard's floor (`MIN_DEPLOY_FREE_GB`). The v0.9.6 deploy was refused four times until the
-owner pruned on the server. The label-filtered prune added in #251 reclaimed 0B there, so it does
-not solve this; the deploy log now prints `disk` lines (`docker system df`) so the next refusal
-says what holds the space. The deploy identity has no shell: freeing disk is the owner's, as root.
+`ABORT DEPLOY — less than 18 GiB is free on the deployment filesystem.` The server has 48G shared
+by three projects. The refusal comes from the script already on the server, which runs before the
+new one is checked out, and the deploy identity has no shell: only the owner, as root, can clear
+it. On the VPS: `docker image prune -f`, then `df -h /` must show more than 18G available. Then:
 
-## Unreleased on develop
+```bash
+gh workflow run deploy-production.yml --ref main -f confirm=deploy
+```
 
-- #251: deploy-script prune and the free-space figure in the refusal.
-- Stalled-email recovery: `leadflow:recover-emails` every ten minutes, SMTP timeout of 30s. Found
-  in the v0.9.6 deploy log: `SendQueuedEmail / MaxAttemptsExceededException` three times and three
-  deliveries left as `sending`. The cause (a worker restarted mid-send by a deploy) is inferred.
+The label-filtered prune from #251 reclaimed 0B on the server, so it does not solve this. From
+v0.9.7 the deploy log prints `disk` lines (`docker system df`) and the free figure in the refusal.
+
+## Waiting on that deploy (v0.9.7)
+
+- `leadflow:recover-emails` every ten minutes and an SMTP timeout of 30s. Production still has
+  three deliveries left as `sending` and `SendQueuedEmail / MaxAttemptsExceededException` three
+  times in its last deploy log. The cause (a worker restarted mid-send) is inferred.
+- After it deploys, read the log for `evidence email_7d … sending=` going to 0.
 
 ## Active pull requests
 

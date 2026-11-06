@@ -32,7 +32,7 @@ done in code is done. Each item says what to do and how to check it.
 
 **Landing pages proven in production** (Nov 5, on a labelled test page in the demo workspace, since paused). Publish your first real one when ready.
 
-**Disk on the VPS.** v0.9.6 is live after you pruned on the server, but the disk sits at exactly the 18 GiB the deploy needs, so the next release may be refused again. Before the next deploy, as root: `docker image prune -f`, then `df -h /`. The deploy log now prints what holds the space.
+**First: free disk on the VPS.** The v0.9.7 deploy was refused on Nov 6 with less than 18 GiB free; production stayed on v0.9.6 and is healthy. On the server as root: `docker image prune -f`, then `df -h /` must show more than 18G available. If it does not, `docker system df` shows what holds the space. Then re-run the deploy from GitHub Actions (Deploy production, confirm `deploy`) or ask Claude to.
 
 **Still yours, in order.** (1) Rotate `MAIL_PASSWORD` as above. (2) Sign in once with Google. (3) Decide which workspace receives marketing enquiries: there are two, and the one named like Mohtam is the demo. (4) Off-server backups: set `BACKUP_UPLOAD_COMMAND`. (5) On your phone, signed in, open Work Now, More and Notifications once: this could not be emulated from here. (6) From an account with a confirmed email, make one snapshot of a report.
 

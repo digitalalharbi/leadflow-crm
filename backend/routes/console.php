@@ -123,6 +123,9 @@ Schedule::command('leadflow:run-routines')->everyFiveMinutes()->withoutOverlappi
 // A wait whose timer was lost (a flushed queue, a worker that died) is found and run, not forgotten.
 Schedule::command('leadflow:sweep-scheduled')->everyTenMinutes()->withoutOverlapping();
 
+// An email whose worker stopped mid-send (a deploy, a dead connection) is counted as a failed try and sent again.
+Schedule::command('leadflow:recover-emails')->everyTenMinutes()->withoutOverlapping();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 /*

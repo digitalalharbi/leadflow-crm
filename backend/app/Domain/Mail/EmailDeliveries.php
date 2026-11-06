@@ -117,6 +117,54 @@ class EmailDeliveries
         return $delivery->fresh();
     }
 
+    /**
+     * A send whose worker stopped halfway (a deploy restarting the queue, a connection that never answered) is left
+     * marked as sending, and nothing would ever look at it again. It is counted as a try that failed and put back in
+     * line while it has tries left. The mail may have left before the worker stopped, so this can send one email
+     * twice: a manager's alert arriving twice is the smaller harm than one that never arrives.
+     */
+    public function recoverStalled(int $minutes = 15): int
+    {
+        $recovered = 0;
+
+        EmailDelivery::query()->where('status', EmailDelivery::SENDING)->where('updated_at', '<', now()->subMinutes($minutes))
+            ->pluck('id')->each(function (int $id) use (&$recovered) {
+                $delivery = DB::transaction(function () use ($id) {
+                    $row = EmailDelivery::query()->whereKey($id)->lockForUpdate()->first();
+
+                    if ($row === null || $row->status !== EmailDelivery::SENDING) {
+                        return null;
+                    }
+
+                    $n = $row->attempts + 1;
+                    $error = 'The worker stopped during the send.';
+                    $again = $n < $row->max_attempts;
+
+                    EmailDeliveryAttempt::create([
+                        'tenant_id' => $row->tenant_id, 'email_delivery_id' => $row->id, 'attempt' => $n, 'provider' => $row->provider,
+                        'ok' => false, 'retryable' => true, 'error' => $error, 'attempted_at' => now(),
+                    ]);
+                    $row->update($again
+                        ? ['attempts' => $n, 'status' => EmailDelivery::QUEUED, 'last_error' => $error, 'next_attempt_at' => now()]
+                        : ['attempts' => $n, 'status' => EmailDelivery::FAILED, 'last_error' => $error, 'next_attempt_at' => null, 'failed_at' => now()]);
+
+                    return $again ? $row : false;
+                });
+
+                if ($delivery === null) {
+                    return;
+                }
+
+                $recovered++;
+
+                if ($delivery !== false) {
+                    SendQueuedEmail::dispatch($delivery->id)->onQueue((string) config('leadflow_mail.queue', 'default'));
+                }
+            });
+
+        return $recovered;
+    }
+
     /** A person asks for a failed email to be tried again: a fresh run of attempts, on the provider in force now. */
     public function retry(EmailDelivery $delivery): EmailDelivery
     {

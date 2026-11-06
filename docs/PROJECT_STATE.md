@@ -10,17 +10,17 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-04.
+Updated 2026-11-06.
 
 ## Last verified commit
 
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — v0.9.6 plus the deploy disk fix |
+| Integration branch | `develop` — v0.9.6 plus #251 (deploy disk step) and the stalled-email recovery |
 | Full sha | `cd8c3a510be18480ae4b724ef2a95d7069131d99` |
 | Committed | 2026-11-05 |
-| Release branch | `main` — `cd8c3a5`, Release v0.9.6 (#250). **Not live:** production serves v0.9.5 `63b7e41` |
+| Release branch | `main` — `cd8c3a5`, Release v0.9.6 (#250). **Live:** production serves `cd8c3a5` (deploy runs 42117383654 and 42120414586, Nov 5) |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -29,13 +29,20 @@ development. Verify, do not trust:
 git fetch origin && git log --oneline -10 origin/develop && git status
 ```
 
-## Standing blocker — Nov 5, 2026
+## Standing risk — disk on the VPS
 
-The v0.9.6 deploy was refused before it changed anything: `ABORT DEPLOY — less than 18 GiB is free on the deployment filesystem`. Production is healthy on v0.9.5. The refusal comes from the script already on the server, which runs before the new one is checked out, so no release can fix it from here, and the deploy identity has no shell.
+The server has 48G shared by three projects and sat at exactly 18G free on Nov 5, which is the
+deploy guard's floor (`MIN_DEPLOY_FREE_GB`). The v0.9.6 deploy was refused four times until the
+owner pruned on the server. The label-filtered prune added in #251 reclaimed 0B there, so it does
+not solve this; the deploy log now prints `disk` lines (`docker system df`) so the next refusal
+says what holds the space. The deploy identity has no shell: freeing disk is the owner's, as root.
 
-To clear it, on the VPS as an administrator: `docker image prune -f` and `docker builder prune -f`, then `df -h /opt/leadflow-crm` should show more than 18G free. Then re-run: `gh workflow run deploy-production.yml --ref main -f confirm=deploy`.
+## Unreleased on develop
 
-Waiting on that deploy: mail From and Reply-To as `info@mohtam.pro`, and the env audit that names the variable on line 131.
+- #251: deploy-script prune and the free-space figure in the refusal.
+- Stalled-email recovery: `leadflow:recover-emails` every ten minutes, SMTP timeout of 30s. Found
+  in the v0.9.6 deploy log: `SendQueuedEmail / MaxAttemptsExceededException` three times and three
+  deliveries left as `sending`. The cause (a worker restarted mid-send by a deploy) is inferred.
 
 ## Active pull requests
 

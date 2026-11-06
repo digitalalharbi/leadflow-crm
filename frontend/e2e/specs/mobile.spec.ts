@@ -110,6 +110,16 @@ test.describe('Mobile layout', () => {
     await expect(row).toHaveCount(1)
     await row.scrollIntoViewIfNeeded()
     await expect(row).toBeInViewport({ ratio: 1 })
+    // The figures above the list are re-read for the search and arrive after the rows: when they land the row moves,
+    // and a tap aimed at where it was opens nothing. Wait until it has stopped moving.
+    await expect.poll(async () => {
+      const first = await row.boundingBox()
+      await page.waitForTimeout(250)
+      const second = await row.boundingBox()
+
+      return first !== null && first.y === second?.y
+    }).toBe(true)
+    await row.scrollIntoViewIfNeeded()
     await row.click()
 
     // The phone's own lead screen: the four ways to reach them at the top, the same four in a bar that

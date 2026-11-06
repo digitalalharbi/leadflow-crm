@@ -79,3 +79,19 @@ Live commit `63b7e41`. Done in a signed-in production session as the admin of th
 
 Defects this found, fixed in v0.9.5: a sales email had no text direction, a project tab showed `projects.tabs.sources`, and mail to reserved test domains was sent and counted as failed.
 
+## Production closure — v0.9.6, Nov 5 to 6, 2026
+
+Live commit `cd8c3a5` (deploy runs 42117383654 and 42120414586: backup, restore check, first-client smoke and 9 of 9 smoke checks passed).
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Mail From and Reply-To | VERIFIED | A sales email sent from production on Nov 5 22:19 UTC carries From `info@mohtam.pro` and Reply-To `info@mohtam.pro`. The display name on an email to a lead is the workspace's own name; the name `مهتم — Mohtam` belongs to platform mail and was not observed on a message |
+| SPF, DKIM, DMARC | VERIFIED | Same message: `dkim=pass` (selector `hostingermail-a`), `spf=pass`, `dmarc=pass` at the receiving server |
+| Inbox placement of that message | Junk | It was sent from `info@mohtam.pro` to `info@mohtam.pro` and the filter marked it as spam. The v0.9.5 message from `no-reply@` to the same mailbox reached the inbox. Placement at Gmail and Outlook is not tested |
+| Credential on line 131 | IDENTIFIED: `MAIL_PASSWORD` | `env_audit line=131 key=MAIL_PASSWORD`, file last modified Nov 3 16:43 UTC, no credential holds a space. Rotation is the owner's, at Hostinger Email |
+| Phones, signed in | TOOL LIMITATION | The signed-in Chrome window is full screen and cannot be narrowed; the session cannot be moved to an emulator without the password. Phone layouts are covered by the e2e suite on three mobile projects, not by a production session |
+| Workspace and project isolation | PARTIAL | Project narrowing is enforced by the server (256 leads to 1 with a project header), the platform console and super-admin routes answer 404 to a company admin, unknown ids answer 404. A second, project-limited identity was not available |
+| Sheet row to sales flow | OBSERVED on a real row | A row added to the demo workspace's sheet on Nov 5 12:57 UTC became a lead with a new-lead notification, an automation attempt handed to a person, and a place in Work Now. It has no project and no owner, by that workspace's configuration. No test row was written: there is no authorised write path to the sheet |
+| Snapshot | NOT VERIFIED | Needs an account with a confirmed address |
+| Queued email | DEFECT, fixed on develop | `SendQueuedEmail / MaxAttemptsExceededException` three times and three deliveries left as `sending`. A send interrupted by a stopped worker was never looked at again. Now recovered every ten minutes and counted as a failed try. Not released |
+| Bounces | OBSERVED | Gmail returns mail for one nonexistent user address in the other workspace; the product records those as sent, because the provider accepted them |

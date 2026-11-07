@@ -34,11 +34,15 @@ test.describe('Mobile layout', () => {
     await page.getByTestId('bottom-nav-more').click()
     await expect(nav).toBeInViewport()
     const menu = page.getByTestId('more-menu')
-    // It rises from the bottom and has a gap above it: never a panel pushed in from a side edge.
+    // It rises from the bottom and has a gap above it: never a panel pushed in from a side edge. Measured once it has
+    // settled: during the rise its edge is still below the screen.
+    await expect.poll(async () => {
+      const b = (await menu.boundingBox())!
+      return Math.round(b.y + b.height)
+    }).toBe(page.viewportSize()!.height)
     const box = (await menu.boundingBox())!
     expect(box.x).toBeLessThanOrEqual(1)
     expect(box.y).toBeGreaterThan(4)
-    expect(Math.round(box.y + box.height)).toBe(page.viewportSize()!.height)
 
     await page.getByTestId('more-close').click()
     await expect(menu).toBeHidden()
@@ -211,17 +215,38 @@ test.describe('Mobile layout', () => {
    *
    * Cheap: a handful of navigations, not a second run of the suite.
    */
-  for (const path of ['/integrations', '/automation', '/reports', '/data-quality', '/settings', '/users', '/visits', '/work', '/leads', '/pipeline']) {
-    test(`${path} fits the screen with no sideways scrolling`, async ({ page }) => {
+  for (const path of [
+    '/dashboard', '/work', '/leads', '/pipeline', '/follow-ups', '/visits', '/campaigns', '/creatives', '/tracking', '/partners',
+    '/agents', '/companies', '/projects', '/automation', '/journey', '/reports', '/insights', '/audit', '/integrations', '/users',
+    '/access', '/settings', '/settings/profile', '/security', '/data-quality', '/readiness', '/welcome',
+  ]) {
+    test(`${path} fits the screen: the page does not scroll sideways, and nothing in it needs a sideways swipe`, async ({ page }) => {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      await page.waitForLoadState('networkidle').catch(() => {})
 
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       )
       expect(overflow, `${path} scrolls sideways on a phone`).toBeLessThanOrEqual(1)
+
+      // A strip of tabs, a table or a matrix that scrolls inside itself is the same sideways swipe by another name.
+      const swipes = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('main *')).filter((el) => {
+        const box = el.getBoundingClientRect()
+        const style = getComputedStyle(el)
+        return box.width > 0 && box.height > 0 && style.visibility !== 'hidden'
+          && (style.overflowX === 'auto' || style.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 2
+      }).map((el) => `${el.tagName.toLowerCase()}.${(el.className?.toString() ?? '').split(' ').slice(0, 4).join('.')}`))
+      expect(swipes, `${path} has something to swipe sideways`).toEqual([])
     })
   }
+
+  test('a table that does not fit a phone becomes cards, each value under the name of its column', async ({ page }) => {
+    await page.goto('/users')
+    const wrap = page.locator('.table-wrap').first()
+    await expect(wrap).toHaveAttribute('data-stacked', 'true')
+    await expect(wrap.locator('td[data-label]').first()).toBeAttached()
+  })
 
   test('the follow-ups page is usable on a phone', async ({ page }) => {
     await page.goto('/follow-ups?bucket=overdue')

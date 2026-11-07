@@ -33,13 +33,15 @@ export function LeadsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // `?new=1` is how the command palette's "create a lead" lands here: the form is already open.
-  const [createOpen, setCreateOpen] = useState(() => searchParams.get('new') === '1')
-  const wantsNew = searchParams.get('new') === '1'
+  // Any value opens it. The phone's centre action sends a new value on every tap, so the form opens each time, even when
+  // this page is already open and the last tap's value has not left the address yet.
+  const newKey = searchParams.get('new')
+  const wantsNew = newKey !== null
+  const [createOpen, setCreateOpen] = useState(() => wantsNew)
 
-  // The phone's centre action lands here too, including when this page is already open: the form opens each time.
   useEffect(() => {
-    if (wantsNew) setCreateOpen(true)
-  }, [wantsNew])
+    if (newKey !== null) setCreateOpen(true)
+  }, [newKey])
 
   const closeCreate = () => {
     setCreateOpen(false)

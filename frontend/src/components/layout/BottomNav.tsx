@@ -94,7 +94,7 @@ export function BottomNav() {
             aria-label={t('leads.addLead')}
             data-testid="bottom-nav-add"
             className="bottom-tab-fab"
-            onClick={() => { setSidebarOpen(false); void navigate('/leads?new=1') }}
+            onClick={() => { setSidebarOpen(false); void navigate(`/leads?new=${Date.now()}`) }}
           >
             <Plus className="size-7" aria-hidden />
           </button>

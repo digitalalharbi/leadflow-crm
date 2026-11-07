@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { ChevronRight, LogOut, Monitor, Moon, Sun, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -17,6 +17,9 @@ const APPEARANCES: { key: Appearance; Icon: LucideIcon }[] = [
 
 /** A swipe down this far, from the sheet's header, closes it: the gesture every phone sheet answers to. */
 const CLOSE_DRAG = 80
+
+/** A little longer than the slide itself (--duration-base), so the contents leave after the sheet has gone. */
+const CLOSE_AFTER_MS = 400
 
 /**
  * "More" on a phone: a sheet that rises from the bottom, the way an app's does, never one that slides in from the side.
@@ -38,6 +41,21 @@ export function MoreSheet() {
   const { groups, settings } = useNavigation()
   const close = () => setOpen(false)
   const closeButton = useRef<HTMLButtonElement>(null)
+  /*
+   * The contents exist only while the sheet is open, and for the length of its slide back down: a closed sheet holding
+   * every link, switch and test id of the app would put a second copy of each into every page.
+   */
+  const [mounted, setMounted] = useState(open)
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+      return
+    }
+    const timer = window.setTimeout(() => setMounted(false), CLOSE_AFTER_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [open])
   const dragFrom = useRef<number | null>(null)
 
   // The last group is the administrative one (integrations, people, access) when there is more than one; it reads as rows.
@@ -56,7 +74,7 @@ export function MoreSheet() {
     // The page behind must not scroll under a thumb that is meant for the sheet.
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    closeButton.current?.focus()
+    window.requestAnimationFrame(() => closeButton.current?.focus())
 
     return () => {
       document.removeEventListener('keydown', onKey)
@@ -82,6 +100,7 @@ export function MoreSheet() {
         data-testid="more-menu"
         className="app-sidebar fixed inset-x-0 bottom-0 top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 flex flex-col rounded-t-[1.75rem] bg-[var(--color-canvas)] shadow-[0_-12px_40px_-12px_rgb(0_0_0/0.35)] lg:hidden print:hidden"
       >
+        {mounted && <>
         <div
           className="shrink-0 touch-pan-x px-4 pt-2"
           onTouchStart={(e) => { dragFrom.current = e.touches[0]?.clientY ?? null }}
@@ -200,6 +219,7 @@ export function MoreSheet() {
 
           {branding?.support_email && <a href={`mailto:${branding.support_email}`} className="mt-3 block text-center text-[0.875rem] text-[var(--color-ink-muted)]">{branding.support_email}</a>}
         </div>
+        </>}
       </aside>
     </>
   )

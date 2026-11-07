@@ -9,7 +9,7 @@ import { SupportBanner } from '@/components/billing/SupportBanner'
 import { SubscriptionRequired } from '@/components/billing/SubscriptionRequired'
 import { BottomNav } from './BottomNav'
 import { IconRail } from './IconRail'
-import { Sidebar } from './Sidebar'
+import { MoreSheet } from './MoreSheet'
 import { Topbar } from './Topbar'
 
 /**
@@ -22,7 +22,7 @@ import { Topbar } from './Topbar'
  * anything was mirrored after the fact.
  *
  * Below the desktop breakpoint the frame gives its margin back, the header becomes a flat app bar,
- * the rail becomes a drawer and a tab bar sits at the thumb — a phone has no use for a floating
+ * the rail gives way to a sheet that rises from the bottom and a tab bar sits at the thumb — a phone has no use for a floating
  * window on a table, and should feel like an app, not a shrunken website.
  */
 export function AppShell() {
@@ -82,7 +82,7 @@ export function AppShell() {
 
       {/* After the frame in the DOM: on a desktop it is not rendered at all, and
           the first brand mark on the page must be the header's. */}
-      <Sidebar />
+      <MoreSheet />
 
       {/* The phone's tab bar. After the drawer's scrim in the order of things that float, below the drawer itself. */}
       <BottomNav />

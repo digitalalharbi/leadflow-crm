@@ -105,6 +105,8 @@ export default {
     organizationHint: 'اتركه فارغاً إن كان لديك حساب واحد فقط',
   },
   nav: {
+    administration: 'الإدارة',
+    appearance: { label: 'المظهر', light: 'نهاري', dark: 'ليلي', system: 'تلقائي' },
     access: 'الصلاحيات',
     menu: 'القائمة',
     primary: 'التنقل الرئيسي',

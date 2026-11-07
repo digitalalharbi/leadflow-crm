@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { LastUpdated } from '@/components/ui/LastUpdated'
@@ -30,10 +30,31 @@ export function LeadsPage() {
   const user = useAuth((s) => s.user)
   const branding = useAuth((s) => s.branding)
   const translateError = useApiError()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // `?new=1` is how the command palette's "create a lead" lands here: the form is already open.
-  const [createOpen, setCreateOpen] = useState(() => searchParams.get('new') === '1')
+  // Any value opens it. The phone's centre action sends a new value on every tap, so the form opens each time, even when
+  // this page is already open and the last tap's value has not left the address yet.
+  const newKey = searchParams.get('new')
+  const wantsNew = newKey !== null
+  const [createOpen, setCreateOpen] = useState(() => wantsNew)
+
+  useEffect(() => {
+    if (newKey !== null) setCreateOpen(true)
+  }, [newKey])
+
+  const closeCreate = () => {
+    setCreateOpen(false)
+
+    if (wantsNew) {
+      setSearchParams((params) => {
+        const next = new URLSearchParams(params)
+        next.delete('new')
+
+        return next
+      }, { replace: true })
+    }
+  }
   const [exportOpen, setExportOpen] = useState(false)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
@@ -379,7 +400,7 @@ export function LeadsPage() {
         )}
       </Card>
 
-      <LeadFormDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
+      <LeadFormDrawer open={createOpen} onClose={closeCreate} />
       <ExportsModal open={exportOpen} onClose={() => setExportOpen(false)} filters={query as Record<string, unknown>} />
     </>
   )

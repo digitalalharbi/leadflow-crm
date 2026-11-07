@@ -120,7 +120,8 @@ export function LeadSegments({
     <div
       role="group"
       aria-label={t('leads.segments.label')}
-      className="flex gap-1.5 overflow-x-auto px-3 pb-2 pt-3"
+      // On a phone the lists wrap onto rows instead of scrolling sideways: everything is in view and nothing is hidden off the edge.
+      className="flex gap-1.5 px-3 pb-2 pt-3 max-sm:flex-wrap sm:overflow-x-auto"
       data-testid="lead-segments"
     >
       {SEGMENTS.filter((segment) => segment.key !== 'unassigned' || showUnassigned).map(({ key, Icon, apply }) => {

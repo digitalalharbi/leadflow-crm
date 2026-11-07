@@ -43,7 +43,7 @@ export const LANDING: { ar: LandingCopy; en: LandingCopy } = {
     sub: 'كل من اهتم بمشروعك هو فرصة قريبة. «مهتم» تجعلك أول من يصل إليه، وآخر من يفرّط فيه.',
     ctaTrial: 'ابدأ مع مهتم',
     ctaLogin: 'تسجيل الدخول',
-    trialNote: 'الدخول لمساحات العمل المسجّلة. للاستفسار عن مساحة لشركتك تواصل معنا.',
+    trialNote: 'ابدأ تجربة مجانية لشركتك، أو سجّل الدخول إن كانت لديك مساحة. للاستفسار تواصل معنا.',
     journeyTitle: 'رحلة كل عميل',
     journey: ['وصل', 'تواصل', 'تأهّل', 'موعد', 'صفقة'],
     preview: {
@@ -80,7 +80,7 @@ export const LANDING: { ar: LandingCopy; en: LandingCopy } = {
     sub: 'Everyone who showed interest in your project is an opportunity within reach. Mohtam makes you the first to reach them, and the last to let them go.',
     ctaTrial: 'Get Started with Mohtam',
     ctaLogin: 'Sign In',
-    trialNote: 'Sign-in is for registered workspaces. To ask about a workspace for your company, contact us.',
+    trialNote: 'Start a free trial for your company, or sign in if you already have a workspace. Questions? Contact us.',
     journeyTitle: 'Every lead’s journey',
     journey: ['Arrived', 'Contacted', 'Qualified', 'Viewing', 'Deal'],
     preview: {

@@ -77,7 +77,7 @@ describe('landing page', () => {
     const { container } = renderWithProviders(<LandingPage />)
 
     expect(screen.getByTestId('landing-login')).toHaveAttribute('href', '/login')
-    expect(screen.getByTestId('landing-trial')).toHaveAttribute('href', '/login')
+    expect(screen.getByTestId('landing-trial')).toHaveAttribute('href', '/signup')
     expect(screen.getByTestId('landing-trial')).toHaveTextContent('ابدأ مع مهتم')
     expect(screen.getByTestId('landing-login')).toHaveTextContent('تسجيل الدخول')
     expect(container.querySelector('form, input')).toBeNull()
@@ -128,11 +128,11 @@ describe('landing page', () => {
     expect(container.textContent).not.toMatch(/Mohtam(?!\.pro)|LeadFlow/i)
   })
 
-  it('the header names the three marketing pages by their own addresses, not by anchors on this one', () => {
+  it('the header names the marketing pages and the pricing page by their own addresses, not by anchors on this one', () => {
     renderWithProviders(<LandingPage />)
 
     const nav = screen.getByTestId('public-nav')
-    expect(within(nav).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['المزايا', '/features'], ['الرحلة', '/journey'], ['الرؤية', '/vision']])
+    expect(within(nav).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['المزايا', '/features'], ['الرحلة', '/journey'], ['الرؤية', '/vision'], ['الأسعار', '/pricing']])
   })
 
   it('footer links lead to the public pages', () => {
@@ -165,7 +165,7 @@ describe('marketing pages', () => {
     expect(screen.getAllByTestId('feature-value').map((li) => li.querySelector('h2')?.textContent)).toEqual(['رؤية أوضح', 'متابعة أسرع', 'قرارات أفضل', 'فرص فقد أقل', 'تقارير احترافية', 'فرق أكثر تنظيمًا', 'وصول أسرع للمعلومة', 'تجربة أرقى لعملائك'])
     expect(within(screen.getByTestId('features-facts')).getAllByRole('definition')).toHaveLength(4)
     expect(container.textContent).not.toMatch(MECHANISM)
-    expect(screen.getByTestId('marketing-cta-start')).toHaveAttribute('href', '/login')
+    expect(screen.getByTestId('marketing-cta-start')).toHaveAttribute('href', '/signup')
   })
 
   it('/journey walks the six stages; choosing one shows its value and moves the progress', () => {

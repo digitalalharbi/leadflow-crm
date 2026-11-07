@@ -49,7 +49,7 @@ export function PublicLayout({ children, nav, active, compactFooter = false }: {
               {lang === 'ar' ? 'English' : 'العربية'}
             </button>
             {/* A visitor signs in; somebody already signed in is offered their dashboard instead — never moved there. */}
-            <Link to={entry.to} className="pressable inline-flex min-h-11 items-center rounded-full px-4 text-[0.9375rem] font-semibold hover:bg-[var(--color-chrome-fill)]" data-testid="public-login" data-authenticated={entry.authenticated}>
+            <Link to={entry.authenticated ? entry.to : '/login'} className="pressable inline-flex min-h-11 items-center rounded-full px-4 text-[0.9375rem] font-semibold hover:bg-[var(--color-chrome-fill)]" data-testid="public-login" data-authenticated={entry.authenticated}>
               {entry.authenticated ? copy.cta.dashboard : copy.nav.login}
             </Link>
             {!entry.authenticated && (

@@ -172,7 +172,7 @@ test.describe('Marketing page', () => {
       await expect(page).toHaveURL(new RegExp(`${path}$`))
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading)
       await expect(page.getByTestId(link)).toHaveAttribute('aria-current', 'page')
-      await expect(page.getByTestId('marketing-cta-start')).toHaveAttribute('href', '/login')
+      await expect(page.getByTestId('marketing-cta-start')).toHaveAttribute('href', '/signup')
     }
   })
 

@@ -2,7 +2,7 @@
 
 use App\Domain\Mail\EmailDnsReadiness;
 use App\Http\Controllers\Api\PublicContactController;
-use App\Http\Controllers\Api\PublicSignupController;
+use App\Http\Controllers\Api\PublicPlansController;
 use App\Http\Controllers\Api\SharedReportController;
 use App\Http\Controllers\Api\V1\AccessController;
 use App\Http\Controllers\Api\V1\AccountAccessController;
@@ -168,9 +168,8 @@ Route::prefix('v1')->group(function () {
     // A live report behind a link. The token is the credential; a password may be the second. Throttled hard.
     Route::get('/public/contact', [PublicContactController::class, 'show']);
     Route::post('/public/contact', [PublicContactController::class, 'store'])->middleware('throttle:5,1');
-    // The sales funnel: the plans on offer, and a company opening its own trial. Both public, the second throttled hard.
-    Route::get('/public/plans', [PublicSignupController::class, 'plans'])->middleware('throttle:60,1');
-    Route::post('/public/signup', [PublicSignupController::class, 'store'])->middleware('throttle:5,10');
+    // The price list. Public and read-only; no public route opens a company.
+    Route::get('/public/plans', [PublicPlansController::class, 'plans'])->middleware('throttle:60,1');
     Route::get('/shared/reports/{token}', SharedReportController::class)->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40}');
 
     // A person's calendar feed, read by their calendar app. The secret in the address is the credential.

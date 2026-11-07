@@ -13,7 +13,6 @@ const plans = {
     { key: 'starter', name: 'Starter', description: null, price_monthly: '199.00', price_yearly: null, currency: 'SAR', included_seats: 3, features: ['tracking_hub'], priced: true },
     { key: 'custom', name: 'Custom', description: null, price_monthly: null, price_yearly: null, currency: 'SAR', included_seats: null, features: [], priced: false },
   ],
-  signup: true,
   trial_days: 14,
 }
 
@@ -36,14 +35,14 @@ describe('the sales funnel pages', () => {
     expect(await screen.findByTestId('pricing-failed')).toBeInTheDocument()
   })
 
-  it('a company opens a trial and is told to check its email', async () => {
-    api.apiGet.mockResolvedValue(plans)
+  it('a company asks for a trial, which goes in as a demo lead, and is told it was received', async () => {
+    api.apiGet.mockImplementation(async (path: string) => (path === '/public/contact' ? { form: true } : plans))
     api.apiPost.mockResolvedValue(null)
     const user = userEvent.setup()
     renderWithProviders(<SignupPage />)
 
     await screen.findByTestId('signup-form')
-    const [company, name, email] = screen.getAllByRole('textbox').filter((el) => !el.hasAttribute('tabindex') || el.getAttribute('tabindex') !== '-1')
+    const [company, name, email] = screen.getAllByRole('textbox').filter((el) => el.getAttribute('tabindex') !== '-1')
     await user.type(company, 'Palm Developments')
     await user.type(name, 'Sara')
     await user.type(email, 'sara@palm-dev.sa')
@@ -51,12 +50,13 @@ describe('the sales funnel pages', () => {
     await user.click(screen.getByTestId('signup-consent'))
     await user.click(screen.getByTestId('signup-submit'))
 
-    await waitFor(() => expect(api.apiPost).toHaveBeenCalledWith('/public/signup', expect.objectContaining({ company: 'Palm Developments', email: 'sara@palm-dev.sa', consent: true })))
+    await waitFor(() => expect(api.apiPost).toHaveBeenCalledWith('/public/contact', expect.objectContaining({ kind: 'demo', company: 'Palm Developments', email: 'sara@palm-dev.sa', consent: true })))
+    expect(api.apiPost).not.toHaveBeenCalledWith('/public/signup', expect.anything())
     expect(await screen.findByTestId('signup-sent')).toBeInTheDocument()
   })
 
-  it('offers contact instead of the form when sign-up is switched off', async () => {
-    api.apiGet.mockResolvedValue({ ...plans, signup: false })
+  it('offers contact instead of the form when the request form is switched off', async () => {
+    api.apiGet.mockImplementation(async (path: string) => (path === '/public/contact' ? { form: false } : plans))
     renderWithProviders(<SignupPage />)
 
     expect(await screen.findByTestId('signup-closed')).toBeInTheDocument()

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Check, Eye, FolderLock, UserRoundX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Drawer, Skeleton } from '@/components/ui'
+import { TableWrap } from '@/components/ui/Table'
 import { fetchRoles } from '@/features/roles'
 import { cn } from '@/lib/cn'
 
@@ -18,7 +19,7 @@ export function RolesMatrix({ open, onClose }: { open: boolean; onClose: () => v
       {!data ? (
         <Skeleton className="h-64" />
       ) : (
-        <div className="scroll-x" data-testid="roles-matrix-grid">
+        <TableWrap data-testid="roles-matrix-grid">
           <table className="w-full border-collapse text-[0.875rem]">
             <thead>
               <tr>
@@ -61,7 +62,7 @@ export function RolesMatrix({ open, onClose }: { open: boolean; onClose: () => v
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       )}
     </Drawer>
   )

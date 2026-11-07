@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Lock, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge, Button, Card, CardBody, ErrorState, Input, PageHeader, Select, Skeleton, Tabs } from '@/components/ui'
+import { TableWrap } from '@/components/ui/Table'
 import { useApiError } from '@/hooks/useApiError'
 import {
   createRole, deleteRole, fetchAccess, fetchEffective, putRules, updateRole,
@@ -177,7 +178,7 @@ function RoleEditor({ state, role, onDone }: { state: AccessState; role: AccessR
           </div>
         )}
 
-        <div className="scroll-x" data-testid="access-grid">
+        <TableWrap data-testid="access-grid">
           <table className="w-full border-collapse text-[0.875rem]">
             <thead>
               <tr>
@@ -212,7 +213,7 @@ function RoleEditor({ state, role, onDone }: { state: AccessState; role: AccessR
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
         <p className="t-caption">{t('access.viewOnlyNote')}</p>
 
         {!locked && (

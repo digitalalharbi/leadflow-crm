@@ -54,6 +54,8 @@ export function PipelinePage() {
   const translateError = useApiError()
 
   const [dragging, setDragging] = useState<LeadListItem | null>(null)
+  // On a phone one stage is shown at a time, chosen from the row of stages above it: nothing to swipe to find.
+  const [phoneStage, setPhoneStage] = useState<string | null>(null)
   const [lostTarget, setLostTarget] = useState<LeadListItem | null>(null)
   const [lostReasonId, setLostReasonId] = useState('')
   const [lostNote, setLostNote] = useState('')
@@ -186,9 +188,39 @@ export function PipelinePage() {
             as "there is more to the right". Above `sm` the board scrolls
             freely, because there the point is to see several stages at once.
           */}
-          <div className="scroll-x flex gap-3 pb-4 max-sm:snap-x max-sm:snap-mandatory">
+          {/* A phone picks the stage from a row that wraps, and sees that stage in full; no sideways swiping to find the others. */}
+          <div role="tablist" aria-label={t('pipeline.title')} className="flex flex-wrap gap-1.5 pb-3 sm:hidden" data-testid="pipeline-stage-tabs">
+            {data.columns.map((column) => {
+              const active = column.status === (phoneStage ?? data.columns[0]?.status)
+
+              return (
+                <button
+                  key={column.status}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  data-testid={`pipeline-stage-tab-${column.status}`}
+                  onClick={() => setPhoneStage(column.status)}
+                  className={cn(
+                    'pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-medium',
+                    active ? 'bg-[var(--brand)] text-[var(--brand-ink)] shadow-[var(--shadow-card)]' : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-muted)]',
+                  )}
+                >
+                  {t(`status.${column.status}`)}
+                  <span className="tabular-nums text-[0.8125rem]" dir="ltr">{column.total}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="scroll-x flex gap-3 pb-4">
             {data.columns.map((column) => (
-              <PipelineColumn key={column.status} column={column} overview={overview.data} />
+              <PipelineColumn
+                key={column.status}
+                column={column}
+                overview={overview.data}
+                hiddenOnPhone={column.status !== (phoneStage ?? data.columns[0]?.status)}
+              />
             ))}
           </div>
 
@@ -247,7 +279,7 @@ export function PipelinePage() {
   )
 }
 
-function PipelineColumn({ column, overview }: { column: Column; overview: PipelineOverviewData | undefined }) {
+function PipelineColumn({ column, overview, hiddenOnPhone }: { column: Column; overview: PipelineOverviewData | undefined; hiddenOnPhone: boolean }) {
   const { t, i18n } = useTranslation()
   const stage = overview?.stages.find((s) => s.status === column.status)
   const keep = overview?.funnel.find((f) => f.key === column.status)?.keep ?? null
@@ -264,7 +296,8 @@ function PipelineColumn({ column, overview }: { column: Column; overview: Pipeli
          * scroll sideways is a list with extra steps.
          */
         'flex w-[13rem] shrink-0 flex-col rounded-[var(--radius-card)] border',
-        'max-sm:w-[min(19rem,82vw)] max-sm:snap-start',
+        'max-sm:w-full',
+        hiddenOnPhone && 'max-sm:hidden',
         'bg-[var(--color-surface-muted)] transition-colors',
         isOver
           ? 'border-[var(--brand)] bg-[var(--brand-soft)]'

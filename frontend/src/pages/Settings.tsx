@@ -85,7 +85,7 @@ export function SettingsPage() {
 
       {/* A settings page is navigated, not scrolled: the sections are named
           and switched rather than stacked into one long column. */}
-      <div className="scroll-x mb-4 flex gap-1 rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] p-1">
+      <div className="scroll-x mb-4 flex gap-1 max-sm:flex-wrap max-sm:overflow-visible rounded-[var(--radius-control)] bg-[var(--color-surface-sunken)] p-1">
         {tabs.map((key) => (
           <button
             key={key}

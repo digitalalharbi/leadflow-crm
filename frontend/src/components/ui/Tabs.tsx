@@ -60,7 +60,8 @@ export function Tabs<T extends string>({
       role="tablist"
       data-testid={testId}
       className={cn(
-        'inline-flex max-w-full items-center gap-0.5 overflow-x-auto',
+        // On a phone the tabs wrap onto rows rather than scrolling sideways, so every one is in view.
+        'inline-flex max-w-full items-center gap-0.5 overflow-x-auto max-sm:flex max-sm:flex-wrap max-sm:overflow-visible',
         'rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] p-1',
         className,
       )}

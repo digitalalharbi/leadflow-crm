@@ -160,7 +160,7 @@ export function ReportsPage() {
 
       <Card className="mb-4 overflow-hidden">
         {/* One filter set for every tab, so switching keeps the period. */}
-        <div className="scroll-x flex items-center gap-1 border-b border-[var(--color-line)] p-2">
+        <div className="scroll-x flex items-center gap-1 max-sm:flex-wrap max-sm:overflow-visible border-b border-[var(--color-line)] p-2">
           {visibleTabs.map((key) => (
             <button
               key={key}

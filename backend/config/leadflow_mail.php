@@ -18,7 +18,8 @@ return [
     }),
 
     'from' => [
-        'address' => env('LEADFLOW_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'info@mohtam.pro')),
+        // Automatic mail leaves from no-reply@; replies go to reply_to below, the mailbox somebody reads.
+        'address' => env('LEADFLOW_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'no-reply@mohtam.pro')),
         'name' => env('LEADFLOW_MAIL_FROM_NAME', 'مهتم — Mohtam'),
     ],
 

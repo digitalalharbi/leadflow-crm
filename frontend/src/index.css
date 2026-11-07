@@ -4,26 +4,38 @@
 
 @layer components {
   /*
-   * Off-canvas sidebar. Below `lg` it slides in from the inline-start edge
-   * (right in RTL, left in LTR); from `lg` up it is always docked.
+   * The phone's "More" sheet. It rises from the bottom and settles, the way an app's sheet does: never a panel that slides in from
+   * the side. Hidden (not merely off-screen) while closed, so nothing inside it can be tabbed to or read out. From `lg` up the
+   * element is not displayed at all, because the rail and the header's pill track take over.
    */
   .app-sidebar {
-    transition: transform var(--duration-base) var(--ease-out-soft);
-    transform: translateX(-100%);
-  }
-
-  [dir='rtl'] .app-sidebar {
-    transform: translateX(100%);
+    visibility: hidden;
+    transform: translateY(100%);
+    transition: transform var(--duration-base) var(--ease-out-soft), visibility 0s linear var(--duration-base);
   }
 
   .app-sidebar[data-open='true'] {
-    transform: translateX(0);
+    visibility: visible;
+    transform: translateY(0);
+    transition: transform var(--duration-base) var(--ease-out-soft), visibility 0s linear 0s;
   }
 
-  @media (min-width: 64rem) {
+  .more-scrim {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease-out-soft);
+  }
+
+  .more-scrim[data-open='true'] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
     .app-sidebar,
-    [dir='rtl'] .app-sidebar {
-      transform: translateX(0);
+    .app-sidebar[data-open='true'],
+    .more-scrim {
+      transition: none;
     }
   }
 

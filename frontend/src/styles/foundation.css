@@ -604,6 +604,31 @@ input[type='file']::-webkit-file-upload-button {
   transform: scale(0.94);
 }
 
+/* The centre action: a raised circle in the middle of the bar, the one thing a thumb does most. */
+.bottom-tab-fab-slot {
+  display: flex;
+  flex: 0 0 4.5rem;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.bottom-tab-fab {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-top: -1rem;
+  border-radius: 9999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--brand) 55%, transparent), 0 0 0 4px var(--color-surface);
+  transition: transform var(--duration-fast);
+}
+
+.bottom-tab-fab:active {
+  transform: scale(0.93);
+}
+
 /* Phone type scale: the numbers and the title shrink with the screen, the 0.75rem floor of the system does not. */
 @media (max-width: 639.98px) {
   .t-page-title { font-size: 1.625rem; }

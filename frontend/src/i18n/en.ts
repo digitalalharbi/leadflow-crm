@@ -49,6 +49,8 @@ export default {
     organization: 'Organisation', organizationHint: 'Leave blank if you only have one account',
   },
   nav: {
+    administration: 'Administration',
+    appearance: { label: 'Appearance', light: 'Light', dark: 'Dark', system: 'Auto' },
     access: 'Access',
     menu: 'Menu',
     primary: 'Primary navigation',

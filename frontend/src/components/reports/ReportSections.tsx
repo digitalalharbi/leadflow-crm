@@ -4,6 +4,7 @@ import { BadgeDollarSign, CalendarCheck, Coins, Eye, KeyRound, Sparkles, Target,
 import type { LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardBody } from '@/components/ui'
+import { TableWrap } from '@/components/ui/Table'
 import { AreaTrend, ComparisonCard, Donut, HeatGrid, KpiCard, PipelineFunnel, RankBars, RingProgress, StatusPill, type StatusKey } from '@/components/visual'
 import { platformColor } from '@/components/charts'
 import type { KpiKey, SharedReportData } from '@/features/reportShares'
@@ -297,7 +298,7 @@ export function CampaignsSection({ ctx }: { ctx: Ctx }) {
       <RankBars limit={6} items={rows.map((c) => ({ key: c.name, label: c.name, value: c.leads, note: <span className="tabular-nums" dir="ltr">{c.won} {t('revenue.kpi.won')}</span> }))} />
       <details className="mt-3" data-testid="shared-campaigns-details">
         <summary className="t-small cursor-pointer font-medium">{t('reportView.details')}</summary>
-        <div className="scroll-x mt-2">
+        <TableWrap className="mt-2">
           <table className="w-full border-collapse text-[0.875rem]">
             <thead><tr className="text-[var(--color-ink-muted)]">
               <th className="p-1.5 text-start">{t('revenue.table.campaign')}</th><th>{t('revenue.kpi.leads')}</th><th>{t('revenue.kpi.interested')}</th><th>{t('revenue.kpi.visits')}</th><th>{t('revenue.kpi.reservations')}</th><th>{t('revenue.kpi.won')}</th>
@@ -315,7 +316,7 @@ export function CampaignsSection({ ctx }: { ctx: Ctx }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </details>
     </CardBody></Card>
   )

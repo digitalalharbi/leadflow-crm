@@ -126,7 +126,7 @@ export function FollowUpsPage() {
 
       <Card className="overflow-hidden">
         {/* Buckets as tabs: a rep works overdue first, then today. */}
-        <div className="scroll-x flex gap-1 border-b border-[var(--color-line)] p-2">
+        <div className="scroll-x flex gap-1 max-sm:flex-wrap max-sm:overflow-visible border-b border-[var(--color-line)] p-2">
           {BUCKETS.map((key) => {
             const count = badge(key)
 

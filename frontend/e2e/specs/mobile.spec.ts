@@ -26,28 +26,96 @@ test.describe('Mobile layout', () => {
     expect(overflow).toBeLessThanOrEqual(1)
   })
 
-  test('the sidebar is a drawer that opens and closes', async ({ page }) => {
+  test('More is a sheet that rises from the bottom: cards to tap, closed by its button, its backdrop and Escape', async ({ page }) => {
     const nav = page.getByRole('link', { name: 'العملاء المحتملون' })
     await expect(nav).not.toBeInViewport()
 
-    // "More" on the tab bar opens the full list, the way an app's last tab does.
+    // "More" on the tab bar opens the sheet, the way an app's last tab does.
     await page.getByTestId('bottom-nav-more').click()
     await expect(nav).toBeInViewport()
+    const menu = page.getByTestId('more-menu')
+    // It rises from the bottom and has a gap above it: never a panel pushed in from a side edge. Measured once it has
+    // settled: during the rise its edge is still below the screen.
+    await expect.poll(async () => {
+      const b = (await menu.boundingBox())!
+      return Math.round(b.y + b.height)
+    }).toBe(page.viewportSize()!.height)
+    const box = (await menu.boundingBox())!
+    expect(box.x).toBeLessThanOrEqual(1)
+    expect(box.y).toBeGreaterThan(4)
 
+    await page.getByTestId('more-close').click()
+    await expect(menu).toBeHidden()
+
+    await page.getByTestId('bottom-nav-more').click()
+    await expect(menu).toBeVisible()
+    await page.getByTestId('more-scrim').click({ position: { x: 10, y: 6 } })
+    await expect(menu).toBeHidden()
+
+    await page.getByTestId('bottom-nav-more').click()
+    await expect(menu).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+
+    // Choosing a destination goes there and closes the sheet rather than leaving it over the page.
+    await page.getByTestId('bottom-nav-more').click()
     await nav.click()
     await expect(page).toHaveURL(/\/leads/)
-    // Choosing a destination closes the drawer rather than leaving it over the page.
+    await expect(menu).toBeHidden()
     await expect(page.getByRole('heading', { name: 'العملاء المحتملون', level: 1 })).toBeVisible()
+  })
+
+  test('the look can be changed from More, and it sticks', async ({ page }) => {
+    await page.getByTestId('bottom-nav-more').click()
+    await page.getByTestId('appearance-dark').click()
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(page.getByTestId('appearance-dark')).toHaveAttribute('aria-pressed', 'true')
+    await page.getByTestId('appearance-light').click()
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
+  })
+
+  test('the centre action puts a lead in from anywhere, including the leads page itself', async ({ page }) => {
+    const add = page.getByTestId('bottom-nav-add')
+    await expect(add).toBeVisible()
+    // Big enough for a thumb.
+    const box = (await add.boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(48)
+
+    await add.click()
+    await expect(page).toHaveURL(/\/leads/)
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toBeHidden()
+
+    // Already on the page: the same tap opens the form again.
+    await add.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
+
+  test('the pipeline shows one stage at a time, chosen from a row that wraps, with nothing to swipe', async ({ page }) => {
+    await page.goto('/pipeline')
+    const tabs = page.getByTestId('pipeline-stage-tabs')
+    await expect(tabs).toBeVisible()
+
+    const columns = page.locator('[data-testid^="pipeline-column-"]')
+    await expect(columns.locator('visible=true')).toHaveCount(1)
+
+    const second = tabs.getByRole('tab').nth(1)
+    await second.click()
+    await expect(second).toHaveAttribute('aria-selected', 'true')
+    await expect(columns.locator('visible=true')).toHaveCount(1)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
   })
 
   test('it has a tab bar at the thumb, like an app, and the header is a flat bar', async ({ page }) => {
     const bar = page.getByTestId('bottom-nav')
     await expect(bar).toBeVisible()
 
-    // Four places and "More"; the current one is marked.
-    await expect(bar.getByRole('link')).toHaveCount(4)
+    // Three places, the centre action and "More"; the current one is marked.
+    await expect(bar.getByRole('link')).toHaveCount(3)
+    await expect(bar.getByTestId('bottom-nav-add')).toBeVisible()
     await expect(bar.getByTestId('bottom-tab-home')).toHaveClass(/bottom-tab-active/)
-    // A manager's day: dashboard, work now, projects, reports.
+    // A manager's day: dashboard, work now, projects; reports and the rest are cards in More.
     await bar.getByTestId('bottom-tab-projects').click()
     await expect(page).toHaveURL(/\/projects/)
     await expect(bar.getByTestId('bottom-tab-projects')).toHaveClass(/bottom-tab-active/)
@@ -147,17 +215,38 @@ test.describe('Mobile layout', () => {
    *
    * Cheap: a handful of navigations, not a second run of the suite.
    */
-  for (const path of ['/integrations', '/automation', '/reports', '/data-quality', '/settings', '/users', '/visits', '/work']) {
-    test(`${path} fits the screen with no sideways scrolling`, async ({ page }) => {
+  for (const path of [
+    '/dashboard', '/work', '/leads', '/pipeline', '/follow-ups', '/visits', '/campaigns', '/creatives', '/tracking', '/partners',
+    '/agents', '/companies', '/projects', '/automation', '/journey', '/reports', '/insights', '/audit', '/integrations', '/users',
+    '/access', '/settings', '/settings/profile', '/security', '/data-quality', '/readiness', '/welcome',
+  ]) {
+    test(`${path} fits the screen: the page does not scroll sideways, and nothing in it needs a sideways swipe`, async ({ page }) => {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      await page.waitForLoadState('networkidle').catch(() => {})
 
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       )
       expect(overflow, `${path} scrolls sideways on a phone`).toBeLessThanOrEqual(1)
+
+      // A strip of tabs, a table or a matrix that scrolls inside itself is the same sideways swipe by another name.
+      const swipes = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('main *')).filter((el) => {
+        const box = el.getBoundingClientRect()
+        const style = getComputedStyle(el)
+        return box.width > 0 && box.height > 0 && style.visibility !== 'hidden'
+          && (style.overflowX === 'auto' || style.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 2
+      }).map((el) => `${el.tagName.toLowerCase()}.${(el.className?.toString() ?? '').split(' ').slice(0, 4).join('.')}`))
+      expect(swipes, `${path} has something to swipe sideways`).toEqual([])
     })
   }
+
+  test('a table that does not fit a phone becomes cards, each value under the name of its column', async ({ page }) => {
+    await page.goto('/users')
+    const wrap = page.locator('.table-wrap').first()
+    await expect(wrap).toHaveAttribute('data-stacked', 'true')
+    await expect(wrap.locator('td[data-label]').first()).toBeAttached()
+  })
 
   test('the follow-ups page is usable on a phone', async ({ page }) => {
     await page.goto('/follow-ups?bucket=overdue')
@@ -171,7 +260,7 @@ test.describe('Mobile layout', () => {
     expect(overflow).toBeLessThanOrEqual(1)
   })
 
-  test('More is a full screen, grouped for a thumb, with who you are and signing out', async ({ page }) => {
+  test('More lays the places out as cards for a thumb, with who you are and signing out', async ({ page }) => {
     await page.getByTestId('bottom-nav-more').click()
     const menu = page.getByTestId('more-menu')
     await expect(menu).toBeInViewport()
@@ -179,12 +268,17 @@ test.describe('Mobile layout', () => {
     const box = (await menu.boundingBox())!
     expect(Math.round(box.width)).toBe(page.viewportSize()!.width)
     await expect(page.getByTestId('more-identity')).toBeVisible()
+    await expect(page.getByTestId('more-appearance')).toBeVisible()
     await expect(page.getByTestId('more-logout')).toBeAttached()
 
-    for (const row of await menu.getByRole('navigation').getByRole('link').all()) {
+    // Every place is a card or a row, each one big enough to hit, and none needs a sideways swipe to reach.
+    const links = await menu.getByRole('navigation').getByRole('link').all()
+    expect(links.length).toBeGreaterThan(3)
+    for (const row of links) {
       const height = (await row.boundingBox())?.height
       if (height) expect(height).toBeGreaterThanOrEqual(44)
     }
+    await expect(menu.getByTestId('more-card-leads')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
   })
 

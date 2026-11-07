@@ -4,26 +4,38 @@
 
 @layer components {
   /*
-   * Off-canvas sidebar. Below `lg` it slides in from the inline-start edge
-   * (right in RTL, left in LTR); from `lg` up it is always docked.
+   * The phone's "More" sheet. It rises from the bottom and settles, the way an app's sheet does: never a panel that slides in from
+   * the side. Hidden (not merely off-screen) while closed, so nothing inside it can be tabbed to or read out. From `lg` up the
+   * element is not displayed at all, because the rail and the header's pill track take over.
    */
   .app-sidebar {
-    transition: transform var(--duration-base) var(--ease-out-soft);
-    transform: translateX(-100%);
-  }
-
-  [dir='rtl'] .app-sidebar {
-    transform: translateX(100%);
+    visibility: hidden;
+    transform: translateY(100%);
+    transition: transform var(--duration-base) var(--ease-out-soft), visibility 0s linear var(--duration-base);
   }
 
   .app-sidebar[data-open='true'] {
-    transform: translateX(0);
+    visibility: visible;
+    transform: translateY(0);
+    transition: transform var(--duration-base) var(--ease-out-soft), visibility 0s linear 0s;
   }
 
-  @media (min-width: 64rem) {
+  .more-scrim {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease-out-soft);
+  }
+
+  .more-scrim[data-open='true'] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
     .app-sidebar,
-    [dir='rtl'] .app-sidebar {
-      transform: translateX(0);
+    .app-sidebar[data-open='true'],
+    .more-scrim {
+      transition: none;
     }
   }
 
@@ -757,3 +769,90 @@
 .sales-action:active {
   transform: scale(0.96);
 }
+
+/*
+ * A table that does not fit a phone, as cards (see useStackOnPhone in Table.tsx). Unlayered, like the phone rules in
+ * foundation.css: the cells carry their own padding, borders and nowrap utilities, and none of them may win here.
+ */
+@media (max-width: 639.98px) {
+  .table-wrap[data-stacked='true'] {
+    overflow: visible;
+  }
+
+  .table-wrap[data-stacked='true'] table,
+  .table-wrap[data-stacked='true'] tbody,
+  .table-wrap[data-stacked='true'] tfoot {
+    display: block;
+    width: 100%;
+  }
+
+  .table-wrap[data-stacked='true'] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .table-wrap[data-stacked='true'] tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem 0.875rem;
+    margin-bottom: 0.625rem;
+    padding: 0.875rem;
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+    background: var(--color-surface);
+    text-align: start;
+  }
+
+  /* The row's name: the first cell, or the row header, across the whole card. */
+  .table-wrap[data-stacked='true'] tr > :first-child {
+    grid-column: 1 / -1;
+    font-weight: 600;
+  }
+
+  .table-wrap[data-stacked='true'] td,
+  .table-wrap[data-stacked='true'] tr > th {
+    display: flex;
+    min-width: 0;
+    max-width: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    padding: 0;
+    border: 0;
+    text-align: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    position: static;
+  }
+
+  /* A cell that is only a switch reads as one line: its name, then the box, side by side. */
+  .table-wrap[data-stacked='true'] td:has(> input[type='checkbox']) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .table-wrap[data-stacked='true'] td[data-label]::before {
+    content: attr(data-label);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+}
+
+/*
+ * A grid with no columns of its own has one implicit column sized to its widest content, so one long value (a URL, a row
+ * of numbers) made the whole column, and the page, wider than a phone: the profile page was 1015px wide on a 375px screen.
+ * On a phone such a grid gets one column the width of the screen instead. Grids that name their own columns are untouched.
+ */
+@media (max-width: 639.98px) {
+  .grid:not([class^='grid-cols-']):not([class*=' grid-cols-']) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

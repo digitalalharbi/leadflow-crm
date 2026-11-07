@@ -7,6 +7,9 @@ return [
      */
     'central_domain' => env('APP_CENTRAL_DOMAIN', 'localhost'),
 
+    /* Whether a company can open its own trial workspace from the marketing site. */
+    'self_signup' => env('MOHTAM_SELF_SIGNUP_ENABLED', true),
+
     /* Subdomains that can never belong to a tenant. */
     'reserved_slugs' => [
         'www', 'api', 'app', 'admin', 'staging', 'staging-api', 'demo',

@@ -87,6 +87,10 @@ domain can make it red. `deploy-staging.yml` and `deploy-production.yml` run no 
 
 ## Outstanding work and blockers
 
+**Sales funnel (branch `feat/sales-funnel`, Nov 8, 2026):** public `/pricing` and `/signup`, `GET /public/plans`, `POST /public/signup`
+(trial workspace, setup link emailed, no password handled), and `mohtam:demo-access` for the demo workspace. `IMPLEMENTED_NOT_VERIFIED`
+until CI is green and it is live. The demo workspace `mohtam-demo` is kept as the sales demo, not suspended.
+
 Requirement status is [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md). The owner-only
 items are [`docs/OWNER_ACTIONS.md`](OWNER_ACTIONS.md) and
 [`EXTERNAL_SETUP.md`](../EXTERNAL_SETUP.md); the credential inventory — names only, never values —

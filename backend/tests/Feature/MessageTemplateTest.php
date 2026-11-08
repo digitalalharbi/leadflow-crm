@@ -8,6 +8,7 @@ use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\MessageTemplate;
 use App\Models\Project;
+use App\Services\Whatsapp\TemplateRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -312,5 +313,23 @@ class MessageTemplateTest extends TestCase
         $this->actingAs($this->t['admin'])->postJson('/api/v1/message-templates', [
             'name' => 'محاولة', 'body' => 'x', 'project_id' => $theirs->uuid,
         ])->assertNotFound();
+    }
+
+    public function test_an_automated_message_is_signed_by_the_owner_of_the_lead(): void
+    {
+        $renderer = app(TemplateRenderer::class);
+        $rep = $this->makeUser($this->t['tenant'], Role::Sales, ['name' => 'خالد العتيبي']);
+
+        $this->asTenant($this->t['tenant'], function () use ($renderer, $rep) {
+            $template = 'معك {{agent}} من {{company}}.';
+
+            // Nobody owns it yet: the placeholder is removed, never sent.
+            $this->assertStringNotContainsString('{{', $renderer->render($template, $this->lead->fresh()));
+            $this->assertStringNotContainsString('خالد', $renderer->render($template, $this->lead->fresh()));
+
+            // Owned and sent by a rule (no person acting): it is signed by the owner.
+            $this->lead->forceFill(['assigned_to' => $rep->id])->save();
+            $this->assertStringContainsString('خالد العتيبي', $renderer->render($template, $this->lead->fresh()));
+        });
     }
 }

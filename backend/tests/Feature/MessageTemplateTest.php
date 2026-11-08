@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Automation\EmailDefaultsUpgrade;
 use App\Enums\IntegrationProvider;
 use App\Enums\Role;
 use App\Models\Integration;
@@ -331,5 +332,38 @@ class MessageTemplateTest extends TestCase
             $this->lead->forceFill(['assigned_to' => $rep->id])->save();
             $this->assertStringContainsString('خالد العتيبي', $renderer->render($template, $this->lead->fresh()));
         });
+    }
+
+    public function test_the_projects_facts_reach_the_message_and_vanish_cleanly_when_unknown(): void
+    {
+        $renderer = app(TemplateRenderer::class);
+
+        $this->asTenant($this->t['tenant'], function () use ($renderer) {
+            $project = Project::create(['name' => 'النرجس', 'location' => 'الرياض', 'starting_price' => 950000]);
+            $this->lead->forceFill(['project_id' => $project->id])->save();
+
+            $text = $renderer->render("أهلًا {{name}}\n\n{{facts}}\n\nتحياتي", $this->lead->fresh());
+            $this->assertStringContainsString('الموقع: الرياض', $text);
+            $this->assertStringContainsString('يبدأ السعر من 950,000 ريال', $text);
+
+            $project->forceFill(['location' => null, 'starting_price' => null])->save();
+            $bare = $renderer->render("أهلًا {{name}}\n\n{{facts}}\n\nتحياتي", $this->lead->fresh());
+            $this->assertSame("أهلًا عبدالله\n\nتحياتي", $bare, 'no empty heading is left behind');
+        });
+    }
+
+    public function test_only_an_email_still_worded_as_first_written_is_upgraded(): void
+    {
+        // The workspace was provisioned with the product's email; make it read as it did before the facts were added.
+        $untouched = $this->asTenant($this->t['tenant'], fn () => MessageTemplate::where('channel', 'email')->where('purpose', 'welcome')->firstOrFail());
+        MessageTemplate::withoutGlobalScopes()->whereKey($untouched->id)->update(['body' => MessageTemplate::EMAIL_DEFAULTS_BEFORE['welcome']]);
+        $edited = $this->asTenant($this->t['tenant'], fn () => MessageTemplate::create(['name' => 'ترحيبنا', 'purpose' => 'welcome', 'channel' => 'email', 'subject' => 's', 'body' => 'نص كتبته الشركة بنفسها', 'is_active' => true]));
+
+        $count = (new EmailDefaultsUpgrade)->run();
+
+        $this->assertGreaterThanOrEqual(1, $count);
+        $this->assertStringContainsString('{{facts}}', MessageTemplate::withoutGlobalScopes()->find($untouched->id)->body);
+        $this->assertSame('نص كتبته الشركة بنفسها', MessageTemplate::withoutGlobalScopes()->find($edited->id)->body);
+        $this->assertSame(0, (new EmailDefaultsUpgrade)->run(), 'a second run changes nothing');
     }
 }

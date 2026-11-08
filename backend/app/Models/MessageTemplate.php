@@ -100,14 +100,20 @@ class MessageTemplate extends Model
             'name' => 'ترحيب وتعريف',
             'purpose' => 'welcome',
             'subject' => 'شكرًا لاهتمامك بمشروع {{project}}',
-            'body' => "مرحبًا {{name}}،\n\nمعك {{agent}} من {{company}}. شكرًا لاهتمامك بمشروع {{project}}.\n\nيسعدني أن أجيب عن أي سؤال، وأن أرتب لك زيارة أو اتصالًا في الوقت الذي يناسبك.\n\nتحياتي،\n{{agent}}",
+            'body' => "مرحبًا {{name}}،\n\nمعك {{agent}} من {{company}}. شكرًا لاهتمامك بمشروع {{project}}.\n\n{{facts}}\n\nيسعدني أن أجيب عن أي سؤال، وأن أرتب لك زيارة للمشروع أو اتصالًا في الوقت الذي يناسبك. يكفي أن تردّ على هذه الرسالة بالوقت المناسب لك.\n\nتحياتي،\n{{agent}}",
         ],
         [
             'name' => 'متابعة بعد عدم الرد',
             'purpose' => 'nurture',
             'subject' => 'بخصوص {{project}}',
-            'body' => "مرحبًا {{name}}،\n\nحاولت التواصل معك بخصوص {{project}}. متى يناسبك أن أتصل بك؟\n\nتحياتي،\n{{agent}}",
+            'body' => "مرحبًا {{name}}،\n\nحاولت التواصل معك بخصوص {{project}}، وأحببت أن أترك لك ما يهمك:\n\n{{facts}}\n\nمتى يناسبك أن أتصل بك، أو أرتّب لك زيارة قصيرة للمشروع؟ ردّ على هذه الرسالة بالوقت المناسب وأتولى الباقي.\n\nتحياتي،\n{{agent}}",
         ],
+    ];
+
+    /** The wording these two emails had before the project facts were added; only an email still worded exactly so is upgraded. */
+    public const EMAIL_DEFAULTS_BEFORE = [
+        'welcome' => "مرحبًا {{name}}،\n\nمعك {{agent}} من {{company}}. شكرًا لاهتمامك بمشروع {{project}}.\n\nيسعدني أن أجيب عن أي سؤال، وأن أرتب لك زيارة أو اتصالًا في الوقت الذي يناسبك.\n\nتحياتي،\n{{agent}}",
+        'nurture' => "مرحبًا {{name}}،\n\nحاولت التواصل معك بخصوص {{project}}. متى يناسبك أن أتصل بك؟\n\nتحياتي،\n{{agent}}",
     ];
 
     protected $fillable = [

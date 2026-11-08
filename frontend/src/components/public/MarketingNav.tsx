@@ -25,6 +25,16 @@ export function MarketingNav() {
           {copy[page]}
         </NavLink>
       ))}
+      <NavLink
+        to="/pricing"
+        className={({ isActive }) => cn(
+          'inline-flex min-h-11 items-center rounded-full px-4 text-[0.9375rem] font-medium hover:bg-[var(--color-chrome-fill)] hover:text-[var(--color-ink)]',
+          isActive ? 'bg-[var(--color-chrome-fill)] font-semibold text-[var(--color-ink)]' : 'text-[var(--color-ink-muted)]',
+        )}
+        data-testid="landing-nav-pricing"
+      >
+        {i18n.language.startsWith('ar') ? 'الأسعار' : 'Pricing'}
+      </NavLink>
     </>
   )
 }

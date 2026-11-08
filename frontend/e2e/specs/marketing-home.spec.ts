@@ -25,7 +25,7 @@ test.describe('Marketing home and login routing', () => {
   test('the calls to action go to the login', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByTestId('landing-trial')).toHaveText('ابدأ مع مهتم')
-    await expect(page.getByTestId('landing-trial')).toHaveAttribute('href', '/login')
+    await expect(page.getByTestId('landing-trial')).toHaveAttribute('href', '/signup')
     await expect(page.getByTestId('landing-login')).toHaveText('تسجيل الدخول')
     await expect(page.getByTestId('landing-login')).toHaveAttribute('href', '/login')
     await page.getByTestId('landing-login').click()
@@ -135,7 +135,7 @@ test.describe('Marketing home and login routing', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
 
     await page.getByTestId('public-menu-toggle').click()
-    await expect(page.getByTestId('public-menu-entry')).toHaveAttribute('href', '/login')
+    await expect(page.getByTestId('public-menu-entry')).toHaveAttribute('href', '/signup')
   })
 
   test('the platform owner still has their own door, and a company login does not open it', async ({ page }) => {

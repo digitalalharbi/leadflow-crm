@@ -308,6 +308,13 @@ class RealUseReadinessTest extends TestCase
         $mailer = $this->fakeMailer(true);
         app(AccountEmail::class)->verification($user, EmailVerification::token($user), $tenant);
         $this->assertSame('info@mohtam.pro', $mailer->sent[0]->replyTo);
+        // Automatic mail leaves from no-reply@ and is answered at info@: never the same address. Production's sender is
+        // set by the compose file (it wins over the env file), so that is what is pinned here, not this machine's .env.
+        $this->assertNotSame($mailer->sent[0]->replyTo, $mailer->sent[0]->fromAddress);
+        $compose = (string) file_get_contents(base_path('../docker-compose.production.yml'));
+        $this->assertStringContainsString('MAIL_FROM_ADDRESS: ${MOHTAM_MAIL_FROM:-no-reply@mohtam.pro}', $compose);
+        $this->assertStringContainsString('LEADFLOW_MAIL_FROM_ADDRESS: ${MOHTAM_MAIL_FROM:-no-reply@mohtam.pro}', $compose);
+        $this->assertStringContainsString('LEADFLOW_MAIL_REPLY_TO: ${MOHTAM_MAIL_REPLY_TO:-info@mohtam.pro}', $compose);
         $this->assertStringContainsString('https://mohtam.pro/verify-email?token=', $mailer->sent[0]->html);
     }
 

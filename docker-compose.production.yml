@@ -46,10 +46,11 @@ x-backend-env: &backend-env
   BILLING_PAST_DUE_GRACE_DAYS: ${BILLING_PAST_DUE_GRACE_DAYS:-14}
   TENANCY_DEFAULT_PLAN: ${TENANCY_DEFAULT_PLAN:-enterprise}
   MAIL_FROM_NAME: ${MAIL_FROM_NAME:-مهتم — Mohtam}
-  # The product's one sending identity. Named here so it wins over an older MAIL_FROM_ADDRESS in the env file:
-  # replies must reach a mailbox somebody reads.
-  MAIL_FROM_ADDRESS: ${MOHTAM_MAIL_ADDRESS:-info@mohtam.pro}
-  LEADFLOW_MAIL_FROM_ADDRESS: ${MOHTAM_MAIL_ADDRESS:-info@mohtam.pro}
+  # The product's sending identity. Automatic mail (password links, invitations, alerts, digests) leaves from
+  # no-reply@ and every reply goes to info@, the mailbox somebody reads (owner's decision, Nov 7 2026). Named here, under
+  # its own variable, so it wins over an older MAIL_FROM_ADDRESS or MOHTAM_MAIL_ADDRESS left in the env file.
+  MAIL_FROM_ADDRESS: ${MOHTAM_MAIL_FROM:-no-reply@mohtam.pro}
+  LEADFLOW_MAIL_FROM_ADDRESS: ${MOHTAM_MAIL_FROM:-no-reply@mohtam.pro}
   LEADFLOW_MAIL_FROM_NAME: ${MAIL_FROM_NAME:-مهتم — Mohtam}
   LEADFLOW_MAIL_REPLY_TO: ${MOHTAM_MAIL_REPLY_TO:-info@mohtam.pro}
   API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}

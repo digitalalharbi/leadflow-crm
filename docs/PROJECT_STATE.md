@@ -10,17 +10,17 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-06.
+Updated 2026-11-07.
 
 ## Last verified commit
 
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — same content as v0.9.9 plus this docs change |
-| Full sha | `c3b99e8c16ad3a7022f1721e617cca961caf4e14` on `main` (Release v0.9.9, #258) |
-| Committed | 2026-11-06 |
-| Release branch | `main` — v0.9.9. **Live:** production serves `c3b99e8` (deploy run 42256745787: backup, restore check, first-client smoke, 9 of 9 smoke checks; automation readiness `ready`) |
+| Integration branch | `develop` — same content as v0.9.11 plus this docs change |
+| Full sha | `dd2210d5e369e4c7f5b4579f47ee16bed82c7199` on `main` (Release v0.9.11, #263, tag `v0.9.11`) |
+| Committed | 2026-11-07 |
+| Release branch | `main` — v0.9.11. **Live:** production serves `dd2210d` (deploy run 42377362775: backup, restore check, first-client smoke, 9 of 9 smoke checks; automation readiness `ready`). The new phone navigation is in the live bundle (checked by fetching its chunks) |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:
@@ -39,11 +39,21 @@ unattached and may hold another project's data.
 
 ## Release notes for the record
 
-- v0.9.8 (`902dea8`) merged but its deploy never ran: CI on main failed on one e2e spec (a tap
-  behind the fixed tab bar). Fixed in #257 and shipped as v0.9.9 with the same content.
-- **Tag `v0.9.9` on GitHub points at `902dea8` (v0.9.8), not `c3b99e8`.** Made in error from a stale
-  fetch; nothing deploys from tags. Moving a pushed tag is a rewrite, so it is left for the owner:
-  `git tag -f -a v0.9.9 c3b99e8 -m "Release v0.9.9" && git push -f origin v0.9.9`.
+- v0.9.10 (`8471333`, #260): `mohtam:create-workspace`. **Run on production Nov 7, 20:18 UTC:**
+  workspace `mohtam` ("شركة مهتم"), owner `admin@mohtam.pro`. Its setup email reached the `info@`
+  inbox (not junk) two seconds later through the `*@mohtam.pro` catch-all, which therefore works.
+  `MOHTAM_MARKETING_WORKSPACE=mohtam` was added to `.env.production` and deployed (run 42410866200:
+  `active=3 marketing_workspace_set=yes`, smoke 9/9); `/api/v1/public/contact` now answers
+  `form: true`. The owner chooses the password from the email; `mohtam-demo` stays active until the
+  owner suspends it from the platform console (never delete).
+- v0.9.11 (`dd2210d`, #262): phone navigation as an app. More is a sheet that rises from the bottom
+  with every place as a card; a centre add-lead action; every screen fits a phone (tables that do
+  not fit become cards, tab strips wrap, the pipeline shows one stage at a time, grids never exceed
+  the screen). The mobile spec sweeps all 27 signed-in screens for page overflow and for anything
+  that scrolls sideways; an audit of 39 screens passed on iPhone 14 WebKit and Pixel 7 Chromium.
+- The "الريادة" company in screenshots and specs is the e2e fixture tenant, never production.
+- v0.9.8 (`902dea8`) merged but never deployed: CI on main failed on one e2e spec. Shipped as v0.9.9.
+  Tag `v0.9.9` was mis-pointed and corrected by the owner to `c3b99e8` on Nov 6.
 
 ## Proven live since v0.9.7
 
@@ -79,6 +89,11 @@ domain can make it red. `deploy-staging.yml` and `deploy-production.yml` run no 
 `NOT CONFIGURED` rather than failing when their host variables are absent.
 
 ## Outstanding work and blockers
+
+**Sales funnel (branch `feat/sales-funnel`, Nov 8, 2026):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
+trial *request* (a demo lead through `/public/contact`), and `mohtam:demo-access` for the demo workspace. A first version opened workspaces
+from the public page; `RealUseReadinessTest` ("nobody can create a company from outside") rejected it and it was removed: no public route
+creates a company. `IMPLEMENTED_NOT_VERIFIED` until CI is green and it is live. `mohtam-demo` is kept as the sales demo.
 
 Requirement status is [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md). The owner-only
 items are [`docs/OWNER_ACTIONS.md`](OWNER_ACTIONS.md) and

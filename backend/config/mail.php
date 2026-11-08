@@ -117,7 +117,7 @@ return [
     'dkim_selectors' => ['hostingermail-a', 'resend', 'google', 'default', 'selector1', 'k1', 's1', 'mail'],
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'info@mohtam.pro'),
+        'address' => env('MAIL_FROM_ADDRESS', 'no-reply@mohtam.pro'),
         'name' => env('MAIL_FROM_NAME', 'مهتم'),
     ],
 

@@ -150,12 +150,12 @@ test.describe('Marketing page', () => {
     expect(copper).not.toBe(ink)
   })
 
-  test('the calls to action lead somewhere real: start and sign in both go to the login — there is no sign-up', async ({ page }) => {
+  test('the calls to action lead somewhere real: start goes to the trial request, sign in goes to the login — there is no account-creating sign-up', async ({ page }) => {
     await ready(page, '/')
     await expect(page.getByText(/إنشاء حساب|Sign up/)).toHaveCount(0)
 
     await page.getByTestId('landing-trial').click()
-    await expect(page).toHaveURL(/\/login/)
+    await expect(page).toHaveURL(/\/signup/)
 
     await page.goto('/')
     await page.getByTestId('landing-login').click()

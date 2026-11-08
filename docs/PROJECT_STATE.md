@@ -17,10 +17,10 @@ Updated 2026-11-07.
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — same content as v0.9.11 plus this docs change |
-| Full sha | `dd2210d5e369e4c7f5b4579f47ee16bed82c7199` on `main` (Release v0.9.11, #263, tag `v0.9.11`) |
-| Committed | 2026-11-07 |
-| Release branch | `main` — v0.9.11. **Live:** production serves `dd2210d` (deploy run 42377362775: backup, restore check, first-client smoke, 9 of 9 smoke checks; automation readiness `ready`). The new phone navigation is in the live bundle (checked by fetching its chunks) |
+| Integration branch | `develop` — `618944e9a9e546c7e43ce9b868de5f243c3df555` (includes #271 email content, not yet released) |
+| Full sha | `05d040a3d23d20c832ac943f13eced69f6e1006c` on `main` (Release v0.9.13, #270, tag `v0.9.13`) |
+| Committed | 2026-11-08 |
+| Release branch | `main` — v0.9.13. **Live:** deploy run 42483580035 (CI 42483580076 green): restore check PASS, `FIRST_CLIENT_SMOKE=PASS`, `SMOKE: PASS` 9/9, readiness mail/google_login/automation/reports `ready`. Checked by curl: `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON, `POST /api/v1/public/signup` 404, random password-link token 404. **Not live:** #271 (develop only) — ships as v0.9.14 |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:

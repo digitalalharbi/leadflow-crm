@@ -58,6 +58,10 @@ class FormAnalyticsTest extends TestCase
 
     private function trail(): void
     {
+        // One instant for the whole trail: each now() below would otherwise be read a moment apart, and a second
+        // ticking over between two of them moved the averaged durations by one (the flake: 121 instead of 120).
+        $this->freezeTime();
+
         foreach (range(1, 10) as $i) {
             $this->event('visit', "s{$i}");
         }

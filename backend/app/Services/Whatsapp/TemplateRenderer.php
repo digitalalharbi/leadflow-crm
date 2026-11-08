@@ -42,7 +42,30 @@ class TemplateRenderer
             'company' => $company ?: $lead->tenant?->branding?->company_name ?: $lead->tenant?->name,
             'project' => $lead->project?->name,
             'questions' => $this->questions($lead),
+            'facts' => $this->facts($lead),
         ];
+    }
+
+    /**
+     * What a customer wants to know first about the project, as short lines: where it is and what it starts at.
+     * Only what the workspace has actually entered; with nothing to say the whole block is dropped, so a message
+     * never carries a heading with nothing under it.
+     */
+    private function facts(Lead $lead): ?string
+    {
+        $project = $lead->project;
+        $lines = [];
+
+        if (filled($project?->location)) {
+            $lines[] = 'الموقع: '.$project->location;
+        }
+
+        if ($project?->starting_price !== null && (float) $project->starting_price > 0) {
+            $currency = (string) ($lead->tenant?->settings?->currency ?? 'SAR');
+            $lines[] = 'يبدأ السعر من '.number_format((float) $project->starting_price, 0, '.', ',').' '.($currency === 'SAR' ? 'ريال' : $currency);
+        }
+
+        return $lines === [] ? null : implode("\n", $lines);
     }
 
     public function render(string $template, Lead $lead, ?User $agent = null, ?string $company = null, array $extra = []): string

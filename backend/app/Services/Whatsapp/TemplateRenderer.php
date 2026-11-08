@@ -36,7 +36,9 @@ class TemplateRenderer
             // greeting them — so an unusable name is dropped like any other
             // placeholder we cannot fill.
             'name' => $lead->first_name ?: $this->givenName($lead->full_name),
-            'agent' => $agent?->name,
+            // An automated message has no person sending it, so it is signed by the one who owns the lead: the customer
+            // is told who will call, not left with "معك … من الشركة" and an empty signature.
+            'agent' => ($agent ?? $lead->assignee)?->name,
             'company' => $company ?: $lead->tenant?->branding?->company_name ?: $lead->tenant?->name,
             'project' => $lead->project?->name,
             'questions' => $this->questions($lead),

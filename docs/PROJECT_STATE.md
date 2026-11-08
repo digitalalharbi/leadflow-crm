@@ -10,17 +10,17 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-07.
+Updated 2026-11-08.
 
 ## Last verified commit
 
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — `618944e9a9e546c7e43ce9b868de5f243c3df555` (includes #271 email content, not yet released) |
-| Full sha | `05d040a3d23d20c832ac943f13eced69f6e1006c` on `main` (Release v0.9.13, #270, tag `v0.9.13`) |
+| Integration branch | `develop` — `618944e9a9e546c7e43ce9b868de5f243c3df555` (all of it is in v0.9.14) |
+| Full sha | `98bda683af3f4d8ccf6e4913edbca07121a7fc53` on `main` (Release v0.9.14, #273, tag `v0.9.14`) |
 | Committed | 2026-11-08 |
-| Release branch | `main` — v0.9.13. **Live:** deploy run 42483580035 (CI 42483580076 green): restore check PASS, `FIRST_CLIENT_SMOKE=PASS`, `SMOKE: PASS` 9/9, readiness mail/google_login/automation/reports `ready`. Checked by curl: `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON, `POST /api/v1/public/signup` 404, random password-link token 404. **Not live:** #271 (develop only) — ships as v0.9.14 |
+| Release branch | `main` — v0.9.14 (includes #271 email content). **Live:** deploy run 42508592072 (CI 42508592082 green): migrations ran, restore check PASS (132 restored / 133 live), `FIRST_CLIENT_SMOKE=PASS`, `SMOKE: PASS` 9/9. `evidence email_failure` shows 74x 554 recipient-domain and 2x SMTP auth failures (historic, MAIL_PASSWORD rotation is owner-only). Checked by curl: `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON, `POST /api/v1/public/signup` 404, random password-link token 404 |
 
 `develop` is where development lands; `main` is releases only and is never touched by
 development. Verify, do not trust:

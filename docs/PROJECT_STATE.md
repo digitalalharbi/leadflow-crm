@@ -39,10 +39,13 @@ unattached and may hold another project's data.
 
 ## Release notes for the record
 
-- v0.9.10 (`8471333`, #260): `mohtam:create-workspace` creates a clean company workspace from the
-  server; the owner chooses a password from an emailed link. Not yet run on production: the owner
-  runs it with `--company="شركة مهتم" --slug=mohtam --admin-email=admin@mohtam.pro`. `*@mohtam.pro`
-  is a catch-all into `info@`, set up from another session; its activation is not confirmed here.
+- v0.9.10 (`8471333`, #260): `mohtam:create-workspace`. **Run on production Nov 7, 20:18 UTC:**
+  workspace `mohtam` ("شركة مهتم"), owner `admin@mohtam.pro`. Its setup email reached the `info@`
+  inbox (not junk) two seconds later through the `*@mohtam.pro` catch-all, which therefore works.
+  `MOHTAM_MARKETING_WORKSPACE=mohtam` was added to `.env.production` and deployed (run 42410866200:
+  `active=3 marketing_workspace_set=yes`, smoke 9/9); `/api/v1/public/contact` now answers
+  `form: true`. The owner chooses the password from the email; `mohtam-demo` stays active until the
+  owner suspends it from the platform console (never delete).
 - v0.9.11 (`dd2210d`, #262): phone navigation as an app. More is a sheet that rises from the bottom
   with every place as a card; a centre add-lead action; every screen fits a phone (tables that do
   not fit become cards, tab strips wrap, the pipeline shows one stage at a time, grids never exceed

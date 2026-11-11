@@ -10,7 +10,7 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-08.
+Updated 2026-11-11.
 
 ## Last verified commit
 
@@ -90,10 +90,28 @@ domain can make it red. `deploy-staging.yml` and `deploy-production.yml` run no 
 
 ## Outstanding work and blockers
 
-**Sales funnel (branch `feat/sales-funnel`, Nov 8, 2026):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
-trial *request* (a demo lead through `/public/contact`), and `mohtam:demo-access` for the demo workspace. A first version opened workspaces
-from the public page; `RealUseReadinessTest` ("nobody can create a company from outside") rejected it and it was removed: no public route
-creates a company. `IMPLEMENTED_NOT_VERIFIED` until CI is green and it is live. `mohtam-demo` is kept as the sales demo.
+**Sales funnel (#267, live since v0.9.12):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
+trial *request* (a demo lead through `/public/contact`), and `mohtam:demo-access` for the demo workspace. No public route creates a
+company; `RealUseReadinessTest` pins it. `VERIFIED` by CI and by curl against production (see the release row above). `mohtam-demo` is
+kept as the sales demo.
+
+## التقرير النهائي لوكيل المتابعة — 2026-11-11
+
+الطابور فارغ. المهمة المجدولة `mohtam-autopilot` **لم تُعطَّل**: التعطيل يتطلب موافقة المالك من التطبيق ولا يمكن للوكيل تنفيذه
+في تشغيل آلي. على المالك تعطيلها يدوياً من قائمة المهام المجدولة.
+
+- **المُسلَّم:** ‎#265 (سجل نظيف)، ‎#266 (المرسل الآلي `no-reply@mohtam.pro` والرد على `info@`)، ‎#267 (التسعير وطلب التجربة)،
+  ‎#269 (توقيع الرسائل الآلية باسم مالك العميل)، ‎#271 (رسائل الترحيب والمتابعة تحمل بيانات المشروع). الإصدارات v0.9.12 و v0.9.13
+  و v0.9.14.
+- **الحي الآن:** v0.9.14 على `main` ‏`98bda683af3f4d8ccf6e4913edbca07121a7fc53` (الوسم `v0.9.14` على نفس الإيداع). تشغيل النشر
+  42508592072 ناجح بعد CI ‏42508592082: الترحيلات نُفّذت، `RESTORE CHECK` ناجح، `FIRST_CLIENT_SMOKE=PASS`، ‏`SMOKE: PASS` ‏9/9.
+- **فحص حي أُعيد في 2026-11-11 بـ curl:** ‏`/pricing` ‏200 HTML، ‏`/signup` ‏200 HTML، ‏`/api/v1/public/plans` ‏200 JSON،
+  ‏`POST /api/v1/public/signup` ‏404، رابط كلمة مرور بـ 48 حرفاً عشوائياً 404.
+- **غير مُثبت:** وصول بريد حقيقي بعد تغيير المرسل لم يُختبر (لا يُرسَل بريد من هذا الوكيل). سجل `email_failure` يحمل 74 رفضاً 554
+  وفشلَي مصادقة SMTP قديمة.
+- **للمالك فقط:** تدوير `MAIL_PASSWORD` في Hostinger وفي ملف البيئة على الخادم؛ تشغيل `mohtam:demo-access` على الخادم؛ تحديد أسعار
+  الباقات من لوحة المنصة؛ دعوة الدخول عبر Google؛ قرار تعليق (لا حذف) مساحة العرض القديمة؛ وجهة النسخ الاحتياطي خارج الخادم؛ وأي أمر
+  على الخادم.
 
 Requirement status is [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md). The owner-only
 items are [`docs/OWNER_ACTIONS.md`](OWNER_ACTIONS.md) and

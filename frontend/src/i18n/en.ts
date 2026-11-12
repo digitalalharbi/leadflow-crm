@@ -222,6 +222,7 @@ export default {
       expired: 'This report has ended', expiredHint: 'Ask its owner for a new link.',
       gone: 'This link is not available', goneHint: 'It may have been revoked or is no longer valid.',
       generated: 'Numbers updated {{when}}',
+      savePdf: 'Save report as PDF',
     },
   },
   revenue: {

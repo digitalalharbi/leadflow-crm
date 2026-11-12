@@ -60,6 +60,13 @@ test.describe('Live shared reports', () => {
       await expect(open.getByTestId(id)).toHaveCount(0)
     }
     await expect(open.getByTestId('shared-generated')).toBeVisible()
+
+    // The client can save the report as a PDF: the button opens the browser's print dialog, and print hides it.
+    await open.evaluate(() => { (window as unknown as { __printed: number }).__printed = 0; window.print = () => { (window as unknown as { __printed: number }).__printed++ } })
+    await open.getByTestId('shared-save-pdf').click()
+    expect(await open.evaluate(() => (window as unknown as { __printed: number }).__printed)).toBe(1)
+    await open.emulateMedia({ media: 'print' })
+    await expect(open.getByTestId('shared-save-pdf')).toBeHidden()
     await anonymous.close()
   })
 

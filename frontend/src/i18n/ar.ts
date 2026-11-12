@@ -291,6 +291,7 @@ export default {
       expired: 'انتهى هذا التقرير', expiredHint: 'اطلب من صاحب التقرير رابطًا جديدًا.',
       gone: 'هذا الرابط غير متاح', goneHint: 'ربما أُوقف أو لم يعد صحيحًا.',
       generated: 'حُدّثت الأرقام {{when}}',
+      savePdf: 'حفظ التقرير PDF',
     },
   },
   revenue: {

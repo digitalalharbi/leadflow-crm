@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Automation\Recovery;
-use App\Domain\Privacy\SuppressionList;
+use App\Domain\Mail\BounceRecorder;
 use App\Enums\ActivityType;
 use App\Enums\MessageChannel;
 use App\Enums\MessageDirection;
 use App\Enums\MessageStatus;
 use App\Events\LeadReplied;
-use App\Models\EmailDelivery;
 use App\Models\Lead;
 use App\Models\LeadMessage;
 use App\Services\Leads\ActivityLogger;
@@ -54,11 +52,11 @@ class EmailInboundController extends Controller
 
         foreach ($events as $event) {
             if (in_array($event['type'], ['bounce', 'delivered'], true)) {
-                $this->markDelivery($event);
+                app(BounceRecorder::class)->markDelivery($event['email'] ?? null, (string) $event['type']);
             }
 
             $outcome = match ($event['type']) {
-                'bounce' => $this->bounce($event),
+                'bounce' => app(BounceRecorder::class)->record((string) ($event['email'] ?? ''), (string) ($event['reason'] ?? '')),
                 'delivered' => 'delivered',
                 default => $this->reply($event),
             };
@@ -234,59 +232,4 @@ class EmailInboundController extends Controller
 
     /** @return 'bounces'|'unmatched' */
     /** What the provider says happened to the last email the product accepted for this address, across its own log. */
-    private function markDelivery(array $event): void
-    {
-        $email = mb_strtolower(trim((string) ($event['email'] ?? '')));
-
-        if ($email === '') {
-            return;
-        }
-
-        EmailDelivery::withoutGlobalScopes()->where('to_email', $email)->where('status', EmailDelivery::SENT)->where('updated_at', '>=', now()->subDays(3))
-            ->latest('id')->first()?->forceFill(['status' => $event['type'] === 'delivered' ? EmailDelivery::DELIVERED : EmailDelivery::BOUNCED])->save();
-    }
-
-    private function bounce(array $event): string
-    {
-        $email = mb_strtolower(trim((string) ($event['email'] ?? '')));
-
-        if ($email === '') {
-            return 'unmatched';
-        }
-
-        // The most recent email we sent to that address — the one that bounced.
-        $message = LeadMessage::withoutGlobalScopes()
-            ->where('channel', MessageChannel::Email->value)
-            ->where('direction', MessageDirection::Outbound->value)
-            ->whereIn('lead_id', Lead::withoutGlobalScopes()->whereRaw('lower(email) = ?', [$email])->select('id'))
-            ->latest('id')
-            ->first();
-
-        if (! $message) {
-            return 'unmatched';
-        }
-
-        $lead = Lead::withoutGlobalScopes()->find($message->lead_id);
-
-        return $this->context->withTenant($lead->tenant, function () use ($lead, $message, $event) {
-            $message->forceFill([
-                'status' => MessageStatus::Failed,
-                'failed_at' => now(),
-                'failure_code' => 'bounced',
-                'failure_reason' => Str::limit((string) ($event['reason'] ?? 'Bounced'), 250, ''),
-            ])->save();
-
-            $lead->forceFill(['email_bounced_at' => now()])->saveQuietly();
-
-            if ($lead->email) {
-                app(SuppressionList::class)->add($lead->tenant_id, 'email', $lead->email, 'bounced', null, Str::limit((string) ($event['reason'] ?? ''), 200, ''));
-            }
-            $this->activities->log($lead, ActivityType::EmailBounced, null, Str::limit((string) ($event['reason'] ?? ''), 140));
-
-            // An automated email that bounced: the same message on WhatsApp, else a person.
-            app(Recovery::class)->afterDeliveryFailure($message->refresh());
-
-            return 'bounces';
-        });
-    }
 }

@@ -84,6 +84,18 @@ return [
      * customer's answer lands in the same thread on the lead. Without one,
      * replies go to the workspace's own mailbox and only the rep sees them.
      */
+    /*
+     * Reading the undeliverable-mail notices from the sending mailbox (Hostinger SMTP has no bounce webhook).
+     * Off by default; the mailbox is the same one that sends, so its own credentials are used unless set apart.
+     */
+    'bounce_mailbox' => [
+        'enabled' => (bool) env('BOUNCE_MAILBOX_ENABLED', false),
+        'host' => env('BOUNCE_IMAP_HOST', 'imap.hostinger.com'),
+        'port' => (int) env('BOUNCE_IMAP_PORT', 993),
+        'username' => env('BOUNCE_IMAP_USERNAME', env('MAIL_USERNAME')),
+        'password' => env('BOUNCE_IMAP_PASSWORD', env('MAIL_PASSWORD')),
+    ],
+
     'email_inbound' => [
         'domain' => env('EMAIL_INBOUND_DOMAIN'),
         'secret' => env('EMAIL_INBOUND_SECRET'),

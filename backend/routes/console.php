@@ -124,6 +124,7 @@ Schedule::command('leadflow:run-routines')->everyFiveMinutes()->withoutOverlappi
 Schedule::command('leadflow:sweep-scheduled')->everyTenMinutes()->withoutOverlapping();
 
 // An email whose worker stopped mid-send (a deploy, a dead connection) is counted as a failed try and sent again.
+Schedule::command('leadflow:read-bounces')->everyFifteenMinutes()->withoutOverlapping()->when(fn () => (bool) config('services.bounce_mailbox.enabled'));
 Schedule::command('leadflow:recover-emails')->everyTenMinutes()->withoutOverlapping();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();

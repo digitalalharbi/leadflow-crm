@@ -856,3 +856,24 @@
   }
 }
 
+
+/*
+ * A shared report saved as PDF (the browser's print dialog): the owner's colours stay, a card never splits across two
+ * pages, the page is white, and the controls of the screen are gone.
+ */
+@media print {
+  [data-testid='shared-report'] {
+    max-width: none;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  [data-testid='shared-report'] [data-section] {
+    break-inside: avoid;
+  }
+
+  body {
+    background: #fff;
+  }
+}

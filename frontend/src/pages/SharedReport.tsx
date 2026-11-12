@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { useQuery } from '@tanstack/react-query'
-import { KeyRound, LockKeyhole, RefreshCw } from 'lucide-react'
+import { KeyRound, LockKeyhole, Printer, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, CardBody, Input, Skeleton } from '@/components/ui'
 import { ExecPageSection } from '@/components/reports/ExecPages'
@@ -188,6 +188,11 @@ export function ReportView({ data, refreshing = false }: { data: SharedReportDat
           <h1 className="text-[1.5rem] font-extrabold" data-testid="shared-title">{data.report.name}</h1>
         </div>
         <div className="text-end">
+          {/* The browser's own print dialog saves a PDF; the page prints cleanly (see the print rules in index.css). */}
+          <button type="button" onClick={() => window.print()} className="pressable mb-1 inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold ring-1 ring-inset ring-[var(--color-border-strong)] hover:bg-[var(--color-chrome-fill)] print:hidden" data-testid="shared-save-pdf">
+            <Printer className="size-3.5" aria-hidden />
+            {t('share.public.savePdf')}
+          </button>
           <p className="t-caption tabular-nums" data-testid="shared-period">{data.report.from} → {data.report.to} · {t('share.public.live')}</p>
           {data.report.previous && <p className="t-caption tabular-nums" data-testid="shared-previous-period">{t('reportView.comparedWith', { from: data.report.previous.from, to: data.report.previous.to })}</p>}
         </div>

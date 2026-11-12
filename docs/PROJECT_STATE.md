@@ -10,7 +10,7 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-12 22:50 UTC.
+Updated 2026-11-12 23:40 UTC.
 
 ## Last verified commit
 
@@ -65,8 +65,8 @@ are the old ones and leave the 24-hour window on their own.
 
 | PR | Branch | Title |
 |---|---|---|
-| #277 | `feat/shared-report-branding` | Shared client report: save as PDF — CI 43307618260, Backend and Frontend green, Playwright running since 21:10 UTC |
-| #278 | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — first run 43314130596 failed its own nginx gate (an unquoted `{20,64}` cut the regex: `pcre2_compile() failed`); fixed by quoting it in `afc7c93`, run 43322641465 pending. Merge only when "Front-door nginx config parses and answers" is green |
+| ~~#277~~ | `feat/shared-report-branding` | Shared client report: save as PDF — CI 43307618260 all green; **merged into `develop`** 2026-11-12 23:14 UTC as `8934c53a6f8257f739e190ff50c71a58fa339a92`. Not released yet (goes in v0.9.16 with #278) |
+| #278 | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — run 43314130596 failed its own nginx gate (an unquoted `{20,64}` cut the regex: `pcre2_compile() failed`), quoted in `afc7c93`; run 43322641465 then parsed but answered WhatsApp with **502**: nginx cannot resolve `leadflow-api` in the CI container and the 502 → `@app_shell` fallback is a *second* `error_page` jump (after 418 → `@share_preview`), which nginx only takes with `recursive_error_pages on`. Set in `8c673d5` (plus `resolver_timeout 3s`), CI run 43328611399; that is the second and last repair attempt. Merge only when "Front-door nginx config parses and answers" is green |
 
 ```bash
 gh pr list --repo digitalalharbi/leadflow-crm --state open

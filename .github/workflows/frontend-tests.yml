@@ -35,6 +35,22 @@ jobs:
       - name: Unit tests
         run: npm run test
 
+      # The front door's own config is shipped inside the image and a broken one takes the whole site down, so it is
+      # parsed here and made to answer a person and a link-preview crawler before it can be merged.
+      - name: Front-door nginx config parses and answers
+        working-directory: .
+        run: |
+          docker run --rm -v "$PWD/docker/nginx/spa.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine nginx -t
+          id=$(docker run -d -p 8089:80 -v "$PWD/docker/nginx/spa.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine)
+          sleep 3
+          token=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          for ua in "Mozilla/5.0" "WhatsApp/2.23.20 A"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -A "$ua" "http://127.0.0.1:8089/r/$token")
+            echo "$ua -> $code"
+            [ "$code" = "200" ] || { docker logs "$id"; docker rm -f "$id"; exit 1; }
+          done
+          docker rm -f "$id"
+
       # A build failure must stop a deploy, so it is part of CI, not of deploy.
       - name: Production build
         run: npm run build

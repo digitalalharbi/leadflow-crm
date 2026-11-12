@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\GoogleOAuthController;
 use App\Http\Controllers\Api\V1\SharedFileController;
 use App\Http\Controllers\ApprovalLinkController;
 use App\Http\Controllers\EmailTrackingController;
+use App\Http\Controllers\SharePreviewController;
 use App\Http\Controllers\SignedExportController;
 use App\Http\Controllers\SignedFileController;
 use App\Http\Controllers\TrackerScriptController;
@@ -82,3 +83,6 @@ Route::middleware('throttle:120,1')->group(function () {
  */
 Route::get('/t/{token}', TrackingRedirectController::class)->middleware('throttle:300,1')->where('token', '[A-Za-z0-9]{6,24}')->name('tracking.redirect');
 Route::get('/tracker/{token}.js', TrackerScriptController::class)->middleware('throttle:120,1')->where('token', '[A-Za-z0-9]{6,24}')->name('tracking.script');
+
+// The card a pasted report link shows in a chat. Reached only through the front door's proxy, for link-preview crawlers.
+Route::get('/share-preview/{token}', [SharePreviewController::class, 'show'])->middleware('throttle:120,1')->where('token', '[A-Za-z0-9]{20,64}');

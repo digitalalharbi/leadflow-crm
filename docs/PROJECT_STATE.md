@@ -10,7 +10,7 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-12 23:40 UTC.
+Updated 2026-11-13 00:30 UTC.
 
 ## Last verified commit
 
@@ -66,7 +66,7 @@ are the old ones and leave the 24-hour window on their own.
 | PR | Branch | Title |
 |---|---|---|
 | ~~#277~~ | `feat/shared-report-branding` | Shared client report: save as PDF — CI 43307618260 all green; **merged into `develop`** 2026-11-12 23:14 UTC as `8934c53a6f8257f739e190ff50c71a58fa339a92`. Not released yet (goes in v0.9.16 with #278) |
-| #278 | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — run 43314130596 failed its own nginx gate (an unquoted `{20,64}` cut the regex: `pcre2_compile() failed`), quoted in `afc7c93`; run 43322641465 then parsed but answered WhatsApp with **502**: nginx cannot resolve `leadflow-api` in the CI container and the 502 → `@app_shell` fallback is a *second* `error_page` jump (after 418 → `@share_preview`), which nginx only takes with `recursive_error_pages on`. Set in `8c673d5` (plus `resolver_timeout 3s`), CI run 43328611399; that is the second and last repair attempt. Merge only when "Front-door nginx config parses and answers" is green |
+| #278 | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — **BLOCKED, do not merge**: the "Front-door nginx config parses and answers" gate failed three times. Run 43314130596: an unquoted `{20,64}` cut the regex (`pcre2_compile() failed`), quoted in `afc7c93`. Run 43322641465: parsed, but WhatsApp got **502**. Run 43328611399 (`8c673d5`, `recursive_error_pages on` inside `@share_preview`, `resolver_timeout 3s`): Backend green, `nginx -t` ok, `Mozilla/5.0 -> 200`, `WhatsApp/2.23.20 A -> 502` again (`leadflow-api could not be resolved`, resolver 127.0.0.11 refused in a plain `docker run`). Diagnosis for the next attempt (not applied, the two repair attempts are spent): nginx decides whether a *second* `error_page` jump is allowed when it takes the *first* one, from the location that issues it — the `location ~ "^/(?:r|reports/share)/..."` block, where `recursive_error_pages` is still off — so setting it inside `@share_preview` is too late. Move `recursive_error_pages on;` to the `server` block (or into that regex location). The owner decides whether to spend a third attempt |
 
 ```bash
 gh pr list --repo digitalalharbi/leadflow-crm --state open
@@ -110,6 +110,8 @@ change; either put it in a commit on GitHub (a PR to `develop`, then a release) 
 docker-compose.production.yml`), and remove the `.bak-2026-11-10` file; then re-run the deploy from this Mac:
 `gh workflow run deploy-production.yml --ref main -f confirm=deploy`. Note that `.env.production` is where server-only
 settings belong; the compose file is tracked and must match Git.
+
+**#278 blocked on its own CI gate (code side, no production effect).** Three runs, two repairs, still `WhatsApp -> 502` in the CI container; details and the one-line diagnosis are in the #278 row above. Nothing of #278 is on `develop` or in any image; the gate exists precisely so a broken `spa.conf` never reaches the frontend image. `develop` (`8934c53`, #277 save-as-PDF) is ahead of `main` by #277 alone; v0.9.16 can be cut from it without #278 once v0.9.15 is actually live.
 
 **Sales funnel (#267, live since v0.9.12):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
 trial *request* (a demo lead through `/public/contact`), and `mohtam:demo-access` for the demo workspace. No public route creates a
@@ -158,7 +160,7 @@ while the repository is past #235. **Read them for intent, never for current sta
 
 ## Safe next actions
 
-1. `git fetch origin` and read `docs/REQUIREMENTS_MATRIX.md` for the next open requirement.
-2. Branch from the freshest `origin/develop`, in its own worktree.
-3. Run the gate above and paste the real counts into the pull request.
+1. Owner: clean the server tree (blocker above), then `gh workflow run deploy-production.yml --ref main -f confirm=deploy`; read the deploy log (SMOKE, FIRST_CLIENT_SMOKE, RESTORE CHECK, migrations) and curl live.
+2. Merge #279 (this record) into `develop` when its CI is green.
+3. Owner decides on #278: a third attempt with `recursive_error_pages on` at `server` level, or leave it open; release v0.9.16 (#277) does not wait for it.
 4. Keep this file's *Last verified commit* and *Active pull requests* current at each milestone.

@@ -10,7 +10,7 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-13 00:30 UTC.
+Updated 2026-11-13 02:50 UTC.
 
 ## Last verified commit
 
@@ -66,6 +66,7 @@ are the old ones and leave the 24-hour window on their own.
 | PR | Branch | Title |
 |---|---|---|
 | ~~#277~~ | `feat/shared-report-branding` | Shared client report: save as PDF — CI 43307618260 all green; **merged into `develop`** 2026-11-12 23:14 UTC as `8934c53a6f8257f739e190ff50c71a58fa339a92`. Not released yet (goes in v0.9.16 with #278) |
+| ~~#279~~ | `docs/state-v0-9-15-deploy-refused` | docs: v0.9.15 tagged, deploy refused; #278 diagnosis — CI 43336633449 all green; **merged into `develop`** 2026-11-13 02:05 UTC as `88c3171ee6cef8e983aaecbcea516c29b92716d3` |
 | #278 | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — **BLOCKED, do not merge**: the "Front-door nginx config parses and answers" gate failed three times. Run 43314130596: an unquoted `{20,64}` cut the regex (`pcre2_compile() failed`), quoted in `afc7c93`. Run 43322641465: parsed, but WhatsApp got **502**. Run 43328611399 (`8c673d5`, `recursive_error_pages on` inside `@share_preview`, `resolver_timeout 3s`): Backend green, `nginx -t` ok, `Mozilla/5.0 -> 200`, `WhatsApp/2.23.20 A -> 502` again (`leadflow-api could not be resolved`, resolver 127.0.0.11 refused in a plain `docker run`). Diagnosis for the next attempt (not applied, the two repair attempts are spent): nginx decides whether a *second* `error_page` jump is allowed when it takes the *first* one, from the location that issues it — the `location ~ "^/(?:r|reports/share)/..."` block, where `recursive_error_pages` is still off — so setting it inside `@share_preview` is too late. Move `recursive_error_pages on;` to the `server` block (or into that regex location). The owner decides whether to spend a third attempt |
 
 ```bash
@@ -102,7 +103,7 @@ ABORT DEPLOY — the LeadFlow checkout is not clean:
     ?? docker-compose.production.yml.bak-2026-11-10
 ```
 
-Someone edited `docker-compose.production.yml` on the server on Nov 10 and kept a `.bak` copy. CI 43307147615 on the same
+**Re-run 43350989357 (manual `workflow_dispatch`, 2026-11-13 02:22 UTC) was refused again with the identical two lines** (exit 66, job 131644068906): nothing on the server changed between Nov 12 22:25 and Nov 13 02:22 UTC. Live at 02:30 UTC: `/` 200, `/pricing` 200, `/signup` 200, `/api/v1/public/plans` 200 JSON (`success: true`, starter/growth plans). Do not re-trigger the deploy again until the owner reports the tree clean. Someone edited `docker-compose.production.yml` on the server on Nov 10 and kept a `.bak` copy. CI 43307147615 on the same
 sha is green. Production therefore still runs v0.9.14; curl at 22:45 UTC: `/` 200, `/pricing` 200, `/signup` 200,
 `/api/v1/public/plans` 200, `POST /api/v1/public/signup` 404, random password-link token 404. The agent cannot run
 anything on the VPS. The owner, on the server in `/opt/leadflow-crm`: `git diff docker-compose.production.yml` to see the
@@ -161,6 +162,6 @@ while the repository is past #235. **Read them for intent, never for current sta
 ## Safe next actions
 
 1. Owner: clean the server tree (blocker above), then `gh workflow run deploy-production.yml --ref main -f confirm=deploy`; read the deploy log (SMOKE, FIRST_CLIENT_SMOKE, RESTORE CHECK, migrations) and curl live.
-2. Merge #279 (this record) into `develop` when its CI is green.
+2. ~~Merge #279~~ done (`88c3171`). Merge this record when its CI is green.
 3. Owner decides on #278: a third attempt with `recursive_error_pages on` at `server` level, or leave it open; release v0.9.16 (#277) does not wait for it.
 4. Keep this file's *Last verified commit* and *Active pull requests* current at each milestone.

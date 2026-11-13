@@ -5,6 +5,8 @@ namespace App\Notifications\Concerns;
 use App\Domain\Notifications\AlertKinds;
 use App\Domain\Notifications\NotificationPrefs;
 use App\Domain\Notifications\StaffWhatsapp;
+use App\Enums\Platform;
+use App\Models\Lead;
 use App\Models\User;
 use App\Notifications\Channels\ProviderMailChannel;
 use App\Notifications\Channels\StaffWhatsappChannel;
@@ -81,18 +83,67 @@ trait MailsByPreference
     public function toMail(object $notifiable): MailMessage
     {
         $content = $this->alertContent();
+        $severity = $content['severity'];
 
         return (new MailMessage)
             ->subject($content['title'])
             ->view('emails.alert', [
                 'title' => $content['title'],
                 'body' => $content['body'],
-                'severity' => $content['severity'],
+                'severity' => $severity,
                 'category' => $this->alertCategory(),
+                'pill' => self::pillFor($severity),
                 // The thing itself: the lead, or the screen the alert is about — the home page only when it is neither.
                 'link' => rtrim((string) config('integrations.app_url'), '/').($content['lead_id'] ? '/leads/'.$content['lead_id'] : (string) ($content['link'] ?? '')),
                 'workspace' => $notifiable->tenant?->name,
-            ]);
+            ] + $this->leadActions());
+    }
+
+    private static function budgetText(mixed $min, mixed $max): ?string
+    {
+        $range = array_values(array_unique(array_map(fn ($v) => number_format((float) $v), array_filter([$min, $max], fn ($v) => (float) $v > 0))));
+
+        return $range === [] ? null : implode(' – ', $range).' ريال';
+    }
+
+    /** @return array{text:string, tone:string} */
+    public static function pillFor(string $severity): array
+    {
+        return match ($severity) {
+            'critical' => ['text' => 'يحتاج تحركاً الآن', 'tone' => 'critical'],
+            'warning' => ['text' => 'تنبيه', 'tone' => 'warning'],
+            default => ['text' => 'إشعار', 'tone' => 'good'],
+        };
+    }
+
+    /**
+     * What the person needs to act without opening the product: the facts about the lead and a way to reach them.
+     * Only for notifications that already carry the lead; nothing is looked up here, so a mail never fails over it.
+     *
+     * @return array<string, mixed>
+     */
+    private function leadActions(): array
+    {
+        $lead = property_exists($this, 'lead') && $this->lead instanceof Lead ? $this->lead : null;
+
+        if ($lead === null) {
+            return [];
+        }
+
+        $facts = array_filter([
+            'العميل' => $lead->full_name,
+            'المصدر' => $lead->platform ? Platform::labelFor((string) ($lead->platform instanceof \BackedEnum ? $lead->platform->value : $lead->platform)) : null,
+            'المدينة' => $lead->city,
+            'الميزانية' => self::budgetText($lead->budget_min, $lead->budget_max),
+        ], fn ($v) => filled($v));
+
+        $digits = preg_replace('/\D+/', '', (string) ($lead->phone_normalized ?? $lead->phone));
+
+        return [
+            'facts' => $facts,
+            'whatsapp' => $digits ? 'https://wa.me/'.$digits : null,
+            'call' => $digits ? 'tel:+'.$digits : null,
+        ];
     }
 
     /** Whether a person would be emailed this at once — for tests and for the settings screen's own honesty. */

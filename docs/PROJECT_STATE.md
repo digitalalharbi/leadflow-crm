@@ -10,14 +10,14 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-13 10:15 UTC.
+Updated 2026-11-13 13:20 UTC.
 
 ## Last verified commit
 
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — `02ca0253ce206d062901ee160be6e2f972beb834` (#282 state record, merged 2026-11-13 10:05 UTC; code unchanged since #281 `4636812c`). Ahead of `main` by #277, #278 and #281, all unreleased (v0.9.16) |
+| Integration branch | `develop` — `0556aef169117299a8267cd1f271d5fb9360e172` (#283 state record, merged 2026-11-13 13:12 UTC; code unchanged since #281 `4636812c`). Ahead of `main` by #277, #278 and #281, all unreleased (v0.9.16) |
 | Full sha | `1642a0225981ec494d7efac591bdb085bb41f1ef` on `main` (Release v0.9.15, #276, tag `v0.9.15`) — **merged and tagged, NOT live** (see the blocker below) |
 | Committed | 2026-11-08 |
 | Release branch | `main` — v0.9.15 (#275 bounce reader, off by default). **Live is still v0.9.14** `98bda683af3f4d8ccf6e4913edbca07121a7fc53`: deploy run 42508592072 (CI 42508592082 green): migrations ran, restore check PASS (132 restored / 133 live), `FIRST_CLIENT_SMOKE=PASS`, `SMOKE: PASS` 9/9. `evidence email_failure` shows 74x 554 recipient-domain and 2x SMTP auth failures (historic, MAIL_PASSWORD rotation is owner-only). Checked by curl: `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON, `POST /api/v1/public/signup` 404, random password-link token 404 |
@@ -116,6 +116,8 @@ settings belong; the compose file is tracked and must match Git.
 
 **Re-run 43391696556 (manual `workflow_dispatch`, 2026-11-13 08:27 UTC) was refused a third time with the SAME TWO lines** (exit 66, step "Refuse a server whose working tree is not clean"). The earlier record that "only the `.bak` file remains" was wrong: `gh run view 43391696556 --log-failed`, read at 10:10 UTC, prints at `08:27:06Z` both ` M docker-compose.production.yml` and `?? docker-compose.production.yml.bak-2026-11-10`. Nothing on the server changed between Nov 12 22:25 and Nov 13 08:27 UTC. Owner, on the server in `/opt/leadflow-crm`: `git diff docker-compose.production.yml` (keep the change in a PR to `develop`, or `git checkout -- docker-compose.production.yml`), remove or move the `.bak-2026-11-10` file out of the checkout, confirm `git status --porcelain` prints nothing, then from this Mac `gh workflow run deploy-production.yml --ref main -f confirm=deploy`. Do not re-trigger the deploy before that: three refusals say the gate is doing its job. Live at 10:05 UTC by curl: `/` 200 HTML, `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON (`success: true`, starter/growth), `POST /api/v1/public/signup` 404, random 48-char password-link token 404 — still v0.9.14.
 
+**Run of 2026-11-13 13:10 UTC (scheduled agent):** no new deploy run since 43391696556 and no owner report that the server tree is clean, so the deploy was NOT re-triggered. #283 merged into `develop` as `0556aef1`. Live at 13:10 UTC by curl: `/` 200 HTML, `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON (`success: true`, starter/growth), `POST /api/v1/public/signup` 404, random 48-char password-link token 404 — still v0.9.14. The queue is otherwise empty until the owner clears the server tree (blocker above).
+
 **#278 merged (2026-11-13 06:22 UTC, `dbeee374`).** The gate that refused it three times passed on the fourth run once `recursive_error_pages on;` sat at `server` level (`WhatsApp/2.23.20 A -> 200`). `develop` is ahead of `main` by #277 (save as PDF), #278 (share-link preview) and #281 (branded emails, merged 07:15 UTC); all three wait for v0.9.16, which is not cut until v0.9.15 is actually live — a push to `main` would start another production deploy that the dirty server tree refuses. **Release v0.9.16 after the deploy is unblocked**, then verify the crawler card live (see the #278 row). Live at 07:20 UTC: `/` 200, `/pricing` 200; no new deploy run since 43350989357.
 
 **Sales funnel (#267, live since v0.9.12):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
@@ -166,6 +168,6 @@ while the repository is past #235. **Read them for intent, never for current sta
 ## Safe next actions
 
 1. Owner: clean BOTH lines on the server (the modified `docker-compose.production.yml` and the untracked `.bak-2026-11-10` copy, blocker above), then `gh workflow run deploy-production.yml --ref main -f confirm=deploy`; read the deploy log (SMOKE, FIRST_CLIENT_SMOKE, RESTORE CHECK, migrations) and curl live.
-2. Merge this record when its CI is green. ~~#282~~ merged (`02ca0253`), ~~#281~~ merged (`4636812c`).
+2. Merge this record when its CI is green. ~~#283~~ merged (`0556aef1`), ~~#282~~ merged (`02ca0253`), ~~#281~~ merged (`4636812c`).
 3. ~~#278~~ merged (`dbeee374`), ~~#281~~ merged (`4636812c`). Once v0.9.15 is live: open `Release v0.9.16` (develop → main, merge commit `Release v0.9.16 (#N)`, verify `origin/main` equals it before tagging), watch CI + Deploy production, read SMOKE / FIRST_CLIENT_SMOKE / RESTORE CHECK, then curl `/` and the WhatsApp crawler card.
 4. Keep this file's *Last verified commit* and *Active pull requests* current at each milestone.

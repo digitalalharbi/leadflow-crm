@@ -10,14 +10,14 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-13 02:50 UTC.
+Updated 2026-11-13 06:30 UTC.
 
 ## Last verified commit
 
 | | |
 |---|---|
 | Repository | `digitalalharbi/leadflow-crm` |
-| Integration branch | `develop` — `01fc399b58f7dfb524692d3c9276ca614dedec2e` (#275 bounce reader; all of it is in v0.9.15) |
+| Integration branch | `develop` — `dbeee3746a79025cec680dd8a97ba3ac7932d1de` (#278 share-link preview, merged 2026-11-13 06:22 UTC). Ahead of `main` by #277 and #278, both unreleased (v0.9.16) |
 | Full sha | `1642a0225981ec494d7efac591bdb085bb41f1ef` on `main` (Release v0.9.15, #276, tag `v0.9.15`) — **merged and tagged, NOT live** (see the blocker below) |
 | Committed | 2026-11-08 |
 | Release branch | `main` — v0.9.15 (#275 bounce reader, off by default). **Live is still v0.9.14** `98bda683af3f4d8ccf6e4913edbca07121a7fc53`: deploy run 42508592072 (CI 42508592082 green): migrations ran, restore check PASS (132 restored / 133 live), `FIRST_CLIENT_SMOKE=PASS`, `SMOKE: PASS` 9/9. `evidence email_failure` shows 74x 554 recipient-domain and 2x SMTP auth failures (historic, MAIL_PASSWORD rotation is owner-only). Checked by curl: `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON, `POST /api/v1/public/signup` 404, random password-link token 404 |
@@ -66,8 +66,10 @@ are the old ones and leave the 24-hour window on their own.
 | PR | Branch | Title |
 |---|---|---|
 | ~~#277~~ | `feat/shared-report-branding` | Shared client report: save as PDF — CI 43307618260 all green; **merged into `develop`** 2026-11-12 23:14 UTC as `8934c53a6f8257f739e190ff50c71a58fa339a92`. Not released yet (goes in v0.9.16 with #278) |
+| ~~#278~~ | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — **merged into `develop`** 2026-11-13 06:22 UTC as `dbeee3746a79025cec680dd8a97ba3ac7932d1de`. Fourth run 43360944662 on `a5c2a40` (the owner's session moved `recursive_error_pages on;` to the `server` block, as diagnosed): Backend, Frontend, E2E green; the gate step printed `nginx -t` ok, `Mozilla/5.0 -> 200`, `WhatsApp/2.23.20 A -> 200`. Not released yet (v0.9.16). After the deploy: `curl -s -A 'WhatsApp/2.23' https://mohtam.pro/r/<40 letters>` must be 200 HTML with `og:title`, and `/` must stay 200 |
+| #281 | `feat/branded-email-templates` | Branded notification emails (alerts and digests) — head `f5ca35c`; CI 43368786468: Backend, Frontend, E2E passed, the `CI result` verdict job was still queued at 06:25 UTC. Merge into `develop` when the verdict is green; ships in v0.9.16 or the next release; nothing to curl, confirm SMOKE only |
 | ~~#279~~ | `docs/state-v0-9-15-deploy-refused` | docs: v0.9.15 tagged, deploy refused; #278 diagnosis — CI 43336633449 all green; **merged into `develop`** 2026-11-13 02:05 UTC as `88c3171ee6cef8e983aaecbcea516c29b92716d3` |
-| #278 | `feat/share-link-preview` | Shared report links preview as their own report in WhatsApp — **BLOCKED, do not merge**: the "Front-door nginx config parses and answers" gate failed three times. Run 43314130596: an unquoted `{20,64}` cut the regex (`pcre2_compile() failed`), quoted in `afc7c93`. Run 43322641465: parsed, but WhatsApp got **502**. Run 43328611399 (`8c673d5`, `recursive_error_pages on` inside `@share_preview`, `resolver_timeout 3s`): Backend green, `nginx -t` ok, `Mozilla/5.0 -> 200`, `WhatsApp/2.23.20 A -> 502` again (`leadflow-api could not be resolved`, resolver 127.0.0.11 refused in a plain `docker run`). Diagnosis for the next attempt (not applied, the two repair attempts are spent): nginx decides whether a *second* `error_page` jump is allowed when it takes the *first* one, from the location that issues it — the `location ~ "^/(?:r|reports/share)/..."` block, where `recursive_error_pages` is still off — so setting it inside `@share_preview` is too late. Move `recursive_error_pages on;` to the `server` block (or into that regex location). The owner decides whether to spend a third attempt |
+| history #278 | `feat/share-link-preview` | The three failed gate runs before the merge, kept for the record: the "Front-door nginx config parses and answers" gate failed three times. Run 43314130596: an unquoted `{20,64}` cut the regex (`pcre2_compile() failed`), quoted in `afc7c93`. Run 43322641465: parsed, but WhatsApp got **502**. Run 43328611399 (`8c673d5`, `recursive_error_pages on` inside `@share_preview`, `resolver_timeout 3s`): Backend green, `nginx -t` ok, `Mozilla/5.0 -> 200`, `WhatsApp/2.23.20 A -> 502` again (`leadflow-api could not be resolved`, resolver 127.0.0.11 refused in a plain `docker run`). Diagnosis for the next attempt (not applied, the two repair attempts are spent): nginx decides whether a *second* `error_page` jump is allowed when it takes the *first* one, from the location that issues it — the `location ~ "^/(?:r|reports/share)/..."` block, where `recursive_error_pages` is still off — so setting it inside `@share_preview` is too late. Move `recursive_error_pages on;` to the `server` block (or into that regex location). The third attempt (`a5c2a40`) applied exactly this and passed |
 
 ```bash
 gh pr list --repo digitalalharbi/leadflow-crm --state open
@@ -112,7 +114,7 @@ docker-compose.production.yml`), and remove the `.bak-2026-11-10` file; then re-
 `gh workflow run deploy-production.yml --ref main -f confirm=deploy`. Note that `.env.production` is where server-only
 settings belong; the compose file is tracked and must match Git.
 
-**#278 blocked on its own CI gate (code side, no production effect).** Three runs, two repairs, still `WhatsApp -> 502` in the CI container; details and the one-line diagnosis are in the #278 row above. Nothing of #278 is on `develop` or in any image; the gate exists precisely so a broken `spa.conf` never reaches the frontend image. `develop` (`8934c53`, #277 save-as-PDF) is ahead of `main` by #277 alone; v0.9.16 can be cut from it without #278 once v0.9.15 is actually live.
+**#278 merged (2026-11-13 06:22 UTC, `dbeee374`).** The gate that refused it three times passed on the fourth run once `recursive_error_pages on;` sat at `server` level (`WhatsApp/2.23.20 A -> 200`). `develop` is ahead of `main` by #277 (save as PDF) and #278 (share-link preview); both wait for v0.9.16, which is not cut until v0.9.15 is actually live — a push to `main` would start another production deploy that the dirty server tree refuses. **Release v0.9.16 after the deploy is unblocked**, then verify the crawler card live (see the #278 row). #281 joins it if its verdict is green by then.
 
 **Sales funnel (#267, live since v0.9.12):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
 trial *request* (a demo lead through `/public/contact`), and `mohtam:demo-access` for the demo workspace. No public route creates a
@@ -162,6 +164,6 @@ while the repository is past #235. **Read them for intent, never for current sta
 ## Safe next actions
 
 1. Owner: clean the server tree (blocker above), then `gh workflow run deploy-production.yml --ref main -f confirm=deploy`; read the deploy log (SMOKE, FIRST_CLIENT_SMOKE, RESTORE CHECK, migrations) and curl live.
-2. ~~Merge #279~~ done (`88c3171`). Merge this record when its CI is green.
-3. Owner decides on #278: a third attempt with `recursive_error_pages on` at `server` level, or leave it open; release v0.9.16 (#277) does not wait for it.
+2. Merge this record when its CI is green. Merge #281 when its `CI result` verdict is green (run 43368786468).
+3. ~~#278~~ merged (`dbeee374`). Once v0.9.15 is live: open `Release v0.9.16` (develop → main, merge commit `Release v0.9.16 (#N)`, verify `origin/main` equals it before tagging), watch CI + Deploy production, read SMOKE / FIRST_CLIENT_SMOKE / RESTORE CHECK, then curl `/` and the WhatsApp crawler card.
 4. Keep this file's *Last verified commit* and *Active pull requests* current at each milestone.

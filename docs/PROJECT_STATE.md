@@ -10,7 +10,7 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-13 07:25 UTC.
+Updated 2026-11-13 08:35 UTC.
 
 ## Last verified commit
 
@@ -114,6 +114,8 @@ docker-compose.production.yml`), and remove the `.bak-2026-11-10` file; then re-
 `gh workflow run deploy-production.yml --ref main -f confirm=deploy`. Note that `.env.production` is where server-only
 settings belong; the compose file is tracked and must match Git.
 
+**Re-run 43391696556 (manual `workflow_dispatch`, 2026-11-13 08:27 UTC) was refused a third time, with ONE line only:** `?? docker-compose.production.yml.bak-2026-11-10` (exit 66). The ` M docker-compose.production.yml` modification is gone, so the owner reconciled the tracked file on the server between 02:22 and 08:27 UTC; what still blocks the deploy is the untracked backup copy, which the gate counts as unclean on purpose (anything `git status --porcelain` prints). Owner, on the server in `/opt/leadflow-crm`: move the file out of the checkout (for example `mv docker-compose.production.yml.bak-2026-11-10 /root/`) or delete it, confirm `git status --porcelain` prints nothing, then from this Mac `gh workflow run deploy-production.yml --ref main -f confirm=deploy`. Live at 08:30 UTC: `/` 200, `/pricing` 200, `/api/v1/public/plans` 200 JSON (`success: true`). CI on `develop` 43384474488 (`4636812`): Backend and Frontend green, Playwright running since 07:43 UTC; this record's own Playwright job is queued behind it.
+
 **#278 merged (2026-11-13 06:22 UTC, `dbeee374`).** The gate that refused it three times passed on the fourth run once `recursive_error_pages on;` sat at `server` level (`WhatsApp/2.23.20 A -> 200`). `develop` is ahead of `main` by #277 (save as PDF), #278 (share-link preview) and #281 (branded emails, merged 07:15 UTC); all three wait for v0.9.16, which is not cut until v0.9.15 is actually live — a push to `main` would start another production deploy that the dirty server tree refuses. **Release v0.9.16 after the deploy is unblocked**, then verify the crawler card live (see the #278 row). Live at 07:20 UTC: `/` 200, `/pricing` 200; no new deploy run since 43350989357.
 
 **Sales funnel (#267, live since v0.9.12):** public `/pricing` (live plan catalogue, `GET /public/plans`), `/signup` as a
@@ -163,7 +165,7 @@ while the repository is past #235. **Read them for intent, never for current sta
 
 ## Safe next actions
 
-1. Owner: clean the server tree (blocker above), then `gh workflow run deploy-production.yml --ref main -f confirm=deploy`; read the deploy log (SMOKE, FIRST_CLIENT_SMOKE, RESTORE CHECK, migrations) and curl live.
+1. Owner: remove the untracked `docker-compose.production.yml.bak-2026-11-10` from the server checkout (the only line left in the blocker above), then `gh workflow run deploy-production.yml --ref main -f confirm=deploy`; read the deploy log (SMOKE, FIRST_CLIENT_SMOKE, RESTORE CHECK, migrations) and curl live.
 2. Merge this record when its CI is green. ~~#281~~ merged (`4636812c`).
 3. ~~#278~~ merged (`dbeee374`), ~~#281~~ merged (`4636812c`). Once v0.9.15 is live: open `Release v0.9.16` (develop → main, merge commit `Release v0.9.16 (#N)`, verify `origin/main` equals it before tagging), watch CI + Deploy production, read SMOKE / FIRST_CLIENT_SMOKE / RESTORE CHECK, then curl `/` and the WhatsApp crawler card.
 4. Keep this file's *Last verified commit* and *Active pull requests* current at each milestone.

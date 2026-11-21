@@ -10,7 +10,7 @@ the product, [`docs/REQUIREMENTS_MATRIX.md`](REQUIREMENTS_MATRIX.md) carries req
 and [`docs/GITHUB_FLOW.md`](GITHUB_FLOW.md) owns the branch and CI rules. Where this file and Git
 disagree, **Git is right and this file is stale.**
 
-Updated 2026-11-13 13:20 UTC.
+Updated 2026-11-21.
 
 ## Last verified commit
 
@@ -119,6 +119,8 @@ settings belong; the compose file is tracked and must match Git.
 **Run of 2026-11-13 13:10 UTC (scheduled agent):** no new deploy run since 43391696556 and no owner report that the server tree is clean, so the deploy was NOT re-triggered. #283 merged into `develop` as `0556aef1`. Live at 13:10 UTC by curl: `/` 200 HTML, `/pricing` 200 HTML, `/signup` 200 HTML, `/api/v1/public/plans` 200 JSON (`success: true`, starter/growth), `POST /api/v1/public/signup` 404, random 48-char password-link token 404 — still v0.9.14. The queue is otherwise empty until the owner clears the server tree (blocker above).
 
 **Re-run 43677775379 (manual `workflow_dispatch`, 2026-11-15 04:40 UTC) was refused a FOURTH time with the SAME TWO lines** (exit 66, ` M docker-compose.production.yml` and `?? docker-compose.production.yml.bak-2026-11-10`; `gh run view 43677775379 --log-failed`). Nothing on the server changed since Nov 12. Still owner-only, VPS side: clean `/opt/leadflow-crm` as described above, then re-run. No new release (v0.9.16) is cut until v0.9.15 is live. No open PRs on GitHub; develop `b480d1d` is ahead of main `1642a02` by #277, #278, #281.
+
+**Run 44878921861 (2026-11-21 07:09 UTC, `workflow_dispatch`) was refused a FIFTH time with the SAME TWO lines** (exit 66, ` M docker-compose.production.yml` and `?? docker-compose.production.yml.bak-2026-11-10`). Still owner-only: the server tree must be cleaned by the owner (commit/stash or restore the file, move the .bak out). Nothing was re-triggered and v0.9.16 was NOT cut (a push to `main` would start another refused deploy). Live by curl 2026-11-21: `/` 200, `/pricing` 200. Also open and outside the queue: PR #286 (`perf/horizon-max-processes`, base `main`, owner-authored, 2026-11-18) — not merged by the agent because it targets `main` directly, against the develop→main flow.
 
 **#278 merged (2026-11-13 06:22 UTC, `dbeee374`).** The gate that refused it three times passed on the fourth run once `recursive_error_pages on;` sat at `server` level (`WhatsApp/2.23.20 A -> 200`). `develop` is ahead of `main` by #277 (save as PDF), #278 (share-link preview) and #281 (branded emails, merged 07:15 UTC); all three wait for v0.9.16, which is not cut until v0.9.15 is actually live — a push to `main` would start another production deploy that the dirty server tree refuses. **Release v0.9.16 after the deploy is unblocked**, then verify the crawler card live (see the #278 row). Live at 07:20 UTC: `/` 200, `/pricing` 200; no new deploy run since 43350989357.
 

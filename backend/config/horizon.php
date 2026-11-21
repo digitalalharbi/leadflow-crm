@@ -78,7 +78,7 @@ return [
         'production' => [
             'supervisor-1' => [
                 'queue' => ['default'],
-                'maxProcesses' => 10,
+                'maxProcesses' => 2,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],

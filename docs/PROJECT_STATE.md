@@ -95,6 +95,8 @@ domain can make it red. `deploy-staging.yml` and `deploy-production.yml` run no 
 
 ## Outstanding work and blockers
 
+**2026-11-21 (autopilot):** the owner merged #286 (`a5593d4`, Horizon cap) straight into `main` (`5a30e26`); `develop` does not contain it yet (sync `main` -> `develop` before the next release). Its deploy, run 44884595936, was refused by the same server-tree check (exit 66): `M docker-compose.production.yml` and `?? docker-compose.production.yml.bak-2026-11-10`. v0.9.15 and #286 are therefore both NOT live. No v0.9.16 is cut until the owner commits or restores those two files on the VPS.
+
 **TOP BLOCKER — v0.9.15 deploy refused (owner-only, VPS side).** Deploy production run 43307147482 for
 `1642a02` aborted at 2026-11-12 22:25 UTC in the step "Refuse a server whose working tree is not clean", exit 66,
 before anything was fetched, built, migrated or restarted:
